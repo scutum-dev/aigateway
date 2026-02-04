@@ -19,6 +19,7 @@ import json
 from typing import Optional, List
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,6 +31,8 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.resources import Resource
 import httpx
 import asyncpg
+from alembic.config import Config
+from alembic import command
 
 from auth import (
     login, LoginRequest, TokenResponse,
@@ -73,11 +76,13 @@ async def lifespan(app: FastAPI):
     provider.add_span_processor(processor)
     trace.set_tracer_provider(provider)
 
+    # Run Alembic migrations
+    _run_migrations()
+
     # Create database pool
     try:
         db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
         logger.info("Database connection established")
-        await _init_admin_tables()
     except Exception as e:
         logger.warning(f"Could not connect to database: {e}")
 
@@ -94,265 +99,21 @@ async def lifespan(app: FastAPI):
     logger.info("Admin API service stopped")
 
 
-async def _init_admin_tables():
-    """Initialize admin-specific database tables."""
-    if not db_pool:
-        return
+def _run_migrations():
+    """Run Alembic migrations on startup."""
+    try:
+        # Get the directory where this file lives
+        base_path = Path(__file__).parent
+        alembic_cfg = Config(str(base_path / "alembic.ini"))
+        alembic_cfg.set_main_option("script_location", str(base_path / "alembic"))
+        alembic_cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
 
-    async with db_pool.acquire() as conn:
-        # Model routing configuration table
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS model_routing_config (
-                model_id VARCHAR(255) PRIMARY KEY,
-                provider VARCHAR(255),
-                tier VARCHAR(50),
-                cost_per_1k_input DECIMAL(20, 10),
-                cost_per_1k_output DECIMAL(20, 10),
-                supports_streaming BOOLEAN DEFAULT TRUE,
-                supports_function_calling BOOLEAN DEFAULT FALSE,
-                default_latency_sla_ms INTEGER DEFAULT 5000,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        # Seed default model configurations - all providers
-        await conn.execute("""
-            INSERT INTO model_routing_config (model_id, provider, tier, cost_per_1k_input, cost_per_1k_output, supports_streaming, supports_function_calling, default_latency_sla_ms)
-            VALUES
-                -- OpenAI
-                ('gpt-5', 'openai', 'premium', 0.002, 0.008, TRUE, TRUE, 5000),
-                ('gpt-5.2', 'openai', 'premium', 0.003, 0.012, TRUE, TRUE, 6000),
-                ('gpt-5-mini', 'openai', 'budget', 0.0001, 0.0004, TRUE, TRUE, 2000),
-                ('o3', 'openai', 'premium', 0.01, 0.04, TRUE, TRUE, 10000),
-                ('o3-pro', 'openai', 'premium', 0.015, 0.06, TRUE, TRUE, 15000),
-                ('o4-mini', 'openai', 'standard', 0.003, 0.012, TRUE, TRUE, 5000),
-                ('gpt-4o', 'openai', 'standard', 0.0025, 0.010, TRUE, TRUE, 5000),
-                ('gpt-4o-mini', 'openai', 'budget', 0.00015, 0.0006, TRUE, TRUE, 3000),
-                -- Anthropic
-                ('claude-opus-4.5', 'anthropic', 'premium', 0.015, 0.075, TRUE, TRUE, 8000),
-                ('claude-sonnet-4.5', 'anthropic', 'premium', 0.003, 0.015, TRUE, TRUE, 5000),
-                ('claude-haiku-4.5', 'anthropic', 'budget', 0.0002, 0.001, TRUE, TRUE, 2000),
-                ('claude-opus-4', 'anthropic', 'premium', 0.015, 0.075, TRUE, TRUE, 8000),
-                ('claude-sonnet-4', 'anthropic', 'standard', 0.003, 0.015, TRUE, TRUE, 5000),
-                ('claude-3-5-sonnet', 'anthropic', 'standard', 0.003, 0.015, TRUE, TRUE, 5000),
-                ('claude-3-haiku', 'anthropic', 'budget', 0.00025, 0.00125, TRUE, TRUE, 2000),
-                -- Google
-                ('gemini-3-pro', 'google', 'premium', 0.00125, 0.005, TRUE, TRUE, 5000),
-                ('gemini-3-flash', 'google', 'budget', 0.00005, 0.0002, TRUE, TRUE, 2000),
-                ('gemini-2.5-pro', 'google', 'standard', 0.00125, 0.005, TRUE, TRUE, 5000),
-                ('gemini-2.5-flash', 'google', 'budget', 0.000075, 0.0003, TRUE, TRUE, 2000),
-                ('gemini-2.5-flash-lite', 'google', 'budget', 0.00005, 0.0002, TRUE, TRUE, 1500),
-                -- xAI
-                ('grok-4', 'xai', 'premium', 0.005, 0.02, TRUE, TRUE, 5000),
-                ('grok-4-heavy', 'xai', 'premium', 0.01, 0.04, TRUE, TRUE, 8000),
-                ('grok-3', 'xai', 'standard', 0.001, 0.004, TRUE, TRUE, 4000),
-                ('grok-3-mini', 'xai', 'budget', 0.0005, 0.002, TRUE, TRUE, 2000),
-                -- DeepSeek
-                ('deepseek-v3', 'deepseek', 'budget', 0.00007, 0.00027, TRUE, TRUE, 3000),
-                ('deepseek-r1', 'deepseek', 'standard', 0.0005, 0.002, TRUE, TRUE, 8000),
-                ('deepseek-coder', 'deepseek', 'budget', 0.0001, 0.0004, TRUE, TRUE, 3000),
-                -- AWS Bedrock
-                ('bedrock-claude-opus-4.5', 'bedrock', 'premium', 0.015, 0.075, TRUE, TRUE, 8000),
-                ('bedrock-claude-sonnet-4.5', 'bedrock', 'premium', 0.003, 0.015, TRUE, TRUE, 5000),
-                ('bedrock-claude-haiku-4.5', 'bedrock', 'budget', 0.0002, 0.001, TRUE, TRUE, 2000),
-                ('bedrock-llama-4-405b', 'bedrock', 'premium', 0.00265, 0.0035, TRUE, FALSE, 10000),
-                ('bedrock-llama-4-70b', 'bedrock', 'standard', 0.00099, 0.00099, TRUE, FALSE, 5000),
-                ('bedrock-llama-3.3-70b', 'bedrock', 'standard', 0.00099, 0.00099, TRUE, FALSE, 5000),
-                ('bedrock-mistral-large-3', 'bedrock', 'standard', 0.002, 0.006, TRUE, TRUE, 5000),
-                ('bedrock-nova-pro', 'bedrock', 'standard', 0.0008, 0.0032, TRUE, TRUE, 4000),
-                ('bedrock-nova-lite', 'bedrock', 'budget', 0.00006, 0.00024, TRUE, TRUE, 2000),
-                ('bedrock-deepseek-r1', 'bedrock', 'standard', 0.00135, 0.00548, TRUE, TRUE, 8000),
-                -- Google Vertex AI
-                ('vertex-gemini-3-pro', 'vertex', 'premium', 0.00125, 0.005, TRUE, TRUE, 5000),
-                ('vertex-gemini-3-flash', 'vertex', 'budget', 0.00005, 0.0002, TRUE, TRUE, 2000),
-                ('vertex-gemini-2.5-pro', 'vertex', 'standard', 0.00125, 0.005, TRUE, TRUE, 5000),
-                ('vertex-gemini-2.5-flash', 'vertex', 'budget', 0.000075, 0.0003, TRUE, TRUE, 2000),
-                ('vertex-claude-opus-4.5', 'vertex', 'premium', 0.015, 0.075, TRUE, TRUE, 8000),
-                ('vertex-claude-haiku-4.5', 'vertex', 'budget', 0.0002, 0.001, TRUE, TRUE, 2000),
-                -- Azure OpenAI
-                ('azure-gpt-5.2', 'azure', 'premium', 0.003, 0.012, TRUE, TRUE, 6000),
-                ('azure-gpt-5.1', 'azure', 'premium', 0.002, 0.008, TRUE, TRUE, 5000),
-                ('azure-gpt-4.1', 'azure', 'premium', 0.002, 0.008, TRUE, TRUE, 5000),
-                ('azure-o4-mini', 'azure', 'standard', 0.003, 0.012, TRUE, TRUE, 5000),
-                ('azure-o3', 'azure', 'premium', 0.01, 0.04, TRUE, TRUE, 10000),
-                ('azure-o3-mini', 'azure', 'standard', 0.003, 0.012, TRUE, TRUE, 5000),
-                ('azure-gpt-4o', 'azure', 'standard', 0.0025, 0.010, TRUE, TRUE, 5000),
-                ('azure-gpt-4o-mini', 'azure', 'budget', 0.00015, 0.0006, TRUE, TRUE, 3000),
-                -- Local (Ollama)
-                ('llama-3.1-70b', 'ollama', 'standard', 0, 0, TRUE, FALSE, 8000),
-                ('llama-3.1-8b', 'ollama', 'budget', 0, 0, TRUE, FALSE, 3000),
-                ('mistral', 'ollama', 'budget', 0, 0, TRUE, FALSE, 3000),
-                ('codellama', 'ollama', 'budget', 0, 0, TRUE, FALSE, 3000)
-            ON CONFLICT (model_id) DO UPDATE SET
-                provider = EXCLUDED.provider,
-                tier = EXCLUDED.tier,
-                cost_per_1k_input = EXCLUDED.cost_per_1k_input,
-                cost_per_1k_output = EXCLUDED.cost_per_1k_output,
-                supports_streaming = EXCLUDED.supports_streaming,
-                supports_function_calling = EXCLUDED.supports_function_calling,
-                default_latency_sla_ms = EXCLUDED.default_latency_sla_ms,
-                updated_at = CURRENT_TIMESTAMP
-        """)
-
-        # Cost tracking daily table (for FinOps metrics)
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS cost_tracking_daily (
-                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                date DATE NOT NULL,
-                user_id VARCHAR(255),
-                team_id VARCHAR(255),
-                model VARCHAR(255) NOT NULL,
-                provider VARCHAR(255),
-                request_count BIGINT DEFAULT 0,
-                input_tokens BIGINT DEFAULT 0,
-                output_tokens BIGINT DEFAULT 0,
-                total_cost DECIMAL(20, 10) DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(date, user_id, team_id, model)
-            )
-        """)
-
-        # Routing policies table
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS routing_policies (
-                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                name VARCHAR(255) UNIQUE NOT NULL,
-                description TEXT,
-                priority INTEGER DEFAULT 0,
-                condition TEXT NOT NULL,
-                action VARCHAR(50) DEFAULT 'permit',
-                target_models VARCHAR(255)[],
-                is_active BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        # Budgets table
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS budgets (
-                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                entity_type VARCHAR(50) NOT NULL,
-                entity_id VARCHAR(255),
-                monthly_limit DECIMAL(20, 10) NOT NULL,
-                current_spend DECIMAL(20, 10) DEFAULT 0,
-                soft_limit_percent DECIMAL(5, 2) DEFAULT 0.80,
-                hard_limit_percent DECIMAL(5, 2) DEFAULT 1.00,
-                alert_email VARCHAR(255),
-                is_active BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(entity_type, entity_id)
-            )
-        """)
-
-        # Teams table
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS teams (
-                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                name VARCHAR(255) UNIQUE NOT NULL,
-                description TEXT,
-                monthly_budget DECIMAL(20, 10),
-                default_model VARCHAR(255),
-                is_active BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        # Team members table
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS team_members (
-                team_id UUID REFERENCES teams(id) ON DELETE CASCADE,
-                user_id VARCHAR(255) NOT NULL,
-                role VARCHAR(50) DEFAULT 'member',
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (team_id, user_id)
-            )
-        """)
-
-        # MCP servers table
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS mcp_servers (
-                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                name VARCHAR(255) UNIQUE NOT NULL,
-                server_type VARCHAR(50) NOT NULL,
-                command TEXT,
-                url TEXT,
-                args TEXT[],
-                env JSONB,
-                tools TEXT[],
-                is_active BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        # Platform settings table
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS platform_settings (
-                key VARCHAR(255) PRIMARY KEY,
-                value JSONB NOT NULL,
-                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        # Seed default platform settings
-        await conn.execute("""
-            INSERT INTO platform_settings (key, value)
-            VALUES
-                ('default_model', '"gpt-4o-mini"'),
-                ('global_rate_limit', '1000'),
-                ('enable_caching', 'true'),
-                ('cache_ttl_seconds', '3600'),
-                ('enable_cost_tracking', 'true'),
-                ('enable_budget_enforcement', 'true'),
-                ('enable_routing_policies', 'true'),
-                ('maintenance_mode', 'false')
-            ON CONFLICT DO NOTHING
-        """)
-
-        # Workflow definitions table
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS workflow_definitions (
-                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                name VARCHAR(255) UNIQUE NOT NULL,
-                version VARCHAR(50) DEFAULT '1.0.0',
-                template_type VARCHAR(100),
-                description TEXT,
-                graph_definition JSONB NOT NULL,
-                input_schema JSONB,
-                output_schema JSONB,
-                is_active BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        # Seed sample budgets
-        await conn.execute("""
-            INSERT INTO budgets (name, entity_type, entity_id, monthly_limit, soft_limit_percent, hard_limit_percent)
-            VALUES
-                ('Engineering Budget', 'team', 'engineering', 500.00, 0.80, 1.00),
-                ('Data Science Budget', 'team', 'data-science', 1000.00, 0.80, 1.00),
-                ('Global Budget', 'global', NULL, 5000.00, 0.80, 0.95)
-            ON CONFLICT DO NOTHING
-        """)
-
-        # Seed sample teams
-        await conn.execute("""
-            INSERT INTO teams (name, description, monthly_budget, default_model)
-            VALUES
-                ('engineering', 'Engineering team', 500.00, 'gpt-4o-mini'),
-                ('data-science', 'Data Science team', 1000.00, 'gpt-4o'),
-                ('product', 'Product team', 250.00, 'claude-3-haiku')
-            ON CONFLICT DO NOTHING
-        """)
-
-        logger.info("Admin tables initialized")
+        # Run migrations
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrations completed")
+    except Exception as e:
+        logger.error(f"Migration failed: {e}")
+        raise
 
 
 app = FastAPI(
