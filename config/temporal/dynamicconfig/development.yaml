@@ -1,0 +1,30 @@
+# Temporal Dynamic Configuration
+# https://docs.temporal.io/references/dynamic-configuration
+
+# Frontend settings
+frontend.enableClientVersionCheck:
+  - value: true
+    constraints: {}
+
+# History settings
+history.persistenceMaxQPS:
+  - value: 3000
+    constraints: {}
+
+# Matching settings
+matching.numTaskqueueReadPartitions:
+  - value: 5
+    constraints: {}
+matching.numTaskqueueWritePartitions:
+  - value: 5
+    constraints: {}
+
+# System settings
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true
+    constraints: {}
+
+# Worker settings
+worker.enableScheduler:
+  - value: true
+    constraints: {}

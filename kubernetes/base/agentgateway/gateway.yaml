@@ -1,0 +1,223 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agentgateway
+  labels:
+    app.kubernetes.io/name: agentgateway
+    app.kubernetes.io/part-of: ai-gateway-platform
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agentgateway
+  namespace: agentgateway
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: agentgateway
+rules:
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: agentgateway
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: agentgateway
+subjects:
+  - kind: ServiceAccount
+    name: agentgateway
+    namespace: agentgateway
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agentgateway
+  namespace: agentgateway
+  labels:
+    app.kubernetes.io/name: agentgateway
+    app.kubernetes.io/component: gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agentgateway
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: agentgateway
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: agentgateway
+      containers:
+        - name: agentgateway
+          image: ghcr.io/agentgateway/agentgateway:0.11.0-alpha.18e45de0f30a108df129aeb08d49453ea0527db3
+          args: ["-f", "/etc/agentgateway/config.yaml"]
+          ports:
+            - name: gateway
+              containerPort: 3000
+              protocol: TCP
+            - name: admin
+              containerPort: 15000
+              protocol: TCP
+            - name: readiness
+              containerPort: 15021
+              protocol: TCP
+            - name: stats
+              containerPort: 15020
+              protocol: TCP
+          env:
+            - name: RUST_LOG
+              value: info,agentgateway=debug
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observability.svc.cluster.local:4317
+            - name: OTEL_SERVICE_NAME
+              value: agentgateway
+            # MCP server environment variables
+            - name: BRAVE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mcp-secrets
+                  key: brave-api-key
+                  optional: true
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: mcp-secrets
+                  key: github-token
+                  optional: true
+          volumeMounts:
+            - name: config
+              mountPath: /etc/agentgateway
+              readOnly: true
+            - name: workspace
+              mountPath: /workspace
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          # Agent Gateway readiness endpoint is on port 15021
+          livenessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: 15021
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: 15021
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+      volumes:
+        - name: config
+          configMap:
+            name: agentgateway-config
+        - name: workspace
+          emptyDir: {}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: agentgateway
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentgateway
+  namespace: agentgateway
+  labels:
+    app.kubernetes.io/name: agentgateway
+spec:
+  type: ClusterIP
+  ports:
+    - name: gateway
+      port: 9000
+      targetPort: 3000
+      protocol: TCP
+    - name: admin
+      port: 15000
+      targetPort: 15000
+      protocol: TCP
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: agentgateway
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentgateway-external
+  namespace: agentgateway
+  labels:
+    app.kubernetes.io/name: agentgateway
+spec:
+  type: LoadBalancer
+  ports:
+    - name: llm-gateway
+      port: 443
+      targetPort: 3000
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: agentgateway
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agentgateway
+  namespace: agentgateway
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agentgateway
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agentgateway
+  namespace: agentgateway
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agentgateway
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

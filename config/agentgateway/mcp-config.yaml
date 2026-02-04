@@ -1,0 +1,292 @@
+# MCP Gateway Configuration
+# Model Context Protocol server federation and tool aggregation
+
+# Server discovery
+discovery:
+  backend: kubernetes
+  kubernetes:
+    namespace: mcp-servers
+    label_selector: app.kubernetes.io/type=mcp-server
+    watch_interval: 30s
+    resync_interval: 5m
+
+# Tool aggregation
+aggregation:
+  enabled: true
+
+  # Prefix tools with server name to avoid conflicts
+  # Example: filesystem.read_file, database.query
+  tool_prefix: true
+
+  # Remove duplicate tools across servers
+  deduplication:
+    enabled: true
+    strategy: first_match  # first_match, merge, error
+
+  # Tool filtering
+  filters:
+    - type: allow_list
+      tools:
+        - "filesystem.*"
+        - "database.query"
+        - "database.list_tables"
+        - "database.schema_info"
+        - "code-analysis.*"
+
+    - type: deny_list
+      tools:
+        - "*.delete_all"
+        - "filesystem.write_file"  # Disabled by default, enable via policy
+
+# MCP Servers
+servers:
+  - name: filesystem
+    description: File system operations
+    endpoint: http://filesystem-mcp.mcp-servers.svc.cluster.local:8080
+    protocol: StreamableHTTP
+
+    # Health check
+    health_check:
+      enabled: true
+      path: /health
+      interval: 10s
+      timeout: 5s
+      unhealthy_threshold: 3
+      healthy_threshold: 2
+
+    # Authentication
+    auth:
+      type: bearer
+      token_env: MCP_FILESYSTEM_TOKEN
+
+    # Tool-level permissions (enforced by Cedar policies)
+    tools:
+      read_file:
+        rate_limit: 100/min
+        requires_auth: true
+      write_file:
+        rate_limit: 10/min
+        requires_auth: true
+        requires_policy: "filesystem.write"
+      list_directory:
+        rate_limit: 50/min
+        requires_auth: true
+      search_files:
+        rate_limit: 20/min
+        requires_auth: true
+
+  - name: database
+    description: Database query and analysis
+    endpoint: http://database-mcp.mcp-servers.svc.cluster.local:8080
+    protocol: StreamableHTTP
+
+    health_check:
+      enabled: true
+      path: /health
+      interval: 10s
+      timeout: 5s
+
+    auth:
+      type: bearer
+      token_env: MCP_DATABASE_TOKEN
+
+    tools:
+      query_database:
+        rate_limit: 50/min
+        requires_auth: true
+        max_execution_time: 30s
+      execute_sql:
+        rate_limit: 10/min
+        requires_auth: true
+        requires_policy: "database.write"
+        max_execution_time: 30s
+      schema_info:
+        rate_limit: 100/min
+        requires_auth: true
+      list_tables:
+        rate_limit: 100/min
+        requires_auth: true
+
+  - name: code-analysis
+    description: Code analysis and linting
+    endpoint: http://code-analysis-mcp.mcp-servers.svc.cluster.local:8080
+    protocol: StreamableHTTP
+
+    health_check:
+      enabled: true
+      path: /health
+      interval: 10s
+      timeout: 5s
+
+    tools:
+      analyze_code:
+        rate_limit: 50/min
+        requires_auth: true
+        max_execution_time: 60s
+      lint_code:
+        rate_limit: 50/min
+        requires_auth: true
+        max_execution_time: 60s
+      suggest_improvements:
+        rate_limit: 30/min
+        requires_auth: true
+        max_execution_time: 60s
+      detect_patterns:
+        rate_limit: 30/min
+        requires_auth: true
+        max_execution_time: 60s
+
+# OpenAPI to MCP bridges
+openapi_bridges:
+  enabled: true
+
+  bridges:
+    - name: internal-api
+      description: Internal API as MCP tools
+      spec_url: http://internal-api.default.svc.cluster.local/openapi.json
+      base_url: http://internal-api.default.svc.cluster.local
+      refresh_interval: 1h
+
+      # Operation filtering
+      include_operations:
+        - GET
+        - POST
+
+      exclude_paths:
+        - /admin/*
+        - /internal/*
+
+      # Tool naming
+      tool_naming:
+        strategy: path_based  # path_based, operation_id
+        prefix: "api"
+
+# Caching
+cache:
+  enabled: true
+
+  # Tool list cache
+  tool_list:
+    ttl: 5m
+    max_size: 1000
+
+  # Tool result cache (optional, disabled by default)
+  tool_results:
+    enabled: false
+    ttl: 1m
+    max_size: 10000
+
+    # Cache keys based on tool name and parameters
+    key_strategy: content_hash
+
+# Circuit breaker
+circuit_breaker:
+  enabled: true
+  failure_threshold: 5
+  success_threshold: 2
+  timeout: 30s
+  half_open_max_requests: 3
+
+# Request/Response transformation
+transformation:
+  # Request transformation
+  request:
+    # Add default parameters
+    defaults:
+      timeout: 30s
+
+    # Parameter validation
+    validation:
+      enabled: true
+      strict: true
+
+  # Response transformation
+  response:
+    # Standardize error format
+    error_format: json
+
+    # Add metadata
+    include_metadata: true
+
+# Observability
+observability:
+  # Metrics
+  metrics:
+    enabled: true
+    labels:
+      - server_name
+      - tool_name
+      - status
+
+  # Tracing
+  tracing:
+    enabled: true
+    sample_rate: 0.1  # 10% sampling
+
+    # Span attributes
+    attributes:
+      - mcp.server
+      - mcp.tool
+      - mcp.parameters
+
+  # Logging
+  logging:
+    level: info
+    format: json
+
+    # Log tool invocations
+    audit:
+      enabled: true
+      include_parameters: true
+      include_results: false  # Don't log results by default
+
+# Security
+security:
+  # Authentication required
+  require_auth: true
+
+  # Allowed operations
+  allowed_operations:
+    - list_tools      # List available tools
+    - describe_tool   # Get tool schema
+    - invoke_tool     # Invoke a tool
+
+  # Audit logging
+  audit_log:
+    enabled: true
+    destinations:
+      - stdout
+      - file:///var/log/agentgateway/mcp-audit.log
+
+  # Rate limiting (global)
+  rate_limit:
+    enabled: true
+    default: 100/min
+    burst: 20
+
+  # Input validation
+  input_validation:
+    enabled: true
+    max_parameter_size: 10MB
+    max_parameters: 100
+
+# Error handling
+error_handling:
+  # Retry configuration
+  retry:
+    enabled: true
+    max_attempts: 3
+    backoff: exponential
+    initial_delay: 100ms
+    max_delay: 10s
+
+  # Timeout
+  timeout:
+    default: 30s
+    max: 5m
+
+  # Fallback behavior
+  fallback:
+    on_server_unavailable: return_error
+    on_tool_not_found: return_error
+    on_timeout: return_error

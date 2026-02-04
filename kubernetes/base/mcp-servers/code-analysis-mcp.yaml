@@ -1,0 +1,266 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: code-analysis-mcp-config
+  namespace: mcp-servers
+  labels:
+    app.kubernetes.io/name: code-analysis-mcp
+    app.kubernetes.io/component: mcp-server
+data:
+  config.json: |
+    {
+      "name": "code-analysis",
+      "version": "1.0.0",
+      "description": "MCP server for code analysis and linting",
+      "tools": [
+        {
+          "name": "analyze_code",
+          "description": "Analyze code structure and complexity",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Source code to analyze"
+              },
+              "language": {
+                "type": "string",
+                "enum": ["python", "javascript", "typescript", "go", "rust", "java"],
+                "description": "Programming language"
+              },
+              "metrics": {
+                "type": "array",
+                "description": "Metrics to compute",
+                "items": {
+                  "type": "string",
+                  "enum": ["complexity", "loc", "functions", "classes", "imports"]
+                },
+                "default": ["complexity", "loc"]
+              }
+            },
+            "required": ["code", "language"]
+          }
+        },
+        {
+          "name": "lint_code",
+          "description": "Run linting checks on code",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Source code to lint"
+              },
+              "language": {
+                "type": "string",
+                "enum": ["python", "javascript", "typescript", "go", "rust", "java"],
+                "description": "Programming language"
+              },
+              "rules": {
+                "type": "array",
+                "description": "Linting rules to apply",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["code", "language"]
+          }
+        },
+        {
+          "name": "suggest_improvements",
+          "description": "Suggest code improvements and refactorings",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Source code to analyze"
+              },
+              "language": {
+                "type": "string",
+                "enum": ["python", "javascript", "typescript", "go", "rust", "java"],
+                "description": "Programming language"
+              },
+              "focus": {
+                "type": "string",
+                "enum": ["performance", "readability", "security", "all"],
+                "description": "Focus area for suggestions",
+                "default": "all"
+              }
+            },
+            "required": ["code", "language"]
+          }
+        },
+        {
+          "name": "detect_patterns",
+          "description": "Detect code patterns and anti-patterns",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Source code to analyze"
+              },
+              "language": {
+                "type": "string",
+                "enum": ["python", "javascript", "typescript", "go", "rust", "java"],
+                "description": "Programming language"
+              }
+            },
+            "required": ["code", "language"]
+          }
+        }
+      ],
+      "languages": {
+        "python": {
+          "parser": "tree-sitter-python",
+          "linters": ["pylint", "flake8", "mypy"]
+        },
+        "javascript": {
+          "parser": "tree-sitter-javascript",
+          "linters": ["eslint"]
+        },
+        "typescript": {
+          "parser": "tree-sitter-typescript",
+          "linters": ["eslint", "tsc"]
+        },
+        "go": {
+          "parser": "tree-sitter-go",
+          "linters": ["golint", "go-vet"]
+        },
+        "rust": {
+          "parser": "tree-sitter-rust",
+          "linters": ["clippy"]
+        }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: code-analysis-mcp
+  namespace: mcp-servers
+  labels:
+    app.kubernetes.io/name: code-analysis-mcp
+    app.kubernetes.io/type: mcp-server
+    app.kubernetes.io/component: mcp-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: code-analysis-mcp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: code-analysis-mcp
+        app.kubernetes.io/type: mcp-server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: mcp-server
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: code-analysis-mcp
+        image: ghcr.io/modelcontextprotocol/code-analysis-server:v1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: MCP_SERVER_NAME
+          value: "code-analysis"
+        - name: MCP_PORT
+          value: "8080"
+        - name: MCP_METRICS_PORT
+          value: "9090"
+        - name: MCP_CONFIG_PATH
+          value: "/config/config.json"
+        - name: TREE_SITTER_PARSERS
+          value: "/usr/local/lib/tree-sitter"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://otel-collector.observability.svc.cluster.local:4318"
+        - name: OTEL_SERVICE_NAME
+          value: "code-analysis-mcp"
+        volumeMounts:
+        - name: config
+          mountPath: /config
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: code-analysis-mcp-config
+      - name: tmp
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: code-analysis-mcp
+  namespace: mcp-servers
+  labels:
+    app.kubernetes.io/name: code-analysis-mcp
+    app.kubernetes.io/type: mcp-server
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: 9090
+    targetPort: metrics
+    protocol: TCP
+    name: metrics
+  selector:
+    app.kubernetes.io/name: code-analysis-mcp
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: code-analysis-mcp
+  namespace: mcp-servers
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: code-analysis-mcp

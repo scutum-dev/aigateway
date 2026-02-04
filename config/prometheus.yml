@@ -1,0 +1,26 @@
+# Prometheus configuration for local development
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # OpenTelemetry Collector - exports OTLP metrics from all services
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:8889']
+    # OTEL collector metrics come with ai_gateway prefix
+
+  # LiteLLM Prometheus metrics (via prometheus callback)
+  - job_name: 'litellm'
+    static_configs:
+      - targets: ['litellm:4000']
+    metrics_path: /metrics/
+    # LiteLLM returns 307 redirect, adding trailing slash avoids it
+    scrape_timeout: 10s
+    honor_labels: true

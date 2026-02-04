@@ -1,0 +1,224 @@
+# Vault Policies and Team Configuration
+# Apply after Vault is initialized
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-policies
+  namespace: vault
+data:
+  # ===========================================
+  # Team Policies
+  # ===========================================
+
+  admin-policy.hcl: |
+    # Admin Policy - Full access to everything
+    path "secret/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    path "secret/metadata/*" {
+      capabilities = ["list", "read", "delete"]
+    }
+
+    path "auth/*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+
+    path "sys/*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+
+    path "database/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+  platform-team-policy.hcl: |
+    # Platform Team - Manage AI Gateway secrets
+    path "secret/data/ai-gateway/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    path "secret/metadata/ai-gateway/*" {
+      capabilities = ["list", "read", "delete"]
+    }
+
+    # Can manage database credentials
+    path "database/creds/ai-gateway-*" {
+      capabilities = ["read"]
+    }
+
+    # Can view own token info
+    path "auth/token/lookup-self" {
+      capabilities = ["read"]
+    }
+
+  ml-team-policy.hcl: |
+    # ML Team - Access to LLM provider keys only
+    path "secret/data/ai-gateway/providers/*" {
+      capabilities = ["read", "list"]
+    }
+
+    path "secret/metadata/ai-gateway/providers/*" {
+      capabilities = ["list", "read"]
+    }
+
+    # Can view own token info
+    path "auth/token/lookup-self" {
+      capabilities = ["read"]
+    }
+
+  dev-team-policy.hcl: |
+    # Dev Team - Read-only access to non-production
+    path "secret/data/ai-gateway/dev/*" {
+      capabilities = ["read", "list"]
+    }
+
+    path "secret/metadata/ai-gateway/dev/*" {
+      capabilities = ["list", "read"]
+    }
+
+    # Read-only access to provider keys (for local dev)
+    path "secret/data/ai-gateway/providers/*" {
+      capabilities = ["read"]
+    }
+
+    # Can view own token info
+    path "auth/token/lookup-self" {
+      capabilities = ["read"]
+    }
+
+  readonly-policy.hcl: |
+    # Read-only Policy - View secrets only
+    path "secret/data/ai-gateway/*" {
+      capabilities = ["read", "list"]
+    }
+
+    path "secret/metadata/ai-gateway/*" {
+      capabilities = ["list", "read"]
+    }
+
+  ai-gateway-app-policy.hcl: |
+    # AI Gateway Application Policy
+    # Used by the gateway pods via Kubernetes auth
+    path "secret/data/ai-gateway/providers/*" {
+      capabilities = ["read"]
+    }
+
+    path "secret/data/ai-gateway/config/*" {
+      capabilities = ["read"]
+    }
+
+    path "database/creds/ai-gateway-db" {
+      capabilities = ["read"]
+    }
+
+  # ===========================================
+  # Setup Script
+  # ===========================================
+  setup.sh: |
+    #!/bin/bash
+    set -e
+
+    VAULT_ADDR=${VAULT_ADDR:-"http://127.0.0.1:8200"}
+
+    echo "=== Setting up Vault for AI Gateway ==="
+
+    # Enable KV v2 secrets engine
+    echo "Enabling secrets engine..."
+    vault secrets enable -path=secret kv-v2 || true
+
+    # Enable database secrets engine
+    echo "Enabling database secrets engine..."
+    vault secrets enable database || true
+
+    # Enable audit logging
+    echo "Enabling audit logging..."
+    vault audit enable file file_path=/vault/audit/audit.log || true
+
+    # Create policies
+    echo "Creating policies..."
+    vault policy write admin /vault/policies/admin-policy.hcl
+    vault policy write platform-team /vault/policies/platform-team-policy.hcl
+    vault policy write ml-team /vault/policies/ml-team-policy.hcl
+    vault policy write dev-team /vault/policies/dev-team-policy.hcl
+    vault policy write readonly /vault/policies/readonly-policy.hcl
+    vault policy write ai-gateway-app /vault/policies/ai-gateway-app-policy.hcl
+
+    # Enable Kubernetes auth
+    echo "Enabling Kubernetes auth..."
+    vault auth enable kubernetes || true
+
+    vault write auth/kubernetes/config \
+      kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443"
+
+    # Create role for AI Gateway application
+    vault write auth/kubernetes/role/ai-gateway \
+      bound_service_account_names=agentgateway,litellm \
+      bound_service_account_namespaces=agentgateway,litellm \
+      policies=ai-gateway-app \
+      ttl=1h
+
+    # Enable userpass auth for human users (simple setup)
+    echo "Enabling userpass auth..."
+    vault auth enable userpass || true
+
+    # Create sample users (change passwords in production!)
+    vault write auth/userpass/users/admin \
+      password="admin-change-me" \
+      policies="admin"
+
+    vault write auth/userpass/users/platform-user \
+      password="platform-change-me" \
+      policies="platform-team"
+
+    vault write auth/userpass/users/ml-user \
+      password="ml-change-me" \
+      policies="ml-team"
+
+    vault write auth/userpass/users/dev-user \
+      password="dev-change-me" \
+      policies="dev-team"
+
+    echo "=== Vault setup complete ==="
+    echo "Access UI at: $VAULT_ADDR/ui"
+    echo "Login with userpass method"
+
+  # ===========================================
+  # Secrets Structure Script
+  # ===========================================
+  load-secrets.sh: |
+    #!/bin/bash
+    set -e
+
+    # Load from environment or .env file
+    if [ -f /vault/secrets/.env ]; then
+      export $(cat /vault/secrets/.env | grep -v '^#' | xargs)
+    fi
+
+    echo "=== Loading secrets into Vault ==="
+
+    # Provider API Keys
+    vault kv put secret/ai-gateway/providers/openai \
+      api_key="${OPENAI_API_KEY}" \
+      org_id="${OPENAI_ORG_ID:-}"
+
+    vault kv put secret/ai-gateway/providers/anthropic \
+      api_key="${ANTHROPIC_API_KEY}"
+
+    vault kv put secret/ai-gateway/providers/xai \
+      api_key="${XAI_API_KEY}"
+
+    # JWT Secret
+    vault kv put secret/ai-gateway/config/jwt \
+      secret="${JWT_SECRET}"
+
+    # LiteLLM Master Key
+    vault kv put secret/ai-gateway/config/litellm \
+      master_key="${LITELLM_MASTER_KEY:-sk-litellm-$(openssl rand -hex 16)}"
+
+    # Database credentials (if not using dynamic secrets)
+    vault kv put secret/ai-gateway/config/database \
+      url="${DATABASE_URL:-postgresql://litellm:litellm@postgres:5432/litellm}"
+
+    echo "=== Secrets loaded ==="
+    echo "Verify with: vault kv list secret/ai-gateway/"

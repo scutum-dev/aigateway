@@ -1,0 +1,245 @@
+# Nginx Ingress for AI Gateway Platform
+# This ingress provides:
+# - TLS termination with cert-manager
+# - Path-based routing to internal services
+# - Production-ready annotations for streaming and timeouts
+#
+# Prerequisites:
+# - nginx-ingress-controller installed
+# - cert-manager installed with ClusterIssuer "letsencrypt-prod"
+#
+# Why Nginx Ingress (not Cloud API Gateway):
+# - Low latency (~1ms vs +10-50ms)
+# - Free at scale (vs $3.50/M requests)
+# - Full SSE/streaming support for LLM responses
+# - Native support for MCP/A2A protocols
+# - No vendor lock-in
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ai-gateway-ingress
+  namespace: agentgateway
+  labels:
+    app.kubernetes.io/name: ai-gateway-ingress
+    app.kubernetes.io/part-of: ai-gateway-platform
+  annotations:
+    # TLS/SSL configuration
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+
+    # Timeout configuration for LLM streaming
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+
+    # SSE/Streaming support
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+
+    # WebSocket support for A2A
+    nginx.ingress.kubernetes.io/websocket-services: "agentgateway"
+
+    # Rate limiting (optional - Agent Gateway has its own rate limiting)
+    # nginx.ingress.kubernetes.io/limit-rps: "100"
+    # nginx.ingress.kubernetes.io/limit-connections: "50"
+
+    # CORS (handled by Agent Gateway, but can be set here as fallback)
+    nginx.ingress.kubernetes.io/enable-cors: "false"
+
+    # Large request body support for file uploads
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+
+    # Custom headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Gateway-Version: 1.0.0";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-Frame-Options: DENY";
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.example.com
+        - admin.example.com
+      secretName: ai-gateway-tls
+  rules:
+    # Main API endpoint (LLM, MCP, A2A)
+    - host: api.example.com
+      http:
+        paths:
+          # LLM API endpoints (/v1/*) → LiteLLM
+          # Agent Gateway doesn't support HTTP proxying, so LLM requests
+          # go directly to LiteLLM via Nginx Ingress
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: litellm
+                port:
+                  number: 4000
+
+          # MCP endpoints (/mcp/*) → Agent Gateway
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: agentgateway
+                port:
+                  number: 9000
+
+          # A2A endpoints (/a2a/*) → Agent Gateway
+          - path: /a2a
+            pathType: Prefix
+            backend:
+              service:
+                name: agentgateway
+                port:
+                  number: 9000
+
+          # LiteLLM health check
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: litellm
+                port:
+                  number: 4000
+
+          # Agent Gateway health (readiness endpoint)
+          - path: /gateway/health
+            pathType: Exact
+            backend:
+              service:
+                name: agentgateway
+                port:
+                  number: 9000
+
+          # Metrics endpoint (should be restricted in production)
+          - path: /metrics
+            pathType: Exact
+            backend:
+              service:
+                name: agentgateway
+                port:
+                  number: 9090
+
+    # Admin UI endpoint
+    - host: admin.example.com
+      http:
+        paths:
+          # Agent Gateway Admin UI
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: agentgateway
+                port:
+                  number: 15000
+---
+# Internal ingress for observability tools (optional)
+# These should be restricted to internal networks or VPN
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: observability-ingress
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: observability-ingress
+    app.kubernetes.io/part-of: ai-gateway-platform
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # Restrict to internal IPs (example - adjust for your network)
+    nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - observability.example.com
+      secretName: observability-tls
+  rules:
+    - host: observability.example.com
+      http:
+        paths:
+          # Grafana dashboards
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+
+          # Prometheus (internal metrics)
+          - path: /prometheus
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus
+                port:
+                  number: 9090
+
+          # Jaeger (tracing UI)
+          - path: /jaeger
+            pathType: Prefix
+            backend:
+              service:
+                name: jaeger
+                port:
+                  number: 16686
+---
+# ExternalName Service to access LiteLLM from agentgateway namespace
+# Kubernetes Ingress requires backend services in the same namespace
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm
+  namespace: agentgateway
+  labels:
+    app.kubernetes.io/name: litellm-proxy
+    app.kubernetes.io/part-of: ai-gateway-platform
+spec:
+  type: ExternalName
+  externalName: litellm.litellm.svc.cluster.local
+  ports:
+    - port: 4000
+      targetPort: 4000
+      protocol: TCP
+---
+# Network Policy for Ingress
+# Allows traffic from ingress controller to Agent Gateway
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-agentgateway
+  namespace: agentgateway
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: agentgateway
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from nginx-ingress namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 9000
+        - protocol: TCP
+          port: 9090
+        - protocol: TCP
+          port: 15000
+    # Allow from load balancer (for direct access)
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 9000

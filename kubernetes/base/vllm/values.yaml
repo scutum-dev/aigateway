@@ -1,0 +1,279 @@
+# vLLM Production Stack Helm Values
+# Documentation: https://docs.vllm.ai/projects/production-stack/en/latest/
+# Chart: https://github.com/vllm-project/production-stack
+
+# ===========================================
+# Global Settings
+# ===========================================
+global:
+  imagePullSecrets: []
+  storageClass: "fast-ssd"  # Use SSD storage for model cache
+
+# ===========================================
+# Router Configuration
+# ===========================================
+router:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: vllm/vllm-router
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 8000
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+  # Routing strategy
+  config:
+    routingStrategy: "round_robin"  # Options: round_robin, random, least_connections
+    healthCheckInterval: 10
+    healthCheckTimeout: 5
+    maxRetries: 3
+
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+
+# ===========================================
+# vLLM Inference Servers
+# ===========================================
+servingEngineSpec:
+  # Llama 3.1 70B Configuration
+  - name: llama-3-1-70b
+    enabled: true
+    replicaCount: 2
+
+    modelSpec:
+      name: "meta-llama/Llama-3.1-70B-Instruct"
+      # HuggingFace token for gated models
+      hfToken:
+        secretName: hf-token-secret
+        key: token
+
+    image:
+      repository: vllm/vllm-openai
+      tag: latest
+      pullPolicy: IfNotPresent
+
+    # GPU Configuration
+    resources:
+      requests:
+        cpu: 8
+        memory: 64Gi
+        nvidia.com/gpu: 4  # 4x A100 80GB for 70B model
+      limits:
+        cpu: 16
+        memory: 128Gi
+        nvidia.com/gpu: 4
+
+    # vLLM engine arguments
+    extraArgs:
+      - "--tensor-parallel-size=4"
+      - "--max-model-len=32768"
+      - "--gpu-memory-utilization=0.9"
+      - "--enable-chunked-prefill"
+      - "--max-num-seqs=256"
+      - "--enforce-eager=false"
+      - "--enable-prefix-caching"
+
+    # Model storage
+    storage:
+      modelCache:
+        enabled: true
+        size: 200Gi
+        storageClass: "fast-ssd"
+        mountPath: /root/.cache/huggingface
+
+    # Tolerations for GPU nodes
+    tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+
+    nodeSelector:
+      accelerator: nvidia-a100
+
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: vllm-llama-3-1-70b
+              topologyKey: kubernetes.io/hostname
+
+  # Llama 3.1 8B Configuration (smaller, faster)
+  - name: llama-3-1-8b
+    enabled: true
+    replicaCount: 2
+
+    modelSpec:
+      name: "meta-llama/Llama-3.1-8B-Instruct"
+      hfToken:
+        secretName: hf-token-secret
+        key: token
+
+    image:
+      repository: vllm/vllm-openai
+      tag: latest
+      pullPolicy: IfNotPresent
+
+    resources:
+      requests:
+        cpu: 4
+        memory: 32Gi
+        nvidia.com/gpu: 1  # Single A100 40GB for 8B model
+      limits:
+        cpu: 8
+        memory: 64Gi
+        nvidia.com/gpu: 1
+
+    extraArgs:
+      - "--max-model-len=32768"
+      - "--gpu-memory-utilization=0.9"
+      - "--enable-chunked-prefill"
+      - "--max-num-seqs=512"
+      - "--enable-prefix-caching"
+
+    storage:
+      modelCache:
+        enabled: true
+        size: 50Gi
+        storageClass: "fast-ssd"
+        mountPath: /root/.cache/huggingface
+
+    tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+
+    nodeSelector:
+      accelerator: nvidia-a100
+
+# ===========================================
+# KEDA Autoscaling (Scale-to-Zero)
+# ===========================================
+keda:
+  enabled: true
+
+  scaledObjects:
+    - name: llama-3-1-70b-scaler
+      targetRef:
+        name: vllm-llama-3-1-70b
+      minReplicaCount: 0  # Scale to zero when idle
+      maxReplicaCount: 4
+      cooldownPeriod: 300  # 5 minutes before scaling down
+      pollingInterval: 15
+
+      triggers:
+        # Scale based on pending requests in queue
+        - type: prometheus
+          metadata:
+            serverAddress: http://prometheus.observability.svc.cluster.local:9090
+            metricName: vllm_pending_requests
+            threshold: "10"
+            query: |
+              sum(vllm_num_requests_waiting{model_name="meta-llama/Llama-3.1-70B-Instruct"})
+
+        # Scale based on GPU utilization
+        - type: prometheus
+          metadata:
+            serverAddress: http://prometheus.observability.svc.cluster.local:9090
+            metricName: gpu_utilization
+            threshold: "80"
+            query: |
+              avg(DCGM_FI_DEV_GPU_UTIL{pod=~"vllm-llama-3-1-70b.*"})
+
+    - name: llama-3-1-8b-scaler
+      targetRef:
+        name: vllm-llama-3-1-8b
+      minReplicaCount: 1  # Keep at least one replica
+      maxReplicaCount: 8
+      cooldownPeriod: 180
+      pollingInterval: 15
+
+      triggers:
+        - type: prometheus
+          metadata:
+            serverAddress: http://prometheus.observability.svc.cluster.local:9090
+            metricName: vllm_pending_requests
+            threshold: "20"
+            query: |
+              sum(vllm_num_requests_waiting{model_name="meta-llama/Llama-3.1-8B-Instruct"})
+
+# ===========================================
+# Monitoring
+# ===========================================
+monitoring:
+  enabled: true
+
+  serviceMonitor:
+    enabled: true
+    namespace: observability
+    interval: 15s
+    labels:
+      release: prometheus
+
+  prometheusRules:
+    enabled: true
+    rules:
+      - alert: VLLMHighLatency
+        expr: histogram_quantile(0.95, rate(vllm_e2e_request_latency_seconds_bucket[5m])) > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "vLLM high latency detected"
+          description: "P95 latency is above 30 seconds for 5 minutes"
+
+      - alert: VLLMHighErrorRate
+        expr: rate(vllm_request_failure_total[5m]) / rate(vllm_request_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "vLLM high error rate"
+          description: "Error rate is above 5% for 5 minutes"
+
+      - alert: VLLMGPUMemoryHigh
+        expr: avg(vllm_gpu_cache_usage_perc) > 95
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "vLLM GPU memory usage high"
+          description: "GPU cache usage is above 95% for 10 minutes"
+
+# ===========================================
+# Secrets
+# ===========================================
+secrets:
+  - name: hf-token-secret
+    data:
+      token: "hf_your_huggingface_token_here"
+
+# ===========================================
+# Namespace
+# ===========================================
+namespace:
+  create: true
+  name: vllm
+  labels:
+    app.kubernetes.io/part-of: ai-gateway-platform

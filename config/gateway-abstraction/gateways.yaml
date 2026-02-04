@@ -1,0 +1,53 @@
+# Gateway Abstraction Layer Configuration
+# This file configures available AI gateways and routing rules
+
+# Default gateway for requests that don't match specific routing rules
+default_gateway: primary-litellm
+
+# Gateway instances
+gateways:
+  # Primary LiteLLM proxy (recommended for most use cases)
+  - type: litellm
+    name: primary-litellm
+    base_url: http://litellm:4000
+    api_key: ${LITELLM_MASTER_KEY}
+    timeout: 60
+
+  # Direct OpenAI connection (fallback or for specific features)
+  - type: openai
+    name: direct-openai
+    base_url: https://api.openai.com/v1
+    api_key: ${OPENAI_API_KEY}
+    timeout: 60
+
+  # Direct Anthropic connection (fallback or for specific features)
+  - type: anthropic
+    name: direct-anthropic
+    base_url: https://api.anthropic.com/v1
+    api_key: ${ANTHROPIC_API_KEY}
+    timeout: 60
+
+# Routing configuration
+routing:
+  # Routing strategy: priority, round_robin, least_latency
+  strategy: priority
+
+  # Model-to-gateway routing rules
+  # Format: model_pattern: [gateway_names in priority order]
+  model_routing:
+    # OpenAI models - prefer LiteLLM, fallback to direct
+    "gpt-*": [primary-litellm, direct-openai]
+    "o1-*": [primary-litellm, direct-openai]
+
+    # Anthropic models - prefer LiteLLM, fallback to direct
+    "claude-*": [primary-litellm, direct-anthropic]
+
+    # Self-hosted models - only through LiteLLM
+    "llama-*": [primary-litellm]
+    "mistral-*": [primary-litellm]
+
+    # xAI models
+    "grok-*": [primary-litellm]
+
+    # Default catch-all
+    "*": [primary-litellm]

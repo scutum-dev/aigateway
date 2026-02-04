@@ -1,0 +1,254 @@
+# OpenTelemetry Collector Configuration
+# For local development and testing
+# Documentation: https://opentelemetry.io/docs/collector/configuration/
+
+receivers:
+  # OTLP receiver for traces, metrics, and logs
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "*"
+          allowed_headers:
+            - "*"
+
+  # Prometheus receiver for scraping metrics
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'otel-collector'
+          scrape_interval: 10s
+          static_configs:
+            - targets: ['localhost:8888']
+
+        - job_name: 'agentgateway'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['localhost:9090']
+          metric_relabel_configs:
+            - source_labels: [__name__]
+              regex: 'agentgateway_.*'
+              action: keep
+
+        - job_name: 'litellm'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['localhost:4000']
+          metrics_path: /metrics
+
+        - job_name: 'vllm'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['localhost:8000', 'localhost:8001']
+
+  # Host metrics for system monitoring
+  hostmetrics:
+    collection_interval: 30s
+    scrapers:
+      cpu:
+      memory:
+      disk:
+      network:
+
+processors:
+  # Batch processor for efficiency
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  # Resource processor to add common attributes
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: "development"
+        action: upsert
+      - key: service.version
+        value: "1.0.0"
+        action: upsert
+
+  # Attributes processor for AI Gateway specific attributes
+  attributes/ai_gateway:
+    actions:
+      # Add cost tracking attributes
+      - key: ai.cost.input_tokens
+        from_attribute: llm.usage.prompt_tokens
+        action: upsert
+      - key: ai.cost.output_tokens
+        from_attribute: llm.usage.completion_tokens
+        action: upsert
+
+      # Add provider attribution
+      - key: ai.provider
+        from_attribute: llm.provider
+        action: upsert
+
+  # Filter processor to remove noise
+  filter/health:
+    spans:
+      exclude:
+        match_type: regexp
+        attributes:
+          - key: http.url
+            value: ".*/health.*|.*/ready.*|.*/live.*"
+    metrics:
+      exclude:
+        match_type: regexp
+        metric_names:
+          - ".*_test_.*"
+
+  # Tail sampling for cost optimization in production
+  # Disabled by default for development
+  # tail_sampling:
+  #   decision_wait: 10s
+  #   num_traces: 10000
+  #   policies:
+  #     - name: errors
+  #       type: status_code
+  #       status_code:
+  #         status_codes:
+  #           - ERROR
+  #     - name: slow-requests
+  #       type: latency
+  #       latency:
+  #         threshold_ms: 5000
+  #     - name: probabilistic
+  #       type: probabilistic
+  #       probabilistic:
+  #         sampling_percentage: 10
+
+exporters:
+  # Debug exporter for development
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 100
+
+  # Prometheus exporter for metrics
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: ai_gateway
+    const_labels:
+      environment: development
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  # OTLP exporter to Jaeger (traces)
+  otlp/jaeger:
+    endpoint: localhost:4317
+    tls:
+      insecure: true
+
+  # OTLP exporter to Tempo (if using Grafana stack)
+  # otlp/tempo:
+  #   endpoint: localhost:4317
+  #   tls:
+  #     insecure: true
+
+  # Loki exporter for logs (if using Grafana stack)
+  # loki:
+  #   endpoint: http://localhost:3100/loki/api/v1/push
+  #   labels:
+  #     attributes:
+  #       service.name: "service_name"
+
+  # File exporter for local debugging
+  file/traces:
+    path: ./traces.json
+    rotation:
+      max_megabytes: 100
+      max_days: 7
+      max_backups: 3
+
+  file/metrics:
+    path: ./metrics.json
+    rotation:
+      max_megabytes: 100
+      max_days: 7
+      max_backups: 3
+
+extensions:
+  # Health check extension
+  health_check:
+    endpoint: 0.0.0.0:13133
+    path: "/health"
+    check_collector_pipeline:
+      enabled: true
+      interval: 5m
+      exporter_failure_threshold: 5
+
+  # Performance profiling
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+  # Debug pages
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions:
+    - health_check
+    - pprof
+    - zpages
+
+  pipelines:
+    # Traces pipeline
+    traces:
+      receivers:
+        - otlp
+      processors:
+        - memory_limiter
+        - filter/health
+        - attributes/ai_gateway
+        - resource
+        - batch
+      exporters:
+        - debug
+        - file/traces
+        # - otlp/jaeger  # Uncomment when Jaeger is running
+
+    # Metrics pipeline
+    metrics:
+      receivers:
+        - otlp
+        - prometheus
+        - hostmetrics
+      processors:
+        - memory_limiter
+        - resource
+        - batch
+      exporters:
+        - prometheus
+        - debug
+        - file/metrics
+
+    # Logs pipeline
+    logs:
+      receivers:
+        - otlp
+      processors:
+        - memory_limiter
+        - resource
+        - batch
+      exporters:
+        - debug
+        # - loki  # Uncomment when Loki is running
+
+  telemetry:
+    logs:
+      level: info
+      development: true
+      encoding: console
+    metrics:
+      level: detailed
+      address: 0.0.0.0:8888

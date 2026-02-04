@@ -1,0 +1,85 @@
+# Feature Flags Configuration
+# Base configuration - inherited by all environments
+# Override in environment-specific files
+
+version: "1.0"
+
+# Feature toggles - enable/disable features per environment
+features:
+  # Observability
+  opentelemetry_enabled: true
+  prometheus_metrics: true
+  grafana_dashboards: true
+
+  # Security
+  vault_secrets: true
+  cedar_policies: true
+  jwt_authentication: true
+
+  # AI Gateway features
+  litellm_enabled: true
+  policy_router: true
+  cost_predictor: true
+  budget_webhook: true
+
+  # Workflow features
+  workflow_engine: true
+  temporal_enabled: true
+  a2a_runtime: true
+
+  # Admin features
+  admin_ui: true
+  admin_api: true
+
+  # MCP features
+  mcp_servers: true
+  agentgateway: true
+
+# Service configuration defaults
+services:
+  litellm:
+    replicas: 1
+    log_level: "INFO"
+    cache_enabled: true
+    rate_limiting: true
+
+  policy_router:
+    replicas: 1
+    metrics_cache_ttl: 30
+    cedar_policy_reload_interval: 60
+
+  workflow_engine:
+    replicas: 1
+    checkpoint_interval: 10
+    max_concurrent_workflows: 100
+
+  admin_api:
+    replicas: 1
+    jwt_expiry_hours: 8
+
+  agentgateway:
+    replicas: 1
+    max_connections: 1000
+
+# Infrastructure defaults
+infrastructure:
+  postgres:
+    replicas: 1
+    max_connections: 100
+    shared_buffers: "256MB"
+
+  redis:
+    replicas: 1
+    maxmemory: "256mb"
+
+  vault:
+    auto_unseal: false
+    audit_logging: true
+
+# Secrets paths in Vault (relative to environment)
+vault_paths:
+  providers: "providers"
+  config: "config"
+  database: "config/database"
+  jwt: "config/jwt"
+  grafana: "config/grafana"

@@ -1,0 +1,317 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-registry-config
+  namespace: a2a
+  labels:
+    app.kubernetes.io/name: agent-registry
+    app.kubernetes.io/component: registry
+data:
+  config.yaml: |
+    registry:
+      name: "agent-registry"
+      version: "1.0.0"
+
+      # Service discovery configuration
+      discovery:
+        backend: "kubernetes"
+        kubernetes:
+          namespace: "a2a"
+          labelSelector: "app.kubernetes.io/type=agent"
+          watchInterval: "30s"
+
+      # Agent health checking
+      health:
+        interval: "10s"
+        timeout: "5s"
+        unhealthyThreshold: 3
+        healthyThreshold: 2
+
+      # Capability matching
+      capabilities:
+        enableMatching: true
+        matchAlgorithm: "score-based"  # score-based, exact, fuzzy
+
+      # Registry persistence
+      storage:
+        backend: "etcd"
+        etcd:
+          endpoints:
+            - "http://etcd.a2a.svc.cluster.local:2379"
+          prefix: "/registry/agents"
+
+      # Authentication
+      auth:
+        enabled: true
+        jwt:
+          issuer: "https://auth.example.com"
+          audience: "agent-registry"
+          jwksUrl: "https://auth.example.com/.well-known/jwks.json"
+
+      # Metrics and observability
+      metrics:
+        enabled: true
+        port: 9090
+        path: "/metrics"
+
+      tracing:
+        enabled: true
+        exporter: "otlp"
+        endpoint: "http://otel-collector.observability.svc.cluster.local:4318"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd
+  namespace: a2a
+  labels:
+    app.kubernetes.io/name: etcd
+    app.kubernetes.io/component: registry-storage
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - port: 2379
+    targetPort: client
+    protocol: TCP
+    name: client
+  - port: 2380
+    targetPort: peer
+    protocol: TCP
+    name: peer
+  selector:
+    app.kubernetes.io/name: etcd
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: etcd
+  namespace: a2a
+  labels:
+    app.kubernetes.io/name: etcd
+    app.kubernetes.io/component: registry-storage
+spec:
+  serviceName: etcd
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: etcd
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: etcd
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: etcd
+        image: quay.io/coreos/etcd:v3.5.12
+        ports:
+        - name: client
+          containerPort: 2379
+        - name: peer
+          containerPort: 2380
+        env:
+        - name: ETCD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: ETCD_INITIAL_CLUSTER
+          value: "etcd-0=http://etcd-0.etcd:2380,etcd-1=http://etcd-1.etcd:2380,etcd-2=http://etcd-2.etcd:2380"
+        - name: ETCD_INITIAL_CLUSTER_STATE
+          value: "new"
+        - name: ETCD_INITIAL_CLUSTER_TOKEN
+          value: "agent-registry-etcd"
+        - name: ETCD_LISTEN_CLIENT_URLS
+          value: "http://0.0.0.0:2379"
+        - name: ETCD_ADVERTISE_CLIENT_URLS
+          value: "http://$(ETCD_NAME).etcd:2379"
+        - name: ETCD_LISTEN_PEER_URLS
+          value: "http://0.0.0.0:2380"
+        - name: ETCD_INITIAL_ADVERTISE_PEER_URLS
+          value: "http://$(ETCD_NAME).etcd:2380"
+        volumeMounts:
+        - name: data
+          mountPath: /var/run/etcd
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-registry
+  namespace: a2a
+  labels:
+    app.kubernetes.io/name: agent-registry
+    app.kubernetes.io/component: registry
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agent-registry
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: agent-registry
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: agent-registry
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: agent-registry
+        image: ghcr.io/agentgateway/agent-registry:v1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: grpc
+          containerPort: 9000
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: REGISTRY_CONFIG_PATH
+          value: "/config/config.yaml"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://otel-collector.observability.svc.cluster.local:4318"
+        - name: OTEL_SERVICE_NAME
+          value: "agent-registry"
+        volumeMounts:
+        - name: config
+          mountPath: /config
+          readOnly: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: agent-registry-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-registry
+  namespace: a2a
+  labels:
+    app.kubernetes.io/name: agent-registry
+    app.kubernetes.io/component: registry
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: 9000
+    targetPort: grpc
+    protocol: TCP
+    name: grpc
+  - port: 9090
+    targetPort: metrics
+    protocol: TCP
+    name: metrics
+  selector:
+    app.kubernetes.io/name: agent-registry
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-registry
+  namespace: a2a
+  labels:
+    app.kubernetes.io/name: agent-registry
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agent-registry
+  namespace: a2a
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: agent-registry
+  namespace: a2a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: agent-registry
+subjects:
+- kind: ServiceAccount
+  name: agent-registry
+  namespace: a2a
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agent-registry
+  namespace: a2a
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agent-registry

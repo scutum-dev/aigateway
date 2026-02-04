@@ -1,0 +1,76 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: ai-gateway-staging
+
+namespace: ai-gateway-staging
+
+resources:
+  - ../../base
+
+namePrefix: staging-
+
+commonLabels:
+  environment: staging
+
+commonAnnotations:
+  ai-gateway.example.com/environment: staging
+
+# Staging-specific patches
+patches:
+  # Moderate replicas for staging
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+      name: agentgateway
+
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+      name: litellm
+
+  # Moderate resources for staging
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 250m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 512Mi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 1000m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 1Gi
+    target:
+      kind: Deployment
+      name: agentgateway
+
+  # Enable PDB for staging
+  - patch: |-
+      - op: replace
+        path: /spec/minAvailable
+        value: 1
+    target:
+      kind: PodDisruptionBudget
+      name: agentgateway
+
+configMapGenerator:
+  - name: staging-config
+    literals:
+      - LOG_LEVEL=info
+      - ENVIRONMENT=staging
+
+secretGenerator:
+  - name: staging-secrets
+    literals:
+      - LITELLM_MASTER_KEY=sk-staging-master-key-change-me
+    type: Opaque

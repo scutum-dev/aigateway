@@ -1,0 +1,137 @@
+# Production environment overrides
+# Usage: docker compose -f docker-compose.yaml -f docker-compose.override.production.yaml up
+#
+# WARNING: This is for reference. Production deployments should use Kubernetes.
+
+services:
+  litellm:
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=WARNING
+      - DETAILED_DEBUG=false
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  policy-router:
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=WARNING
+      - METRICS_CACHE_TTL=60
+      - CEDAR_POLICY_RELOAD_INTERVAL=300
+      - CIRCUIT_BREAKER_ENABLED=true
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+
+  workflow-engine:
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=WARNING
+      - CHECKPOINT_INTERVAL=10
+      - MAX_CONCURRENT_WORKFLOWS=500
+      - DEAD_LETTER_QUEUE=true
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+
+  admin-api:
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=WARNING
+      - JWT_EXPIRY_HOURS=4
+      - CORS_ALLOW_ALL=false
+      - RATE_LIMIT_RPM=60
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+
+  admin-ui:
+    environment:
+      - ENVIRONMENT=production
+      - VITE_ENVIRONMENT=production
+    deploy:
+      replicas: 3
+
+  agentgateway:
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=warn
+      - A2A__LOG_LEVEL=warn
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+
+  cost-predictor:
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=WARNING
+    deploy:
+      replicas: 3
+
+  budget-webhook:
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=WARNING
+    deploy:
+      replicas: 3
+
+  a2a-runtime:
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=WARNING
+    deploy:
+      replicas: 3
+
+  vault:
+    environment:
+      - ENVIRONMENT=production
+    command: ["server", "-config=/vault/config/vault.hcl"]
+    # Production Vault should be in HA mode with proper unseal mechanism
+
+  postgres:
+    environment:
+      - POSTGRES_MAX_CONNECTIONS=500
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4'
+        reservations:
+          memory: 4G
+          cpus: '2'
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
+  grafana:
+    environment:
+      - GF_LOG_LEVEL=warn
+
+  prometheus:
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'

@@ -1,0 +1,81 @@
+# Patches to add Vault Agent Injector annotations to deployments
+# Apply these to enable automatic secret injection
+
+# ===========================================
+# Agent Gateway Vault Integration
+# ===========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agentgateway
+  namespace: agentgateway
+spec:
+  template:
+    metadata:
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "ai-gateway"
+        vault.hashicorp.com/agent-inject-status: "update"
+
+        # Inject provider keys as environment file
+        vault.hashicorp.com/agent-inject-secret-providers.env: "secret/data/ai-gateway/providers/openai"
+        vault.hashicorp.com/agent-inject-template-providers.env: |
+          {{- with secret "secret/data/ai-gateway/providers/openai" -}}
+          OPENAI_API_KEY={{ .Data.data.api_key }}
+          {{- end }}
+          {{- with secret "secret/data/ai-gateway/providers/anthropic" -}}
+          ANTHROPIC_API_KEY={{ .Data.data.api_key }}
+          {{- end }}
+          {{- with secret "secret/data/ai-gateway/providers/xai" -}}
+          XAI_API_KEY={{ .Data.data.api_key }}
+          {{- end }}
+
+        # Inject JWT secret
+        vault.hashicorp.com/agent-inject-secret-jwt.env: "secret/data/ai-gateway/config/jwt"
+        vault.hashicorp.com/agent-inject-template-jwt.env: |
+          {{- with secret "secret/data/ai-gateway/config/jwt" -}}
+          JWT_SECRET={{ .Data.data.secret }}
+          {{- end }}
+---
+# ===========================================
+# LiteLLM Vault Integration
+# ===========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm
+  namespace: litellm
+spec:
+  template:
+    metadata:
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "ai-gateway"
+        vault.hashicorp.com/agent-inject-status: "update"
+
+        # Inject all secrets as single env file
+        vault.hashicorp.com/agent-inject-secret-env: "secret/data/ai-gateway/providers/openai"
+        vault.hashicorp.com/agent-inject-template-env: |
+          {{- with secret "secret/data/ai-gateway/providers/openai" -}}
+          OPENAI_API_KEY={{ .Data.data.api_key }}
+          {{- end }}
+          {{- with secret "secret/data/ai-gateway/providers/anthropic" -}}
+          ANTHROPIC_API_KEY={{ .Data.data.api_key }}
+          {{- end }}
+          {{- with secret "secret/data/ai-gateway/providers/xai" -}}
+          XAI_API_KEY={{ .Data.data.api_key }}
+          {{- end }}
+          {{- with secret "secret/data/ai-gateway/config/litellm" -}}
+          LITELLM_MASTER_KEY={{ .Data.data.master_key }}
+          {{- end }}
+          {{- with secret "secret/data/ai-gateway/config/database" -}}
+          DATABASE_URL={{ .Data.data.url }}
+          {{- end }}
+    spec:
+      containers:
+        - name: litellm
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              source /vault/secrets/env
+              exec litellm --config /etc/litellm/config.yaml --port 4000

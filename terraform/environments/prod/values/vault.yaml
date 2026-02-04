@@ -1,0 +1,183 @@
+# HashiCorp Vault - Production Configuration
+# High-availability deployment with auto-unseal
+
+global:
+  enabled: true
+  tlsDisable: false
+
+injector:
+  enabled: true
+  replicas: 2
+
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: vault-agent-injector
+          topologyKey: kubernetes.io/hostname
+
+server:
+  enabled: true
+
+  # Enterprise license (optional)
+  # enterpriseLicense:
+  #   secretName: vault-license
+  #   secretKey: license
+
+  image:
+    repository: hashicorp/vault
+    tag: "1.15.4"
+
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 500m
+    limits:
+      memory: 2Gi
+      cpu: 2000m
+
+  # Read replicas for HA
+  readinessProbe:
+    enabled: true
+    path: "/v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204"
+
+  livenessProbe:
+    enabled: true
+    path: "/v1/sys/health?standbyok=true"
+    initialDelaySeconds: 60
+
+  # Audit logging
+  auditStorage:
+    enabled: true
+    size: 10Gi
+    storageClass: gp3
+    accessMode: ReadWriteOnce
+
+  # Data storage
+  dataStorage:
+    enabled: true
+    size: 50Gi
+    storageClass: gp3
+    accessMode: ReadWriteOnce
+
+  # HA configuration
+  ha:
+    enabled: true
+    replicas: 3
+    raft:
+      enabled: true
+      setNodeId: true
+      config: |
+        ui = true
+
+        listener "tcp" {
+          tls_disable = 0
+          address = "[::]:8200"
+          cluster_address = "[::]:8201"
+          tls_cert_file = "/vault/userconfig/vault-tls/tls.crt"
+          tls_key_file = "/vault/userconfig/vault-tls/tls.key"
+          tls_client_ca_file = "/vault/userconfig/vault-tls/ca.crt"
+        }
+
+        storage "raft" {
+          path = "/vault/data"
+          retry_join {
+            leader_api_addr = "https://vault-0.vault-internal:8200"
+            leader_ca_cert_file = "/vault/userconfig/vault-tls/ca.crt"
+          }
+          retry_join {
+            leader_api_addr = "https://vault-1.vault-internal:8200"
+            leader_ca_cert_file = "/vault/userconfig/vault-tls/ca.crt"
+          }
+          retry_join {
+            leader_api_addr = "https://vault-2.vault-internal:8200"
+            leader_ca_cert_file = "/vault/userconfig/vault-tls/ca.crt"
+          }
+        }
+
+        # AWS KMS auto-unseal
+        seal "awskms" {
+          region     = "ap-south-1"
+          kms_key_id = "alias/vault-unseal-key"
+        }
+
+        # Telemetry
+        telemetry {
+          prometheus_retention_time = "30s"
+          disable_hostname = true
+        }
+
+        # Service registration for K8s
+        service_registration "kubernetes" {}
+
+  # Affinity for HA spread across AZs
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: vault
+          topologyKey: topology.kubernetes.io/zone
+
+  # Topology spread
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: vault
+
+  # TLS from cert-manager
+  volumes:
+    - name: vault-tls
+      secret:
+        secretName: vault-tls
+
+  volumeMounts:
+    - name: vault-tls
+      mountPath: /vault/userconfig/vault-tls
+      readOnly: true
+
+  # Service account for AWS KMS
+  serviceAccount:
+    create: true
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/vault-kms-unseal
+
+  # Ingress (optional - usually accessed internally)
+  ingress:
+    enabled: false
+
+# UI configuration
+ui:
+  enabled: true
+  serviceType: ClusterIP
+  # For production, expose via ingress with proper auth
+
+# CSI provider for secret injection
+csi:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 100m
+      memory: 256Mi
+
+# Server telemetry for Prometheus
+serverTelemetry:
+  serviceMonitor:
+    enabled: true
+    selectors:
+      release: prometheus

@@ -1,0 +1,172 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm
+  namespace: litellm
+  labels:
+    app.kubernetes.io/name: litellm
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 4000
+      targetPort: 4000
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: litellm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm-external
+  namespace: litellm
+  labels:
+    app.kubernetes.io/name: litellm
+  annotations:
+    # For cloud providers that support external DNS
+    external-dns.alpha.kubernetes.io/hostname: litellm.example.com
+spec:
+  type: LoadBalancer
+  ports:
+    - name: https
+      port: 443
+      targetPort: 4000
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: litellm
+---
+# Redis for caching and rate limiting
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: litellm
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: litellm
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+  selector:
+    app.kubernetes.io/name: redis
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: litellm-secrets
+  namespace: litellm
+type: Opaque
+stringData:
+  # Master key for LiteLLM admin API
+  master-key: "sk-litellm-master-key-change-me"
+  # PostgreSQL connection string
+  database-url: "postgresql://litellm:litellm@postgresql.database.svc.cluster.local:5432/litellm"
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: litellm-network-policy
+  namespace: litellm
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: litellm
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from nginx-ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 4000
+    # Allow traffic from agentgateway namespace (ExternalName service)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: agentgateway
+      ports:
+        - protocol: TCP
+          port: 4000
+    # Allow external traffic (through load balancer)
+    - ports:
+        - protocol: TCP
+          port: 4000
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow Agent Gateway
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: agentgateway
+      ports:
+        - protocol: TCP
+          port: 3000
+    # Allow PostgreSQL
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: database
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow Redis (same namespace)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow OTEL collector
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - protocol: TCP
+          port: 4318

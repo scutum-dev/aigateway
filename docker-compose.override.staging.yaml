@@ -1,0 +1,103 @@
+# Staging environment overrides
+# Usage: docker compose -f docker-compose.yaml -f docker-compose.override.staging.yaml up
+
+services:
+  litellm:
+    environment:
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+      - DETAILED_DEBUG=false
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+
+  policy-router:
+    environment:
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+      - METRICS_CACHE_TTL=30
+      - CEDAR_POLICY_RELOAD_INTERVAL=60
+    deploy:
+      replicas: 2
+
+  workflow-engine:
+    environment:
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+      - CHECKPOINT_INTERVAL=10
+      - MAX_CONCURRENT_WORKFLOWS=50
+    deploy:
+      replicas: 2
+
+  admin-api:
+    environment:
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+      - JWT_EXPIRY_HOURS=8
+      - CORS_ALLOW_ALL=false
+    deploy:
+      replicas: 2
+
+  admin-ui:
+    environment:
+      - ENVIRONMENT=staging
+      - VITE_ENVIRONMENT=staging
+    deploy:
+      replicas: 2
+
+  agentgateway:
+    environment:
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=info
+      - A2A__LOG_LEVEL=info
+    deploy:
+      replicas: 2
+
+  cost-predictor:
+    environment:
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    deploy:
+      replicas: 2
+
+  budget-webhook:
+    environment:
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    deploy:
+      replicas: 2
+
+  a2a-runtime:
+    environment:
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+    deploy:
+      replicas: 2
+
+  vault:
+    environment:
+      - ENVIRONMENT=staging
+    # Production mode (not dev)
+    command: ["server", "-config=/vault/config/vault.hcl"]
+
+  postgres:
+    environment:
+      - POSTGRES_MAX_CONNECTIONS=100
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  grafana:
+    environment:
+      - GF_LOG_LEVEL=info

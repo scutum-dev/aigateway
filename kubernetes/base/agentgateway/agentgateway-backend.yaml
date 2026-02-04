@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agentgateway-config
+  namespace: agentgateway
+data:
+  config.yaml: |
+    # Agent Gateway Configuration for Kubernetes
+    # Documentation: https://agentgateway.dev/docs/configuration
+    #
+    # Agent Gateway handles MCP and A2A protocols.
+    # LLM requests go directly to LiteLLM service.
+    #
+    # Architecture:
+    #   LLM:  Client -> LiteLLM (litellm.litellm.svc) -> Providers
+    #   MCP:  Client -> Agent Gateway -> MCP Servers (stdio)
+    #   A2A:  Client -> Agent Gateway -> AI Agents
+
+    binds:
+      - port: 3000
+        listeners:
+          - routes:
+              # MCP Gateway - Model Context Protocol
+              - policies:
+                  cors:
+                    allowOrigins:
+                      - "*"
+                    allowHeaders:
+                      - mcp-protocol-version
+                      - content-type
+                      - authorization
+                      - accept
+                    exposeHeaders:
+                      - Mcp-Session-Id
+                backends:
+                  - mcp:
+                      targets:
+                        # Filesystem MCP Server
+                        - name: filesystem
+                          stdio:
+                            cmd: npx
+                            args:
+                              - "-y"
+                              - "@modelcontextprotocol/server-filesystem"
+                              - "/workspace"
+
+                        # PostgreSQL Database MCP Server
+                        - name: database
+                          stdio:
+                            cmd: npx
+                            args:
+                              - "-y"
+                              - "@modelcontextprotocol/server-postgres"
+                              - "postgresql://litellm:litellm@postgresql.database.svc.cluster.local:5432/litellm"
+
+                        # Brave Search MCP Server
+                        - name: brave-search
+                          stdio:
+                            cmd: npx
+                            args:
+                              - "-y"
+                              - "@modelcontextprotocol/server-brave-search"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mcp-secrets
+  namespace: agentgateway
+type: Opaque
+stringData:
+  # Replace with actual API keys in production
+  brave-api-key: ""
+  github-token: ""

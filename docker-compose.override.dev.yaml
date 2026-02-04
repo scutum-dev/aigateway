@@ -1,0 +1,83 @@
+# Development environment overrides
+# Usage: docker compose -f docker-compose.yaml -f docker-compose.override.dev.yaml up
+
+services:
+  # All services get ENVIRONMENT=dev
+  litellm:
+    environment:
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=DEBUG
+      - DETAILED_DEBUG=true
+
+  policy-router:
+    environment:
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=DEBUG
+      - METRICS_CACHE_TTL=5
+      - CEDAR_POLICY_RELOAD_INTERVAL=10
+
+  workflow-engine:
+    environment:
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=DEBUG
+      - CHECKPOINT_INTERVAL=5
+      - MAX_CONCURRENT_WORKFLOWS=10
+
+  admin-api:
+    environment:
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=DEBUG
+      - JWT_EXPIRY_HOURS=24
+      - CORS_ALLOW_ALL=true
+
+  admin-ui:
+    environment:
+      - ENVIRONMENT=dev
+      - VITE_ENVIRONMENT=development
+    # Development mode with hot reload
+    volumes:
+      - ./ui/admin/src:/app/src:ro
+
+  agentgateway:
+    environment:
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=debug
+      - A2A__LOG_LEVEL=debug
+
+  cost-predictor:
+    environment:
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=DEBUG
+
+  budget-webhook:
+    environment:
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=DEBUG
+
+  a2a-runtime:
+    environment:
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=DEBUG
+
+  vault:
+    environment:
+      - ENVIRONMENT=dev
+    # Dev mode with auto-unseal
+    command: ["server", "-dev", "-dev-root-token-id=root-token-for-dev", "-dev-listen-address=0.0.0.0:8200"]
+
+  grafana:
+    environment:
+      - GF_LOG_LEVEL=debug
+
+  # Reduced resource limits for development
+  postgres:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          memory: 256M

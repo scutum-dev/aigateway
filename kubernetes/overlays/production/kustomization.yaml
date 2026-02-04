@@ -1,0 +1,106 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: ai-gateway-production
+
+namespace: ai-gateway-production
+
+resources:
+  - ../../base
+  # Production-specific resources
+  - network-policies.yaml
+  - pod-security-policies.yaml
+
+namePrefix: prod-
+
+commonLabels:
+  environment: production
+
+commonAnnotations:
+  ai-gateway.example.com/environment: production
+
+# Production-specific patches
+patches:
+  # High availability replicas
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+    target:
+      kind: Deployment
+      name: agentgateway
+
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+    target:
+      kind: Deployment
+      name: litellm
+
+  # Production resources
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 1000m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 2Gi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 4000m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 8Gi
+    target:
+      kind: Deployment
+      name: agentgateway
+
+  # Stricter PDB for production
+  - patch: |-
+      - op: replace
+        path: /spec/minAvailable
+        value: 2
+    target:
+      kind: PodDisruptionBudget
+      name: agentgateway
+
+  # HPA settings for production
+  - patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 20
+    target:
+      kind: HorizontalPodAutoscaler
+      name: agentgateway
+
+  # Enable TLS for production services
+  - patch: |-
+      - op: add
+        path: /metadata/annotations/service.beta.kubernetes.io~1aws-load-balancer-ssl-cert
+        value: "arn:aws:acm:region:account:certificate/cert-id"
+      - op: add
+        path: /metadata/annotations/service.beta.kubernetes.io~1aws-load-balancer-backend-protocol
+        value: "http"
+    target:
+      kind: Service
+      name: agentgateway-external
+
+configMapGenerator:
+  - name: production-config
+    literals:
+      - LOG_LEVEL=warn
+      - ENVIRONMENT=production
+
+# Note: Production secrets should be managed via external secrets manager
+# (e.g., AWS Secrets Manager, HashiCorp Vault, etc.)
+# This is just a placeholder
+secretGenerator:
+  - name: production-secrets
+    literals:
+      - PLACEHOLDER=replace-with-external-secrets
+    type: Opaque

@@ -1,0 +1,326 @@
+# Multi-Agent Workflow Example
+# This workflow demonstrates agent-to-agent communication using the A2A Gateway
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workflow-example
+  namespace: a2a
+  labels:
+    app.kubernetes.io/name: workflow-example
+    workflow-type: multi-agent
+data:
+  workflow.yaml: |
+    # Workflow: Code Review and Improvement Pipeline
+    # Flow: User Request -> Research Agent -> Code Assistant -> Data Analysis -> Response
+
+    name: code-review-pipeline
+    version: 1.0.0
+    description: |
+      Multi-agent workflow for comprehensive code review and improvement.
+      1. Research agent finds best practices
+      2. Code assistant analyzes and reviews code
+      3. Data analysis agent checks performance metrics
+      4. Results aggregated and returned to user
+
+    # Workflow parameters
+    input:
+      code: |
+        def process_users(users):
+            result = []
+            for user in users:
+                if user['active']:
+                    result.append(user)
+            return result
+      language: python
+      focus: ["performance", "readability", "best-practices"]
+
+    # Workflow steps
+    steps:
+      # Step 1: Research best practices
+      - name: research-best-practices
+        agent: research-agent
+        capability: research-topic
+        input:
+          topic: "Python best practices for list processing and filtering"
+          depth: "quick"
+        output_var: best_practices
+
+      # Step 2: Analyze code structure
+      - name: analyze-code
+        agent: code-assistant
+        capability: explain-code
+        input:
+          code: "{{input.code}}"
+          language: "{{input.language}}"
+        output_var: code_analysis
+
+      # Step 3: Review code quality
+      - name: review-code
+        agent: code-assistant
+        capability: code-review
+        input:
+          code: "{{input.code}}"
+          language: "{{input.language}}"
+        depends_on: [analyze-code]
+        output_var: code_review
+
+      # Step 4: Suggest refactoring
+      - name: suggest-refactoring
+        agent: code-assistant
+        capability: refactor-code
+        input:
+          code: "{{input.code}}"
+          language: "{{input.language}}"
+          focus: "performance"
+        depends_on: [research-best-practices, review-code]
+        output_var: refactored_code
+
+      # Step 5: Analyze performance (if database access patterns found)
+      - name: analyze-performance
+        agent: data-analysis
+        capability: analyze-data
+        input:
+          query: "Estimate performance impact of suggested changes"
+          dataset: "{{code_review}}"
+        depends_on: [suggest-refactoring]
+        output_var: performance_analysis
+        condition: "{{code_review.has_database_access}}"
+
+      # Step 6: Aggregate results
+      - name: aggregate-results
+        agent: research-agent
+        capability: summarize-content
+        input:
+          content: |
+            Best Practices: {{best_practices}}
+            Code Analysis: {{code_analysis}}
+            Code Review: {{code_review}}
+            Refactored Code: {{refactored_code}}
+            Performance Analysis: {{performance_analysis}}
+          style: "detailed"
+        depends_on: [suggest-refactoring, analyze-performance]
+        output_var: final_report
+
+    # Workflow output
+    output:
+      report: "{{final_report}}"
+      refactored_code: "{{refactored_code}}"
+      recommendations: "{{code_review.recommendations}}"
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: run-workflow-example
+  namespace: a2a
+  labels:
+    app.kubernetes.io/name: workflow-runner
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: workflow-runner
+    spec:
+      serviceAccountName: workflow-runner
+      restartPolicy: Never
+      containers:
+      - name: workflow-runner
+        image: ghcr.io/agentgateway/workflow-runner:v1.0.0
+        env:
+        - name: A2A_GATEWAY_URL
+          value: "http://agentgateway.agentgateway.svc.cluster.local:9002"
+        - name: WORKFLOW_CONFIG
+          value: "/config/workflow.yaml"
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: agent-auth-token
+              key: api-key
+        volumeMounts:
+        - name: workflow-config
+          mountPath: /config
+        command:
+        - /bin/sh
+        - -c
+        - |
+          #!/bin/sh
+          set -e
+
+          echo "Starting multi-agent workflow..."
+
+          # Step 1: Discover agents
+          echo "Discovering available agents..."
+          AGENTS=$(curl -s -H "Authorization: Bearer $API_KEY" \
+            "$A2A_GATEWAY_URL/a2a/agents" | jq -r '.agents[].name')
+          echo "Available agents: $AGENTS"
+
+          # Step 2: Check capabilities
+          echo "Checking agent capabilities..."
+          for agent in $AGENTS; do
+            echo "Agent: $agent"
+            curl -s -H "Authorization: Bearer $API_KEY" \
+              "$A2A_GATEWAY_URL/a2a/agents/$agent/capabilities" | jq '.capabilities[].name'
+          done
+
+          # Step 3: Execute workflow
+          echo "Executing workflow..."
+          WORKFLOW_ID=$(uuidgen)
+
+          # Research best practices
+          echo "Step 1: Researching best practices..."
+          RESEARCH_RESULT=$(curl -s -X POST \
+            -H "Authorization: Bearer $API_KEY" \
+            -H "Content-Type: application/json" \
+            "$A2A_GATEWAY_URL/a2a/send" \
+            -d @- <<EOF
+          {
+            "workflow_id": "$WORKFLOW_ID",
+            "from": "workflow-runner",
+            "to": "research-agent",
+            "capability": "research-topic",
+            "message": {
+              "topic": "Python best practices for list processing and filtering",
+              "depth": "quick"
+            }
+          }
+          EOF
+          )
+          echo "Research result: $RESEARCH_RESULT"
+
+          # Analyze code
+          echo "Step 2: Analyzing code..."
+          CODE=$(cat <<'PYTHON'
+          def process_users(users):
+              result = []
+              for user in users:
+                  if user['active']:
+                      result.append(user)
+              return result
+          PYTHON
+          )
+
+          ANALYSIS_RESULT=$(curl -s -X POST \
+            -H "Authorization: Bearer $API_KEY" \
+            -H "Content-Type: application/json" \
+            "$A2A_GATEWAY_URL/a2a/send" \
+            -d @- <<EOF
+          {
+            "workflow_id": "$WORKFLOW_ID",
+            "from": "workflow-runner",
+            "to": "code-assistant",
+            "capability": "explain-code",
+            "message": {
+              "code": "$CODE",
+              "language": "python"
+            }
+          }
+          EOF
+          )
+          echo "Analysis result: $ANALYSIS_RESULT"
+
+          # Review code
+          echo "Step 3: Reviewing code..."
+          REVIEW_RESULT=$(curl -s -X POST \
+            -H "Authorization: Bearer $API_KEY" \
+            -H "Content-Type: application/json" \
+            "$A2A_GATEWAY_URL/a2a/send" \
+            -d @- <<EOF
+          {
+            "workflow_id": "$WORKFLOW_ID",
+            "from": "workflow-runner",
+            "to": "code-assistant",
+            "capability": "code-review",
+            "message": {
+              "code": "$CODE",
+              "language": "python"
+            }
+          }
+          EOF
+          )
+          echo "Review result: $REVIEW_RESULT"
+
+          # Suggest refactoring
+          echo "Step 4: Suggesting improvements..."
+          REFACTOR_RESULT=$(curl -s -X POST \
+            -H "Authorization: Bearer $API_KEY" \
+            -H "Content-Type: application/json" \
+            "$A2A_GATEWAY_URL/a2a/send" \
+            -d @- <<EOF
+          {
+            "workflow_id": "$WORKFLOW_ID",
+            "from": "workflow-runner",
+            "to": "code-assistant",
+            "capability": "refactor-code",
+            "message": {
+              "code": "$CODE",
+              "language": "python",
+              "focus": "performance"
+            }
+          }
+          EOF
+          )
+          echo "Refactoring suggestions: $REFACTOR_RESULT"
+
+          # Aggregate results
+          echo "Step 5: Aggregating results..."
+          FINAL_REPORT=$(curl -s -X POST \
+            -H "Authorization: Bearer $API_KEY" \
+            -H "Content-Type: application/json" \
+            "$A2A_GATEWAY_URL/a2a/send" \
+            -d @- <<EOF
+          {
+            "workflow_id": "$WORKFLOW_ID",
+            "from": "workflow-runner",
+            "to": "research-agent",
+            "capability": "summarize-content",
+            "message": {
+              "content": "Research: $RESEARCH_RESULT\n\nAnalysis: $ANALYSIS_RESULT\n\nReview: $REVIEW_RESULT\n\nRefactoring: $REFACTOR_RESULT",
+              "style": "detailed"
+            }
+          }
+          EOF
+          )
+
+          echo "=== FINAL REPORT ==="
+          echo "$FINAL_REPORT" | jq
+
+          echo "Workflow completed successfully!"
+
+      volumes:
+      - name: workflow-config
+        configMap:
+          name: workflow-example
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: workflow-runner
+  namespace: a2a
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: workflow-runner
+  namespace: a2a
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: workflow-runner
+  namespace: a2a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: workflow-runner
+subjects:
+- kind: ServiceAccount
+  name: workflow-runner
+  namespace: a2a

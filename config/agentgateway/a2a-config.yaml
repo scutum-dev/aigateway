@@ -1,0 +1,440 @@
+# A2A Gateway Configuration
+# Agent-to-Agent communication and orchestration
+
+# Agent Registry
+registry:
+  # Registry service connection
+  service:
+    endpoint: http://agent-registry.a2a.svc.cluster.local:8080
+    grpc_endpoint: agent-registry.a2a.svc.cluster.local:9000
+
+    # Connection settings
+    connection:
+      timeout: 10s
+      keep_alive: 30s
+      max_idle_conns: 100
+
+  # Health check
+  health_check:
+    enabled: true
+    interval: 10s
+    timeout: 5s
+    unhealthy_threshold: 3
+    healthy_threshold: 2
+
+# Agent Discovery
+discovery:
+  backend: kubernetes
+
+  kubernetes:
+    namespace: a2a
+    label_selector: app.kubernetes.io/type=agent
+    watch_interval: 30s
+    resync_interval: 5m
+
+  # Agent registration
+  registration:
+    auto_register: true
+    heartbeat_interval: 30s
+    ttl: 90s
+
+  # Agent metadata
+  metadata:
+    include:
+      - capabilities
+      - version
+      - status
+      - endpoints
+
+# Capability Matching
+capabilities:
+  # Enable capability-based routing
+  enabled: true
+
+  # Matching algorithm
+  matching:
+    algorithm: score-based  # score-based, exact, fuzzy, semantic
+
+    # Scoring weights
+    weights:
+      name_match: 0.4
+      description_match: 0.3
+      parameter_match: 0.2
+      metadata_match: 0.1
+
+    # Minimum score threshold
+    min_score: 0.6
+
+  # Capability cache
+  cache:
+    enabled: true
+    ttl: 60s
+    max_size: 1000
+
+  # Capability discovery
+  discovery:
+    # Auto-discover capabilities from agent manifests
+    auto_discover: true
+    refresh_interval: 5m
+
+# Message Routing
+routing:
+  # Routing strategy
+  strategy: capability_based  # capability_based, direct, broadcast, round_robin
+
+  # Direct routing (by agent ID)
+  direct:
+    enabled: true
+
+  # Broadcast routing (to multiple agents)
+  broadcast:
+    enabled: true
+    max_recipients: 10
+
+  # Round-robin routing
+  round_robin:
+    enabled: true
+    sticky_sessions: false
+
+  # Request timeout
+  timeout: 30s
+
+  # Retry logic
+  retry:
+    enabled: true
+    max_attempts: 3
+    backoff: exponential
+    initial_delay: 100ms
+    max_delay: 10s
+
+# Communication Protocols
+protocols:
+  # HTTP/REST
+  http:
+    enabled: true
+    port: 8080
+
+    # Request/Response format
+    format: json
+
+    # Compression
+    compression:
+      enabled: true
+      algorithms: [gzip, deflate]
+
+  # gRPC
+  grpc:
+    enabled: true
+    port: 9000
+
+    # Keep-alive
+    keep_alive:
+      time: 30s
+      timeout: 10s
+
+  # WebSocket (for streaming)
+  websocket:
+    enabled: true
+    port: 8081
+
+    # Message size limits
+    max_message_size: 10MB
+
+    # Ping/Pong
+    ping_interval: 30s
+    pong_timeout: 10s
+
+# Agents
+agents:
+  # Registered agents (can also be auto-discovered)
+  - name: code-assistant
+    description: Code analysis and review agent
+    endpoint: http://code-assistant.a2a.svc.cluster.local:8080
+
+    capabilities:
+      - code-review
+      - refactor-code
+      - explain-code
+
+    requirements:
+      mcp_servers: [code-analysis]
+      models: [gpt-4o, claude-3-5-sonnet]
+
+    metadata:
+      version: 1.0.0
+      author: Platform Team
+      tags: [code, development, analysis]
+
+  - name: data-analysis
+    description: Data analysis and SQL agent
+    endpoint: http://data-analysis.a2a.svc.cluster.local:8080
+
+    capabilities:
+      - analyze-data
+      - generate-sql
+      - visualize-data
+
+    requirements:
+      mcp_servers: [database]
+      models: [gpt-4o, claude-3-5-sonnet]
+
+    metadata:
+      version: 1.0.0
+      author: Platform Team
+      tags: [data, analytics, sql]
+
+  - name: research-agent
+    description: Research and information gathering agent
+    endpoint: http://research-agent.a2a.svc.cluster.local:8080
+
+    capabilities:
+      - research-topic
+      - find-papers
+      - summarize-content
+
+    requirements:
+      mcp_servers: [filesystem]
+      models: [gpt-4o, claude-3-5-sonnet]
+
+    metadata:
+      version: 1.0.0
+      author: Platform Team
+      tags: [research, information, synthesis]
+
+# Authentication
+authentication:
+  # JWT authentication
+  jwt:
+    enabled: true
+    issuer: https://auth.example.com
+    audience: agent-registry
+    jwks_url: https://auth.example.com/.well-known/jwks.json
+
+    # Token validation
+    validation:
+      validate_expiry: true
+      validate_issuer: true
+      validate_audience: true
+      leeway: 10s
+
+  # API Key authentication
+  api_key:
+    enabled: true
+    header: X-API-Key
+
+    # Key validation against registry
+    validate_against_registry: true
+
+# Authorization
+authorization:
+  # Cedar policy engine
+  cedar:
+    enabled: true
+    policy_path: /etc/agentgateway/policies
+
+    # Policy reload
+    auto_reload: true
+    reload_interval: 1m
+
+  # Default permissions
+  default_permissions:
+    allow_discover: true
+    allow_send: true
+    allow_receive: true
+    allow_broadcast: false
+
+# Message Queue (for async communication)
+message_queue:
+  enabled: true
+
+  # Backend (in-memory, redis, kafka)
+  backend: redis
+
+  redis:
+    endpoint: redis.a2a.svc.cluster.local:6379
+    db: 0
+    pool_size: 10
+
+  # Message retention
+  retention:
+    default: 1h
+    max: 24h
+
+  # Dead letter queue
+  dlq:
+    enabled: true
+    max_retries: 3
+
+# Workflow Orchestration
+workflows:
+  enabled: true
+
+  # Workflow engine
+  engine: temporal  # temporal, argo, custom
+
+  temporal:
+    endpoint: temporal.workflows.svc.cluster.local:7233
+    namespace: agent-workflows
+
+  # Workflow timeout
+  timeout:
+    default: 5m
+    max: 1h
+
+  # Workflow retry
+  retry:
+    enabled: true
+    max_attempts: 3
+    backoff: exponential
+
+# Observability
+observability:
+  # Metrics
+  metrics:
+    enabled: true
+    port: 9090
+
+    # Metric labels
+    labels:
+      - agent_from
+      - agent_to
+      - capability
+      - status
+
+    # Custom metrics
+    custom:
+      - name: a2a_message_size_bytes
+        type: histogram
+        buckets: [100, 1000, 10000, 100000, 1000000]
+
+      - name: a2a_routing_duration_seconds
+        type: histogram
+        buckets: [0.001, 0.01, 0.1, 1, 10]
+
+  # Tracing
+  tracing:
+    enabled: true
+    exporter: otlp
+    endpoint: http://otel-collector.observability.svc.cluster.local:4318
+
+    # Sampling
+    sample_rate: 0.1  # 10%
+
+    # Span attributes
+    attributes:
+      - a2a.from_agent
+      - a2a.to_agent
+      - a2a.capability
+      - a2a.message_id
+
+  # Logging
+  logging:
+    level: info
+    format: json
+
+    # Audit logging
+    audit:
+      enabled: true
+      include_message_content: false  # Don't log message bodies
+      destinations:
+        - stdout
+        - file:///var/log/agentgateway/a2a-audit.log
+
+# Security
+security:
+  # Authentication required
+  require_auth: true
+
+  # Allowed operations
+  allowed_operations:
+    - discover_agents
+    - get_capabilities
+    - send_message
+    - receive_message
+    - subscribe
+
+  # Rate limiting
+  rate_limit:
+    enabled: true
+
+    # Per-agent limits
+    per_agent:
+      messages_per_minute: 100
+      burst: 20
+
+    # Global limits
+    global:
+      messages_per_second: 1000
+
+  # Message validation
+  message_validation:
+    enabled: true
+    max_message_size: 10MB
+    max_parameters: 100
+
+    # Schema validation
+    schema_validation:
+      enabled: true
+      strict: true
+
+  # Audit logging
+  audit_log:
+    enabled: true
+    log_message_metadata: true
+    log_message_content: false
+
+# Error Handling
+error_handling:
+  # Retry configuration
+  retry:
+    enabled: true
+    max_attempts: 3
+    backoff: exponential
+    initial_delay: 100ms
+    max_delay: 10s
+
+  # Timeout
+  timeout:
+    default: 30s
+    max: 5m
+
+  # Fallback
+  fallback:
+    on_agent_unavailable: queue_message
+    on_capability_not_found: return_error
+    on_timeout: return_error
+
+# Circuit Breaker
+circuit_breaker:
+  enabled: true
+
+  # Per-agent circuit breakers
+  per_agent:
+    failure_threshold: 5
+    success_threshold: 2
+    timeout: 30s
+    half_open_max_requests: 3
+
+  # Global circuit breaker
+  global:
+    failure_threshold: 50
+    success_threshold: 10
+    timeout: 60s
+
+# Performance
+performance:
+  # Connection pooling
+  connection_pool:
+    max_idle_conns: 100
+    max_open_conns: 1000
+    conn_max_lifetime: 1h
+
+  # Request buffering
+  buffering:
+    enabled: true
+    max_buffer_size: 100MB
+
+  # Compression
+  compression:
+    enabled: true
+    min_size: 1KB

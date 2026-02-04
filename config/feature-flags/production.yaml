@@ -1,0 +1,146 @@
+# Production Environment Feature Flags
+# Hardened configuration for production deployment
+
+environment: production
+vault_prefix: "secret/ai-gateway/production"
+
+# Production-specific feature toggles
+features:
+  opentelemetry_enabled: true
+  prometheus_metrics: true
+  grafana_dashboards: true
+
+  # Security - maximum
+  vault_secrets: true
+  cedar_policies: true
+  jwt_authentication: true
+
+  # Debug features - disabled
+  debug_mode: false
+  verbose_logging: false
+  hot_reload: false
+  mock_billing: false
+
+  # Production-only features
+  high_availability: true
+  auto_scaling: true
+  backup_enabled: true
+
+# Service configuration - production
+services:
+  litellm:
+    replicas: 3
+    log_level: "WARNING"
+    cache_enabled: true
+    rate_limiting: true
+    detailed_debug: false
+    request_timeout: 30
+
+  policy_router:
+    replicas: 3
+    metrics_cache_ttl: 60
+    cedar_policy_reload_interval: 300
+    circuit_breaker_enabled: true
+
+  workflow_engine:
+    replicas: 3
+    checkpoint_interval: 10
+    max_concurrent_workflows: 500
+    dead_letter_queue: true
+
+  admin_api:
+    replicas: 3
+    jwt_expiry_hours: 4
+    cors_allow_all: false
+    rate_limit_rpm: 60
+
+  admin_ui:
+    replicas: 3
+    hot_reload: false
+    source_maps: false
+    csp_enabled: true
+
+  agentgateway:
+    replicas: 3
+    max_connections: 5000
+    debug_logging: false
+    connection_pooling: true
+
+# Infrastructure - high availability
+infrastructure:
+  postgres:
+    replicas: 3
+    max_connections: 500
+    shared_buffers: "4GB"
+    ssl_mode: "verify-full"
+    backup_enabled: true
+    backup_retention_days: 30
+    point_in_time_recovery: true
+
+  redis:
+    replicas: 3
+    maxmemory: "4gb"
+    cluster_mode: true
+    persistence: true
+
+  vault:
+    auto_unseal: false
+    audit_logging: true
+    dev_mode: false
+    ha_mode: true
+    seal_type: "awskms"  # or "gcpckms", "azurekeyvault"
+
+# Production secrets configuration
+secrets:
+  require_vault: true
+  rotation_enabled: true
+  rotation_interval_days: 90
+
+# Production endpoints (internal DNS)
+endpoints:
+  litellm: "http://litellm.production.svc:4000"
+  admin_api: "http://admin-api.production.svc:8086"
+  vault: "http://vault.production.svc:8200"
+  prometheus: "http://prometheus.production.svc:9090"
+
+# TLS required for production
+tls:
+  enabled: true
+  cert_manager: true
+  issuer: "letsencrypt-production"
+  min_version: "TLS1.3"
+
+# Resource limits (Kubernetes)
+resources:
+  litellm:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+
+  policy_router:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+  workflow_engine:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+
+# Monitoring and alerting
+monitoring:
+  alert_channels:
+    - slack
+    - pagerduty
+  slo_targets:
+    availability: 99.9
+    latency_p99_ms: 500

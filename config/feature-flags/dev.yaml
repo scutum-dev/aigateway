@@ -1,0 +1,95 @@
+# Development Environment Feature Flags
+# Inherits from base.yaml, overrides for local development
+
+environment: development
+vault_prefix: "secret/ai-gateway/dev"
+
+# Development-specific feature toggles
+features:
+  # Enable all features for testing
+  opentelemetry_enabled: true
+  prometheus_metrics: true
+  grafana_dashboards: true
+
+  # Security - relaxed for development
+  vault_secrets: true
+  cedar_policies: true
+  jwt_authentication: true
+
+  # Debug features
+  debug_mode: true
+  verbose_logging: true
+  hot_reload: true
+  mock_billing: true
+
+# Service configuration - development
+services:
+  litellm:
+    replicas: 1
+    log_level: "DEBUG"
+    cache_enabled: true
+    rate_limiting: false  # Disabled for dev
+    detailed_debug: true
+
+  policy_router:
+    replicas: 1
+    metrics_cache_ttl: 5  # Short TTL for testing
+    cedar_policy_reload_interval: 10  # Fast reload
+
+  workflow_engine:
+    replicas: 1
+    checkpoint_interval: 5
+    max_concurrent_workflows: 10
+
+  admin_api:
+    replicas: 1
+    jwt_expiry_hours: 24  # Longer for dev convenience
+    cors_allow_all: true
+
+  admin_ui:
+    replicas: 1
+    hot_reload: true
+    source_maps: true
+
+  agentgateway:
+    replicas: 1
+    max_connections: 100
+    debug_logging: true
+
+# Infrastructure - minimal for development
+infrastructure:
+  postgres:
+    replicas: 1
+    max_connections: 50
+    shared_buffers: "128MB"
+
+  redis:
+    replicas: 1
+    maxmemory: "128mb"
+
+  vault:
+    auto_unseal: true  # Dev mode auto-unseals
+    audit_logging: false
+    dev_mode: true
+
+# Development secrets (defaults - override via env vars)
+secrets:
+  # These are placeholders - real values come from environment variables
+  vault_token: "root-token-for-dev"
+  postgres_password: "dev-password"
+  grafana_admin_password: "admin"
+  jwt_secret_length: 32
+
+# Development endpoints
+endpoints:
+  litellm: "http://localhost:4000"
+  admin_api: "http://localhost:8086"
+  admin_ui: "http://localhost:5173"
+  vault: "http://localhost:8200"
+  prometheus: "http://localhost:9090"
+  grafana: "http://localhost:3001"
+  temporal: "http://localhost:7233"
+
+# TLS disabled for development
+tls:
+  enabled: false

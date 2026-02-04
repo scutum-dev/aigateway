@@ -1,0 +1,326 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agentgateway-cedar-policies
+  namespace: agentgateway
+data:
+  # Cedar policy definitions for RBAC
+  # Documentation: https://www.cedarpolicy.com/
+
+  entities.json: |
+    [
+      {
+        "uid": { "type": "Role", "id": "admin" },
+        "attrs": {
+          "level": 100
+        }
+      },
+      {
+        "uid": { "type": "Role", "id": "developer" },
+        "attrs": {
+          "level": 50
+        }
+      },
+      {
+        "uid": { "type": "Role", "id": "readonly" },
+        "attrs": {
+          "level": 10
+        }
+      },
+      {
+        "uid": { "type": "Model", "id": "gpt-4o" },
+        "attrs": {
+          "provider": "openai",
+          "tier": "premium"
+        }
+      },
+      {
+        "uid": { "type": "Model", "id": "claude-3-5-sonnet-20241022" },
+        "attrs": {
+          "provider": "anthropic",
+          "tier": "premium"
+        }
+      },
+      {
+        "uid": { "type": "Model", "id": "llama-3.1-70b" },
+        "attrs": {
+          "provider": "vllm",
+          "tier": "standard"
+        }
+      }
+    ]
+
+  policies.cedar: |
+    // Cedar policies for Agent Gateway RBAC
+    // These policies control access to LLM models, MCP tools, and A2A capabilities
+
+    // ============================================
+    // Admin policies - full access
+    // ============================================
+
+    // Admins can access all models
+    permit (
+      principal in Role::"admin",
+      action == Action::"invoke_model",
+      resource
+    );
+
+    // Admins can access all MCP tools
+    permit (
+      principal in Role::"admin",
+      action == Action::"invoke_tool",
+      resource
+    );
+
+    // Admins can register and discover agents
+    permit (
+      principal in Role::"admin",
+      action in [Action::"register_agent", Action::"discover_agents", Action::"send_message"],
+      resource
+    );
+
+    // ============================================
+    // Developer policies - standard access
+    // ============================================
+
+    // Developers can access standard tier models
+    permit (
+      principal in Role::"developer",
+      action == Action::"invoke_model",
+      resource
+    ) when {
+      resource.tier == "standard"
+    };
+
+    // Developers can access premium models with budget check
+    permit (
+      principal in Role::"developer",
+      action == Action::"invoke_model",
+      resource
+    ) when {
+      resource.tier == "premium" && context.remaining_budget > 0
+    };
+
+    // Developers can use MCP tools except admin tools
+    permit (
+      principal in Role::"developer",
+      action == Action::"invoke_tool",
+      resource
+    ) unless {
+      resource.category == "admin"
+    };
+
+    // Developers can discover and message agents
+    permit (
+      principal in Role::"developer",
+      action in [Action::"discover_agents", Action::"send_message"],
+      resource
+    );
+
+    // ============================================
+    // Readonly policies - limited access
+    // ============================================
+
+    // Readonly users can only access standard self-hosted models
+    permit (
+      principal in Role::"readonly",
+      action == Action::"invoke_model",
+      resource
+    ) when {
+      resource.provider == "vllm" && resource.tier == "standard"
+    };
+
+    // Readonly users can only discover agents
+    permit (
+      principal in Role::"readonly",
+      action == Action::"discover_agents",
+      resource
+    );
+
+    // ============================================
+    // Rate limiting policies
+    // ============================================
+
+    // Enforce rate limits based on role
+    forbid (
+      principal,
+      action == Action::"invoke_model",
+      resource
+    ) when {
+      context.requests_this_minute > principal.rate_limit
+    };
+
+    // ============================================
+    // Budget enforcement policies
+    // ============================================
+
+    // Block requests when budget is exhausted
+    forbid (
+      principal,
+      action == Action::"invoke_model",
+      resource
+    ) when {
+      context.remaining_budget <= 0 && resource.tier == "premium"
+    };
+
+    // Warn when approaching budget limit (soft limit)
+    // This doesn't forbid but sets a warning header
+    @warn("Approaching budget limit")
+    permit (
+      principal,
+      action == Action::"invoke_model",
+      resource
+    ) when {
+      context.remaining_budget < context.soft_limit_threshold
+    };
+
+  schema.cedarschema: |
+    // Cedar schema for Agent Gateway
+    namespace AgentGateway {
+      // Entity types
+      entity User in [Role] {
+        email: String,
+        team: String,
+        rate_limit: Long
+      };
+
+      entity Role {
+        level: Long
+      };
+
+      entity Model {
+        provider: String,
+        tier: String
+      };
+
+      entity Tool {
+        server: String,
+        category: String
+      };
+
+      entity Agent {
+        capabilities: Set<String>,
+        owner: String
+      };
+
+      // Actions
+      action invoke_model appliesTo {
+        principal: [User, Role],
+        resource: [Model]
+      };
+
+      action invoke_tool appliesTo {
+        principal: [User, Role],
+        resource: [Tool]
+      };
+
+      action register_agent appliesTo {
+        principal: [User, Role],
+        resource: [Agent]
+      };
+
+      action discover_agents appliesTo {
+        principal: [User, Role],
+        resource: [Agent]
+      };
+
+      action send_message appliesTo {
+        principal: [User, Role],
+        resource: [Agent]
+      };
+    }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: llm-provider-secrets
+  namespace: agentgateway
+type: Opaque
+stringData:
+  # Replace with actual API keys
+  openai-api-key: "sk-your-openai-api-key"
+  anthropic-api-key: "sk-ant-your-anthropic-api-key"
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agentgateway-network-policy
+  namespace: agentgateway
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: agentgateway
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from LiteLLM
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: litellm
+      ports:
+        - protocol: TCP
+          port: 3000
+        - protocol: TCP
+          port: 3001
+        - protocol: TCP
+          port: 3002
+    # Allow traffic from agents namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: agents
+      ports:
+        - protocol: TCP
+          port: 3002
+    # Allow Prometheus scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - protocol: TCP
+          port: 9090
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow vLLM
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: vllm
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow MCP servers
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mcp-servers
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow OTEL collector
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - protocol: TCP
+          port: 4317
+    # Allow external LLM providers (OpenAI, Anthropic)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443

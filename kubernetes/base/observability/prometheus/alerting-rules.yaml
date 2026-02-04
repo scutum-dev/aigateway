@@ -1,0 +1,439 @@
+# AI Gateway Platform - Prometheus Alerting Rules
+# Comprehensive alerts for SLOs, FinOps, and operational health
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ai-gateway-alerts
+  namespace: monitoring
+  labels:
+    app: ai-gateway
+    prometheus: main
+spec:
+  groups:
+    # =========================================================================
+    # SLO Alerts - Service Level Objectives
+    # =========================================================================
+    - name: ai-gateway.slo
+      rules:
+        - alert: HighErrorRate
+          expr: |
+            (
+              sum(rate(litellm_requests_total{status=~"error|5.."}[5m]))
+              / sum(rate(litellm_requests_total[5m]))
+            ) > 0.01
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Error rate above 1% SLO"
+            description: "Error rate is {{ $value | humanizePercentage }} (SLO: < 1%)"
+            runbook_url: "https://wiki.example.com/runbooks/high-error-rate"
+
+        - alert: CriticalErrorRate
+          expr: |
+            (
+              sum(rate(litellm_requests_total{status=~"error|5.."}[5m]))
+              / sum(rate(litellm_requests_total[5m]))
+            ) > 0.05
+          for: 2m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Critical error rate above 5%"
+            description: "Error rate is {{ $value | humanizePercentage }} - immediate action required"
+
+        - alert: HighLatencyP95
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(litellm_request_duration_seconds_bucket[5m])) by (le)
+            ) > 5
+          for: 10m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "P95 latency above 5s SLO"
+            description: "P95 latency is {{ $value | humanizeDuration }} (SLO: < 5s)"
+
+        - alert: CriticalLatencyP95
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(litellm_request_duration_seconds_bucket[5m])) by (le)
+            ) > 15
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Critical P95 latency above 15s"
+            description: "P95 latency is {{ $value | humanizeDuration }} - user experience severely impacted"
+
+        - alert: LowAvailability
+          expr: |
+            (
+              sum(up{job=~"litellm|agentgateway"})
+              / count(up{job=~"litellm|agentgateway"})
+            ) < 0.99
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Service availability below 99%"
+            description: "Only {{ $value | humanizePercentage }} of instances are healthy"
+
+    # =========================================================================
+    # FinOps Alerts - Cost and Budget Management
+    # =========================================================================
+    - name: ai-gateway.finops
+      rules:
+        - alert: DailySpendAnomaly
+          expr: |
+            (
+              sum(increase(litellm_spend_total[1h]))
+              / (sum(increase(litellm_spend_total[24h] offset 1d)) / 24)
+            ) > 2
+          for: 30m
+          labels:
+            severity: warning
+            team: finops
+          annotations:
+            summary: "Hourly spend 2x higher than yesterday's average"
+            description: "Current hourly spend is {{ $value }}x the 24h average - investigate for anomalies"
+
+        - alert: TeamBudgetWarning
+          expr: |
+            (sum(litellm_team_spend_total) by (team)
+            / sum(litellm_team_budget_total) by (team)) > 0.8
+          for: 5m
+          labels:
+            severity: warning
+            team: finops
+          annotations:
+            summary: "Team {{ $labels.team }} at 80% of budget"
+            description: "Team {{ $labels.team }} has used {{ $value | humanizePercentage }} of their budget"
+
+        - alert: TeamBudgetExceeded
+          expr: |
+            (sum(litellm_team_spend_total) by (team)
+            / sum(litellm_team_budget_total) by (team)) > 0.95
+          for: 1m
+          labels:
+            severity: critical
+            team: finops
+          annotations:
+            summary: "Team {{ $labels.team }} budget nearly exhausted"
+            description: "Team {{ $labels.team }} at {{ $value | humanizePercentage }} - requests may be rejected"
+
+        - alert: GlobalBudgetWarning
+          expr: |
+            (sum(litellm_spend_total) / sum(litellm_global_budget_total)) > 0.7
+          for: 5m
+          labels:
+            severity: warning
+            team: finops
+          annotations:
+            summary: "Global budget at 70%"
+            description: "Platform-wide spend is at {{ $value | humanizePercentage }} of monthly budget"
+
+        - alert: HighCostModel
+          expr: |
+            (
+              sum(rate(litellm_spend_total{model=~".*opus.*|.*gpt-4.*turbo.*"}[1h])) by (model)
+            ) > 10
+          for: 15m
+          labels:
+            severity: info
+            team: finops
+          annotations:
+            summary: "High spend on premium model {{ $labels.model }}"
+            description: "Model {{ $labels.model }} spending ${{ $value }}/hour - review if intentional"
+
+        - alert: UnexpectedProviderSpend
+          expr: |
+            (
+              sum(increase(litellm_spend_total[1h])) by (provider)
+              / sum(increase(litellm_spend_total[1h]))
+            ) > 0.5
+            and sum(increase(litellm_spend_total[1h])) by (provider) > 100
+          for: 30m
+          labels:
+            severity: warning
+            team: finops
+          annotations:
+            summary: "Provider {{ $labels.provider }} accounts for >50% of spend"
+            description: "Review provider distribution - {{ $labels.provider }} is dominant"
+
+    # =========================================================================
+    # Infrastructure Alerts
+    # =========================================================================
+    - name: ai-gateway.infrastructure
+      rules:
+        - alert: PodNotReady
+          expr: |
+            kube_pod_status_ready{namespace="ai-gateway", condition="true"} == 0
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Pod {{ $labels.pod }} not ready"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been not ready for 5 minutes"
+
+        - alert: DeploymentReplicasMismatch
+          expr: |
+            kube_deployment_spec_replicas{namespace="ai-gateway"}
+            != kube_deployment_status_replicas_available{namespace="ai-gateway"}
+          for: 10m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Deployment {{ $labels.deployment }} replica mismatch"
+            description: "Deployment {{ $labels.deployment }} has {{ $value }} available replicas vs desired"
+
+        - alert: PersistentVolumeFillingUp
+          expr: |
+            (
+              kubelet_volume_stats_available_bytes{namespace="ai-gateway"}
+              / kubelet_volume_stats_capacity_bytes{namespace="ai-gateway"}
+            ) < 0.2
+          for: 15m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "PV {{ $labels.persistentvolumeclaim }} is filling up"
+            description: "Only {{ $value | humanizePercentage }} space remaining"
+
+        - alert: HighMemoryUsage
+          expr: |
+            (
+              container_memory_working_set_bytes{namespace="ai-gateway"}
+              / container_spec_memory_limit_bytes{namespace="ai-gateway"}
+            ) > 0.85
+          for: 10m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Container {{ $labels.container }} high memory usage"
+            description: "Memory usage at {{ $value | humanizePercentage }} of limit"
+
+        - alert: HighCPUUsage
+          expr: |
+            (
+              rate(container_cpu_usage_seconds_total{namespace="ai-gateway"}[5m])
+              / container_spec_cpu_quota{namespace="ai-gateway"} * 100000
+            ) > 0.85
+          for: 10m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Container {{ $labels.container }} high CPU usage"
+            description: "CPU usage at {{ $value | humanizePercentage }} of limit"
+
+    # =========================================================================
+    # vLLM / GPU Alerts
+    # =========================================================================
+    - name: ai-gateway.vllm
+      rules:
+        - alert: VLLMHighQueueDepth
+          expr: sum(vllm_num_requests_waiting) > 50
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "vLLM request queue depth high"
+            description: "{{ $value }} requests waiting in queue - consider scaling"
+
+        - alert: VLLMCriticalQueueDepth
+          expr: sum(vllm_num_requests_waiting) > 200
+          for: 2m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "vLLM queue critical - requests backing up"
+            description: "{{ $value }} requests waiting - immediate scaling required"
+
+        - alert: GPUMemoryPressure
+          expr: |
+            (vllm_gpu_cache_usage_perc) > 95
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "GPU cache usage critical on {{ $labels.model_name }}"
+            description: "GPU memory cache at {{ $value }}% - may cause OOM"
+
+        - alert: VLLMEngineDown
+          expr: up{job="vllm"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "vLLM engine {{ $labels.instance }} is down"
+            description: "vLLM inference engine not responding"
+
+        - alert: LowTokenThroughput
+          expr: |
+            sum(rate(vllm_generation_tokens_total[5m])) < 100
+            and sum(vllm_num_requests_running) > 0
+          for: 10m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Low token generation throughput"
+            description: "Only {{ $value }} tokens/sec being generated despite active requests"
+
+    # =========================================================================
+    # Database Alerts
+    # =========================================================================
+    - name: ai-gateway.database
+      rules:
+        - alert: PostgreSQLDown
+          expr: pg_up == 0
+          for: 1m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "PostgreSQL is down"
+            description: "PostgreSQL instance {{ $labels.instance }} is not responding"
+
+        - alert: PostgreSQLHighConnections
+          expr: |
+            (sum(pg_stat_activity_count) by (instance)
+            / pg_settings_max_connections) > 0.8
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "PostgreSQL connection pool nearly exhausted"
+            description: "{{ $value | humanizePercentage }} of max connections in use"
+
+        - alert: PostgreSQLReplicationLag
+          expr: pg_replication_lag_seconds > 30
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "PostgreSQL replication lag"
+            description: "Replication lag is {{ $value }}s - may impact failover RPO"
+
+        - alert: RedisDown
+          expr: redis_up == 0
+          for: 1m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Redis is down"
+            description: "Redis instance {{ $labels.instance }} is not responding"
+
+        - alert: RedisHighMemory
+          expr: |
+            (redis_memory_used_bytes / redis_memory_max_bytes) > 0.9
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Redis memory usage high"
+            description: "Redis at {{ $value | humanizePercentage }} memory capacity"
+
+    # =========================================================================
+    # Security Alerts
+    # =========================================================================
+    - name: ai-gateway.security
+      rules:
+        - alert: HighAuthFailureRate
+          expr: |
+            (
+              sum(rate(litellm_requests_total{status="401"}[5m]))
+              / sum(rate(litellm_requests_total[5m]))
+            ) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+            team: security
+          annotations:
+            summary: "High authentication failure rate"
+            description: "{{ $value | humanizePercentage }} of requests failing auth - possible attack"
+
+        - alert: VaultSealedOrDown
+          expr: vault_core_unsealed == 0 or up{job="vault"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            team: security
+          annotations:
+            summary: "Vault is sealed or down"
+            description: "Vault instance {{ $labels.instance }} needs immediate attention"
+
+        - alert: CertificateExpiringSoon
+          expr: |
+            (certmanager_certificate_expiration_timestamp_seconds - time()) / 86400 < 14
+          for: 1h
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Certificate {{ $labels.name }} expiring soon"
+            description: "Certificate expires in {{ $value }} days"
+
+    # =========================================================================
+    # Provider Health Alerts
+    # =========================================================================
+    - name: ai-gateway.providers
+      rules:
+        - alert: ProviderHighErrorRate
+          expr: |
+            (
+              sum(rate(litellm_requests_total{status=~"error|5.."}[5m])) by (provider)
+              / sum(rate(litellm_requests_total[5m])) by (provider)
+            ) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Provider {{ $labels.provider }} error rate high"
+            description: "{{ $labels.provider }} returning {{ $value | humanizePercentage }} errors"
+
+        - alert: ProviderDown
+          expr: |
+            sum(rate(litellm_requests_total{status="success"}[5m])) by (provider) == 0
+            and sum(rate(litellm_requests_total[5m])) by (provider) > 0
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Provider {{ $labels.provider }} appears down"
+            description: "No successful requests to {{ $labels.provider }} in 5 minutes"
+
+        - alert: ProviderRateLimited
+          expr: |
+            (
+              sum(rate(litellm_requests_total{status="429"}[5m])) by (provider)
+              / sum(rate(litellm_requests_total[5m])) by (provider)
+            ) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Provider {{ $labels.provider }} rate limiting"
+            description: "{{ $value | humanizePercentage }} of requests to {{ $labels.provider }} rate limited"

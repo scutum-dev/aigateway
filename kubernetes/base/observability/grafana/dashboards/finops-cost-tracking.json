@@ -1,0 +1,416 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "FinOps Cost Tracking - Real cost data from LiteLLM",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "id": 1,
+      "panels": [],
+      "title": "Cost Overview",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 1},
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+        "format": "table",
+        "rawSql": "SELECT COALESCE(SUM(spend), 0) as cost FROM \"LiteLLM_SpendLogs\" WHERE \"startTime\"::date = CURRENT_DATE",
+        "refId": "A"
+      }],
+      "title": "Today's Spend",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 1},
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+        "format": "table",
+        "rawSql": "SELECT COALESCE(SUM(spend), 0) as cost FROM \"LiteLLM_SpendLogs\" WHERE \"startTime\" >= date_trunc('week', CURRENT_DATE)",
+        "refId": "A"
+      }],
+      "title": "This Week's Spend",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 1},
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+        "format": "table",
+        "rawSql": "SELECT COALESCE(SUM(spend), 0) as cost FROM \"LiteLLM_SpendLogs\"",
+        "refId": "A"
+      }],
+      "title": "Total Spend",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 1},
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+        "format": "table",
+        "rawSql": "SELECT COUNT(*) as requests FROM \"LiteLLM_SpendLogs\" WHERE \"startTime\"::date = CURRENT_DATE",
+        "refId": "A"
+      }],
+      "title": "Today's Requests",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5},
+      "id": 10,
+      "panels": [],
+      "title": "Token Usage",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 6},
+      "id": 6,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+        "format": "table",
+        "rawSql": "SELECT COALESCE(SUM(total_tokens), 0) as tokens FROM \"LiteLLM_SpendLogs\"",
+        "refId": "A"
+      }],
+      "title": "Total Tokens",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 6},
+      "id": 7,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+        "format": "table",
+        "rawSql": "SELECT COALESCE(SUM(prompt_tokens), 0) as tokens FROM \"LiteLLM_SpendLogs\"",
+        "refId": "A"
+      }],
+      "title": "Input Tokens",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 6},
+      "id": 8,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+        "format": "table",
+        "rawSql": "SELECT COALESCE(SUM(completion_tokens), 0) as tokens FROM \"LiteLLM_SpendLogs\"",
+        "refId": "A"
+      }],
+      "title": "Output Tokens",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "orange", "value": null}]},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 6},
+      "id": 9,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+        "format": "table",
+        "rawSql": "SELECT COUNT(DISTINCT model) as models FROM \"LiteLLM_SpendLogs\"",
+        "refId": "A"
+      }],
+      "title": "Models Used",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 10},
+      "id": 20,
+      "panels": [],
+      "title": "Model Breakdown",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 11},
+      "id": 21,
+      "options": {
+        "displayLabels": ["value"],
+        "legend": {"displayMode": "list", "placement": "right", "showLegend": true},
+        "pieType": "pie",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": true},
+        "tooltip": {"mode": "single", "sort": "none"}
+      },
+      "targets": [{
+        "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+        "format": "table",
+        "rawSql": "SELECT model, SUM(spend) as cost FROM \"LiteLLM_SpendLogs\" GROUP BY model ORDER BY cost DESC LIMIT 10",
+        "refId": "A"
+      }],
+      "title": "Spend by Model",
+      "type": "piechart"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 11},
+      "id": 22,
+      "options": {
+        "displayLabels": ["percent"],
+        "legend": {"displayMode": "list", "placement": "right", "showLegend": true},
+        "pieType": "pie",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": true},
+        "tooltip": {"mode": "single", "sort": "none"}
+      },
+      "targets": [{
+        "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+        "format": "table",
+        "rawSql": "SELECT model, COUNT(*) as requests FROM \"LiteLLM_SpendLogs\" GROUP BY model ORDER BY requests DESC LIMIT 10",
+        "refId": "A"
+      }],
+      "title": "Requests by Model",
+      "type": "piechart"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 11},
+      "id": 23,
+      "options": {
+        "displayLabels": ["percent"],
+        "legend": {"displayMode": "list", "placement": "right", "showLegend": true},
+        "pieType": "pie",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": true},
+        "tooltip": {"mode": "single", "sort": "none"}
+      },
+      "targets": [{
+        "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+        "format": "table",
+        "rawSql": "SELECT model, SUM(total_tokens) as tokens FROM \"LiteLLM_SpendLogs\" GROUP BY model ORDER BY tokens DESC LIMIT 10",
+        "refId": "A"
+      }],
+      "title": "Tokens by Model",
+      "type": "piechart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 19},
+      "id": 30,
+      "panels": [],
+      "title": "Recent Requests",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "spend"}, "properties": [{"id": "unit", "value": "currencyUSD"}]},
+          {"matcher": {"id": "byName", "options": "startTime"}, "properties": [{"id": "unit", "value": "dateTimeAsIso"}]}
+        ]
+      },
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 20},
+      "id": 31,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "startTime"}]
+      },
+      "targets": [{
+        "datasource": {"type": "postgres", "uid": "PCC52D03280B7034C"},
+        "format": "table",
+        "rawSql": "SELECT \"startTime\", model, \"user\", spend, total_tokens, prompt_tokens, completion_tokens FROM \"LiteLLM_SpendLogs\" ORDER BY \"startTime\" DESC LIMIT 50",
+        "refId": "A"
+      }],
+      "title": "Recent Requests Log",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["ai-gateway", "finops", "cost-tracking"],
+  "templating": {"list": []},
+  "time": {"from": "now-24h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "FinOps Cost Tracking",
+  "uid": "finops-cost-tracking",
+  "version": 1,
+  "weekStart": ""
+}

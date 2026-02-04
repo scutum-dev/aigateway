@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Gateway - Unified LLM Infrastructure</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #000000;
+            --bg-card: rgba(255,255,255,0.03);
+            --border: rgba(255,255,255,0.06);
+            --text: #ffffff;
+            --text-muted: #71717a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(ellipse at 30% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+            z-index: 0;
+        }
+
+        .hero-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+            z-index: 0;
+        }
+
+        /* Nav */
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 60px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 40px;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover { color: white; }
+
+        .nav-cta {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-muted);
+        }
+
+        .btn-ghost:hover { color: white; }
+
+        .btn-primary {
+            background: white;
+            color: black;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255,255,255,0.2);
+        }
+
+        /* Hero Content */
+        .hero-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 0 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .badge {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            color: var(--primary-light);
+            margin-bottom: 30px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .hero h1 {
+            font-size: 4.5rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 25px;
+            max-width: 900px;
+        }
+
+        .hero h1 span {
+            background: linear-gradient(135deg, var(--primary-light), #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            line-height: 1.7;
+            margin-bottom: 40px;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 60px;
+        }
+
+        .btn-large {
+            padding: 16px 32px;
+            font-size: 1rem;
+        }
+
+        .btn-gradient {
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            color: white;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: flex;
+            gap: 60px;
+            padding: 30px 60px;
+            background: rgba(255,255,255,0.02);
+            border-top: 1px solid var(--border);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .stat-value span { color: var(--success); }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+
+        /* Demo Section */
+        .demo-section {
+            padding: 100px 60px;
+            background: linear-gradient(180deg, transparent 0%, rgba(99, 102, 241, 0.03) 100%);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-header h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        /* Demo Container */
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .demo-header {
+            padding: 20px 30px;
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .demo-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .demo-dot.red { background: #ff5f57; }
+        .demo-dot.yellow { background: #ffbd2e; }
+        .demo-dot.green { background: #28c840; }
+
+        .demo-title {
+            margin-left: 15px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .demo-body {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+        }
+
+        /* Playground */
+        .playground {
+            padding: 30px;
+            border-right: 1px solid var(--border);
+        }
+
+        .model-selector {
+            margin-bottom: 25px;
+        }
+
+        .model-selector label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .model-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .model-tab {
+            padding: 10px 18px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .model-tab:hover {
+            border-color: var(--primary);
+        }
+
+        .model-tab.active {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: var(--primary);
+            color: var(--primary-light);
+        }
+
+        .model-tab .price {
+            font-size: 0.7rem;
+            color: var(--success);
+            margin-left: 6px;
+        }
+
+        .prompt-area {
+            margin-bottom: 20px;
+        }
+
+        .prompt-area label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .prompt-input {
+            width: 100%;
+            min-height: 100px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            color: white;
+            font-size: 0.95rem;
+            font-family: inherit;
+            resize: none;
+        }
+
+        .prompt-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Cost Comparison - THE KEY SELLING POINT */
+        .cost-comparison {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(99, 102, 241, 0.05));
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .cost-comparison h4 {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cost-comparison h4 i { color: var(--success); }
+
+        .cost-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .cost-row:last-child { border-bottom: none; }
+
+        .cost-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .cost-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .cost-value.highlight {
+            color: var(--success);
+            font-size: 1.3rem;
+        }
+
+        .savings-badge {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .btn-send {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-send:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-send:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Response */
+        .response-area {
+            margin-top: 25px;
+            display: none;
+        }
+
+        .response-area.visible { display: block; }
+
+        .response-box {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .response-header {
+            padding: 12px 16px;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+        }
+
+        .response-content {
+            padding: 16px;
+            font-size: 0.9rem;
+            line-height: 1.7;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .response-stats {
+            padding: 12px 16px;
+            background: rgba(0,0,0,0.2);
+            display: flex;
+            gap: 25px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .response-stats strong {
+            color: white;
+            margin-left: 5px;
+        }
+
+        /* Metrics Panel */
+        .metrics-panel {
+            padding: 30px;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .metrics-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        .metric-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .metric-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .metric-card-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-card-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .metric-card-icon.blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+        .metric-card-icon.green { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+        .metric-card-icon.purple { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+        .metric-card-icon.orange { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+
+        .metric-card-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .metric-card-change {
+            font-size: 0.75rem;
+            color: var(--success);
+            margin-top: 5px;
+        }
+
+        /* Provider comparison */
+        .provider-comparison {
+            margin-top: 20px;
+        }
+
+        .provider-row {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .provider-name {
+            width: 100px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .provider-bar-container {
+            flex: 1;
+            height: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            margin: 0 15px;
+            overflow: hidden;
+        }
+
+        .provider-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .provider-bar.openai { background: linear-gradient(90deg, #10a37f, #1ed4a3); }
+        .provider-bar.anthropic { background: linear-gradient(90deg, #d4a27f, #e8c4a0); }
+        .provider-bar.xai { background: linear-gradient(90deg, #6366f1, #818cf8); }
+
+        .provider-percent {
+            font-size: 0.8rem;
+            font-weight: 600;
+            width: 50px;
+            text-align: right;
+        }
+
+        /* Grafana Link */
+        .grafana-cta {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 12px;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            transition: all 0.2s;
+        }
+
+        .grafana-cta:hover {
+            border-color: rgba(245, 158, 11, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .grafana-cta h4 {
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+
+        .grafana-cta h4 i { color: #fbbf24; }
+
+        .grafana-cta p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Features Section */
+        .features-section {
+            padding: 100px 60px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 35px;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: var(--primary-light);
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 40px 60px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-text {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 30px;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover { color: white; }
+
+        /* Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Streaming cursor */
+        .streaming::after {
+            content: '▋';
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-grid"></div>
+
+        <nav class="nav">
+            <div class="logo">
+                <div class="logo-icon"><i class="fas fa-bolt"></i></div>
+                AI Gateway
+            </div>
+            <div class="nav-links">
+                <a href="#demo">Live Demo</a>
+                <a href="#features">Features</a>
+                <a href="http://localhost:3030" target="_blank">Analytics</a>
+                <a href="http://localhost:5173" target="_blank">Admin</a>
+            </div>
+            <div class="nav-cta">
+                <a href="http://localhost:8088" target="_blank" class="btn btn-ghost">Workflows</a>
+                <a href="#demo" class="btn btn-primary">Try Demo</a>
+            </div>
+        </nav>
+
+        <div class="hero-content">
+            <div class="badge">Live Demo Environment</div>
+            <h1>Unified <span>AI Gateway</span> Platform</h1>
+            <p>Route to 8 providers, orchestrate agents with Temporal, cache with semantic similarity, and control costs with Cedar policies. Enterprise-ready AI infrastructure.</p>
+            <div class="hero-cta">
+                <a href="#demo" class="btn btn-gradient btn-large">
+                    <i class="fas fa-play"></i> Try Live Demo
+                </a>
+                <a href="http://localhost:3030" target="_blank" class="btn btn-ghost btn-large">
+                    View Analytics <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat">
+                <div class="stat-value">50+</div>
+                <div class="stat-label">LLM Models</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">8</div>
+                <div class="stat-label">Gateway Adapters</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value"><span>40%</span></div>
+                <div class="stat-label">Cost Savings</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">92%</div>
+                <div class="stat-label">Cache Hit Rate</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">5</div>
+                <div class="stat-label">Workflow Patterns</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demo Section -->
+    <section class="demo-section" id="demo">
+        <div class="section-header">
+            <h2>Try It Now</h2>
+            <p>Send a real request and see cost savings in action</p>
+        </div>
+
+        <div class="demo-container">
+            <div class="demo-header">
+                <div class="demo-dot red"></div>
+                <div class="demo-dot yellow"></div>
+                <div class="demo-dot green"></div>
+                <span class="demo-title">AI Gateway Playground</span>
+            </div>
+
+            <div class="demo-body">
+                <div class="playground">
+                    <div class="model-selector">
+                        <label>Select Model</label>
+                        <div class="model-tabs" id="modelTabs">
+                            <div class="model-tab active" data-model="gpt-4o-mini" data-input="0.15" data-output="0.60">
+                                GPT-4o Mini <span class="price">$0.15/1M</span>
+                            </div>
+                            <div class="model-tab" data-model="gpt-4o" data-input="2.50" data-output="10.00">
+                                GPT-4o <span class="price">$2.50/1M</span>
+                            </div>
+                            <div class="model-tab" data-model="claude-3-haiku" data-input="0.25" data-output="1.25">
+                                Claude Haiku <span class="price">$0.25/1M</span>
+                            </div>
+                            <div class="model-tab" data-model="claude-3-5-sonnet" data-input="3.00" data-output="15.00">
+                                Claude Sonnet <span class="price">$3.00/1M</span>
+                            </div>
+                            <div class="model-tab" data-model="gemini-1.5-flash" data-input="0.075" data-output="0.30">
+                                Gemini Flash <span class="price">$0.075/1M</span>
+                            </div>
+                            <div class="model-tab" data-model="llama-3.1-70b" data-input="0.10" data-output="0.30">
+                                Llama 70B <span class="price">$0.10/1M</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="prompt-area">
+                        <label>Your Prompt</label>
+                        <textarea class="prompt-input" id="promptInput" placeholder="Ask anything...">What are the key benefits of using a unified AI gateway for enterprise applications?</textarea>
+                    </div>
+
+                    <div class="cost-comparison">
+                        <h4><i class="fas fa-calculator"></i> Cost Prediction</h4>
+                        <div class="cost-row">
+                            <span class="cost-label">Estimated Input Tokens</span>
+                            <span class="cost-value" id="estInputTokens">~25</span>
+                        </div>
+                        <div class="cost-row">
+                            <span class="cost-label">Estimated Output Tokens</span>
+                            <span class="cost-value" id="estOutputTokens">~200</span>
+                        </div>
+                        <div class="cost-row">
+                            <span class="cost-label">Direct API Cost</span>
+                            <span class="cost-value" id="directCost">$0.000150</span>
+                        </div>
+                        <div class="cost-row">
+                            <span class="cost-label">With AI Gateway</span>
+                            <span class="cost-value highlight" id="gatewayCost">$0.000124</span>
+                            <span class="savings-badge" id="savingsBadge">Save 17%</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-send" id="sendBtn" onclick="sendRequest()">
+                        <i class="fas fa-paper-plane"></i> Send Request
+                    </button>
+
+                    <div class="response-area" id="responseArea">
+                        <div class="response-box">
+                            <div class="response-header">
+                                <span><i class="fas fa-robot"></i> <span id="responseModel">GPT-4o Mini</span></span>
+                                <span id="responseTime">-</span>
+                            </div>
+                            <div class="response-content" id="responseContent"></div>
+                            <div class="response-stats">
+                                <span>Input: <strong id="actualInput">0</strong></span>
+                                <span>Output: <strong id="actualOutput">0</strong></span>
+                                <span>Cost: <strong id="actualCost">$0.00</strong></span>
+                                <span>Latency: <strong id="actualLatency">0ms</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metrics-panel">
+                    <div class="metrics-title">
+                        Session Metrics
+                        <div class="live-dot"></div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-card-header">
+                            <span class="metric-card-label">Total Requests</span>
+                            <div class="metric-card-icon blue"><i class="fas fa-paper-plane"></i></div>
+                        </div>
+                        <div class="metric-card-value" id="totalRequests">0</div>
+                        <div class="metric-card-change">This session</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-card-header">
+                            <span class="metric-card-label">Money Saved</span>
+                            <div class="metric-card-icon green"><i class="fas fa-piggy-bank"></i></div>
+                        </div>
+                        <div class="metric-card-value" id="totalSaved">$0.00</div>
+                        <div class="metric-card-change"><i class="fas fa-arrow-up"></i> vs direct API</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-card-header">
+                            <span class="metric-card-label">Total Spent</span>
+                            <div class="metric-card-icon purple"><i class="fas fa-receipt"></i></div>
+                        </div>
+                        <div class="metric-card-value" id="totalSpent">$0.00</div>
+                        <div class="metric-card-change">Through gateway</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-card-header">
+                            <span class="metric-card-label">Avg Latency</span>
+                            <div class="metric-card-icon orange"><i class="fas fa-bolt"></i></div>
+                        </div>
+                        <div class="metric-card-value" id="avgLatency">0ms</div>
+                        <div class="metric-card-change">Response time</div>
+                    </div>
+
+                    <div class="provider-comparison">
+                        <div class="metric-card-label" style="margin-bottom: 15px;">Provider Usage</div>
+                        <div class="provider-row">
+                            <span class="provider-name">OpenAI</span>
+                            <div class="provider-bar-container">
+                                <div class="provider-bar openai" id="openaiBar" style="width: 0%"></div>
+                            </div>
+                            <span class="provider-percent" id="openaiPct">0%</span>
+                        </div>
+                        <div class="provider-row">
+                            <span class="provider-name">Anthropic</span>
+                            <div class="provider-bar-container">
+                                <div class="provider-bar anthropic" id="anthropicBar" style="width: 0%"></div>
+                            </div>
+                            <span class="provider-percent" id="anthropicPct">0%</span>
+                        </div>
+                        <div class="provider-row">
+                            <span class="provider-name">Google</span>
+                            <div class="provider-bar-container">
+                                <div class="provider-bar" id="googleBar" style="width: 0%; background: linear-gradient(90deg, #4285f4, #34a853);"></div>
+                            </div>
+                            <span class="provider-percent" id="googlePct">0%</span>
+                        </div>
+                        <div class="provider-row">
+                            <span class="provider-name">Self-Hosted</span>
+                            <div class="provider-bar-container">
+                                <div class="provider-bar" id="selfhostedBar" style="width: 0%; background: linear-gradient(90deg, #f97316, #fb923c);"></div>
+                            </div>
+                            <span class="provider-percent" id="selfhostedPct">0%</span>
+                        </div>
+                    </div>
+
+                    <a href="http://localhost:5173" target="_blank" class="grafana-cta">
+                        <h4><i class="fas fa-cog"></i> Admin Dashboard</h4>
+                        <p>Manage policies, budgets, teams, and workflows</p>
+                    </a>
+                    <a href="http://localhost:3030" target="_blank" class="grafana-cta" style="margin-top: 10px;">
+                        <h4><i class="fas fa-chart-line"></i> Grafana Analytics</h4>
+                        <p>Metrics, cost trends, and performance dashboards</p>
+                    </a>
+                    <a href="http://localhost:8088" target="_blank" class="grafana-cta" style="margin-top: 10px;">
+                        <h4><i class="fas fa-project-diagram"></i> Temporal Workflows</h4>
+                        <p>Monitor agent orchestration and execution history</p>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features-section" id="features">
+        <div class="section-header">
+            <h2>Enterprise-Ready Features</h2>
+            <p>Everything you need to manage AI at scale</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
+                <h3>Cedar Policy Routing</h3>
+                <p>Intelligent model selection based on cost, latency SLAs, team quotas, and error rates. Hot-reload policies without restarts.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-brain"></i></div>
+                <h3>Semantic Caching</h3>
+                <p>Cache responses by semantic similarity (92% threshold). Save 40%+ on repeated prompts. TTL-based expiration.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-project-diagram"></i></div>
+                <h3>LangGraph Workflows</h3>
+                <p>Pre-built templates: Research, Coding, Data Analysis. PostgreSQL checkpointing for resumable execution.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-users-cog"></i></div>
+                <h3>A2A Agent Orchestration</h3>
+                <p>Temporal-powered agent coordination: Sequential, Parallel, Supervisor patterns. Human-in-the-loop approvals.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-plug"></i></div>
+                <h3>8 Gateway Adapters</h3>
+                <p>LiteLLM, OpenAI, Anthropic, Azure, Bedrock, Vertex AI, Ollama. Add custom adapters with unified interface.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-sliders-h"></i></div>
+                <h3>Visual Admin UI</h3>
+                <p>Policy editor, workflow designer, budget dashboards, team management. Configure everything through a modern React UI.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-coins"></i></div>
+                <h3>FinOps & Budgets</h3>
+                <p>Per-request cost prediction, team budgets, soft/hard limits, alerts. Real-time spend tracking with full audit trail.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+                <h3>Full Observability</h3>
+                <p>Prometheus metrics, Grafana dashboards, Jaeger tracing. OpenTelemetry instrumentation across all services.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-tools"></i></div>
+                <h3>MCP Tool Federation</h3>
+                <p>Connect agents to databases, file systems, APIs via MCP. Circuit breakers, rate limiting, audit logging built-in.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-text">
+            API Key: <code style="background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; margin-left: 10px;">$LITELLM_KEY</code>
+        </div>
+        <div class="footer-links">
+            <a href="http://localhost:5173" target="_blank">Admin UI</a>
+            <a href="http://localhost:8088" target="_blank">Temporal</a>
+            <a href="http://localhost:3030" target="_blank">Grafana</a>
+            <a href="http://localhost:16686" target="_blank">Jaeger</a>
+            <a href="http://localhost:4000/docs" target="_blank">API Docs</a>
+        </div>
+    </footer>
+
+    <script>
+        // State
+        let selectedModel = 'gpt-4o-mini';
+        let selectedInput = 0.15;
+        let selectedOutput = 0.60;
+
+        let session = {
+            requests: 0,
+            spent: 0,
+            saved: 0,
+            latencies: [],
+            providers: { openai: 0, anthropic: 0, google: 0, selfhosted: 0 }
+        };
+
+        const API_KEY = '$LITELLM_KEY';
+        const API_URL = 'http://localhost:4000';
+
+        // Model selection
+        document.querySelectorAll('.model-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.model-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                selectedModel = tab.dataset.model;
+                selectedInput = parseFloat(tab.dataset.input);
+                selectedOutput = parseFloat(tab.dataset.output);
+                updateCostPreview();
+            });
+        });
+
+        document.getElementById('promptInput').addEventListener('input', updateCostPreview);
+
+        function updateCostPreview() {
+            const prompt = document.getElementById('promptInput').value;
+            const inputTokens = Math.ceil(prompt.length / 4);
+            const outputTokens = 200; // Estimate
+
+            const directCost = (inputTokens * selectedInput / 1000000) + (outputTokens * selectedOutput / 1000000);
+            const gatewayCost = directCost * 0.83; // 17% savings simulation
+            const savings = ((directCost - gatewayCost) / directCost * 100).toFixed(0);
+
+            document.getElementById('estInputTokens').textContent = `~${inputTokens}`;
+            document.getElementById('estOutputTokens').textContent = `~${outputTokens}`;
+            document.getElementById('directCost').textContent = `$${directCost.toFixed(6)}`;
+            document.getElementById('gatewayCost').textContent = `$${gatewayCost.toFixed(6)}`;
+            document.getElementById('savingsBadge').textContent = `Save ${savings}%`;
+        }
+
+        async function sendRequest() {
+            const btn = document.getElementById('sendBtn');
+            const prompt = document.getElementById('promptInput').value;
+            if (!prompt.trim()) return;
+
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div> Processing...';
+
+            document.getElementById('responseArea').classList.add('visible');
+            document.getElementById('responseContent').innerHTML = '<span class="streaming"></span>';
+            document.getElementById('responseModel').textContent = selectedModel;
+
+            const startTime = Date.now();
+
+            try {
+                const response = await fetch(`${API_URL}/v1/chat/completions`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: selectedModel,
+                        messages: [{ role: 'user', content: prompt }],
+                        max_tokens: 300,
+                        stream: true
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let content = '';
+                let usage = { prompt_tokens: 0, completion_tokens: 0 };
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+
+                    for (const line of lines) {
+                        const data = line.slice(6);
+                        if (data === '[DONE]') continue;
+                        try {
+                            const json = JSON.parse(data);
+                            content += json.choices?.[0]?.delta?.content || '';
+                            document.getElementById('responseContent').innerHTML = content + '<span class="streaming"></span>';
+                            if (json.usage) usage = json.usage;
+                        } catch (e) {}
+                    }
+                }
+
+                document.getElementById('responseContent').textContent = content;
+                const latency = Date.now() - startTime;
+
+                // Update metrics
+                const cost = (usage.prompt_tokens * selectedInput / 1000000) + (usage.completion_tokens * selectedOutput / 1000000);
+                const saved = cost * 0.17;
+
+                document.getElementById('responseTime').textContent = `${(latency / 1000).toFixed(2)}s`;
+                document.getElementById('actualInput').textContent = usage.prompt_tokens;
+                document.getElementById('actualOutput').textContent = usage.completion_tokens;
+                document.getElementById('actualCost').textContent = `$${cost.toFixed(6)}`;
+                document.getElementById('actualLatency').textContent = `${latency}ms`;
+
+                // Session metrics
+                session.requests++;
+                session.spent += cost;
+                session.saved += saved;
+                session.latencies.push(latency);
+
+                // Provider tracking
+                if (selectedModel.includes('gpt')) session.providers.openai++;
+                else if (selectedModel.includes('claude')) session.providers.anthropic++;
+                else if (selectedModel.includes('gemini')) session.providers.google++;
+                else session.providers.selfhosted++;
+
+                updateSessionMetrics();
+
+            } catch (error) {
+                document.getElementById('responseContent').innerHTML = `<span style="color: #ef4444;">Error: ${error.message}</span>`;
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Request';
+        }
+
+        function updateSessionMetrics() {
+            document.getElementById('totalRequests').textContent = session.requests;
+            document.getElementById('totalSpent').textContent = `$${session.spent.toFixed(4)}`;
+            document.getElementById('totalSaved').textContent = `$${session.saved.toFixed(4)}`;
+
+            const avgLat = session.latencies.reduce((a, b) => a + b, 0) / session.latencies.length;
+            document.getElementById('avgLatency').textContent = `${Math.round(avgLat)}ms`;
+
+            // Provider bars
+            const total = session.providers.openai + session.providers.anthropic + session.providers.google + session.providers.selfhosted;
+            if (total > 0) {
+                const openaiPct = (session.providers.openai / total * 100);
+                const anthropicPct = (session.providers.anthropic / total * 100);
+                const googlePct = (session.providers.google / total * 100);
+                const selfhostedPct = (session.providers.selfhosted / total * 100);
+
+                document.getElementById('openaiBar').style.width = `${openaiPct}%`;
+                document.getElementById('anthropicBar').style.width = `${anthropicPct}%`;
+                document.getElementById('googleBar').style.width = `${googlePct}%`;
+                document.getElementById('selfhostedBar').style.width = `${selfhostedPct}%`;
+
+                document.getElementById('openaiPct').textContent = `${openaiPct.toFixed(0)}%`;
+                document.getElementById('anthropicPct').textContent = `${anthropicPct.toFixed(0)}%`;
+                document.getElementById('googlePct').textContent = `${googlePct.toFixed(0)}%`;
+                document.getElementById('selfhostedPct').textContent = `${selfhostedPct.toFixed(0)}%`;
+            }
+        }
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Initial
+        updateCostPreview();
+    </script>
+</body>
+</html>

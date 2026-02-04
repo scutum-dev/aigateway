@@ -1,0 +1,213 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent
+  namespace: a2a
+  labels:
+    app.kubernetes.io/component: agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agent
+  namespace: a2a
+rules:
+# Allow agents to discover other agents
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+# Allow agents to read their own configuration
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list"]
+  resourceNames:
+    - "code-assistant-config"
+    - "data-analysis-config"
+    - "research-agent-config"
+# Allow agents to read secrets for auth
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+  resourceNames:
+    - "agent-auth-token"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: agent
+  namespace: a2a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: agent
+subjects:
+- kind: ServiceAccount
+  name: agent
+  namespace: a2a
+---
+# Cross-namespace access for agents to communicate with Agent Gateway
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agent-gateway-access
+  namespace: agentgateway
+rules:
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get"]
+  resourceNames:
+    - "agentgateway"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: a2a-agent-gateway-access
+  namespace: agentgateway
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: agent-gateway-access
+subjects:
+- kind: ServiceAccount
+  name: agent
+  namespace: a2a
+---
+# Cross-namespace access for agents to communicate with MCP servers
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mcp-server-access
+  namespace: mcp-servers
+rules:
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: a2a-mcp-server-access
+  namespace: mcp-servers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: mcp-server-access
+subjects:
+- kind: ServiceAccount
+  name: agent
+  namespace: a2a
+---
+# Network policies for agent communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agent-communication
+  namespace: a2a
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/type: agent
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow from other agents
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          app.kubernetes.io/part-of: agent-gateway-platform
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/type: agent
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow from agent registry
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: agent-registry
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow from Agent Gateway
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: agentgateway
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  # Allow to agent registry
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: agent-registry
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 9000
+  # Allow to other agents
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/type: agent
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow to Agent Gateway
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: agentgateway
+    ports:
+    - protocol: TCP
+      port: 3000
+    - protocol: TCP
+      port: 3001
+    - protocol: TCP
+      port: 3002
+  # Allow to MCP servers
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: mcp-servers
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow to observability
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: observability
+    ports:
+    - protocol: TCP
+      port: 4318
+---
+# Secret for agent authentication
+apiVersion: v1
+kind: Secret
+metadata:
+  name: agent-auth-token
+  namespace: a2a
+type: Opaque
+stringData:
+  # JWT token for agent-to-agent authentication
+  # In production, this should be generated and rotated by Vault
+  jwt-token: "REPLACE_WITH_REAL_JWT_TOKEN"
+  # API key for gateway access
+  api-key: "changeme-agent-api-key-production"

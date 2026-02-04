@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: ai-gateway-platform
+
+namespace: default
+
+resources:
+  # Agent Gateway
+  - agentgateway/gateway.yaml
+  - agentgateway/agentgateway-backend.yaml
+  - agentgateway/agentgateway-policy.yaml
+  - agentgateway/ingress.yaml
+
+  # LiteLLM
+  - litellm/deployment.yaml
+  - litellm/service.yaml
+  - litellm/configmap.yaml
+
+  # MCP Servers
+  - mcp-servers/namespace.yaml
+  - mcp-servers/filesystem-mcp.yaml
+  - mcp-servers/database-mcp.yaml
+  - mcp-servers/code-analysis-mcp.yaml
+
+  # A2A Agents
+  - a2a/namespace.yaml
+  - a2a/agent-registry.yaml
+  - a2a/sample-agents.yaml
+  - a2a/agent-rbac.yaml
+
+  # Database
+  - database/postgresql.yaml
+
+  # Observability
+  - observability/otel-collector.yaml
+  - observability/prometheus/prometheus.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: ai-gateway-platform
+  app.kubernetes.io/managed-by: kustomize
+
+commonAnnotations:
+  ai-gateway.example.com/version: "1.0.0"

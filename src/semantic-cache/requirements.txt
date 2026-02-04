@@ -1,0 +1,13 @@
+# Semantic Cache Service Dependencies
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+httpx>=0.26.0
+redis>=5.0.0
+numpy>=1.24.0
+
+# OpenTelemetry
+opentelemetry-api>=1.22.0
+opentelemetry-sdk>=1.22.0
+opentelemetry-instrumentation-fastapi>=0.43b0
+opentelemetry-exporter-otlp-proto-grpc>=1.22.0

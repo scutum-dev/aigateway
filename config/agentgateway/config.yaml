@@ -1,0 +1,65 @@
+# Agent Gateway Configuration
+# Documentation: https://agentgateway.dev/docs/configuration
+#
+# Agent Gateway handles MCP and A2A protocols.
+# LLM requests go directly to LiteLLM (port 4000).
+#
+# Architecture:
+#   LLM:  Client -> LiteLLM (port 4000) -> OpenAI/Anthropic/XAI
+#   MCP:  Client -> Agent Gateway (port 3000) -> MCP Servers (stdio)
+#   A2A:  Client -> Agent Gateway (port 3000) -> AI Agents
+
+# ===========================================
+# Gateway Bindings
+# ===========================================
+binds:
+  - port: 3000
+    listeners:
+      - routes:
+          # ===========================================
+          # MCP Gateway - Model Context Protocol
+          # Provides tool access via stdio MCP servers
+          # ===========================================
+          - policies:
+              cors:
+                allowOrigins:
+                  - "*"
+                allowHeaders:
+                  - mcp-protocol-version
+                  - content-type
+                  - authorization
+                  - accept
+                exposeHeaders:
+                  - Mcp-Session-Id
+            backends:
+              - mcp:
+                  targets:
+                    # Filesystem MCP Server
+                    # Tools: read_file, write_file, list_directory, search_files
+                    - name: filesystem
+                      stdio:
+                        cmd: npx
+                        args:
+                          - "-y"
+                          - "@modelcontextprotocol/server-filesystem"
+                          - "/workspace"
+
+                    # PostgreSQL Database MCP Server
+                    # Tools: query, list_tables, describe_table
+                    - name: database
+                      stdio:
+                        cmd: npx
+                        args:
+                          - "-y"
+                          - "@modelcontextprotocol/server-postgres"
+                          - "postgresql://litellm:litellm@postgres:5432/litellm"
+
+                    # Brave Search MCP Server
+                    # Tools: brave_web_search, brave_local_search
+                    # Requires BRAVE_API_KEY environment variable
+                    - name: brave-search
+                      stdio:
+                        cmd: npx
+                        args:
+                          - "-y"
+                          - "@modelcontextprotocol/server-brave-search"

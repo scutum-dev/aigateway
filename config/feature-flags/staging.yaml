@@ -1,0 +1,91 @@
+# Staging Environment Feature Flags
+# Production-like environment for testing
+
+environment: staging
+vault_prefix: "secret/ai-gateway/staging"
+
+# Staging-specific feature toggles
+features:
+  opentelemetry_enabled: true
+  prometheus_metrics: true
+  grafana_dashboards: true
+
+  # Security - production-like
+  vault_secrets: true
+  cedar_policies: true
+  jwt_authentication: true
+
+  # Debug features - limited
+  debug_mode: false
+  verbose_logging: false
+  hot_reload: false
+  mock_billing: false
+
+# Service configuration - staging
+services:
+  litellm:
+    replicas: 2
+    log_level: "INFO"
+    cache_enabled: true
+    rate_limiting: true
+    detailed_debug: false
+
+  policy_router:
+    replicas: 2
+    metrics_cache_ttl: 30
+    cedar_policy_reload_interval: 60
+
+  workflow_engine:
+    replicas: 2
+    checkpoint_interval: 10
+    max_concurrent_workflows: 50
+
+  admin_api:
+    replicas: 2
+    jwt_expiry_hours: 8
+    cors_allow_all: false
+
+  admin_ui:
+    replicas: 2
+    hot_reload: false
+    source_maps: false
+
+  agentgateway:
+    replicas: 2
+    max_connections: 500
+    debug_logging: false
+
+# Infrastructure - production-like
+infrastructure:
+  postgres:
+    replicas: 1  # Single replica for staging
+    max_connections: 100
+    shared_buffers: "512MB"
+    ssl_mode: "require"
+
+  redis:
+    replicas: 1
+    maxmemory: "512mb"
+
+  vault:
+    auto_unseal: false
+    audit_logging: true
+    dev_mode: false
+
+# Staging secrets configuration
+secrets:
+  # All secrets must come from Vault - no defaults
+  require_vault: true
+
+# Staging endpoints (internal DNS)
+endpoints:
+  litellm: "http://litellm.staging.svc:4000"
+  admin_api: "http://admin-api.staging.svc:8086"
+  vault: "http://vault.staging.svc:8200"
+  prometheus: "http://prometheus.staging.svc:9090"
+
+# TLS enabled for staging
+tls:
+  enabled: true
+  cert_manager: true
+  issuer: "letsencrypt-staging"
