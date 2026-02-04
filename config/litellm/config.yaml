@@ -7,43 +7,63 @@
 # Model Configuration
 # ===========================================
 model_list:
-  # Self-hosted models via vLLM/Ollama (GPU required)
-  # Currently uses gpu-stub which returns clear error if no GPU backend
-  # To enable: replace gpu-stub with vLLM or Ollama service
+  # ===========================================
+  # Self-hosted models via Ollama
+  # ===========================================
+  # Install Ollama: https://ollama.com/download
+  # Run: ollama serve && ollama pull llama3.1:8b
+  #
+  # Primary: Ollama on host (host.docker.internal:11434)
+  # Fallback: gpu-stub returns helpful error message
+
   - model_name: "llama-3.1-70b"
     litellm_params:
-      model: "openai/meta-llama/Llama-3.1-70B-Instruct"
-      api_base: "http://gpu-stub:8000/v1"
-      api_key: "not-needed"
-      custom_llm_provider: "openai"
+      model: "ollama/llama3.1:70b"
+      api_base: "http://host.docker.internal:11434"
       timeout: 600
       stream_timeout: 600
     model_info:
       id: "llama-3.1-70b"
       mode: "chat"
-      input_cost_per_token: 0.0000001  # $0.10 per 1M tokens (infrastructure cost)
-      output_cost_per_token: 0.0000003  # $0.30 per 1M tokens
+      input_cost_per_token: 0.0  # Free - self-hosted
+      output_cost_per_token: 0.0
       max_tokens: 131072
       supports_function_calling: true
       supports_vision: false
-      supports_parallel_function_calling: true
 
   - model_name: "llama-3.1-8b"
     litellm_params:
-      model: "openai/meta-llama/Llama-3.1-8B-Instruct"
-      api_base: "http://gpu-stub:8000/v1"
-      api_key: "not-needed"
-      custom_llm_provider: "openai"
+      model: "ollama/llama3.1:8b"
+      api_base: "http://host.docker.internal:11434"
       timeout: 300
       stream_timeout: 300
     model_info:
       id: "llama-3.1-8b"
       mode: "chat"
-      input_cost_per_token: 0.00000005  # $0.05 per 1M tokens
-      output_cost_per_token: 0.00000015  # $0.15 per 1M tokens
+      input_cost_per_token: 0.0  # Free - self-hosted
+      output_cost_per_token: 0.0
       max_tokens: 131072
       supports_function_calling: true
       supports_vision: false
+
+  # Fallback stub - shows helpful error if Ollama not running
+  - model_name: "llama-3.1-70b-fallback"
+    litellm_params:
+      model: "openai/llama3.1:70b"
+      api_base: "http://gpu-stub:8000/v1"
+      api_key: "not-needed"
+    model_info:
+      id: "llama-3.1-70b-fallback"
+      mode: "chat"
+
+  - model_name: "llama-3.1-8b-fallback"
+    litellm_params:
+      model: "openai/llama3.1:8b"
+      api_base: "http://gpu-stub:8000/v1"
+      api_key: "not-needed"
+    model_info:
+      id: "llama-3.1-8b-fallback"
+      mode: "chat"
 
   # OpenAI models (direct API for local dev)
   - model_name: "gpt-4o"
@@ -138,6 +158,8 @@ router_settings:
     - "claude-3-5-sonnet": ["gpt-4o", "grok-3"]
     - "gpt-4o-mini": ["claude-3-haiku", "grok-3-mini"]
     - "claude-3-haiku": ["gpt-4o-mini", "grok-3-mini"]
+    - "llama-3.1-70b": ["llama-3.1-70b-fallback"]
+    - "llama-3.1-8b": ["llama-3.1-8b-fallback"]
 
   # Model group aliases for semantic routing
   model_group_alias:

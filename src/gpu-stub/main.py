@@ -2,9 +2,14 @@
 GPU Stub Service
 
 Returns clear error messages when local GPU models are requested
-but no GPU backend (vLLM/Ollama) is available.
+but Ollama is not running.
 
-Replace this with actual vLLM when GPU is available.
+Install Ollama: https://ollama.com/download
+- macOS: brew install ollama
+- Windows: Download from ollama.com
+- Linux: curl -fsSL https://ollama.com/install.sh | sh
+
+Then run: ollama serve && ollama pull llama3.1:8b
 """
 
 from fastapi import FastAPI, Request
@@ -15,11 +20,11 @@ app = FastAPI(title="GPU Stub Service")
 
 GPU_ERROR = {
     "error": {
-        "message": "GPU backend not available. Local models (llama, mistral, etc.) require GPU. "
-                   "Please use cloud models (gpt-4o, claude-3-5-sonnet, grok-3) instead, "
-                   "or deploy vLLM/Ollama with GPU support.",
-        "type": "gpu_not_available",
-        "code": "gpu_required"
+        "message": "Ollama not running. Local models require Ollama. "
+                   "Install: https://ollama.com/download then run 'ollama serve'. "
+                   "Or use cloud models (gpt-4o, claude-3-5-sonnet, grok-3) instead.",
+        "type": "ollama_not_running",
+        "code": "ollama_required"
     }
 }
 
@@ -29,8 +34,8 @@ GPU_ERROR = {
 async def health():
     return {
         "status": "stub",
-        "message": "GPU stub service running. No GPU backend configured.",
-        "gpu_available": False
+        "message": "Ollama not running. Install from https://ollama.com/download",
+        "ollama_running": False
     }
 
 
@@ -40,11 +45,11 @@ async def list_models():
         "object": "list",
         "data": [
             {
-                "id": "gpu-required",
+                "id": "ollama-required",
                 "object": "model",
                 "created": 0,
                 "owned_by": "local",
-                "description": "GPU backend not configured. Deploy vLLM or Ollama with GPU."
+                "description": "Ollama not running. Install from https://ollama.com/download"
             }
         ]
     }
@@ -58,10 +63,11 @@ async def chat_completions(request: Request):
         status_code=503,
         content={
             "error": {
-                "message": f"Model '{model}' requires GPU backend. No GPU configured. "
-                           f"Use cloud models (gpt-4o, claude-3-5-sonnet, grok-3) instead.",
-                "type": "gpu_not_available",
-                "code": "gpu_required",
+                "message": f"Model '{model}' requires Ollama. Install from https://ollama.com/download, "
+                           f"then run 'ollama serve' and 'ollama pull llama3.1:8b'. "
+                           f"Or use cloud models (gpt-4o, claude-3-5-sonnet, grok-3).",
+                "type": "ollama_not_running",
+                "code": "ollama_required",
                 "param": "model"
             }
         }
@@ -79,9 +85,9 @@ async def embeddings(request: Request):
         status_code=503,
         content={
             "error": {
-                "message": "Local embeddings require GPU backend. Use cloud embeddings instead.",
-                "type": "gpu_not_available",
-                "code": "gpu_required"
+                "message": "Local embeddings require Ollama. Install from https://ollama.com/download",
+                "type": "ollama_not_running",
+                "code": "ollama_required"
             }
         }
     )
