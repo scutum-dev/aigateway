@@ -796,7 +796,7 @@
         <div class="hero-content">
             <div class="badge">Live Demo Environment</div>
             <h1>Unified <span>AI Gateway</span> Platform</h1>
-            <p>Route to 8 providers, orchestrate agents with Temporal, cache with semantic similarity, and control costs with Cedar policies. Enterprise-ready AI infrastructure.</p>
+            <p>100+ models across 9 providers. Route to OpenAI, Anthropic, Google, xAI, DeepSeek, Bedrock, Vertex AI, Azure, and Ollama with intelligent routing and cost control.</p>
             <div class="hero-cta">
                 <a href="#demo" class="btn btn-gradient btn-large">
                     <i class="fas fa-play"></i> Try Live Demo
@@ -809,12 +809,12 @@
 
         <div class="stats-bar">
             <div class="stat">
-                <div class="stat-value">50+</div>
+                <div class="stat-value">100+</div>
                 <div class="stat-label">LLM Models</div>
             </div>
             <div class="stat">
-                <div class="stat-value">8</div>
-                <div class="stat-label">Gateway Adapters</div>
+                <div class="stat-value">9</div>
+                <div class="stat-label">Providers</div>
             </div>
             <div class="stat">
                 <div class="stat-value"><span>40%</span></div>
@@ -851,23 +851,29 @@
                     <div class="model-selector">
                         <label>Select Model</label>
                         <div class="model-tabs" id="modelTabs">
-                            <div class="model-tab active" data-model="gpt-4o-mini" data-input="0.15" data-output="0.60">
-                                GPT-4o Mini <span class="price">$0.15/1M</span>
+                            <div class="model-tab active" data-model="gpt-5-mini" data-input="0.10" data-output="0.40">
+                                GPT-5 Mini <span class="price">$0.10/1M</span>
                             </div>
-                            <div class="model-tab" data-model="gpt-4o" data-input="2.50" data-output="10.00">
-                                GPT-4o <span class="price">$2.50/1M</span>
+                            <div class="model-tab" data-model="gpt-5" data-input="2.00" data-output="8.00">
+                                GPT-5 <span class="price">$2.00/1M</span>
                             </div>
-                            <div class="model-tab" data-model="claude-3-haiku" data-input="0.25" data-output="1.25">
-                                Claude Haiku <span class="price">$0.25/1M</span>
+                            <div class="model-tab" data-model="claude-haiku-4.5" data-input="0.20" data-output="1.00">
+                                Claude Haiku 4.5 <span class="price">$0.20/1M</span>
                             </div>
-                            <div class="model-tab" data-model="claude-3-5-sonnet" data-input="3.00" data-output="15.00">
-                                Claude Sonnet <span class="price">$3.00/1M</span>
+                            <div class="model-tab" data-model="claude-sonnet-4.5" data-input="3.00" data-output="15.00">
+                                Claude Sonnet 4.5 <span class="price">$3.00/1M</span>
                             </div>
-                            <div class="model-tab" data-model="gemini-1.5-flash" data-input="0.075" data-output="0.30">
-                                Gemini Flash <span class="price">$0.075/1M</span>
+                            <div class="model-tab" data-model="gemini-3-flash" data-input="0.05" data-output="0.20">
+                                Gemini 3 Flash <span class="price">$0.05/1M</span>
                             </div>
-                            <div class="model-tab" data-model="llama-3.1-70b" data-input="0.10" data-output="0.30">
-                                Llama 70B <span class="price">$0.10/1M</span>
+                            <div class="model-tab" data-model="grok-3" data-input="1.00" data-output="4.00">
+                                Grok 3 <span class="price">$1.00/1M</span>
+                            </div>
+                            <div class="model-tab" data-model="deepseek-v3" data-input="0.07" data-output="0.27">
+                                DeepSeek V3 <span class="price">$0.07/1M</span>
+                            </div>
+                            <div class="model-tab" data-model="llama-3.1-8b" data-input="0.00" data-output="0.00">
+                                Llama 3.1 8B <span class="price">Free (local)</span>
                             </div>
                         </div>
                     </div>
@@ -985,11 +991,25 @@
                             <span class="provider-percent" id="googlePct">0%</span>
                         </div>
                         <div class="provider-row">
-                            <span class="provider-name">Self-Hosted</span>
+                            <span class="provider-name">xAI</span>
                             <div class="provider-bar-container">
-                                <div class="provider-bar" id="selfhostedBar" style="width: 0%; background: linear-gradient(90deg, #f97316, #fb923c);"></div>
+                                <div class="provider-bar xai" id="xaiBar" style="width: 0%"></div>
                             </div>
-                            <span class="provider-percent" id="selfhostedPct">0%</span>
+                            <span class="provider-percent" id="xaiPct">0%</span>
+                        </div>
+                        <div class="provider-row">
+                            <span class="provider-name">DeepSeek</span>
+                            <div class="provider-bar-container">
+                                <div class="provider-bar" id="deepseekBar" style="width: 0%; background: linear-gradient(90deg, #3b82f6, #60a5fa);"></div>
+                            </div>
+                            <span class="provider-percent" id="deepseekPct">0%</span>
+                        </div>
+                        <div class="provider-row">
+                            <span class="provider-name">Local</span>
+                            <div class="provider-bar-container">
+                                <div class="provider-bar" id="localBar" style="width: 0%; background: linear-gradient(90deg, #f97316, #fb923c);"></div>
+                            </div>
+                            <span class="provider-percent" id="localPct">0%</span>
                         </div>
                     </div>
 
@@ -1040,8 +1060,8 @@
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-plug"></i></div>
-                <h3>8 Gateway Adapters</h3>
-                <p>LiteLLM, OpenAI, Anthropic, Azure, Bedrock, Vertex AI, Ollama. Add custom adapters with unified interface.</p>
+                <h3>9 Provider Integrations</h3>
+                <p>OpenAI, Anthropic, Google, xAI, DeepSeek, AWS Bedrock, Vertex AI, Azure OpenAI, Ollama. Unified interface for all.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-sliders-h"></i></div>
@@ -1091,7 +1111,7 @@
             spent: 0,
             saved: 0,
             latencies: [],
-            providers: { openai: 0, anthropic: 0, google: 0, selfhosted: 0 }
+            providers: { openai: 0, anthropic: 0, google: 0, xai: 0, deepseek: 0, local: 0 }
         };
 
         const API_KEY = '$LITELLM_KEY';
@@ -1200,10 +1220,12 @@
                 session.latencies.push(latency);
 
                 // Provider tracking
-                if (selectedModel.includes('gpt')) session.providers.openai++;
+                if (selectedModel.includes('gpt') || selectedModel.includes('o3') || selectedModel.includes('o4')) session.providers.openai++;
                 else if (selectedModel.includes('claude')) session.providers.anthropic++;
                 else if (selectedModel.includes('gemini')) session.providers.google++;
-                else session.providers.selfhosted++;
+                else if (selectedModel.includes('grok')) session.providers.xai++;
+                else if (selectedModel.includes('deepseek')) session.providers.deepseek++;
+                else session.providers.local++;
 
                 updateSessionMetrics();
 
@@ -1224,22 +1246,16 @@
             document.getElementById('avgLatency').textContent = `${Math.round(avgLat)}ms`;
 
             // Provider bars
-            const total = session.providers.openai + session.providers.anthropic + session.providers.google + session.providers.selfhosted;
+            const total = Object.values(session.providers).reduce((a, b) => a + b, 0);
             if (total > 0) {
-                const openaiPct = (session.providers.openai / total * 100);
-                const anthropicPct = (session.providers.anthropic / total * 100);
-                const googlePct = (session.providers.google / total * 100);
-                const selfhostedPct = (session.providers.selfhosted / total * 100);
-
-                document.getElementById('openaiBar').style.width = `${openaiPct}%`;
-                document.getElementById('anthropicBar').style.width = `${anthropicPct}%`;
-                document.getElementById('googleBar').style.width = `${googlePct}%`;
-                document.getElementById('selfhostedBar').style.width = `${selfhostedPct}%`;
-
-                document.getElementById('openaiPct').textContent = `${openaiPct.toFixed(0)}%`;
-                document.getElementById('anthropicPct').textContent = `${anthropicPct.toFixed(0)}%`;
-                document.getElementById('googlePct').textContent = `${googlePct.toFixed(0)}%`;
-                document.getElementById('selfhostedPct').textContent = `${selfhostedPct.toFixed(0)}%`;
+                const providers = ['openai', 'anthropic', 'google', 'xai', 'deepseek', 'local'];
+                providers.forEach(p => {
+                    const pct = (session.providers[p] / total * 100);
+                    const bar = document.getElementById(`${p}Bar`);
+                    const pctEl = document.getElementById(`${p}Pct`);
+                    if (bar) bar.style.width = `${pct}%`;
+                    if (pctEl) pctEl.textContent = `${pct.toFixed(0)}%`;
+                });
             }
         }
 

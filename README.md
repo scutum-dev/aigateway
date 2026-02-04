@@ -1,6 +1,8 @@
-# AI Gateway + Agent Gateway Platform
+# AI Gateway Platform
 
-A FinOps-aware, protocol-native gateway infrastructure for AI/LLM workloads with intelligent routing, workflow orchestration, and comprehensive administration.
+A unified AI infrastructure platform with 100+ models across 9 providers. Features intelligent routing, workflow orchestration, semantic caching, and enterprise-grade cost management.
+
+**Supported Providers:** OpenAI, Anthropic, Google, xAI, DeepSeek, AWS Bedrock, Google Vertex AI, Azure OpenAI, Ollama
 
 ## Architecture
 
@@ -449,13 +451,43 @@ pytest e2e/ -v
 - `BudgetExhausted` - Budget limit reached
 - `WorkflowFailed` - Workflow execution failed
 
+## Supported Models
+
+### Direct Providers
+| Provider | Models |
+|----------|--------|
+| **OpenAI** | GPT-5, GPT-5.2, GPT-5-mini, o3, o3-pro, o4-mini, GPT-4o, GPT-4o-mini |
+| **Anthropic** | Claude Opus 4.5, Claude Sonnet 4.5, Claude Haiku 4.5, Claude Opus 4, Claude Sonnet 4 |
+| **Google** | Gemini 3 Pro, Gemini 3 Flash, Gemini 2.5 Pro/Flash/Flash-Lite |
+| **xAI** | Grok 4, Grok 4 Heavy, Grok 3, Grok 3 Mini |
+| **DeepSeek** | DeepSeek V3, DeepSeek R1, DeepSeek Coder |
+
+### Cloud Platforms
+| Provider | Models |
+|----------|--------|
+| **AWS Bedrock** | Claude 4.5, Llama 4 (405b/70b), Llama 3.3/3.2/3.1, Mistral Large 3, Nova Pro/Lite/Micro, Titan, DeepSeek R1, Cohere Command R+, AI21 Jamba |
+| **Google Vertex AI** | Gemini 3/2.5 Pro/Flash, Claude Opus/Haiku 4.5, DeepSeek V3.2 |
+| **Azure OpenAI** | GPT-5.2/5.1, GPT-4.1, o4-mini, o3, o3-mini, o1, GPT-4o, embeddings, audio models |
+
+### Local Models (Ollama)
+| Model | Requirements |
+|-------|--------------|
+| Llama 3.1 70B/8B | GPU with 48GB+ / 8GB+ VRAM |
+| Mistral, CodeLlama | GPU with 8GB+ VRAM |
+
 ## Model Groups
 
 Use model aliases for semantic routing:
-- `fast` - Routes to fast models (gpt-4o-mini, claude-3-haiku)
-- `smart` - Routes to capable models (gpt-4o, claude-3-5-sonnet)
-- `self-hosted` - Routes only to vLLM models
-- `budget` - Routes to cost-effective models based on Cedar policies
+- `fast` - GPT-5-mini, Claude Haiku 4.5, Gemini 3 Flash, Grok 3 Mini
+- `smart` - GPT-5, Claude Sonnet 4.5, Gemini 3 Pro, Grok 4
+- `powerful` - GPT-5.2, Claude Opus 4.5, o3-pro, Grok 4 Heavy
+- `reasoning` - o3, o3-pro, DeepSeek R1
+- `coding` - Claude Sonnet 4.5, DeepSeek Coder, CodeLlama
+- `cost-effective` - GPT-5-mini, Claude Haiku 4.5, Gemini 2.5 Flash-Lite, DeepSeek V3
+- `bedrock` - All AWS Bedrock models
+- `vertex` - All Google Vertex AI models
+- `azure` - All Azure OpenAI models
+- `local` - Ollama models (Llama, Mistral, CodeLlama)
 
 ## Contributing
 
