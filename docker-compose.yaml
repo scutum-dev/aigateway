@@ -1,89 +1,91 @@
-# Docker Compose for local development with Vault
-# Run with: docker-compose up -d
-
-version: '3.8'
+# =============================================================================
+# AI Gateway Platform - Docker Compose
+# =============================================================================
+# Portable configuration for any OS and environment
+#
+# Usage:
+#   Development (minimal):  docker compose up -d
+#   Full stack:             docker compose --profile full up -d
+#   With observability:     docker compose --profile observability up -d
+#   With local models:      docker compose --profile local-models up -d
+#   Production-like:        docker compose --profile full --profile observability up -d
+#
+# Profiles:
+#   - (default)      : Core services (litellm, postgres, redis, admin)
+#   - observability  : Prometheus, Grafana, Jaeger, OTEL
+#   - full           : All platform services
+#   - local-models   : GPU stub / Ollama support
+#   - workflows      : Temporal + workflow engine
+#   - experimental   : Policy router, semantic cache
+# =============================================================================
 
 services:
-  # ===========================================
-  # HashiCorp Vault (Secret Management)
-  # ===========================================
-  vault:
-    image: hashicorp/vault:1.15.4
-    container_name: vault
-    cap_add:
-      - IPC_LOCK
-    ports:
-      - "8200:8200"
+  # ===========================================================================
+  # CORE SERVICES (Always started)
+  # ===========================================================================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
     environment:
-      - VAULT_DEV_ROOT_TOKEN_ID=root-token-for-dev
-      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
-      - VAULT_ADDR=http://127.0.0.1:8200
-    command: server -dev
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
     volumes:
-      - vault-data:/vault/data
-      - vault-logs:/vault/logs
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD", "vault", "status"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - gateway-network
+    restart: unless-stopped
 
-  # Vault initialization (runs once after vault is healthy)
-  vault-init:
-    image: hashicorp/vault:1.15.4
-    container_name: vault-init
-    depends_on:
-      vault:
-        condition: service_healthy
-    env_file:
-      - ./config/.env
-    environment:
-      - VAULT_ADDR=http://vault:8200
-      - VAULT_TOKEN=root-token-for-dev
-      - ENVIRONMENT=dev
-      - DATABASE_URL=postgresql://litellm:litellm@postgres:5432/litellm
-      - LITELLM_MASTER_KEY=$LITELLM_KEY
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
-      - ./scripts/vault-init.sh:/vault/scripts/init.sh:ro
-      - vault-logs:/vault/logs
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        echo "Waiting for Vault to be ready..."
-        until vault status > /dev/null 2>&1; do
-          sleep 1
-        done
-        echo "Running Vault initialization..."
-        /vault/scripts/init.sh
-        echo "Vault initialization complete!"
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - gateway-network
-    restart: "no"
+    restart: unless-stopped
 
-  # ===========================================
-  # LiteLLM Proxy
-  # ===========================================
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
     container_name: litellm
     ports:
-      - "4000:4000"
-    env_file:
-      - ./config/.env
+      - "${LITELLM_PORT:-4000}:4000"
     environment:
-      # API keys loaded from env_file (config/.env)
-      # To override, export in shell before running docker compose
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-$LITELLM_KEY}
-      - DATABASE_URL=postgresql://litellm:litellm@postgres:5432/litellm
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - OTEL_EXPORTER=otlp_http
-      - OTEL_ENDPOINT=http://otel-collector:4318
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-$LITELLM_KEY}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION_NAME: ${AWS_REGION_NAME:-us-east-1}
+      AZURE_API_KEY: ${AZURE_API_KEY:-}
+      AZURE_API_BASE: ${AZURE_API_BASE:-}
+      OTEL_EXPORTER: otlp_http
+      OTEL_ENDPOINT: http://otel-collector:4318
     volumes:
       - ./config/litellm/config.yaml:/etc/litellm/config.yaml:ro
-    command: ["--config", "/etc/litellm/config.yaml", "--port", "4000", "--detailed_debug"]
+    command: ["--config", "/etc/litellm/config.yaml", "--port", "4000"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -97,353 +99,26 @@ services:
       start_period: 30s
     networks:
       - gateway-network
+    restart: unless-stopped
 
-  # ===========================================
-  # PostgreSQL Database
-  # ===========================================
-  postgres:
-    image: postgres:16-alpine
-    container_name: postgres
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=postgres
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - gateway-network
-
-  # ===========================================
-  # Redis Cache
-  # ===========================================
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - gateway-network
-
-  # ===========================================
-  # OpenTelemetry Collector
-  # ===========================================
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.96.0
-    container_name: otel-collector
-    command: ["--config=/etc/otel/config.yaml"]
-    volumes:
-      - ./config/otel/otel-collector-config.yaml:/etc/otel/config.yaml:ro
-    ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
-      - "8889:8889"   # Prometheus metrics
-      - "13133:13133" # Health check
-    # Note: Container is distroless, verify health externally:
-    # curl http://localhost:13133/
-    healthcheck:
-      disable: true
-    networks:
-      - gateway-network
-
-  # ===========================================
-  # Prometheus
-  # ===========================================
-  prometheus:
-    image: prom/prometheus:v2.50.0
-    container_name: prometheus
-    volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus-data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.enable-lifecycle'
-    ports:
-      - "9090:9090"
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    networks:
-      - gateway-network
-
-  # ===========================================
-  # Grafana
-  # ===========================================
-  grafana:
-    image: grafana/grafana:10.3.0
-    container_name: grafana
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./kubernetes/base/observability/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./config/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
-    ports:
-      - "3030:3000"
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-    depends_on:
-      - prometheus
-    networks:
-      - gateway-network
-
-  # ===========================================
-  # Cost Predictor Service
-  # ===========================================
-  cost-predictor:
-    build:
-      context: ./src/cost-predictor
-      dockerfile: Dockerfile
-    container_name: cost-predictor
-    ports:
-      - "8080:8080"
-    environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - LITELLM_URL=http://litellm:4000
-    depends_on:
-      - otel-collector
-    networks:
-      - gateway-network
-
-  # ===========================================
-  # Budget Webhook Service
-  # ===========================================
-  budget-webhook:
-    build:
-      context: ./src/budget-webhook
-      dockerfile: Dockerfile
-    container_name: budget-webhook
-    ports:
-      - "8081:8081"
-    environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - LITELLM_URL=http://litellm:4000
-      - DATABASE_URL=postgresql://litellm:litellm@postgres:5432/litellm
-      - COST_PREDICTOR_URL=http://cost-predictor:8080
-    depends_on:
-      - postgres
-      - cost-predictor
-    networks:
-      - gateway-network
-
-  # ===========================================
-  # FinOps Reporter Service
-  # ===========================================
-  finops-reporter:
-    build:
-      context: ./src/finops-reporter
-      dockerfile: Dockerfile
-    container_name: finops-reporter
-    ports:
-      - "8082:8082"
-    environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - DATABASE_URL=postgresql://litellm:litellm@postgres:5432/litellm
-    depends_on:
-      - postgres
-    networks:
-      - gateway-network
-
-  # ===========================================
-  # Jaeger (Trace Visualization)
-  # ===========================================
-  jaeger:
-    image: jaegertracing/all-in-one:1.54
-    container_name: jaeger
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
-    ports:
-      - "16686:16686"  # UI
-      - "14268:14268"  # Collector HTTP
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:14269/"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    networks:
-      - gateway-network
-
-  # ===========================================
-  # Agent Gateway (agentgateway.dev)
-  # Official Rust-based AI gateway for LLM, MCP, and A2A protocols
-  # ===========================================
-  agentgateway:
-    image: ghcr.io/agentgateway/agentgateway:0.11.0-alpha.18e45de0f30a108df129aeb08d49453ea0527db3
-    container_name: agentgateway
-    ports:
-      - "9000:3000"   # Main gateway (LLM + MCP + A2A)
-      - "15000:15000" # Admin UI
-    volumes:
-      - ./config/agentgateway/config.yaml:/app/config.yaml:ro
-      - ./data:/workspace:rw  # For filesystem MCP server
-    command: ["-f", "/app/config.yaml"]
-    env_file:
-      - ./config/.env
-    environment:
-      - RUST_LOG=info,agentgateway=debug
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
-      - OTEL_SERVICE_NAME=agentgateway
-      # MCP server environment variables
-      - POSTGRES_CONNECTION_STRING=postgresql://litellm:litellm@postgres:5432/litellm
-      # BRAVE_API_KEY and GITHUB_TOKEN loaded from env_file
-    depends_on:
-      litellm:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      otel-collector:
-        condition: service_started
-    # Note: Container is distroless (no shell/curl), health verified externally
-    # Readiness endpoint: http://localhost:15021/healthz/ready
-    # Verify with: curl http://localhost:9000/ (should return MCP protocol response)
-    healthcheck:
-      disable: true
-    networks:
-      - gateway-network
-
-  # ===========================================
-  # MCP Servers
-  # ===========================================
-  # NOTE: MCP servers are now run via stdio by Agent Gateway.
-  # No separate containers needed. Agent Gateway spawns MCP servers
-  # as child processes using npx.
-  #
-  # Configured MCP servers (in config/agentgateway/config.yaml):
-  # - filesystem: @modelcontextprotocol/server-filesystem
-  # - database: @modelcontextprotocol/server-postgres
-  # - brave-search: @modelcontextprotocol/server-brave-search
-  #
-  # To add more MCP servers, update config/agentgateway/config.yaml
-
-  # Note: A2A components and custom agents removed for now
-  # You can integrate with existing agent frameworks like:
-  # - LangGraph (Python)
-  # - CrewAI (Python)
-  # - AutoGen (Python)
-  # These can directly use MCP servers via the gateway
-
-  # ===========================================
-  # Policy Router Service (Cedar-based routing)
-  # ===========================================
-  policy-router:
-    build:
-      context: ./src/policy-router
-      dockerfile: Dockerfile
-    container_name: policy-router
-    ports:
-      - "8084:8084"
-    environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - DATABASE_URL=postgresql://litellm:litellm@postgres:5432/litellm
-      - REDIS_URL=redis://redis:6379
-      - PROMETHEUS_URL=http://prometheus:9090
-      - CEDAR_POLICIES_PATH=/etc/cedar/policies
-    volumes:
-      - ./config/agentgateway/policies:/etc/cedar/policies:ro
-    depends_on:
-      - postgres
-      - redis
-      - prometheus
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8084/health', timeout=5)"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    networks:
-      - gateway-network
-
-  # ===========================================
-  # Workflow Engine Service (LangGraph)
-  # ===========================================
-  workflow-engine:
-    build:
-      context: ./src/workflow-engine
-      dockerfile: Dockerfile
-    container_name: workflow-engine
-    ports:
-      - "8085:8085"
-    environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - DATABASE_URL=postgresql://litellm:litellm@postgres:5432/litellm
-      - LITELLM_URL=http://litellm:4000
-      - LITELLM_API_KEY=$LITELLM_KEY
-      - AGENT_GATEWAY_URL=http://agentgateway:3000
-    depends_on:
-      - postgres
-      - litellm
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8085/health', timeout=5)"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    networks:
-      - gateway-network
-
-  # ===========================================
-  # GPU Stub Service (placeholder for vLLM/Ollama)
-  # Returns clear error when local models requested without GPU
-  # Replace with actual vLLM when GPU is available
-  # ===========================================
-  gpu-stub:
-    build:
-      context: ./src/gpu-stub
-      dockerfile: Dockerfile
-    container_name: gpu-stub
-    ports:
-      - "8090:8000"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - gateway-network
-
-  # ===========================================
-  # Admin API Service
-  # ===========================================
   admin-api:
     build:
       context: ./src/admin-api
       dockerfile: Dockerfile
     container_name: admin-api
     ports:
-      - "8086:8086"
+      - "${ADMIN_API_PORT:-8086}:8086"
     environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - DATABASE_URL=postgresql://litellm:litellm@postgres:5432/litellm
-      - LITELLM_URL=http://litellm:4000
-      - LITELLM_MASTER_KEY=$LITELLM_KEY
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-in-production-please}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
+      LITELLM_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-$LITELLM_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-in-production}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
-      - postgres
-      - litellm
+      postgres:
+        condition: service_healthy
+      litellm:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8086/health', timeout=5)"]
       interval: 15s
@@ -452,17 +127,15 @@ services:
       start_period: 10s
     networks:
       - gateway-network
+    restart: unless-stopped
 
-  # ===========================================
-  # Admin UI
-  # ===========================================
   admin-ui:
     build:
       context: ./ui/admin
       dockerfile: Dockerfile
     container_name: admin-ui
     ports:
-      - "5173:80"
+      - "${ADMIN_UI_PORT:-5173}:80"
     depends_on:
       - admin-api
     healthcheck:
@@ -470,105 +143,140 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 5s
     networks:
       - gateway-network
+    restart: unless-stopped
 
-  # ===========================================
-  # Landing Page UI
-  # ===========================================
-  landing-ui:
-    image: nginx:1.25-alpine
-    container_name: landing-ui
-    ports:
-      - "9999:80"
+  # ===========================================================================
+  # OBSERVABILITY (Profile: observability)
+  # ===========================================================================
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    container_name: otel-collector
+    profiles: ["observability", "full"]
+    command: ["--config=/etc/otel/config.yaml"]
     volumes:
-      - ./ui:/usr/share/nginx/html:ro
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      - ./config/otel/otel-collector-config.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8889:8889"   # Prometheus metrics
     networks:
       - gateway-network
+    restart: unless-stopped
 
-  # ===========================================
-  # Semantic Cache Service
-  # ===========================================
-  semantic-cache:
-    build:
-      context: ./src/semantic-cache
-      dockerfile: Dockerfile
-    container_name: semantic-cache
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    container_name: prometheus
+    profiles: ["observability", "full"]
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
     ports:
-      - "8083:8083"
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - LITELLM_URL=http://litellm:4000
-      - EMBEDDING_MODEL=text-embedding-3-small
-      - SIMILARITY_THRESHOLD=0.92
-      - CACHE_TTL_SECONDS=3600
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-    depends_on:
-      - redis
-      - litellm
+      - "${PROMETHEUS_PORT:-9090}:9090"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8083/health', timeout=5)"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 10s
     networks:
       - gateway-network
+    restart: unless-stopped
 
-  # ===========================================
-  # A2A Runtime Service (Temporal)
-  # ===========================================
-  a2a-runtime:
-    build:
-      context: ./src/a2a-runtime
-      dockerfile: Dockerfile
-    container_name: a2a-runtime
-    ports:
-      - "8087:8087"
+  grafana:
+    image: grafana/grafana:10.3.0
+    container_name: grafana
+    profiles: ["observability", "full"]
     environment:
-      - TEMPORAL_HOST=temporal:7233
-      - TEMPORAL_NAMESPACE=default
-      - TEMPORAL_TASK_QUEUE=a2a-agents
-      - REDIS_URL=redis://redis:6379
-      - AGENT_GATEWAY_URL=http://agentgateway:3000
-      - LITELLM_URL=http://litellm:4000
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-    depends_on:
-      - redis
-      - litellm
-      - temporal
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./kubernetes/base/observability/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+    ports:
+      - "${GRAFANA_PORT:-3030}:3000"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8087/health', timeout=5)"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 15s
+    depends_on:
+      - prometheus
     networks:
       - gateway-network
+    restart: unless-stopped
 
-  # ===========================================
-  # Temporal Server (for A2A Runtime)
-  # ===========================================
+  jaeger:
+    image: jaegertracing/all-in-one:1.54
+    container_name: jaeger
+    profiles: ["observability", "full"]
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "${JAEGER_PORT:-16686}:16686"
+      - "14268:14268"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:14269/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # AGENT GATEWAY (Profile: full)
+  # ===========================================================================
+
+  agentgateway:
+    image: ghcr.io/agentgateway/agentgateway:0.11.0-alpha.18e45de0f30a108df129aeb08d49453ea0527db3
+    container_name: agentgateway
+    profiles: ["full"]
+    ports:
+      - "9000:3000"
+      - "15000:15000"
+    volumes:
+      - ./config/agentgateway/config.yaml:/app/config.yaml:ro
+      - ./data:/workspace:rw
+    command: ["-f", "/app/config.yaml"]
+    environment:
+      RUST_LOG: info,agentgateway=debug
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_SERVICE_NAME: agentgateway
+      POSTGRES_CONNECTION_STRING: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
+      BRAVE_API_KEY: ${BRAVE_API_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    depends_on:
+      litellm:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # WORKFLOW ENGINE (Profile: workflows)
+  # ===========================================================================
+
   temporal:
     image: temporalio/auto-setup:1.22
     container_name: temporal
+    profiles: ["workflows", "full"]
     ports:
       - "7233:7233"
     environment:
-      - DB=postgresql
-      - DB_PORT=5432
-      - POSTGRES_USER=postgres
-      - POSTGRES_PWD=postgres
-      - POSTGRES_SEEDS=postgres
-      - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/config/dynamicconfig/development.yaml
-    volumes:
-      - ./config/temporal/dynamicconfig:/etc/temporal/config/dynamicconfig:ro
+      DB: postgresql
+      DB_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PWD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_SEEDS: postgres
     depends_on:
       postgres:
         condition: service_healthy
@@ -580,36 +288,246 @@ services:
       start_period: 90s
     networks:
       - gateway-network
+    restart: unless-stopped
 
-  # ===========================================
-  # Temporal Web UI
-  # ===========================================
   temporal-ui:
     image: temporalio/ui:2.22.0
     container_name: temporal-ui
+    profiles: ["workflows", "full"]
     ports:
       - "8088:8080"
     environment:
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+      TEMPORAL_ADDRESS: temporal:7233
     depends_on:
       - temporal
     networks:
       - gateway-network
+    restart: unless-stopped
 
-  # ===========================================
-  # Nginx Reverse Proxy (Unified Entry Point)
-  # ===========================================
-  # Mirrors Kubernetes Ingress routing:
-  # - /v1/* → LiteLLM (LLM requests)
-  # - /mcp/* → Agent Gateway (MCP protocol)
-  # - /a2a/* → Agent Gateway (A2A protocol)
+  workflow-engine:
+    build:
+      context: ./src/workflow-engine
+      dockerfile: Dockerfile
+    container_name: workflow-engine
+    profiles: ["workflows", "full"]
+    ports:
+      - "8085:8085"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
+      LITELLM_URL: http://litellm:4000
+      LITELLM_API_KEY: ${LITELLM_MASTER_KEY:-$LITELLM_KEY}
+      AGENT_GATEWAY_URL: http://agentgateway:3000
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      postgres:
+        condition: service_healthy
+      litellm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8085/health', timeout=5)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
+  a2a-runtime:
+    build:
+      context: ./src/a2a-runtime
+      dockerfile: Dockerfile
+    container_name: a2a-runtime
+    profiles: ["workflows", "full"]
+    ports:
+      - "8087:8087"
+    environment:
+      TEMPORAL_HOST: temporal:7233
+      TEMPORAL_NAMESPACE: default
+      REDIS_URL: redis://redis:6379
+      LITELLM_URL: http://litellm:4000
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      - redis
+      - temporal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8087/health', timeout=5)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # LOCAL MODELS (Profile: local-models)
+  # ===========================================================================
+
+  gpu-stub:
+    build:
+      context: ./src/gpu-stub
+      dockerfile: Dockerfile
+    container_name: gpu-stub
+    profiles: ["local-models", "full"]
+    ports:
+      - "8090:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # EXPERIMENTAL SERVICES (Profile: experimental)
+  # ===========================================================================
+
+  policy-router:
+    build:
+      context: ./src/policy-router
+      dockerfile: Dockerfile
+    container_name: policy-router
+    profiles: ["experimental", "full"]
+    ports:
+      - "8084:8084"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
+      REDIS_URL: redis://redis:6379
+      PROMETHEUS_URL: http://prometheus:9090
+      CEDAR_POLICIES_PATH: /etc/cedar/policies
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    volumes:
+      - ./config/agentgateway/policies:/etc/cedar/policies:ro
+    depends_on:
+      - postgres
+      - redis
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8084/health', timeout=5)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
+  semantic-cache:
+    build:
+      context: ./src/semantic-cache
+      dockerfile: Dockerfile
+    container_name: semantic-cache
+    profiles: ["experimental", "full"]
+    ports:
+      - "8083:8083"
+    environment:
+      REDIS_URL: redis://redis:6379
+      LITELLM_URL: http://litellm:4000
+      EMBEDDING_MODEL: text-embedding-3-small
+      SIMILARITY_THRESHOLD: "0.92"
+      CACHE_TTL_SECONDS: "3600"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      - redis
+      - litellm
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8083/health', timeout=5)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # FINOPS SERVICES (Profile: finops)
+  # ===========================================================================
+
+  cost-predictor:
+    build:
+      context: ./src/cost-predictor
+      dockerfile: Dockerfile
+    container_name: cost-predictor
+    profiles: ["finops", "full"]
+    ports:
+      - "8080:8080"
+    environment:
+      LITELLM_URL: http://litellm:4000
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
+  budget-webhook:
+    build:
+      context: ./src/budget-webhook
+      dockerfile: Dockerfile
+    container_name: budget-webhook
+    profiles: ["finops", "full"]
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
+      LITELLM_URL: http://litellm:4000
+      COST_PREDICTOR_URL: http://cost-predictor:8080
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      - postgres
+      - cost-predictor
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
+  finops-reporter:
+    build:
+      context: ./src/finops-reporter
+      dockerfile: Dockerfile
+    container_name: finops-reporter
+    profiles: ["finops", "full"]
+    ports:
+      - "8082:8082"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    depends_on:
+      - postgres
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # INFRASTRUCTURE (Profile: infra)
+  # ===========================================================================
+
+  vault:
+    image: hashicorp/vault:1.15.4
+    container_name: vault
+    profiles: ["infra", "full"]
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root-token-for-dev
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    command: server -dev
+    volumes:
+      - vault-data:/vault/data
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
   nginx:
     image: nginx:1.25-alpine
     container_name: nginx
+    profiles: ["infra", "full"]
     ports:
-      - "80:80"
-      - "443:443"
+      - "${EXTERNAL_HTTP_PORT:-80}:80"
+      - "${EXTERNAL_HTTPS_PORT:-443}:443"
     volumes:
       - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./config/nginx/ssl:/etc/nginx/ssl:ro
@@ -621,9 +539,30 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 10s
     networks:
       - gateway-network
+    restart: unless-stopped
+
+  landing-ui:
+    image: nginx:1.25-alpine
+    container_name: landing-ui
+    profiles: ["infra", "full"]
+    ports:
+      - "9999:80"
+    volumes:
+      - ./ui:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
+# =============================================================================
+# NETWORKS & VOLUMES
+# =============================================================================
 
 networks:
   gateway-network:
@@ -635,4 +574,3 @@ volumes:
   prometheus-data:
   grafana-data:
   vault-data:
-  vault-logs:

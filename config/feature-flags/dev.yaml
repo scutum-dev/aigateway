@@ -1,62 +1,166 @@
 # Development Environment Feature Flags
 # Inherits from base.yaml, overrides for local development
+#
+# These flags correspond to docker-compose profiles:
+#   profiles:
+#     - observability → prometheus, grafana, jaeger, otel
+#     - workflows     → temporal, workflow-engine, a2a-runtime
+#     - local-models  → gpu-stub, ollama integration
+#     - finops        → cost-predictor, budget-webhook, finops-reporter
+#     - experimental  → policy-router, semantic-cache
+#     - infra         → nginx, vault, landing-ui
+#     - full          → all of the above
 
 environment: development
 vault_prefix: "secret/ai-gateway/dev"
 
-# Development-specific feature toggles
+# =============================================================================
+# FEATURE TOGGLES
+# =============================================================================
+# Set to true/false to enable/disable features
+# Or use Docker Compose profiles for service-level control
+
 features:
-  # Enable all features for testing
-  opentelemetry_enabled: true
-  prometheus_metrics: true
-  grafana_dashboards: true
+  # Core (always enabled) -----------------------------------------------------
+  litellm: true
+  admin_api: true
+  admin_ui: true
 
-  # Security - relaxed for development
-  vault_secrets: true
-  cedar_policies: true
-  jwt_authentication: true
+  # Observability (profile: observability) ------------------------------------
+  observability:
+    enabled: true
+    prometheus: true
+    grafana: true
+    jaeger: true
+    otel_collector: true
 
-  # Debug features
-  debug_mode: true
-  verbose_logging: true
-  hot_reload: true
-  mock_billing: true
+  # Workflows (profile: workflows) --------------------------------------------
+  workflows:
+    enabled: false        # Set true to enable
+    temporal: true
+    temporal_ui: true
+    workflow_engine: true
+    a2a_runtime: true
 
-# Service configuration - development
+  # Local Models (profile: local-models) --------------------------------------
+  local_models:
+    enabled: false        # Set true if using Ollama
+    gpu_stub: true        # Shows helpful errors when Ollama not running
+    ollama_host: "host.docker.internal"  # Mac/Windows
+    # For Linux: use "172.17.0.1" or host network mode
+    ollama_port: 11434
+
+  # FinOps (profile: finops) --------------------------------------------------
+  finops:
+    enabled: false
+    cost_predictor: true
+    budget_webhook: true
+    finops_reporter: true
+
+  # Experimental (profile: experimental) --------------------------------------
+  experimental:
+    enabled: false
+    policy_router: true   # Cedar policy-based routing
+    semantic_cache: true  # Embedding-based caching
+
+  # Infrastructure (profile: infra) -------------------------------------------
+  infrastructure:
+    enabled: false
+    nginx: true
+    vault: true
+    landing_page: true
+
+  # Agent Gateway (profile: full) ---------------------------------------------
+  agent_gateway:
+    enabled: false
+    mcp_protocol: true
+    a2a_protocol: true
+
+  # Debug features (dev only) -------------------------------------------------
+  debug:
+    debug_mode: true
+    verbose_logging: true
+    hot_reload: true
+    mock_billing: true
+    cors_allow_all: true
+
+# =============================================================================
+# AI PROVIDERS
+# =============================================================================
+# Auto-enabled when API key is present in environment
+
+providers:
+  openai:
+    enabled: true         # Set false to disable even with API key
+    models: ["gpt-5", "gpt-5-mini", "gpt-4o", "gpt-4o-mini", "o3", "o4-mini"]
+  anthropic:
+    enabled: true
+    models: ["claude-opus-4.5", "claude-sonnet-4.5", "claude-haiku-4.5"]
+  google:
+    enabled: true
+    models: ["gemini-3-pro", "gemini-3-flash", "gemini-2.5-pro", "gemini-2.5-flash"]
+  xai:
+    enabled: true
+    models: ["grok-4", "grok-3", "grok-3-mini"]
+  deepseek:
+    enabled: true
+    models: ["deepseek-v3", "deepseek-r1", "deepseek-coder"]
+  bedrock:
+    enabled: false        # Requires AWS credentials
+    models: ["bedrock-claude-*", "bedrock-llama-*", "bedrock-nova-*"]
+  vertex:
+    enabled: false        # Requires GCP credentials
+    models: ["vertex-gemini-*", "vertex-claude-*"]
+  azure:
+    enabled: false        # Requires Azure credentials
+    models: ["azure-gpt-*", "azure-o*"]
+  ollama:
+    enabled: false        # Enable with local_models feature
+    models: ["llama-3.1-70b", "llama-3.1-8b", "mistral", "codellama"]
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+
 services:
   litellm:
     replicas: 1
     log_level: "DEBUG"
     cache_enabled: true
-    rate_limiting: false  # Disabled for dev
+    rate_limiting: false    # Disabled for dev
     detailed_debug: true
-
-  policy_router:
-    replicas: 1
-    metrics_cache_ttl: 5  # Short TTL for testing
-    cedar_policy_reload_interval: 10  # Fast reload
-
-  workflow_engine:
-    replicas: 1
-    checkpoint_interval: 5
-    max_concurrent_workflows: 10
+    health_check_interval: 7200  # 2 hours (save API costs)
 
   admin_api:
     replicas: 1
-    jwt_expiry_hours: 24  # Longer for dev convenience
+    jwt_expiry_hours: 24    # Longer for dev convenience
     cors_allow_all: true
+    migrations_on_startup: true
 
   admin_ui:
     replicas: 1
     hot_reload: true
     source_maps: true
 
+  policy_router:
+    replicas: 1
+    metrics_cache_ttl: 5    # Short TTL for testing
+    cedar_policy_reload_interval: 10
+
+  workflow_engine:
+    replicas: 1
+    checkpoint_interval: 5
+    max_concurrent_workflows: 10
+
   agentgateway:
     replicas: 1
     max_connections: 100
     debug_logging: true
 
-# Infrastructure - minimal for development
+# =============================================================================
+# INFRASTRUCTURE
+# =============================================================================
+
 infrastructure:
   postgres:
     replicas: 1
@@ -68,28 +172,30 @@ infrastructure:
     maxmemory: "128mb"
 
   vault:
-    auto_unseal: true  # Dev mode auto-unseals
+    auto_unseal: true       # Dev mode auto-unseals
     audit_logging: false
     dev_mode: true
 
-# Development secrets (defaults - override via env vars)
-secrets:
-  # These are placeholders - real values come from environment variables
-  vault_token: "root-token-for-dev"
-  postgres_password: "dev-password"
-  grafana_admin_password: "admin"
-  jwt_secret_length: 32
+# =============================================================================
+# SECURITY
+# =============================================================================
 
-# Development endpoints
+security:
+  ssl_enabled: false        # No SSL in dev
+  require_api_key: true
+  jwt_authentication: true
+  cedar_policies: true
+
+# =============================================================================
+# ENDPOINTS (for reference)
+# =============================================================================
+
 endpoints:
   litellm: "http://localhost:4000"
   admin_api: "http://localhost:8086"
   admin_ui: "http://localhost:5173"
-  vault: "http://localhost:8200"
   prometheus: "http://localhost:9090"
-  grafana: "http://localhost:3001"
-  temporal: "http://localhost:7233"
-
-# TLS disabled for development
-tls:
-  enabled: false
+  grafana: "http://localhost:3030"
+  jaeger: "http://localhost:16686"
+  temporal_ui: "http://localhost:8088"
+  vault: "http://localhost:8200"
