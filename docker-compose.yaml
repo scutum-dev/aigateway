@@ -406,6 +406,26 @@ services:
       - gateway-network
 
   # ===========================================
+  # GPU Stub Service (placeholder for vLLM/Ollama)
+  # Returns clear error when local models requested without GPU
+  # Replace with actual vLLM when GPU is available
+  # ===========================================
+  gpu-stub:
+    build:
+      context: ./src/gpu-stub
+      dockerfile: Dockerfile
+    container_name: gpu-stub
+    ports:
+      - "8090:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - gateway-network
+
+  # ===========================================
   # Admin API Service
   # ===========================================
   admin-api:

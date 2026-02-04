@@ -7,14 +7,16 @@
 # Model Configuration
 # ===========================================
 model_list:
-  # Self-hosted models via vLLM (through Agent Gateway)
+  # Self-hosted models via vLLM/Ollama (GPU required)
+  # Currently uses gpu-stub which returns clear error if no GPU backend
+  # To enable: replace gpu-stub with vLLM or Ollama service
   - model_name: "llama-3.1-70b"
     litellm_params:
       model: "openai/meta-llama/Llama-3.1-70B-Instruct"
-      api_base: "http://agentgateway:9000/v1"
-      api_key: "not-needed-for-vllm"
+      api_base: "http://gpu-stub:8000/v1"
+      api_key: "not-needed"
       custom_llm_provider: "openai"
-      timeout: 600  # 10 minutes for large model
+      timeout: 600
       stream_timeout: 600
     model_info:
       id: "llama-3.1-70b"
@@ -29,8 +31,8 @@ model_list:
   - model_name: "llama-3.1-8b"
     litellm_params:
       model: "openai/meta-llama/Llama-3.1-8B-Instruct"
-      api_base: "http://agentgateway:9000/v1"
-      api_key: "not-needed-for-vllm"
+      api_base: "http://gpu-stub:8000/v1"
+      api_key: "not-needed"
       custom_llm_provider: "openai"
       timeout: 300
       stream_timeout: 300
