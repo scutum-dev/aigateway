@@ -190,6 +190,26 @@ security:
 # ENDPOINTS (for reference)
 # =============================================================================
 
+# =============================================================================
+# DOMAIN & NETWORKING
+# =============================================================================
+# Configure for your environment (dev uses localhost)
+
+domain:
+  base: "localhost"               # Production: gateway.example.com
+  scheme: "http"                  # Production: https
+
+  # Service subdomains (production)
+  # api.gateway.example.com, admin.gateway.example.com, etc.
+  use_subdomains: false           # Set true for subdomain routing
+
+  subdomains:
+    api: "api"                    # api.{base} → LiteLLM
+    admin: "admin"                # admin.{base} → Admin UI
+    grafana: "grafana"            # grafana.{base} → Grafana
+    jaeger: "jaeger"              # jaeger.{base} → Jaeger
+
+# Service endpoints (auto-generated from domain config in production)
 endpoints:
   litellm: "http://localhost:4000"
   admin_api: "http://localhost:8086"

@@ -4,6 +4,25 @@
 environment: staging
 vault_prefix: "secret/ai-gateway/staging"
 
+# =============================================================================
+# DOMAIN & NETWORKING
+# =============================================================================
+
+domain:
+  base: "staging.gateway.example.com"  # Staging subdomain
+  scheme: "https"
+
+  use_subdomains: true
+
+  subdomains:
+    api: "api"                    # api.staging.gateway.example.com
+    admin: "admin"                # admin.staging.gateway.example.com
+    grafana: "grafana"
+    jaeger: "jaeger"
+
+# =============================================================================
+# FEATURE TOGGLES
+# =============================================================================
 # Staging-specific feature toggles
 features:
   opentelemetry_enabled: true

@@ -4,6 +4,26 @@
 
 version: "1.0"
 
+# =============================================================================
+# DOMAIN & NETWORKING (defaults)
+# =============================================================================
+# Override in environment-specific files
+
+domain:
+  base: "localhost"               # Override per environment
+  scheme: "http"                  # http for dev, https for staging/prod
+
+  use_subdomains: false           # True for production deployments
+
+  subdomains:
+    api: "api"
+    admin: "admin"
+    grafana: "grafana"
+    jaeger: "jaeger"
+
+# =============================================================================
+# FEATURE TOGGLES
+# =============================================================================
 # Feature toggles - enable/disable features per environment
 features:
   # Observability
