@@ -1,71 +1,77 @@
 # LiteLLM Proxy Configuration
-# This is the standalone config file that can be used for local development
-# or mounted as a ConfigMap in Kubernetes
 # Documentation: https://docs.litellm.ai/docs/proxy/configs
+#
+# Supported Providers:
+# - OpenAI (GPT-5, o3, o4-mini)
+# - Anthropic (Claude Opus 4.5, Sonnet 4.5, Haiku 4.5)
+# - Google (Gemini 3 Pro, 2.5 Pro/Flash)
+# - xAI (Grok 4, Grok 3)
+# - DeepSeek (V3.2, R1)
+# - AWS Bedrock (requires AWS credentials)
+# - Google Vertex AI (requires GCP credentials)
+# - Ollama (local models)
 
 # ===========================================
 # Model Configuration
 # ===========================================
 model_list:
-  # ===========================================
-  # Self-hosted models via Ollama
-  # ===========================================
-  # Install Ollama: https://ollama.com/download
-  # Run: ollama serve && ollama pull llama3.1:8b
-  #
-  # Primary: Ollama on host (host.docker.internal:11434)
-  # Fallback: gpu-stub returns helpful error message
 
-  - model_name: "llama-3.1-70b"
-    litellm_params:
-      model: "ollama/llama3.1:70b"
-      api_base: "http://host.docker.internal:11434"
-      timeout: 600
-      stream_timeout: 600
-    model_info:
-      id: "llama-3.1-70b"
-      mode: "chat"
-      input_cost_per_token: 0.0  # Free - self-hosted
-      output_cost_per_token: 0.0
-      max_tokens: 131072
-      supports_function_calling: true
-      supports_vision: false
+  # ===========================================
+  # OpenAI Models
+  # ===========================================
+  # Docs: https://platform.openai.com/docs/models
 
-  - model_name: "llama-3.1-8b"
+  # GPT-5 Series (Flagship)
+  - model_name: "gpt-5"
     litellm_params:
-      model: "ollama/llama3.1:8b"
-      api_base: "http://host.docker.internal:11434"
+      model: "gpt-5"
       timeout: 300
-      stream_timeout: 300
     model_info:
-      id: "llama-3.1-8b"
+      id: "gpt-5"
       mode: "chat"
-      input_cost_per_token: 0.0  # Free - self-hosted
-      output_cost_per_token: 0.0
-      max_tokens: 131072
-      supports_function_calling: true
-      supports_vision: false
 
-  # Fallback stub - shows helpful error if Ollama not running
-  - model_name: "llama-3.1-70b-fallback"
+  - model_name: "gpt-5.2"
     litellm_params:
-      model: "openai/llama3.1:70b"
-      api_base: "http://gpu-stub:8000/v1"
-      api_key: "not-needed"
+      model: "gpt-5.2"
+      timeout: 300
     model_info:
-      id: "llama-3.1-70b-fallback"
+      id: "gpt-5.2"
       mode: "chat"
 
-  - model_name: "llama-3.1-8b-fallback"
+  - model_name: "gpt-5-mini"
     litellm_params:
-      model: "openai/llama3.1:8b"
-      api_base: "http://gpu-stub:8000/v1"
-      api_key: "not-needed"
+      model: "gpt-5-mini"
+      timeout: 120
     model_info:
-      id: "llama-3.1-8b-fallback"
+      id: "gpt-5-mini"
       mode: "chat"
 
-  # OpenAI models (direct API for local dev)
+  # o-Series Reasoning Models
+  - model_name: "o3"
+    litellm_params:
+      model: "o3"
+      timeout: 600
+    model_info:
+      id: "o3"
+      mode: "chat"
+
+  - model_name: "o3-pro"
+    litellm_params:
+      model: "o3-pro"
+      timeout: 900
+    model_info:
+      id: "o3-pro"
+      mode: "chat"
+
+  - model_name: "o4-mini"
+    litellm_params:
+      model: "o4-mini"
+      timeout: 300
+    model_info:
+      id: "o4-mini"
+      mode: "chat"
+
+  # Legacy (still supported)
   - model_name: "gpt-4o"
     litellm_params:
       model: "gpt-4o"
@@ -82,40 +88,144 @@ model_list:
       id: "gpt-4o-mini"
       mode: "chat"
 
-  - model_name: "gpt-4-turbo"
+  # ===========================================
+  # Anthropic Models
+  # ===========================================
+  # Docs: https://docs.anthropic.com/claude/docs/models-overview
+
+  # Claude 4.5 Series (Latest)
+  - model_name: "claude-opus-4.5"
     litellm_params:
-      model: "gpt-4-turbo"
-      timeout: 300
+      model: "claude-opus-4-5-20251101"
+      timeout: 600
     model_info:
-      id: "gpt-4-turbo"
+      id: "claude-opus-4.5"
       mode: "chat"
 
-  # Anthropic models (direct API)
+  - model_name: "claude-sonnet-4.5"
+    litellm_params:
+      model: "claude-sonnet-4-5-20251101"
+      timeout: 300
+    model_info:
+      id: "claude-sonnet-4.5"
+      mode: "chat"
+
+  - model_name: "claude-haiku-4.5"
+    litellm_params:
+      model: "claude-haiku-4-5-20251101"
+      timeout: 120
+    model_info:
+      id: "claude-haiku-4.5"
+      mode: "chat"
+
+  # Claude 4 Series
+  - model_name: "claude-opus-4"
+    litellm_params:
+      model: "claude-opus-4-20250514"
+      timeout: 600
+    model_info:
+      id: "claude-opus-4"
+      mode: "chat"
+
+  - model_name: "claude-sonnet-4"
+    litellm_params:
+      model: "claude-sonnet-4-20250514"
+      timeout: 300
+    model_info:
+      id: "claude-sonnet-4"
+      mode: "chat"
+
+  # Legacy aliases
   - model_name: "claude-3-5-sonnet"
     litellm_params:
-      model: "claude-3-5-sonnet-20241022"
+      model: "claude-sonnet-4-5-20251101"
       timeout: 300
     model_info:
       id: "claude-3-5-sonnet"
       mode: "chat"
 
-  - model_name: "claude-3-opus"
-    litellm_params:
-      model: "claude-3-opus-20240229"
-      timeout: 600
-    model_info:
-      id: "claude-3-opus"
-      mode: "chat"
-
   - model_name: "claude-3-haiku"
     litellm_params:
-      model: "claude-3-haiku-20240307"
+      model: "claude-haiku-4-5-20251101"
       timeout: 120
     model_info:
       id: "claude-3-haiku"
       mode: "chat"
 
-  # XAI (Grok) models - use grok-3 (current)
+  # ===========================================
+  # Google Gemini Models
+  # ===========================================
+  # Docs: https://ai.google.dev/gemini-api/docs/models
+  # Requires: GOOGLE_API_KEY or GEMINI_API_KEY
+
+  # Gemini 3 Series (Latest)
+  - model_name: "gemini-3-pro"
+    litellm_params:
+      model: "gemini/gemini-3-pro"
+      timeout: 300
+    model_info:
+      id: "gemini-3-pro"
+      mode: "chat"
+
+  - model_name: "gemini-3-flash"
+    litellm_params:
+      model: "gemini/gemini-3-flash"
+      timeout: 120
+    model_info:
+      id: "gemini-3-flash"
+      mode: "chat"
+
+  # Gemini 2.5 Series
+  - model_name: "gemini-2.5-pro"
+    litellm_params:
+      model: "gemini/gemini-2.5-pro"
+      timeout: 300
+    model_info:
+      id: "gemini-2.5-pro"
+      mode: "chat"
+
+  - model_name: "gemini-2.5-flash"
+    litellm_params:
+      model: "gemini/gemini-2.5-flash"
+      timeout: 120
+    model_info:
+      id: "gemini-2.5-flash"
+      mode: "chat"
+
+  - model_name: "gemini-2.5-flash-lite"
+    litellm_params:
+      model: "gemini/gemini-2.5-flash-lite"
+      timeout: 60
+    model_info:
+      id: "gemini-2.5-flash-lite"
+      mode: "chat"
+
+  # ===========================================
+  # xAI Grok Models
+  # ===========================================
+  # Docs: https://docs.x.ai/docs/models
+  # Requires: XAI_API_KEY
+
+  # Grok 4 Series (Latest)
+  - model_name: "grok-4"
+    litellm_params:
+      model: "xai/grok-4"
+      api_key: "os.environ/XAI_API_KEY"
+      timeout: 300
+    model_info:
+      id: "grok-4"
+      mode: "chat"
+
+  - model_name: "grok-4-heavy"
+    litellm_params:
+      model: "xai/grok-4-heavy"
+      api_key: "os.environ/XAI_API_KEY"
+      timeout: 600
+    model_info:
+      id: "grok-4-heavy"
+      mode: "chat"
+
+  # Grok 3 Series
   - model_name: "grok-3"
     litellm_params:
       model: "xai/grok-3"
@@ -134,6 +244,198 @@ model_list:
       id: "grok-3-mini"
       mode: "chat"
 
+  # ===========================================
+  # DeepSeek Models
+  # ===========================================
+  # Docs: https://platform.deepseek.com/docs
+  # Requires: DEEPSEEK_API_KEY
+
+  - model_name: "deepseek-v3"
+    litellm_params:
+      model: "deepseek/deepseek-chat"
+      api_key: "os.environ/DEEPSEEK_API_KEY"
+      timeout: 300
+    model_info:
+      id: "deepseek-v3"
+      mode: "chat"
+
+  - model_name: "deepseek-r1"
+    litellm_params:
+      model: "deepseek/deepseek-reasoner"
+      api_key: "os.environ/DEEPSEEK_API_KEY"
+      timeout: 600
+    model_info:
+      id: "deepseek-r1"
+      mode: "chat"
+
+  - model_name: "deepseek-coder"
+    litellm_params:
+      model: "deepseek/deepseek-coder"
+      api_key: "os.environ/DEEPSEEK_API_KEY"
+      timeout: 300
+    model_info:
+      id: "deepseek-coder"
+      mode: "chat"
+
+  # ===========================================
+  # AWS Bedrock Models
+  # ===========================================
+  # Docs: https://docs.litellm.ai/docs/providers/bedrock
+  # Requires: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION_NAME
+
+  # Claude on Bedrock
+  - model_name: "bedrock-claude-sonnet"
+    litellm_params:
+      model: "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0"
+      aws_region_name: "us-east-1"
+      timeout: 300
+    model_info:
+      id: "bedrock-claude-sonnet"
+      mode: "chat"
+
+  - model_name: "bedrock-claude-haiku"
+    litellm_params:
+      model: "bedrock/anthropic.claude-3-5-haiku-20241022-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 120
+    model_info:
+      id: "bedrock-claude-haiku"
+      mode: "chat"
+
+  # Llama on Bedrock
+  - model_name: "bedrock-llama-3.1-70b"
+    litellm_params:
+      model: "bedrock/meta.llama3-1-70b-instruct-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 300
+    model_info:
+      id: "bedrock-llama-3.1-70b"
+      mode: "chat"
+
+  - model_name: "bedrock-llama-3.1-8b"
+    litellm_params:
+      model: "bedrock/meta.llama3-1-8b-instruct-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 120
+    model_info:
+      id: "bedrock-llama-3.1-8b"
+      mode: "chat"
+
+  # Mistral on Bedrock
+  - model_name: "bedrock-mistral-large"
+    litellm_params:
+      model: "bedrock/mistral.mistral-large-2407-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 300
+    model_info:
+      id: "bedrock-mistral-large"
+      mode: "chat"
+
+  # ===========================================
+  # Google Vertex AI Models
+  # ===========================================
+  # Docs: https://docs.litellm.ai/docs/providers/vertex
+  # Requires: GOOGLE_APPLICATION_CREDENTIALS, VERTEX_PROJECT, VERTEX_LOCATION
+
+  - model_name: "vertex-gemini-pro"
+    litellm_params:
+      model: "vertex_ai/gemini-2.5-pro"
+      vertex_project: "os.environ/VERTEX_PROJECT"
+      vertex_location: "us-central1"
+      timeout: 300
+    model_info:
+      id: "vertex-gemini-pro"
+      mode: "chat"
+
+  - model_name: "vertex-gemini-flash"
+    litellm_params:
+      model: "vertex_ai/gemini-2.5-flash"
+      vertex_project: "os.environ/VERTEX_PROJECT"
+      vertex_location: "us-central1"
+      timeout: 120
+    model_info:
+      id: "vertex-gemini-flash"
+      mode: "chat"
+
+  - model_name: "vertex-claude-sonnet"
+    litellm_params:
+      model: "vertex_ai/claude-3-5-sonnet-v2@20241022"
+      vertex_project: "os.environ/VERTEX_PROJECT"
+      vertex_location: "us-east5"
+      timeout: 300
+    model_info:
+      id: "vertex-claude-sonnet"
+      mode: "chat"
+
+  # ===========================================
+  # Self-hosted via Ollama (Local GPU)
+  # ===========================================
+  # Install: https://ollama.com/download
+  # Run: ollama serve && ollama pull llama3.1:8b
+
+  - model_name: "llama-3.1-70b"
+    litellm_params:
+      model: "ollama/llama3.1:70b"
+      api_base: "http://host.docker.internal:11434"
+      timeout: 600
+    model_info:
+      id: "llama-3.1-70b"
+      mode: "chat"
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+
+  - model_name: "llama-3.1-8b"
+    litellm_params:
+      model: "ollama/llama3.1:8b"
+      api_base: "http://host.docker.internal:11434"
+      timeout: 300
+    model_info:
+      id: "llama-3.1-8b"
+      mode: "chat"
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+
+  - model_name: "mistral"
+    litellm_params:
+      model: "ollama/mistral"
+      api_base: "http://host.docker.internal:11434"
+      timeout: 300
+    model_info:
+      id: "mistral"
+      mode: "chat"
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+
+  - model_name: "codellama"
+    litellm_params:
+      model: "ollama/codellama"
+      api_base: "http://host.docker.internal:11434"
+      timeout: 300
+    model_info:
+      id: "codellama"
+      mode: "chat"
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+
+  # Fallback stubs - show helpful error if Ollama not running
+  - model_name: "llama-3.1-70b-fallback"
+    litellm_params:
+      model: "openai/llama3.1:70b"
+      api_base: "http://gpu-stub:8000/v1"
+      api_key: "not-needed"
+    model_info:
+      id: "llama-3.1-70b-fallback"
+      mode: "chat"
+
+  - model_name: "llama-3.1-8b-fallback"
+    litellm_params:
+      model: "openai/llama3.1:8b"
+      api_base: "http://gpu-stub:8000/v1"
+      api_key: "not-needed"
+    model_info:
+      id: "llama-3.1-8b-fallback"
+      mode: "chat"
+
 # ===========================================
 # Router Configuration
 # ===========================================
@@ -146,72 +448,125 @@ router_settings:
 
   enable_pre_call_checks: true
 
-  # Retry configuration
   retry_policy:
     max_retries: 3
     retry_after_seconds: 1
     exponential_backoff: true
 
-  # Fallback configuration (new format)
+  # Fallback chains
   fallbacks:
-    - "gpt-4o": ["claude-3-5-sonnet", "grok-3"]
+    # OpenAI fallbacks
+    - "gpt-5": ["gpt-5.2", "claude-opus-4.5", "grok-4"]
+    - "gpt-5-mini": ["o4-mini", "claude-haiku-4.5", "gemini-3-flash"]
+    - "o3": ["o3-pro", "gpt-5", "deepseek-r1"]
+    - "gpt-4o": ["claude-sonnet-4.5", "grok-3"]
+    - "gpt-4o-mini": ["claude-haiku-4.5", "grok-3-mini"]
+    # Anthropic fallbacks
+    - "claude-opus-4.5": ["claude-sonnet-4.5", "gpt-5", "grok-4"]
+    - "claude-sonnet-4.5": ["claude-opus-4.5", "gpt-5", "gemini-3-pro"]
+    - "claude-haiku-4.5": ["gpt-5-mini", "gemini-3-flash"]
     - "claude-3-5-sonnet": ["gpt-4o", "grok-3"]
-    - "gpt-4o-mini": ["claude-3-haiku", "grok-3-mini"]
     - "claude-3-haiku": ["gpt-4o-mini", "grok-3-mini"]
-    - "llama-3.1-70b": ["llama-3.1-70b-fallback"]
-    - "llama-3.1-8b": ["llama-3.1-8b-fallback"]
+    # Google fallbacks
+    - "gemini-3-pro": ["gemini-2.5-pro", "claude-sonnet-4.5", "gpt-5"]
+    - "gemini-3-flash": ["gemini-2.5-flash", "claude-haiku-4.5", "gpt-5-mini"]
+    # xAI fallbacks
+    - "grok-4": ["grok-3", "gpt-5", "claude-opus-4.5"]
+    - "grok-3": ["grok-4", "gpt-4o", "claude-sonnet-4.5"]
+    # DeepSeek fallbacks
+    - "deepseek-v3": ["deepseek-r1", "gpt-4o", "claude-sonnet-4.5"]
+    - "deepseek-r1": ["o3", "deepseek-v3"]
+    # Local model fallbacks
+    - "llama-3.1-70b": ["llama-3.1-70b-fallback", "bedrock-llama-3.1-70b"]
+    - "llama-3.1-8b": ["llama-3.1-8b-fallback", "bedrock-llama-3.1-8b"]
 
   # Model group aliases for semantic routing
   model_group_alias:
+    # By capability
     "fast":
-      - "gpt-4o-mini"
-      - "claude-3-haiku"
+      - "gpt-5-mini"
+      - "claude-haiku-4.5"
+      - "gemini-3-flash"
       - "grok-3-mini"
     "smart":
-      - "gpt-4o"
-      - "claude-3-5-sonnet"
-      - "grok-3"
+      - "gpt-5"
+      - "claude-sonnet-4.5"
+      - "gemini-3-pro"
+      - "grok-4"
     "powerful":
-      - "claude-3-opus"
-      - "gpt-4-turbo"
-    "xai":
-      - "grok-3"
-      - "grok-3-mini"
-    "openai":
-      - "gpt-4o"
-      - "gpt-4o-mini"
-      - "gpt-4-turbo"
-    "anthropic":
-      - "claude-3-5-sonnet"
-      - "claude-3-opus"
-      - "claude-3-haiku"
+      - "gpt-5.2"
+      - "claude-opus-4.5"
+      - "o3-pro"
+      - "grok-4-heavy"
+    "reasoning":
+      - "o3"
+      - "o3-pro"
+      - "deepseek-r1"
+    "coding":
+      - "claude-sonnet-4.5"
+      - "deepseek-coder"
+      - "codellama"
     "cost-effective":
-      - "gpt-4o-mini"
-      - "claude-3-haiku"
-      - "grok-3-mini"
+      - "gpt-5-mini"
+      - "claude-haiku-4.5"
+      - "gemini-2.5-flash-lite"
+      - "deepseek-v3"
+    # By provider
+    "openai":
+      - "gpt-5"
+      - "gpt-5.2"
+      - "gpt-5-mini"
+      - "o3"
+      - "o4-mini"
+    "anthropic":
+      - "claude-opus-4.5"
+      - "claude-sonnet-4.5"
+      - "claude-haiku-4.5"
+    "google":
+      - "gemini-3-pro"
+      - "gemini-3-flash"
+      - "gemini-2.5-pro"
+    "xai":
+      - "grok-4"
+      - "grok-4-heavy"
+      - "grok-3"
+    "deepseek":
+      - "deepseek-v3"
+      - "deepseek-r1"
+      - "deepseek-coder"
+    "bedrock":
+      - "bedrock-claude-sonnet"
+      - "bedrock-claude-haiku"
+      - "bedrock-llama-3.1-70b"
+      - "bedrock-mistral-large"
+    "vertex":
+      - "vertex-gemini-pro"
+      - "vertex-gemini-flash"
+      - "vertex-claude-sonnet"
+    "local":
+      - "llama-3.1-70b"
+      - "llama-3.1-8b"
+      - "mistral"
+      - "codellama"
 
 # ===========================================
 # General Settings
 # ===========================================
 general_settings:
-  # Database configuration
   database_url: "os.environ/DATABASE_URL"
   master_key: "os.environ/LITELLM_MASTER_KEY"
 
-  # OpenTelemetry configuration
   otel_exporter: "otlp_http"
   otel_endpoint: "http://otel-collector:4318"
 
-  # Logging
   store_model_in_db: true
   max_request_size_mb: 50
   max_response_size_mb: 50
 
-  # Health checks - every 2 hours to save costs (7200 seconds)
+  # Health checks - every 2 hours to save API costs
   background_health_checks: true
   health_check_interval: 7200
 
-  # Cache configuration
   cache: true
   cache_params:
     type: "redis"
@@ -224,75 +579,28 @@ general_settings:
 # LiteLLM Settings
 # ===========================================
 litellm_settings:
-  # Callbacks - include prometheus for metrics
   success_callback: ["otel", "prometheus"]
   failure_callback: ["otel", "prometheus"]
   service_callback: ["prometheus"]
 
-  # Token counting
   count_tokens: true
-
-  # Custom pricing for self-hosted models
-  custom_pricing:
-    - model: "llama-3.1-70b"
-      input_cost_per_token: 0.0000001
-      output_cost_per_token: 0.0000003
-    - model: "llama-3.1-8b"
-      input_cost_per_token: 0.00000005
-      output_cost_per_token: 0.00000015
-
-  # Request handling
   drop_params: true
   add_function_to_prompt: true
 
-  # Timeout defaults
   request_timeout: 300
   stream_timeout: 600
 
 # ===========================================
-# Budget & Rate Limiting (Examples)
+# Budget Configuration
 # ===========================================
-# Note: In production, these are typically managed via API
-# but can be seeded here for initial setup
-
-# Example budget configuration
 budget_config:
-  # Global budget limits
   global_budget:
-    soft_budget: 1000.00  # $1000 soft limit (warning)
-    max_budget: 1500.00   # $1500 hard limit (reject)
+    soft_budget: 1000.00
+    max_budget: 1500.00
     budget_duration: "monthly"
 
-  # Default limits for new keys
   default_key_config:
     max_budget: 100.00
     budget_duration: "monthly"
     rpm_limit: 100
     tpm_limit: 100000
-
-# Example team budgets (seeded via API in production)
-team_budgets:
-  - team_id: "engineering"
-    max_budget: 5000.00
-    budget_duration: "monthly"
-    models:
-      - "gpt-4o"
-      - "claude-3-5-sonnet"
-      - "llama-3.1-70b"
-      - "llama-3.1-8b"
-
-  - team_id: "data-science"
-    max_budget: 10000.00
-    budget_duration: "monthly"
-    models:
-      - "gpt-4o"
-      - "claude-3-opus"
-      - "llama-3.1-70b"
-
-  - team_id: "product"
-    max_budget: 2000.00
-    budget_duration: "monthly"
-    models:
-      - "gpt-4o-mini"
-      - "claude-3-haiku"
-      - "llama-3.1-8b"
