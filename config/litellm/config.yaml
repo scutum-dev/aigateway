@@ -7,8 +7,9 @@
 # - Google (Gemini 3 Pro, 2.5 Pro/Flash)
 # - xAI (Grok 4, Grok 3)
 # - DeepSeek (V3.2, R1)
-# - AWS Bedrock (requires AWS credentials)
-# - Google Vertex AI (requires GCP credentials)
+# - AWS Bedrock (~100 models: Claude, Llama 4, Nova, Mistral, Titan, DeepSeek)
+# - Google Vertex AI (200+ models: Gemini, Claude, DeepSeek)
+# - Azure OpenAI (GPT-5, GPT-4.1, o-series, embeddings, audio)
 # - Ollama (local models)
 
 # ===========================================
@@ -282,8 +283,36 @@ model_list:
   # ===========================================
   # Docs: https://docs.litellm.ai/docs/providers/bedrock
   # Requires: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION_NAME
+  # ~100 serverless models available
 
-  # Claude on Bedrock
+  # Anthropic Claude on Bedrock
+  - model_name: "bedrock-claude-opus-4.5"
+    litellm_params:
+      model: "bedrock/anthropic.claude-opus-4-5-20251101-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 600
+    model_info:
+      id: "bedrock-claude-opus-4.5"
+      mode: "chat"
+
+  - model_name: "bedrock-claude-sonnet-4.5"
+    litellm_params:
+      model: "bedrock/anthropic.claude-sonnet-4-5-20251101-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 300
+    model_info:
+      id: "bedrock-claude-sonnet-4.5"
+      mode: "chat"
+
+  - model_name: "bedrock-claude-haiku-4.5"
+    litellm_params:
+      model: "bedrock/anthropic.claude-haiku-4-5-20251101-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 120
+    model_info:
+      id: "bedrock-claude-haiku-4.5"
+      mode: "chat"
+
   - model_name: "bedrock-claude-sonnet"
     litellm_params:
       model: "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0"
@@ -302,7 +331,52 @@ model_list:
       id: "bedrock-claude-haiku"
       mode: "chat"
 
-  # Llama on Bedrock
+  # Meta Llama on Bedrock
+  - model_name: "bedrock-llama-4-405b"
+    litellm_params:
+      model: "bedrock/meta.llama4-405b-instruct-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 600
+    model_info:
+      id: "bedrock-llama-4-405b"
+      mode: "chat"
+
+  - model_name: "bedrock-llama-4-70b"
+    litellm_params:
+      model: "bedrock/meta.llama4-70b-instruct-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 300
+    model_info:
+      id: "bedrock-llama-4-70b"
+      mode: "chat"
+
+  - model_name: "bedrock-llama-3.3-70b"
+    litellm_params:
+      model: "bedrock/meta.llama3-3-70b-instruct-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 300
+    model_info:
+      id: "bedrock-llama-3.3-70b"
+      mode: "chat"
+
+  - model_name: "bedrock-llama-3.2-90b"
+    litellm_params:
+      model: "bedrock/meta.llama3-2-90b-instruct-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 300
+    model_info:
+      id: "bedrock-llama-3.2-90b"
+      mode: "chat"
+
+  - model_name: "bedrock-llama-3.2-11b"
+    litellm_params:
+      model: "bedrock/meta.llama3-2-11b-instruct-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 120
+    model_info:
+      id: "bedrock-llama-3.2-11b"
+      mode: "chat"
+
   - model_name: "bedrock-llama-3.1-70b"
     litellm_params:
       model: "bedrock/meta.llama3-1-70b-instruct-v1:0"
@@ -322,6 +396,15 @@ model_list:
       mode: "chat"
 
   # Mistral on Bedrock
+  - model_name: "bedrock-mistral-large-3"
+    litellm_params:
+      model: "bedrock/mistral.mistral-large-3-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 300
+    model_info:
+      id: "bedrock-mistral-large-3"
+      mode: "chat"
+
   - model_name: "bedrock-mistral-large"
     litellm_params:
       model: "bedrock/mistral.mistral-large-2407-v1:0"
@@ -331,12 +414,179 @@ model_list:
       id: "bedrock-mistral-large"
       mode: "chat"
 
+  - model_name: "bedrock-ministral-8b"
+    litellm_params:
+      model: "bedrock/mistral.ministral-8b-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 120
+    model_info:
+      id: "bedrock-ministral-8b"
+      mode: "chat"
+
+  - model_name: "bedrock-ministral-3b"
+    litellm_params:
+      model: "bedrock/mistral.ministral-3b-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 60
+    model_info:
+      id: "bedrock-ministral-3b"
+      mode: "chat"
+
+  # Amazon Nova on Bedrock
+  - model_name: "bedrock-nova-pro"
+    litellm_params:
+      model: "bedrock/amazon.nova-pro-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 300
+    model_info:
+      id: "bedrock-nova-pro"
+      mode: "chat"
+
+  - model_name: "bedrock-nova-lite"
+    litellm_params:
+      model: "bedrock/amazon.nova-lite-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 120
+    model_info:
+      id: "bedrock-nova-lite"
+      mode: "chat"
+
+  - model_name: "bedrock-nova-micro"
+    litellm_params:
+      model: "bedrock/amazon.nova-micro-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 60
+    model_info:
+      id: "bedrock-nova-micro"
+      mode: "chat"
+
+  # Amazon Titan on Bedrock
+  - model_name: "bedrock-titan-text-premier"
+    litellm_params:
+      model: "bedrock/amazon.titan-text-premier-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 300
+    model_info:
+      id: "bedrock-titan-text-premier"
+      mode: "chat"
+
+  - model_name: "bedrock-titan-text-express"
+    litellm_params:
+      model: "bedrock/amazon.titan-text-express-v1"
+      aws_region_name: "us-east-1"
+      timeout: 120
+    model_info:
+      id: "bedrock-titan-text-express"
+      mode: "chat"
+
+  # DeepSeek on Bedrock
+  - model_name: "bedrock-deepseek-r1"
+    litellm_params:
+      model: "bedrock/deepseek.deepseek-r1-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 600
+    model_info:
+      id: "bedrock-deepseek-r1"
+      mode: "chat"
+
+  # Cohere on Bedrock
+  - model_name: "bedrock-cohere-command-r-plus"
+    litellm_params:
+      model: "bedrock/cohere.command-r-plus-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 300
+    model_info:
+      id: "bedrock-cohere-command-r-plus"
+      mode: "chat"
+
+  - model_name: "bedrock-cohere-command-r"
+    litellm_params:
+      model: "bedrock/cohere.command-r-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 120
+    model_info:
+      id: "bedrock-cohere-command-r"
+      mode: "chat"
+
+  # AI21 on Bedrock
+  - model_name: "bedrock-jamba-1.5-large"
+    litellm_params:
+      model: "bedrock/ai21.jamba-1-5-large-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 300
+    model_info:
+      id: "bedrock-jamba-1.5-large"
+      mode: "chat"
+
+  - model_name: "bedrock-jamba-1.5-mini"
+    litellm_params:
+      model: "bedrock/ai21.jamba-1-5-mini-v1:0"
+      aws_region_name: "us-east-1"
+      timeout: 120
+    model_info:
+      id: "bedrock-jamba-1.5-mini"
+      mode: "chat"
+
   # ===========================================
   # Google Vertex AI Models
   # ===========================================
   # Docs: https://docs.litellm.ai/docs/providers/vertex
   # Requires: GOOGLE_APPLICATION_CREDENTIALS, VERTEX_PROJECT, VERTEX_LOCATION
+  # 200+ models in Model Garden
 
+  # Gemini 3 Series (Preview)
+  - model_name: "vertex-gemini-3-pro"
+    litellm_params:
+      model: "vertex_ai/gemini-3.0-pro"
+      vertex_project: "os.environ/VERTEX_PROJECT"
+      vertex_location: "us-central1"
+      timeout: 300
+    model_info:
+      id: "vertex-gemini-3-pro"
+      mode: "chat"
+
+  - model_name: "vertex-gemini-3-flash"
+    litellm_params:
+      model: "vertex_ai/gemini-3.0-flash"
+      vertex_project: "os.environ/VERTEX_PROJECT"
+      vertex_location: "us-central1"
+      timeout: 120
+    model_info:
+      id: "vertex-gemini-3-flash"
+      mode: "chat"
+
+  # Gemini 2.5 Series
+  - model_name: "vertex-gemini-2.5-pro"
+    litellm_params:
+      model: "vertex_ai/gemini-2.5-pro"
+      vertex_project: "os.environ/VERTEX_PROJECT"
+      vertex_location: "us-central1"
+      timeout: 300
+    model_info:
+      id: "vertex-gemini-2.5-pro"
+      mode: "chat"
+
+  - model_name: "vertex-gemini-2.5-flash"
+    litellm_params:
+      model: "vertex_ai/gemini-2.5-flash"
+      vertex_project: "os.environ/VERTEX_PROJECT"
+      vertex_location: "us-central1"
+      timeout: 120
+    model_info:
+      id: "vertex-gemini-2.5-flash"
+      mode: "chat"
+
+  - model_name: "vertex-gemini-2.5-flash-lite"
+    litellm_params:
+      model: "vertex_ai/gemini-2.5-flash-lite"
+      vertex_project: "os.environ/VERTEX_PROJECT"
+      vertex_location: "us-central1"
+      timeout: 60
+    model_info:
+      id: "vertex-gemini-2.5-flash-lite"
+      mode: "chat"
+
+  # Legacy aliases
   - model_name: "vertex-gemini-pro"
     litellm_params:
       model: "vertex_ai/gemini-2.5-pro"
@@ -357,6 +607,27 @@ model_list:
       id: "vertex-gemini-flash"
       mode: "chat"
 
+  # Anthropic Claude on Vertex AI
+  - model_name: "vertex-claude-opus-4.5"
+    litellm_params:
+      model: "vertex_ai/claude-opus-4-5@20251101"
+      vertex_project: "os.environ/VERTEX_PROJECT"
+      vertex_location: "us-east5"
+      timeout: 600
+    model_info:
+      id: "vertex-claude-opus-4.5"
+      mode: "chat"
+
+  - model_name: "vertex-claude-haiku-4.5"
+    litellm_params:
+      model: "vertex_ai/claude-haiku-4-5@20251101"
+      vertex_project: "os.environ/VERTEX_PROJECT"
+      vertex_location: "us-east5"
+      timeout: 120
+    model_info:
+      id: "vertex-claude-haiku-4.5"
+      mode: "chat"
+
   - model_name: "vertex-claude-sonnet"
     litellm_params:
       model: "vertex_ai/claude-3-5-sonnet-v2@20241022"
@@ -366,6 +637,183 @@ model_list:
     model_info:
       id: "vertex-claude-sonnet"
       mode: "chat"
+
+  # DeepSeek on Vertex AI
+  - model_name: "vertex-deepseek-v3"
+    litellm_params:
+      model: "vertex_ai/deepseek-v3.2"
+      vertex_project: "os.environ/VERTEX_PROJECT"
+      vertex_location: "us-central1"
+      timeout: 300
+    model_info:
+      id: "vertex-deepseek-v3"
+      mode: "chat"
+
+  # ===========================================
+  # Azure OpenAI Models
+  # ===========================================
+  # Docs: https://docs.litellm.ai/docs/providers/azure
+  # Requires: AZURE_API_KEY, AZURE_API_BASE, AZURE_API_VERSION
+
+  # GPT-5 Series (Registration Required)
+  - model_name: "azure-gpt-5.2"
+    litellm_params:
+      model: "azure/gpt-5.2"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_key: "os.environ/AZURE_API_KEY"
+      api_version: "2025-01-01-preview"
+      timeout: 300
+    model_info:
+      id: "azure-gpt-5.2"
+      mode: "chat"
+
+  - model_name: "azure-gpt-5.1"
+    litellm_params:
+      model: "azure/gpt-5.1"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_key: "os.environ/AZURE_API_KEY"
+      api_version: "2025-01-01-preview"
+      timeout: 300
+    model_info:
+      id: "azure-gpt-5.1"
+      mode: "chat"
+
+  # GPT-4.1 Series
+  - model_name: "azure-gpt-4.1"
+    litellm_params:
+      model: "azure/gpt-4.1"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_key: "os.environ/AZURE_API_KEY"
+      api_version: "2025-01-01-preview"
+      timeout: 300
+    model_info:
+      id: "azure-gpt-4.1"
+      mode: "chat"
+
+  - model_name: "azure-gpt-4.1-nano"
+    litellm_params:
+      model: "azure/gpt-4.1-nano"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_key: "os.environ/AZURE_API_KEY"
+      api_version: "2025-01-01-preview"
+      timeout: 120
+    model_info:
+      id: "azure-gpt-4.1-nano"
+      mode: "chat"
+
+  # o-Series Reasoning Models
+  - model_name: "azure-o4-mini"
+    litellm_params:
+      model: "azure/o4-mini"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_key: "os.environ/AZURE_API_KEY"
+      api_version: "2025-01-01-preview"
+      timeout: 300
+    model_info:
+      id: "azure-o4-mini"
+      mode: "chat"
+
+  - model_name: "azure-o3"
+    litellm_params:
+      model: "azure/o3"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_key: "os.environ/AZURE_API_KEY"
+      api_version: "2025-01-01-preview"
+      timeout: 600
+    model_info:
+      id: "azure-o3"
+      mode: "chat"
+
+  - model_name: "azure-o3-mini"
+    litellm_params:
+      model: "azure/o3-mini"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_key: "os.environ/AZURE_API_KEY"
+      api_version: "2025-01-01-preview"
+      timeout: 300
+    model_info:
+      id: "azure-o3-mini"
+      mode: "chat"
+
+  - model_name: "azure-o1"
+    litellm_params:
+      model: "azure/o1"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_key: "os.environ/AZURE_API_KEY"
+      api_version: "2025-01-01-preview"
+      timeout: 600
+    model_info:
+      id: "azure-o1"
+      mode: "chat"
+
+  # GPT-4o Series
+  - model_name: "azure-gpt-4o"
+    litellm_params:
+      model: "azure/gpt-4o"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_key: "os.environ/AZURE_API_KEY"
+      api_version: "2025-01-01-preview"
+      timeout: 300
+    model_info:
+      id: "azure-gpt-4o"
+      mode: "chat"
+
+  - model_name: "azure-gpt-4o-mini"
+    litellm_params:
+      model: "azure/gpt-4o-mini"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_key: "os.environ/AZURE_API_KEY"
+      api_version: "2025-01-01-preview"
+      timeout: 120
+    model_info:
+      id: "azure-gpt-4o-mini"
+      mode: "chat"
+
+  # Audio Models
+  - model_name: "azure-gpt-4o-transcribe"
+    litellm_params:
+      model: "azure/gpt-4o-transcribe"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_key: "os.environ/AZURE_API_KEY"
+      api_version: "2025-01-01-preview"
+      timeout: 300
+    model_info:
+      id: "azure-gpt-4o-transcribe"
+      mode: "audio_transcription"
+
+  - model_name: "azure-gpt-4o-mini-tts"
+    litellm_params:
+      model: "azure/gpt-4o-mini-tts"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_key: "os.environ/AZURE_API_KEY"
+      api_version: "2025-01-01-preview"
+      timeout: 120
+    model_info:
+      id: "azure-gpt-4o-mini-tts"
+      mode: "audio_speech"
+
+  # Embeddings
+  - model_name: "azure-text-embedding-3-large"
+    litellm_params:
+      model: "azure/text-embedding-3-large"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_key: "os.environ/AZURE_API_KEY"
+      api_version: "2025-01-01-preview"
+      timeout: 60
+    model_info:
+      id: "azure-text-embedding-3-large"
+      mode: "embedding"
+
+  - model_name: "azure-text-embedding-3-small"
+    litellm_params:
+      model: "azure/text-embedding-3-small"
+      api_base: "os.environ/AZURE_API_BASE"
+      api_key: "os.environ/AZURE_API_KEY"
+      api_version: "2025-01-01-preview"
+      timeout: 60
+    model_info:
+      id: "azure-text-embedding-3-small"
+      mode: "embedding"
 
   # ===========================================
   # Self-hosted via Ollama (Local GPU)
@@ -535,14 +983,33 @@ router_settings:
       - "deepseek-r1"
       - "deepseek-coder"
     "bedrock":
-      - "bedrock-claude-sonnet"
-      - "bedrock-claude-haiku"
-      - "bedrock-llama-3.1-70b"
-      - "bedrock-mistral-large"
+      - "bedrock-claude-opus-4.5"
+      - "bedrock-claude-sonnet-4.5"
+      - "bedrock-claude-haiku-4.5"
+      - "bedrock-llama-4-405b"
+      - "bedrock-llama-4-70b"
+      - "bedrock-llama-3.3-70b"
+      - "bedrock-mistral-large-3"
+      - "bedrock-nova-pro"
+      - "bedrock-deepseek-r1"
+      - "bedrock-cohere-command-r-plus"
     "vertex":
-      - "vertex-gemini-pro"
-      - "vertex-gemini-flash"
-      - "vertex-claude-sonnet"
+      - "vertex-gemini-3-pro"
+      - "vertex-gemini-3-flash"
+      - "vertex-gemini-2.5-pro"
+      - "vertex-gemini-2.5-flash"
+      - "vertex-claude-opus-4.5"
+      - "vertex-claude-haiku-4.5"
+      - "vertex-deepseek-v3"
+    "azure":
+      - "azure-gpt-5.2"
+      - "azure-gpt-5.1"
+      - "azure-gpt-4.1"
+      - "azure-o4-mini"
+      - "azure-o3"
+      - "azure-o3-mini"
+      - "azure-gpt-4o"
+      - "azure-gpt-4o-mini"
     "local":
       - "llama-3.1-70b"
       - "llama-3.1-8b"
