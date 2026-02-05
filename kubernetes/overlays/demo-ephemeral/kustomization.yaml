@@ -1,0 +1,63 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gateway-demo
+
+resources:
+  # Namespace
+  - namespace.yaml
+  # Core components
+  - ../../base/database
+  - ../../base/litellm
+  - ../../base/agentgateway
+  - ../../base/observability/prometheus
+  - ../../base/observability/grafana
+  # Additional services
+  - ../../base/services
+
+patches:
+  # Scale down deployments for demo
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+
+  # Scale down HPA for demo
+  - patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 2
+    target:
+      kind: HorizontalPodAutoscaler
+
+  # Patch ClusterRoleBinding for agentgateway
+  - patch: |-
+      - op: replace
+        path: /subjects/0/namespace
+        value: gateway-demo
+    target:
+      kind: ClusterRoleBinding
+      name: agentgateway
+
+  # Patch ClusterRoleBinding for prometheus
+  - patch: |-
+      - op: replace
+        path: /subjects/0/namespace
+        value: gateway-demo
+    target:
+      kind: ClusterRoleBinding
+      name: prometheus
+
+  # Keep litellm as ClusterIP - Terraform manages Ingress with TLS
+  # External access via nginx-ingress -> litellm:4000
+
+configMapGenerator:
+  - name: demo-config
+    literals:
+      - ENVIRONMENT=demo
+      - LOG_LEVEL=info

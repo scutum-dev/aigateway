@@ -1,0 +1,47 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gateway-demo
+
+resources:
+  - namespace.yaml
+  - secrets.yaml
+  - ../../base/litellm
+  - ../../base/agentgateway
+  - ../../base/observability/prometheus
+  - ../../base/observability/grafana
+
+# Patches to use external DB/Redis
+patches:
+  # Remove postgres and redis deployments (using Cloud SQL/Memorystore)
+  - target:
+      kind: StatefulSet
+      name: postgresql
+    patch: |
+      $patch: delete
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: postgresql
+
+  # Scale down for demo
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+
+configMapGenerator:
+  - name: demo-config
+    literals:
+      - ENVIRONMENT=demo
+      - LOG_LEVEL=info
+
+# Note: Secrets should be created separately via:
+# kubectl create secret generic gateway-secrets \
+#   --from-literal=DATABASE_URL=postgresql://litellm:PASSWORD@CLOUD_SQL_IP:5432/litellm \
+#   --from-literal=REDIS_URL=redis://MEMORYSTORE_IP:6379 \
+#   --from-literal=LITELLM_MASTER_KEY=$LITELLM_KEY \
+#   --from-literal=OPENAI_API_KEY=sk-xxx \
+#   --from-literal=ANTHROPIC_API_KEY=sk-xxx

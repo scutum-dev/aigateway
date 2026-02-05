@@ -208,17 +208,25 @@ Web-based platform management:
      -d '{"api_key": "$LITELLM_KEY"}'
    ```
 
-### Kubernetes Deployment
+### Cloud Deployment (GCP)
+
+Single-command deployment using Terraform:
 
 ```bash
-# Development
-kubectl apply -k kubernetes/overlays/dev
+make demo           # Deploy demo environment
+make staging        # Deploy staging environment
+make prod           # Deploy production (requires confirmation)
+make demo-destroy   # Tear down demo
+```
 
-# Staging
-kubectl apply -k kubernetes/overlays/staging
+See [Cloud Deployment Guide](docs/CLOUD_DEPLOYMENT.md) for full documentation.
 
-# Production
-kubectl apply -k kubernetes/overlays/production
+### Local Kubernetes Deployment
+
+```bash
+kubectl apply -k kubernetes/overlays/dev        # Development
+kubectl apply -k kubernetes/overlays/staging    # Staging
+kubectl apply -k kubernetes/overlays/production # Production
 ```
 
 ## API Reference

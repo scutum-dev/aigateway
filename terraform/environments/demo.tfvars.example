@@ -1,0 +1,67 @@
+# AI Gateway - Demo Environment Configuration
+#
+# Usage:
+#   1. Copy this file: cp demo.tfvars.example demo.tfvars
+#   2. Fill in your values
+#   3. Run: make demo
+#
+# NOTE: demo.tfvars is gitignored - never commit API keys!
+
+# =============================================================================
+# GCP Configuration
+# =============================================================================
+project_id = "your-gcp-project-id"
+region     = "asia-south1"
+
+# =============================================================================
+# AWS Configuration (Route53 + Bedrock)
+# =============================================================================
+aws_region = "ap-south-1"
+
+# =============================================================================
+# Domain Configuration
+# =============================================================================
+domain            = "yourdomain.com"
+subdomain         = "gateway"
+letsencrypt_email = "admin@yourdomain.com"
+
+# =============================================================================
+# API Keys (required for LLM providers)
+# =============================================================================
+openai_api_key    = ""  # sk-proj-...
+anthropic_api_key = ""  # sk-ant-api03-...
+xai_api_key       = ""  # xai-...
+google_api_key    = ""
+deepseek_api_key  = ""
+
+# AWS Credentials for Bedrock (optional)
+aws_access_key_id     = ""
+aws_secret_access_key = ""
+
+# Vertex AI (optional)
+vertex_project = ""
+
+# =============================================================================
+# Gateway Configuration
+# =============================================================================
+litellm_master_key = "sk-change-me-to-secure-key"
+grafana_password   = "change-me-secure-password"
+
+# =============================================================================
+# Environment Settings
+# =============================================================================
+environment       = "demo"
+kustomize_overlay = "demo-ephemeral"
+
+# =============================================================================
+# Scaling (minimal for demo)
+# =============================================================================
+replicas            = 1
+litellm_replicas    = 1
+min_replicas        = 1
+max_replicas        = 3
+
+# =============================================================================
+# Safety
+# =============================================================================
+deletion_protection = false

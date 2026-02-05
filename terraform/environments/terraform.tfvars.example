@@ -1,0 +1,46 @@
+# AI Gateway - Shared Configuration
+#
+# Copy this file to terraform.tfvars and fill in your values.
+# These values are used across all environments (demo, staging, prod).
+#
+# Environment-specific settings (replicas, deletion_protection, subdomain)
+# are in the respective *.tfvars files (demo.tfvars, staging.tfvars, prod.tfvars).
+
+# =============================================================================
+# GCP Configuration (Required)
+# =============================================================================
+project_id = "your-gcp-project-id"
+region     = "asia-south1"
+
+# =============================================================================
+# AWS Configuration (Required for Route53 DNS)
+# =============================================================================
+aws_region = "ap-south-1"
+
+# =============================================================================
+# Domain Configuration (Required)
+# =============================================================================
+domain            = "yourdomain.com"
+letsencrypt_email = "admin@yourdomain.com"
+
+# =============================================================================
+# API Keys (Add the ones you want to use)
+# =============================================================================
+openai_api_key    = ""
+anthropic_api_key = ""
+xai_api_key       = ""
+google_api_key    = ""
+deepseek_api_key  = ""
+
+# AWS Credentials for Bedrock (optional)
+aws_access_key_id     = ""
+aws_secret_access_key = ""
+
+# Vertex AI (optional - defaults to project_id)
+vertex_project = ""
+
+# =============================================================================
+# Gateway Configuration
+# =============================================================================
+litellm_master_key = "sk-your-master-key"
+grafana_password   = "your-secure-password"

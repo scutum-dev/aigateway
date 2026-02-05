@@ -1,16 +1,13 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: agentgateway
-  labels:
-    app.kubernetes.io/name: agentgateway
-    app.kubernetes.io/part-of: ai-gateway-platform
+# Agent Gateway Deployment for AI Gateway Platform
+# Namespace and secrets are managed by overlays
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: agentgateway
-  namespace: agentgateway
+  labels:
+    app: agentgateway
+    app.kubernetes.io/name: agentgateway
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -35,24 +32,25 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: agentgateway
-    namespace: agentgateway
+    namespace: gateway-demo  # Will be patched by overlay
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: agentgateway
-  namespace: agentgateway
   labels:
+    app: agentgateway
     app.kubernetes.io/name: agentgateway
     app.kubernetes.io/component: gateway
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app.kubernetes.io/name: agentgateway
+      app: agentgateway
   template:
     metadata:
       labels:
+        app: agentgateway
         app.kubernetes.io/name: agentgateway
       annotations:
         prometheus.io/scrape: "true"
@@ -81,21 +79,20 @@ spec:
             - name: RUST_LOG
               value: info,agentgateway=debug
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: http://otel-collector.observability.svc.cluster.local:4317
+              value: http://otel-collector:4317
             - name: OTEL_SERVICE_NAME
               value: agentgateway
-            # MCP server environment variables
             - name: BRAVE_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: mcp-secrets
-                  key: brave-api-key
+                  name: gateway-secrets
+                  key: BRAVE_API_KEY
                   optional: true
             - name: GITHUB_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: mcp-secrets
-                  key: github-token
+                  name: gateway-secrets
+                  key: GITHUB_TOKEN
                   optional: true
           volumeMounts:
             - name: config
@@ -110,7 +107,6 @@ spec:
             limits:
               cpu: 2000m
               memory: 2Gi
-          # Agent Gateway readiness endpoint is on port 15021
           livenessProbe:
             httpGet:
               path: /healthz/ready
@@ -140,15 +136,15 @@ spec:
               podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app.kubernetes.io/name: agentgateway
+                    app: agentgateway
                 topologyKey: kubernetes.io/hostname
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: agentgateway
-  namespace: agentgateway
   labels:
+    app: agentgateway
     app.kubernetes.io/name: agentgateway
 spec:
   type: ClusterIP
@@ -166,41 +162,26 @@ spec:
       targetPort: 9090
       protocol: TCP
   selector:
-    app.kubernetes.io/name: agentgateway
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: agentgateway-external
-  namespace: agentgateway
-  labels:
-    app.kubernetes.io/name: agentgateway
-spec:
-  type: LoadBalancer
-  ports:
-    - name: llm-gateway
-      port: 443
-      targetPort: 3000
-      protocol: TCP
-  selector:
-    app.kubernetes.io/name: agentgateway
+    app: agentgateway
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: agentgateway
-  namespace: agentgateway
+  labels:
+    app: agentgateway
 spec:
   minAvailable: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: agentgateway
+      app: agentgateway
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: agentgateway
-  namespace: agentgateway
+  labels:
+    app: agentgateway
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

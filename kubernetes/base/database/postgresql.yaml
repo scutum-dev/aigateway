@@ -1,61 +1,14 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: database
-  labels:
-    app.kubernetes.io/name: database
-    app.kubernetes.io/part-of: ai-gateway-platform
----
-# =============================================================================
-# IMPORTANT: Do NOT use this in production!
-# =============================================================================
-# This is a placeholder secret for development only.
-# For production, use one of these options:
-#
-# Option 1: Sealed Secrets (recommended)
-#   See: kubernetes/base/database/sealed-secrets-template.yaml
-#   Install: kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.24.0/controller.yaml
-#   Generate: kubeseal --format yaml < secret.yaml > sealed-secret.yaml
-#
-# Option 2: External Secrets Operator
-#   Install: helm install external-secrets external-secrets/external-secrets
-#   Configure to pull from AWS Secrets Manager, Vault, etc.
-#
-# Option 3: Kubernetes Secrets with RBAC
-#   Create secrets manually: kubectl create secret generic postgresql-secrets ...
-#   Ensure secrets are encrypted at rest (EncryptionConfiguration)
-#
-# =============================================================================
-apiVersion: v1
-kind: Secret
-metadata:
-  name: postgresql-secrets
-  namespace: database
-  annotations:
-    # WARNING: Replace this secret before production deployment
-    ai-gateway.io/security-level: "development-only"
-    ai-gateway.io/requires-rotation: "true"
-type: Opaque
-stringData:
-  # DEVELOPMENT ONLY - Generate secure passwords for production:
-  # openssl rand -base64 32
-  postgres-password: "CHANGE_ME_postgres_dev_password"
-  litellm-password: "CHANGE_ME_litellm_dev_password"
-  replication-password: "CHANGE_ME_replication_dev_password"
+# PostgreSQL StatefulSet for AI Gateway Platform
+# Namespace and secrets are managed by overlays
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: postgresql-init
-  namespace: database
 data:
-  # NOTE: This script uses LITELLM_DB_PASSWORD environment variable
-  # which is injected from the postgresql-secrets Secret
   init.sh: |
     #!/bin/bash
     set -e
-
-    # Create LiteLLM database and user using password from environment
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
       CREATE DATABASE litellm;
       CREATE USER litellm WITH ENCRYPTED PASSWORD '${LITELLM_DB_PASSWORD}';
@@ -63,25 +16,14 @@ data:
     EOSQL
 
   init.sql: |
-    -- This runs after init.sh creates the database and user
-    -- Connect to litellm database
     \c litellm;
-
-    -- Connect to litellm database
-    \c litellm;
-
-    -- Grant schema permissions
     GRANT ALL ON SCHEMA public TO litellm;
+    ALTER SCHEMA public OWNER TO litellm;
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO litellm;
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO litellm;
-
-    -- Create extensions
     CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
     CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
 
-    -- LiteLLM will create its own tables, but we can create indexes for common queries
-
-    -- Create a table for custom cost tracking (optional, for FinOps reporting)
     CREATE TABLE IF NOT EXISTS cost_tracking_daily (
         id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
         date DATE NOT NULL,
@@ -103,7 +45,6 @@ data:
     CREATE INDEX idx_cost_tracking_team ON cost_tracking_daily(team_id);
     CREATE INDEX idx_cost_tracking_model ON cost_tracking_daily(model);
 
-    -- Create a table for budget alerts history
     CREATE TABLE IF NOT EXISTS budget_alerts (
         id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
         user_id VARCHAR(255),
@@ -124,18 +65,20 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: postgresql
-  namespace: database
   labels:
+    app: postgresql
     app.kubernetes.io/name: postgresql
+    app.kubernetes.io/component: database
 spec:
   serviceName: postgresql
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: postgresql
+      app: postgresql
   template:
     metadata:
       labels:
+        app: postgresql
         app.kubernetes.io/name: postgresql
     spec:
       containers:
@@ -145,16 +88,14 @@ spec:
             - containerPort: 5432
               name: postgresql
           env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_DB
+              value: postgres
             - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgresql-secrets
-                  key: postgres-password
+              value: postgres
             - name: LITELLM_DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgresql-secrets
-                  key: litellm-password
+              value: litellm
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
           volumeMounts:
@@ -164,29 +105,21 @@ spec:
               mountPath: /docker-entrypoint-initdb.d
           resources:
             requests:
-              cpu: 500m
-              memory: 1Gi
+              cpu: 250m
+              memory: 512Mi
             limits:
-              cpu: 2000m
-              memory: 4Gi
+              cpu: 1000m
+              memory: 2Gi
           livenessProbe:
             exec:
-              command:
-                - pg_isready
-                - -U
-                - postgres
+              command: ["pg_isready", "-U", "postgres"]
             initialDelaySeconds: 30
             periodSeconds: 10
-            timeoutSeconds: 5
           readinessProbe:
             exec:
-              command:
-                - pg_isready
-                - -U
-                - postgres
+              command: ["pg_isready", "-U", "postgres"]
             initialDelaySeconds: 5
             periodSeconds: 5
-            timeoutSeconds: 3
       volumes:
         - name: init-scripts
           configMap:
@@ -195,19 +128,17 @@ spec:
     - metadata:
         name: data
       spec:
-        accessModes:
-          - ReadWriteOnce
+        accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: 50Gi
-        storageClassName: fast-ssd
+            storage: 10Gi
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: postgresql
-  namespace: database
   labels:
+    app: postgresql
     app.kubernetes.io/name: postgresql
 spec:
   type: ClusterIP
@@ -216,33 +147,4 @@ spec:
       targetPort: 5432
       name: postgresql
   selector:
-    app.kubernetes.io/name: postgresql
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: postgresql-network-policy
-  namespace: database
-spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: postgresql
-  policyTypes:
-    - Ingress
-  ingress:
-    # Allow from LiteLLM
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: litellm
-      ports:
-        - protocol: TCP
-          port: 5432
-    # Allow from FinOps services
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: finops
-      ports:
-        - protocol: TCP
-          port: 5432
+    app: postgresql

@@ -1,44 +1,29 @@
+# Prometheus for AI Gateway Platform
+# Namespace is managed by overlays
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
-  namespace: observability
+  labels:
+    app: prometheus
 data:
   prometheus.yml: |
     global:
       scrape_interval: 15s
       evaluation_interval: 15s
-      external_labels:
-        cluster: 'ai-gateway-cluster'
-        env: 'production'
-
-    alerting:
-      alertmanagers:
-        - static_configs:
-            - targets:
-              - alertmanager:9093
 
     rule_files:
       - /etc/prometheus/rules/*.yaml
 
     scrape_configs:
-      # Prometheus self-monitoring
       - job_name: 'prometheus'
         static_configs:
           - targets: ['localhost:9090']
 
-      # OpenTelemetry Collector metrics
-      - job_name: 'otel-collector'
-        static_configs:
-          - targets: ['otel-collector:8889']
-
-      # Agent Gateway metrics
-      - job_name: 'agentgateway'
+      - job_name: 'kubernetes-pods'
         kubernetes_sd_configs:
           - role: pod
-            namespaces:
-              names:
-                - agentgateway
         relabel_configs:
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
             action: keep
@@ -58,293 +43,28 @@ data:
           - source_labels: [__meta_kubernetes_pod_name]
             action: replace
             target_label: kubernetes_pod_name
-
-      # LiteLLM metrics
-      - job_name: 'litellm'
-        kubernetes_sd_configs:
-          - role: pod
-            namespaces:
-              names:
-                - litellm
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
-            action: keep
-            regex: litellm
-          - source_labels: [__address__]
-            action: replace
-            regex: ([^:]+)(?::\d+)?
-            replacement: $1:4000
-            target_label: __address__
-          - source_labels: [__meta_kubernetes_pod_name]
-            action: replace
-            target_label: pod
-
-      # vLLM metrics
-      - job_name: 'vllm'
-        kubernetes_sd_configs:
-          - role: pod
-            namespaces:
-              names:
-                - vllm
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
-            action: keep
-            regex: vllm.*
-          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
-            action: replace
-            target_label: __address__
-            regex: (.+)
-          - source_labels: [__meta_kubernetes_pod_name]
-            action: replace
-            target_label: pod
-          - source_labels: [__meta_kubernetes_pod_label_model]
-            action: replace
-            target_label: model
-
-      # Kubernetes nodes (for GPU metrics via DCGM)
-      - job_name: 'kubernetes-nodes'
-        kubernetes_sd_configs:
-          - role: node
-        relabel_configs:
-          - action: labelmap
-            regex: __meta_kubernetes_node_label_(.+)
-
-      # DCGM Exporter for GPU metrics
-      - job_name: 'dcgm-exporter'
-        kubernetes_sd_configs:
-          - role: pod
-        relabel_configs:
           - source_labels: [__meta_kubernetes_pod_label_app]
-            action: keep
-            regex: dcgm-exporter
-          - source_labels: [__address__]
             action: replace
-            regex: ([^:]+)(?::\d+)?
-            replacement: $1:9400
-            target_label: __address__
+            target_label: app
 
-  # Recording rules for pre-computed metrics
   recording_rules.yaml: |
     groups:
       - name: ai_gateway_recording_rules
         interval: 30s
         rules:
-          # Total requests per model
           - record: ai_gateway:requests:rate5m
             expr: sum(rate(litellm_requests_total[5m])) by (model, status)
-
-          # Cost per model (hourly rate)
           - record: ai_gateway:cost:hourly_rate
             expr: sum(rate(litellm_spend_total[1h])) by (model, user, team) * 3600
-
-          # P95 latency per model
           - record: ai_gateway:latency:p95
             expr: histogram_quantile(0.95, sum(rate(litellm_request_duration_seconds_bucket[5m])) by (le, model))
-
-          # Token throughput
-          - record: ai_gateway:tokens:rate5m
-            expr: sum(rate(litellm_tokens_total[5m])) by (model, type)
-
-          # vLLM GPU utilization average
-          - record: vllm:gpu_utilization:avg
-            expr: avg(vllm_gpu_cache_usage_perc) by (model_name)
-
-          # vLLM queue depth
-          - record: vllm:queue_depth:current
-            expr: sum(vllm_num_requests_waiting) by (model_name)
-
-  # Alerting rules
-  alerting_rules.yaml: |
-    groups:
-      - name: ai_gateway_alerts
-        rules:
-          # High error rate
-          - alert: HighErrorRate
-            expr: |
-              sum(rate(litellm_requests_total{status="error"}[5m])) /
-              sum(rate(litellm_requests_total[5m])) > 0.05
-            for: 5m
-            labels:
-              severity: critical
-            annotations:
-              summary: "High error rate detected"
-              description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
-
-          # High latency
-          - alert: HighLatency
-            expr: ai_gateway:latency:p95 > 30
-            for: 5m
-            labels:
-              severity: warning
-            annotations:
-              summary: "High P95 latency for model {{ $labels.model }}"
-              description: "P95 latency is {{ $value | humanizeDuration }}"
-
-          # Budget threshold exceeded
-          - alert: BudgetThresholdExceeded
-            expr: |
-              sum(litellm_spend_total) by (user) /
-              sum(litellm_budget_limit) by (user) > 0.8
-            for: 1m
-            labels:
-              severity: warning
-            annotations:
-              summary: "User {{ $labels.user }} approaching budget limit"
-              description: "Spend is at {{ $value | humanizePercentage }} of budget"
-
-          # Budget exhausted
-          - alert: BudgetExhausted
-            expr: |
-              sum(litellm_spend_total) by (user) >=
-              sum(litellm_budget_limit) by (user)
-            for: 1m
-            labels:
-              severity: critical
-            annotations:
-              summary: "User {{ $labels.user }} has exhausted their budget"
-              description: "All requests will be rejected until budget is reset"
-
-          # vLLM pod down
-          - alert: VLLMPodDown
-            expr: up{job="vllm"} == 0
-            for: 2m
-            labels:
-              severity: critical
-            annotations:
-              summary: "vLLM pod {{ $labels.pod }} is down"
-              description: "Pod has been unreachable for 2 minutes"
-
-          # GPU memory pressure
-          - alert: GPUMemoryPressure
-            expr: vllm:gpu_utilization:avg > 95
-            for: 10m
-            labels:
-              severity: warning
-            annotations:
-              summary: "High GPU memory usage for {{ $labels.model_name }}"
-              description: "GPU cache usage is at {{ $value }}%"
-
-          # Agent Gateway unhealthy
-          - alert: AgentGatewayUnhealthy
-            expr: up{job="agentgateway"} == 0
-            for: 1m
-            labels:
-              severity: critical
-            annotations:
-              summary: "Agent Gateway is unhealthy"
-              description: "Agent Gateway pod {{ $labels.pod }} is not responding"
-
-          # LiteLLM unhealthy
-          - alert: LiteLLMUnhealthy
-            expr: up{job="litellm"} == 0
-            for: 1m
-            labels:
-              severity: critical
-            annotations:
-              summary: "LiteLLM proxy is unhealthy"
-              description: "LiteLLM pod {{ $labels.pod }} is not responding"
-
-          # High queue depth
-          - alert: HighQueueDepth
-            expr: vllm:queue_depth:current > 100
-            for: 5m
-            labels:
-              severity: warning
-            annotations:
-              summary: "High queue depth for {{ $labels.model_name }}"
-              description: "{{ $value }} requests waiting in queue"
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: prometheus
-  namespace: observability
-  labels:
-    app.kubernetes.io/name: prometheus
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: prometheus
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: prometheus
-    spec:
-      serviceAccountName: prometheus
-      containers:
-        - name: prometheus
-          image: prom/prometheus:v2.50.0
-          args:
-            - --config.file=/etc/prometheus/prometheus.yml
-            - --storage.tsdb.path=/prometheus
-            - --storage.tsdb.retention.time=15d
-            - --web.enable-lifecycle
-            - --web.enable-admin-api
-          ports:
-            - containerPort: 9090
-          volumeMounts:
-            - name: config
-              mountPath: /etc/prometheus
-            - name: storage
-              mountPath: /prometheus
-          resources:
-            requests:
-              cpu: 500m
-              memory: 2Gi
-            limits:
-              cpu: 2000m
-              memory: 8Gi
-          livenessProbe:
-            httpGet:
-              path: /-/healthy
-              port: 9090
-            initialDelaySeconds: 30
-            periodSeconds: 15
-          readinessProbe:
-            httpGet:
-              path: /-/ready
-              port: 9090
-            initialDelaySeconds: 5
-            periodSeconds: 10
-      volumes:
-        - name: config
-          configMap:
-            name: prometheus-config
-        - name: storage
-          persistentVolumeClaim:
-            claimName: prometheus-storage
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: prometheus-storage
-  namespace: observability
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 100Gi
-  storageClassName: fast-ssd
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: prometheus
-  namespace: observability
-spec:
-  ports:
-    - port: 9090
-      targetPort: 9090
-  selector:
-    app.kubernetes.io/name: prometheus
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: prometheus
-  namespace: observability
+  labels:
+    app: prometheus
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -371,4 +91,77 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: prometheus
-    namespace: observability
+    namespace: gateway-demo  # Will be patched by overlay
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  labels:
+    app: prometheus
+    app.kubernetes.io/name: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+        app.kubernetes.io/name: prometheus
+    spec:
+      serviceAccountName: prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.50.0
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=7d
+            - --web.enable-lifecycle
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: storage
+              mountPath: /prometheus
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9090
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+        - name: storage
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  labels:
+    app: prometheus
+spec:
+  ports:
+    - port: 9090
+      targetPort: 9090
+  selector:
+    app: prometheus

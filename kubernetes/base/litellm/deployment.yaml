@@ -1,33 +1,31 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: litellm
-  labels:
-    app.kubernetes.io/name: litellm
-    app.kubernetes.io/part-of: ai-gateway-platform
+# LiteLLM Deployment for AI Gateway Platform
+# Namespace and secrets are managed by overlays
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: litellm
-  namespace: litellm
+  labels:
+    app: litellm
+    app.kubernetes.io/name: litellm
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: litellm
-  namespace: litellm
   labels:
+    app: litellm
     app.kubernetes.io/name: litellm
     app.kubernetes.io/component: proxy
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app.kubernetes.io/name: litellm
+      app: litellm
   template:
     metadata:
       labels:
+        app: litellm
         app.kubernetes.io/name: litellm
       annotations:
         prometheus.io/scrape: "true"
@@ -46,36 +44,86 @@ spec:
             - name: LITELLM_MASTER_KEY
               valueFrom:
                 secretKeyRef:
-                  name: litellm-secrets
-                  key: master-key
+                  name: gateway-secrets
+                  key: LITELLM_MASTER_KEY
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: litellm-secrets
-                  key: database-url
+                  name: gateway-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: REDIS_URL
+                  optional: true
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: OPENAI_API_KEY
+                  optional: true
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: ANTHROPIC_API_KEY
+                  optional: true
+            - name: XAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: XAI_API_KEY
+                  optional: true
+            - name: GOOGLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: GOOGLE_API_KEY
+                  optional: true
+            - name: DEEPSEEK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: DEEPSEEK_API_KEY
+                  optional: true
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: AWS_ACCESS_KEY_ID
+                  optional: true
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: AWS_SECRET_ACCESS_KEY
+                  optional: true
+            - name: AWS_REGION_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: AWS_REGION_NAME
+                  optional: true
+            - name: VERTEX_PROJECT
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: VERTEX_PROJECT
+                  optional: true
             - name: LITELLM_LOG
               value: "DEBUG"
-            # OpenTelemetry configuration
             - name: OTEL_EXPORTER
               value: "otlp_http"
             - name: OTEL_ENDPOINT
-              value: "http://otel-collector.observability.svc.cluster.local:4318"
+              value: "http://otel-collector:4318"
             - name: OTEL_SERVICE_NAME
               value: "litellm"
-            # Redis for caching (optional)
-            - name: REDIS_HOST
-              value: "redis.litellm.svc.cluster.local"
-            - name: REDIS_PORT
-              value: "6379"
-            # Callbacks for cost tracking
-            - name: LITELLM_CALLBACKS
-              value: "otel"
           args:
             - "--config"
             - "/etc/litellm/config.yaml"
             - "--port"
             - "4000"
-            - "--detailed_debug"
           volumeMounts:
             - name: config
               mountPath: /etc/litellm
@@ -91,19 +139,20 @@ spec:
             httpGet:
               path: /health/liveliness
               port: 4000
-            initialDelaySeconds: 30
+            initialDelaySeconds: 120
             periodSeconds: 15
             timeoutSeconds: 10
+            failureThreshold: 5
           readinessProbe:
             httpGet:
               path: /health/readiness
               port: 4000
-            initialDelaySeconds: 20
+            initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 5
+            failureThreshold: 10
+          # Note: LiteLLM requires write access to its package directory
           securityContext:
-            runAsNonRoot: true
-            runAsUser: 1000
             allowPrivilegeEscalation: false
       volumes:
         - name: config
@@ -116,25 +165,27 @@ spec:
               podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app.kubernetes.io/name: litellm
+                    app: litellm
                 topologyKey: kubernetes.io/hostname
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: litellm
-  namespace: litellm
+  labels:
+    app: litellm
 spec:
   minAvailable: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: litellm
+      app: litellm
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: litellm
-  namespace: litellm
+  labels:
+    app: litellm
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

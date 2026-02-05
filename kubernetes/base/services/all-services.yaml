@@ -1,0 +1,843 @@
+# All AI Gateway Platform Services
+---
+# Admin API
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-api
+  labels:
+    app: admin-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-api
+  template:
+    metadata:
+      labels:
+        app: admin-api
+    spec:
+      containers:
+        - name: admin-api
+          image: python:3.11-slim
+          command: ["sh", "-c", "pip install fastapi uvicorn asyncpg httpx python-jose && echo 'Admin API placeholder' && sleep infinity"]
+          ports:
+            - containerPort: 8086
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: DATABASE_URL
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: LITELLM_MASTER_KEY
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-api
+  labels:
+    app: admin-api
+spec:
+  ports:
+    - port: 8086
+      targetPort: 8086
+  selector:
+    app: admin-api
+---
+# OTEL Collector
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  labels:
+    app: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.96.0
+          args: ["--config=/etc/otel/config.yaml"]
+          ports:
+            - containerPort: 4317
+              name: otlp-grpc
+            - containerPort: 4318
+              name: otlp-http
+            - containerPort: 8889
+              name: prometheus
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otel
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: otel-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-config
+  labels:
+    app: otel-collector
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    processors:
+      batch:
+        timeout: 1s
+        send_batch_size: 1024
+    exporters:
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+      debug:
+        verbosity: basic
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [debug]
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [prometheus]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  labels:
+    app: otel-collector
+spec:
+  ports:
+    - port: 4317
+      targetPort: 4317
+      name: otlp-grpc
+    - port: 4318
+      targetPort: 4318
+      name: otlp-http
+    - port: 8889
+      targetPort: 8889
+      name: prometheus
+  selector:
+    app: otel-collector
+---
+# Grafana - moved to kubernetes/base/observability/grafana/
+---
+# Jaeger
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  labels:
+    app: jaeger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jaeger
+  template:
+    metadata:
+      labels:
+        app: jaeger
+    spec:
+      containers:
+        - name: jaeger
+          image: jaegertracing/all-in-one:1.54
+          ports:
+            - containerPort: 16686
+              name: ui
+            - containerPort: 14268
+              name: collector
+          env:
+            - name: COLLECTOR_OTLP_ENABLED
+              value: "true"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger
+  labels:
+    app: jaeger
+spec:
+  ports:
+    - port: 16686
+      targetPort: 16686
+      name: ui
+    - port: 14268
+      targetPort: 14268
+      name: collector
+  selector:
+    app: jaeger
+---
+# Temporal
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal
+  labels:
+    app: temporal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal
+  template:
+    metadata:
+      labels:
+        app: temporal
+    spec:
+      containers:
+        - name: temporal
+          image: temporalio/auto-setup:1.22
+          ports:
+            - containerPort: 7233
+          env:
+            - name: DB
+              value: postgresql
+            - name: DB_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PWD
+              value: postgres
+            - name: POSTGRES_SEEDS
+              value: postgresql
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal
+  labels:
+    app: temporal
+spec:
+  ports:
+    - port: 7233
+      targetPort: 7233
+  selector:
+    app: temporal
+---
+# Temporal UI
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-ui
+  labels:
+    app: temporal-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal-ui
+  template:
+    metadata:
+      labels:
+        app: temporal-ui
+    spec:
+      containers:
+        - name: temporal-ui
+          image: temporalio/ui:2.22.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: TEMPORAL_ADDRESS
+              value: temporal:7233
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-ui
+  labels:
+    app: temporal-ui
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: temporal-ui
+---
+# Workflow Engine
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workflow-engine
+  labels:
+    app: workflow-engine
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: workflow-engine
+  template:
+    metadata:
+      labels:
+        app: workflow-engine
+    spec:
+      containers:
+        - name: workflow-engine
+          image: python:3.11-slim
+          command: ["sh", "-c", "echo 'Workflow engine placeholder' && sleep infinity"]
+          ports:
+            - containerPort: 8085
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: workflow-engine
+  labels:
+    app: workflow-engine
+spec:
+  ports:
+    - port: 8085
+      targetPort: 8085
+  selector:
+    app: workflow-engine
+---
+# Policy Router
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: policy-router
+  labels:
+    app: policy-router
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: policy-router
+  template:
+    metadata:
+      labels:
+        app: policy-router
+    spec:
+      containers:
+        - name: policy-router
+          image: python:3.11-slim
+          command: ["sh", "-c", "echo 'Policy router placeholder' && sleep infinity"]
+          ports:
+            - containerPort: 8084
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: policy-router
+  labels:
+    app: policy-router
+spec:
+  ports:
+    - port: 8084
+      targetPort: 8084
+  selector:
+    app: policy-router
+---
+# Cost Predictor
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cost-predictor
+  labels:
+    app: cost-predictor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cost-predictor
+  template:
+    metadata:
+      labels:
+        app: cost-predictor
+    spec:
+      containers:
+        - name: cost-predictor
+          image: python:3.11-slim
+          command: ["sh", "-c", "echo 'Cost predictor placeholder' && sleep infinity"]
+          ports:
+            - containerPort: 8081
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cost-predictor
+  labels:
+    app: cost-predictor
+spec:
+  ports:
+    - port: 8081
+      targetPort: 8081
+  selector:
+    app: cost-predictor
+---
+# Budget Webhook
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: budget-webhook
+  labels:
+    app: budget-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: budget-webhook
+  template:
+    metadata:
+      labels:
+        app: budget-webhook
+    spec:
+      containers:
+        - name: budget-webhook
+          image: python:3.11-slim
+          command: ["sh", "-c", "echo 'Budget webhook placeholder' && sleep infinity"]
+          ports:
+            - containerPort: 8082
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: budget-webhook
+  labels:
+    app: budget-webhook
+spec:
+  ports:
+    - port: 8082
+      targetPort: 8082
+  selector:
+    app: budget-webhook
+---
+# FinOps Reporter
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finops-reporter
+  labels:
+    app: finops-reporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: finops-reporter
+  template:
+    metadata:
+      labels:
+        app: finops-reporter
+    spec:
+      containers:
+        - name: finops-reporter
+          image: python:3.11-slim
+          command: ["sh", "-c", "echo 'FinOps reporter placeholder' && sleep infinity"]
+          ports:
+            - containerPort: 8083
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: finops-reporter
+  labels:
+    app: finops-reporter
+spec:
+  ports:
+    - port: 8083
+      targetPort: 8083
+  selector:
+    app: finops-reporter
+---
+# Nginx Ingress
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+            - containerPort: 443
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+    - port: 443
+      targetPort: 443
+      name: https
+  selector:
+    app: nginx
+---
+# Admin UI
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-ui
+  labels:
+    app: admin-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-ui
+  template:
+    metadata:
+      labels:
+        app: admin-ui
+    spec:
+      containers:
+        - name: admin-ui
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-ui
+  labels:
+    app: admin-ui
+spec:
+  ports:
+    - port: 5173
+      targetPort: 80
+  selector:
+    app: admin-ui
+---
+# A2A Runtime
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: a2a-runtime
+  labels:
+    app: a2a-runtime
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: a2a-runtime
+  template:
+    metadata:
+      labels:
+        app: a2a-runtime
+    spec:
+      containers:
+        - name: a2a-runtime
+          image: python:3.11-slim
+          command: ["sh", "-c", "echo 'A2A Runtime placeholder' && sleep infinity"]
+          ports:
+            - containerPort: 8087
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: a2a-runtime
+  labels:
+    app: a2a-runtime
+spec:
+  ports:
+    - port: 8087
+      targetPort: 8087
+  selector:
+    app: a2a-runtime
+---
+# GPU Stub
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-stub
+  labels:
+    app: gpu-stub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpu-stub
+  template:
+    metadata:
+      labels:
+        app: gpu-stub
+    spec:
+      containers:
+        - name: gpu-stub
+          image: python:3.11-slim
+          command: ["sh", "-c", "echo 'GPU Stub placeholder' && sleep infinity"]
+          ports:
+            - containerPort: 8090
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gpu-stub
+  labels:
+    app: gpu-stub
+spec:
+  ports:
+    - port: 8090
+      targetPort: 8090
+  selector:
+    app: gpu-stub
+---
+# Semantic Cache
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: semantic-cache
+  labels:
+    app: semantic-cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: semantic-cache
+  template:
+    metadata:
+      labels:
+        app: semantic-cache
+    spec:
+      containers:
+        - name: semantic-cache
+          image: python:3.11-slim
+          command: ["sh", "-c", "echo 'Semantic Cache placeholder' && sleep infinity"]
+          ports:
+            - containerPort: 8083
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: semantic-cache
+  labels:
+    app: semantic-cache
+spec:
+  ports:
+    - port: 8083
+      targetPort: 8083
+  selector:
+    app: semantic-cache
+---
+# Vault
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault
+  labels:
+    app: vault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vault
+  template:
+    metadata:
+      labels:
+        app: vault
+    spec:
+      containers:
+        - name: vault
+          image: hashicorp/vault:1.15.4
+          command: ["vault", "server", "-dev", "-dev-root-token-id=root-token-for-dev", "-dev-listen-address=0.0.0.0:8200"]
+          ports:
+            - containerPort: 8200
+          env:
+            - name: VAULT_DEV_ROOT_TOKEN_ID
+              value: root-token-for-dev
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault
+  labels:
+    app: vault
+spec:
+  ports:
+    - port: 8200
+      targetPort: 8200
+  selector:
+    app: vault
+---
+# Landing UI
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: landing-ui
+  labels:
+    app: landing-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: landing-ui
+  template:
+    metadata:
+      labels:
+        app: landing-ui
+    spec:
+      containers:
+        - name: landing-ui
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: landing-ui
+  labels:
+    app: landing-ui
+spec:
+  ports:
+    - port: 9999
+      targetPort: 80
+  selector:
+    app: landing-ui

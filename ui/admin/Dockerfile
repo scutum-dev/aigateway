@@ -3,6 +3,9 @@ FROM node:20-alpine as build
 
 WORKDIR /app
 
+# Base path for the app (default: /admin for cloud deployment)
+ARG VITE_BASE=/admin/
+
 # Copy package files
 COPY package.json package-lock.json* ./
 
@@ -12,8 +15,8 @@ RUN npm install
 # Copy source files
 COPY . .
 
-# Build the application
-RUN npm run build
+# Build the application with base path
+RUN npm run build -- --base=$VITE_BASE
 
 # Production stage
 FROM nginx:1.25-alpine

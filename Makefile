@@ -12,7 +12,7 @@
 #   make logs          - View logs
 # =============================================================================
 
-.PHONY: help up down logs build clean test migrate
+.PHONY: help up down logs build clean test migrate demo staging prod destroy demo-destroy staging-destroy prod-destroy cloud-status cloud-output cloud-plan
 
 # Default environment file
 ENV_FILE ?= .env
@@ -236,3 +236,112 @@ version: ## Show version information
 	@echo "Docker: $$(docker --version)"
 	@echo "Docker Compose: $$($(DOCKER_COMPOSE) version --short 2>/dev/null || $(DOCKER_COMPOSE) version)"
 	@echo "Kubernetes: $$(kubectl version --client --short 2>/dev/null || echo 'not installed')"
+
+# =============================================================================
+# CLOUD DEPLOYMENT (GCP + Terraform)
+# =============================================================================
+
+# Environment selection (demo, staging, prod)
+ENV ?= demo
+TF_DIR := terraform/environments
+
+# Main deployment targets
+demo: ## Deploy demo environment to GCP
+	@$(MAKE) _deploy ENV=demo
+
+staging: ## Deploy staging environment to GCP
+	@$(MAKE) _deploy ENV=staging
+
+prod: ## Deploy production environment to GCP (requires confirmation)
+	@echo "$(YELLOW)WARNING: Deploying to PRODUCTION!$(RESET)"
+	@read -p "Type 'prod' to confirm: " confirm && [ "$$confirm" = "prod" ]
+	@$(MAKE) _deploy ENV=prod
+
+# Internal deployment workflow
+_deploy: _infra _build _wait _seed
+	@echo "$(GREEN)✓ $(ENV) environment deployed!$(RESET)"
+	@$(MAKE) _output
+
+_infra: ## Run Terraform to create/update infrastructure
+	@echo "$(CYAN)Provisioning $(ENV) infrastructure...$(RESET)"
+	cd $(TF_DIR) && terraform init -backend-config="prefix=$(ENV)" -reconfigure
+	cd $(TF_DIR) && terraform apply -var-file=$(ENV).tfvars -auto-approve
+
+_build: ## Build and push Docker images to Artifact Registry
+	@echo "$(CYAN)Building and pushing Docker images...$(RESET)"
+	@REPO=$$(cd $(TF_DIR) && terraform output -raw artifact_registry) && \
+	REGION=$$(echo $$REPO | cut -d'-' -f1-2) && \
+	PLATFORM_FLAG="" && \
+	if [ "$$(uname -m)" = "arm64" ]; then \
+		PLATFORM_FLAG="--platform linux/amd64"; \
+		echo "Detected ARM64, building for linux/amd64..."; \
+	fi && \
+	gcloud auth configure-docker $$REGION-docker.pkg.dev --quiet && \
+	echo "Building admin-api..." && \
+	docker build $$PLATFORM_FLAG -t $$REPO/admin-api:latest ./src/admin-api && \
+	docker push $$REPO/admin-api:latest && \
+	echo "Building admin-ui..." && \
+	docker build $$PLATFORM_FLAG -t $$REPO/admin-ui:latest ./ui/admin && \
+	docker push $$REPO/admin-ui:latest && \
+	echo "$(GREEN)✓ Images built and pushed$(RESET)"
+
+_wait: ## Wait for services to be ready (after images are built)
+	@echo "$(CYAN)Waiting for services to be ready...$(RESET)"
+	@NAMESPACE=$$(cd $(TF_DIR) && terraform output -raw namespace) && \
+	echo "Restarting deployments to pick up new images..." && \
+	kubectl -n $$NAMESPACE rollout restart deployment/admin-api deployment/admin-ui || true && \
+	echo "Waiting for pods..." && \
+	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=postgresql --timeout=300s && \
+	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=redis --timeout=300s && \
+	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=litellm --timeout=300s && \
+	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=admin-api --timeout=300s && \
+	echo "$(GREEN)✓ All services ready$(RESET)"
+
+_seed: ## Seed demo data (skipped for prod)
+	@if [ "$(ENV)" != "prod" ]; then \
+		echo "$(CYAN)Seeding $(ENV) data...$(RESET)"; \
+		NAMESPACE=$$(cd $(TF_DIR) && terraform output -raw namespace) && \
+		kubectl -n $$NAMESPACE port-forward svc/litellm 4000:4000 & \
+		PF_PID=$$! && \
+		sleep 10 && \
+		GATEWAY_URL=http://localhost:4000 \
+		LITELLM_MASTER_KEY=$$(cd $(TF_DIR) && terraform output -raw api_key) \
+		./scripts/seed-demo-data.sh || true; \
+		kill $$PF_PID 2>/dev/null || true; \
+		echo "$(GREEN)✓ Demo data seeded$(RESET)"; \
+	else \
+		echo "$(YELLOW)Skipping seed for production$(RESET)"; \
+	fi
+
+_output: ## Show deployment outputs
+	@cd $(TF_DIR) && terraform output
+
+# Destroy targets
+destroy: ## Destroy environment (ENV=demo|staging|prod)
+	@echo "$(YELLOW)Destroying $(ENV) environment$(RESET)"
+	@if [ "$(ENV)" = "prod" ]; then \
+		read -p "Type 'destroy-prod' to confirm: " confirm && [ "$$confirm" = "destroy-prod" ]; \
+	fi
+	cd $(TF_DIR) && terraform init -backend-config="prefix=$(ENV)" -reconfigure
+	cd $(TF_DIR) && terraform destroy -var-file=$(ENV).tfvars -auto-approve
+
+demo-destroy: ## Destroy demo environment
+	@$(MAKE) destroy ENV=demo
+
+staging-destroy: ## Destroy staging environment
+	@$(MAKE) destroy ENV=staging
+
+prod-destroy: ## Destroy production environment (requires confirmation)
+	@$(MAKE) destroy ENV=prod
+
+# Cloud status/info
+cloud-status: ## Show Terraform state for current environment
+	cd $(TF_DIR) && terraform init -backend-config="prefix=$(ENV)" -reconfigure
+	cd $(TF_DIR) && terraform show
+
+cloud-output: ## Show Terraform outputs for current environment
+	cd $(TF_DIR) && terraform output
+
+cloud-plan: ## Show Terraform plan for current environment
+	cd $(TF_DIR) && terraform init -backend-config="prefix=$(ENV)" -reconfigure
+	cd $(TF_DIR) && terraform plan -var-file=$(ENV).tfvars

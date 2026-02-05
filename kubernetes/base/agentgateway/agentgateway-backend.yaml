@@ -2,7 +2,8 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: agentgateway-config
-  namespace: agentgateway
+  labels:
+    app: agentgateway
 data:
   config.yaml: |
     # Agent Gateway Configuration for Kubernetes
@@ -10,11 +11,6 @@ data:
     #
     # Agent Gateway handles MCP and A2A protocols.
     # LLM requests go directly to LiteLLM service.
-    #
-    # Architecture:
-    #   LLM:  Client -> LiteLLM (litellm.litellm.svc) -> Providers
-    #   MCP:  Client -> Agent Gateway -> MCP Servers (stdio)
-    #   A2A:  Client -> Agent Gateway -> AI Agents
 
     binds:
       - port: 3000
@@ -51,7 +47,7 @@ data:
                             args:
                               - "-y"
                               - "@modelcontextprotocol/server-postgres"
-                              - "postgresql://litellm:litellm@postgresql.database.svc.cluster.local:5432/litellm"
+                              - "postgresql://litellm:litellm@postgresql:5432/litellm"
 
                         # Brave Search MCP Server
                         - name: brave-search
@@ -60,14 +56,3 @@ data:
                             args:
                               - "-y"
                               - "@modelcontextprotocol/server-brave-search"
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: mcp-secrets
-  namespace: agentgateway
-type: Opaque
-stringData:
-  # Replace with actual API keys in production
-  brave-api-key: ""
-  github-token: ""
