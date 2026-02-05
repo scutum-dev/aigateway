@@ -418,8 +418,42 @@ resource "kubernetes_ingress_v1" "gateway" {
           }
         }
 
+        # LiteLLM Swagger UI requires these specific paths
         path {
           path      = "/docs"
+          path_type = "Exact"
+          backend {
+            service {
+              name = "litellm"
+              port { number = 4000 }
+            }
+          }
+        }
+
+        path {
+          path      = "/docs/"
+          path_type = "Exact"
+          backend {
+            service {
+              name = "litellm"
+              port { number = 4000 }
+            }
+          }
+        }
+
+        path {
+          path      = "/redoc"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "litellm"
+              port { number = 4000 }
+            }
+          }
+        }
+
+        path {
+          path      = "/ui"
           path_type = "Prefix"
           backend {
             service {

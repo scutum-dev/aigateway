@@ -113,6 +113,8 @@ spec:
                   optional: true
             - name: LITELLM_LOG
               value: "DEBUG"
+            - name: DOCS_URL
+              value: "/docs"
             - name: OTEL_EXPORTER
               value: "otlp_http"
             - name: OTEL_ENDPOINT
