@@ -9,14 +9,14 @@ vault_prefix: "secret/ai-gateway/staging"
 # =============================================================================
 
 domain:
-  base: "staging.gateway.example.com"  # Staging subdomain
+  base: "staging.gateway.deos.dev"  # Staging subdomain
   scheme: "https"
 
   use_subdomains: true
 
   subdomains:
-    api: "api"                    # api.staging.gateway.example.com
-    admin: "admin"                # admin.staging.gateway.example.com
+    api: "api"                    # api.staging.gateway.deos.dev
+    admin: "admin"                # admin.staging.gateway.deos.dev
     grafana: "grafana"
     jaeger: "jaeger"
 
