@@ -20,8 +20,10 @@ from contextlib import asynccontextmanager
 from decimal import Decimal
 from enum import Enum
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from opentelemetry import trace
@@ -38,6 +40,40 @@ import json
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Environment configuration
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+# Request size limit (1MB default)
+MAX_REQUEST_SIZE = int(os.getenv("MAX_REQUEST_SIZE_BYTES", 1_048_576))
+
+
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+    """Middleware to limit request body size and prevent DoS attacks."""
+
+    async def dispatch(self, request: Request, call_next):
+        content_length = request.headers.get("content-length")
+        if content_length:
+            if int(content_length) > MAX_REQUEST_SIZE:
+                return Response(
+                    content='{"detail": "Request body too large"}',
+                    status_code=413,
+                    media_type="application/json"
+                )
+        return await call_next(request)
+
+
+def get_cors_origins() -> list[str]:
+    """Get allowed CORS origins based on environment."""
+    if ENVIRONMENT == "production":
+        origins = os.getenv("CORS_ORIGINS", "").split(",")
+        return [o.strip() for o in origins if o.strip()]
+    return [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ]
 
 
 class ReportPeriod(str, Enum):
@@ -134,10 +170,20 @@ async def lifespan(app: FastAPI):
     logger.info("FinOps reporter service started")
     yield
 
-    # Cleanup
+    # Graceful shutdown
+    logger.info("Initiating graceful shutdown...")
+
+    # Flush OpenTelemetry spans
+    try:
+        provider.force_flush(timeout_millis=5000)
+    except Exception as e:
+        logger.warning(f"Error flushing traces: {e}")
+
+    # Cleanup resources
     if db_pool:
         await db_pool.close()
-    logger.info("FinOps reporter service stopped")
+
+    logger.info("FinOps reporter service stopped gracefully")
 
 
 app = FastAPI(
@@ -147,13 +193,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add CORS middleware
+# Add request size limit middleware (must be added first)
+app.add_middleware(RequestSizeLimitMiddleware)
+
+# Add CORS middleware with environment-specific origins
+cors_origins = get_cors_origins()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Instrument with OpenTelemetry

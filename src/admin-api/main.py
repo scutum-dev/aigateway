@@ -16,13 +16,17 @@ Features:
 import os
 import logging
 import json
+import signal
+import asyncio
 from typing import Optional, List
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi import FastAPI, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -58,16 +62,82 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://litellm:litellm@localhost
 LITELLM_URL = os.getenv("LITELLM_URL", "http://localhost:4000")
 LITELLM_MASTER_KEY = os.getenv("LITELLM_MASTER_KEY", "$LITELLM_KEY")
 OTEL_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+# Request size limit (1MB default, configurable)
+MAX_REQUEST_SIZE = int(os.getenv("MAX_REQUEST_SIZE_BYTES", 1_048_576))  # 1MB
+
+
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+    """Middleware to limit request body size and prevent DoS attacks."""
+
+    async def dispatch(self, request: Request, call_next):
+        content_length = request.headers.get("content-length")
+        if content_length:
+            if int(content_length) > MAX_REQUEST_SIZE:
+                return Response(
+                    content='{"detail": "Request body too large"}',
+                    status_code=413,
+                    media_type="application/json"
+                )
+        return await call_next(request)
+
+
+class GracefulShutdownMiddleware(BaseHTTPMiddleware):
+    """Middleware to track active requests for graceful shutdown."""
+
+    async def dispatch(self, request: Request, call_next):
+        global active_requests
+
+        # Reject new requests during shutdown (except health checks)
+        if shutdown_event and shutdown_event.is_set():
+            if request.url.path not in ["/health", "/healthz", "/ready"]:
+                return Response(
+                    content='{"detail": "Service is shutting down"}',
+                    status_code=503,
+                    media_type="application/json"
+                )
+
+        # Track active requests
+        active_requests += 1
+        try:
+            return await call_next(request)
+        finally:
+            active_requests -= 1
+
+
+# CORS configuration - restrict in production
+def get_cors_origins() -> list[str]:
+    """Get allowed CORS origins based on environment."""
+    if ENVIRONMENT == "production":
+        # Production: only allow specific origins
+        origins = os.getenv("CORS_ORIGINS", "").split(",")
+        return [o.strip() for o in origins if o.strip()]
+    # Development: allow localhost origins
+    return [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ]
 
 # Global resources
 db_pool: Optional[asyncpg.Pool] = None
 http_client: Optional[httpx.AsyncClient] = None
 
+# Graceful shutdown state
+shutdown_event: Optional[asyncio.Event] = None
+active_requests: int = 0
+SHUTDOWN_TIMEOUT = int(os.getenv("SHUTDOWN_TIMEOUT_SECONDS", 30))
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan manager."""
-    global db_pool, http_client
+    """Application lifespan manager with graceful shutdown."""
+    global db_pool, http_client, shutdown_event
+
+    # Initialize shutdown event
+    shutdown_event = asyncio.Event()
 
     # Setup OpenTelemetry
     resource = Resource.create({"service.name": "admin-api"})
@@ -92,11 +162,32 @@ async def lifespan(app: FastAPI):
     logger.info("Admin API service started")
     yield
 
-    # Cleanup
-    await http_client.aclose()
+    # Graceful shutdown
+    logger.info("Initiating graceful shutdown...")
+    shutdown_event.set()
+
+    # Wait for active requests to complete (with timeout)
+    shutdown_start = asyncio.get_event_loop().time()
+    while active_requests > 0:
+        if asyncio.get_event_loop().time() - shutdown_start > SHUTDOWN_TIMEOUT:
+            logger.warning(f"Shutdown timeout reached with {active_requests} requests still active")
+            break
+        logger.info(f"Waiting for {active_requests} active requests to complete...")
+        await asyncio.sleep(0.5)
+
+    # Flush OpenTelemetry spans
+    try:
+        provider.force_flush(timeout_millis=5000)
+    except Exception as e:
+        logger.warning(f"Error flushing traces: {e}")
+
+    # Cleanup resources
+    if http_client:
+        await http_client.aclose()
     if db_pool:
         await db_pool.close()
-    logger.info("Admin API service stopped")
+
+    logger.info("Admin API service stopped gracefully")
 
 
 def _run_migrations():
@@ -123,13 +214,20 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add CORS middleware
+# Add graceful shutdown middleware (tracks active requests)
+app.add_middleware(GracefulShutdownMiddleware)
+
+# Add request size limit middleware
+app.add_middleware(RequestSizeLimitMiddleware)
+
+# Add CORS middleware with environment-specific origins
+cors_origins = get_cors_origins()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 
 # Instrument with OpenTelemetry

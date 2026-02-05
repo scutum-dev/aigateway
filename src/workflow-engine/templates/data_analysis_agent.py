@@ -14,7 +14,8 @@ Flow:
 
 import logging
 import json
-from typing import Dict, Any, Optional
+import re
+from typing import Dict, Any, Optional, Tuple
 
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -23,6 +24,115 @@ from graphs.base import BaseWorkflow
 from models.state import WorkflowState
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# SQL INJECTION PREVENTION
+# =============================================================================
+
+# Dangerous SQL keywords that should never appear in analysis queries
+DANGEROUS_SQL_KEYWORDS = {
+    'DROP', 'DELETE', 'INSERT', 'UPDATE', 'TRUNCATE', 'ALTER', 'CREATE',
+    'GRANT', 'REVOKE', 'EXEC', 'EXECUTE', 'CALL', 'INTO OUTFILE',
+    'LOAD_FILE', 'COPY', 'pg_read_file', 'pg_write_file',
+}
+
+# Allowed tables for querying (whitelist)
+ALLOWED_TABLES = {
+    'cost_tracking_daily',
+    'budget_alerts',
+    'routing_decisions',
+    'workflow_executions',
+    'workflow_steps',
+}
+
+# Maximum result limit
+MAX_QUERY_LIMIT = 1000
+
+
+def validate_sql_query(sql: str) -> Tuple[bool, str]:
+    """
+    Validate SQL query for safety before execution.
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not sql or not sql.strip():
+        return False, "Empty SQL query"
+
+    # Normalize query for checking
+    sql_upper = sql.upper().strip()
+    sql_normalized = ' '.join(sql_upper.split())  # Normalize whitespace
+
+    # 1. Must be a SELECT query
+    if not sql_normalized.startswith('SELECT'):
+        return False, "Only SELECT queries are allowed for data analysis"
+
+    # 2. Check for dangerous keywords
+    for keyword in DANGEROUS_SQL_KEYWORDS:
+        # Use word boundary matching to avoid false positives
+        pattern = r'\b' + keyword + r'\b'
+        if re.search(pattern, sql_upper):
+            return False, f"Dangerous SQL keyword detected: {keyword}"
+
+    # 3. Check for SQL injection patterns
+    injection_patterns = [
+        r';\s*(SELECT|DROP|DELETE|INSERT|UPDATE)',  # Multiple statements
+        r'--',              # SQL comments that could hide malicious code
+        r'/\*.*\*/',        # Block comments
+        r"'\s*OR\s+'\d+'\s*=\s*'\d+",  # OR '1'='1' pattern
+        r'UNION\s+ALL\s+SELECT',       # UNION injection
+        r'INTO\s+OUTFILE',             # File write
+        r'LOAD_FILE\s*\(',             # File read
+    ]
+
+    for pattern in injection_patterns:
+        if re.search(pattern, sql_upper):
+            return False, f"Potential SQL injection pattern detected"
+
+    # 4. Validate table references against whitelist
+    # Extract table names from FROM and JOIN clauses
+    from_pattern = r'FROM\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+    join_pattern = r'JOIN\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+
+    tables_used = set()
+    for match in re.finditer(from_pattern, sql_upper):
+        tables_used.add(match.group(1).lower())
+    for match in re.finditer(join_pattern, sql_upper):
+        tables_used.add(match.group(1).lower())
+
+    # Check if tables are in the whitelist
+    for table in tables_used:
+        if table not in ALLOWED_TABLES:
+            return False, f"Table '{table}' is not in the allowed list: {ALLOWED_TABLES}"
+
+    # 5. Ensure LIMIT is present and reasonable
+    limit_match = re.search(r'LIMIT\s+(\d+)', sql_upper)
+    if not limit_match:
+        return False, f"Query must include a LIMIT clause (max {MAX_QUERY_LIMIT})"
+
+    limit_value = int(limit_match.group(1))
+    if limit_value > MAX_QUERY_LIMIT:
+        return False, f"LIMIT {limit_value} exceeds maximum allowed ({MAX_QUERY_LIMIT})"
+
+    return True, ""
+
+
+def sanitize_sql_query(sql: str) -> str:
+    """
+    Sanitize SQL query by enforcing safety constraints.
+    """
+    sql = sql.strip()
+
+    # Remove any trailing semicolons to prevent multi-statement
+    sql = sql.rstrip(';')
+
+    # Ensure LIMIT exists
+    sql_upper = sql.upper()
+    if 'LIMIT' not in sql_upper:
+        sql = f"{sql} LIMIT {MAX_QUERY_LIMIT}"
+
+    return sql
 
 
 class DataAnalysisWorkflow(BaseWorkflow):
@@ -134,11 +244,26 @@ Important:
             return {"error": str(e), "should_continue": False}
 
     async def _query_data(self, state: WorkflowState) -> Dict[str, Any]:
-        """Execute the SQL query via MCP."""
+        """Execute the SQL query via MCP with security validation."""
         sql_query = state.data_query
 
         if not sql_query:
             return {"error": "No SQL query generated", "should_continue": False}
+
+        # SECURITY: Validate SQL before execution
+        is_valid, error_msg = validate_sql_query(sql_query)
+        if not is_valid:
+            logger.warning(f"SQL validation failed: {error_msg}")
+            logger.warning(f"Rejected query: {sql_query[:200]}...")
+            return {
+                "error": f"SQL validation failed: {error_msg}",
+                "should_continue": False,
+                "query_results": [],
+            }
+
+        # Sanitize the query
+        sql_query = sanitize_sql_query(sql_query)
+        logger.info(f"Executing validated query: {sql_query[:100]}...")
 
         try:
             response = await self.mcp_client.post(
