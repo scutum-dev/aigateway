@@ -6,16 +6,42 @@ metadata:
     app.kubernetes.io/name: database
     app.kubernetes.io/part-of: ai-gateway-platform
 ---
+# =============================================================================
+# IMPORTANT: Do NOT use this in production!
+# =============================================================================
+# This is a placeholder secret for development only.
+# For production, use one of these options:
+#
+# Option 1: Sealed Secrets (recommended)
+#   See: kubernetes/base/database/sealed-secrets-template.yaml
+#   Install: kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.24.0/controller.yaml
+#   Generate: kubeseal --format yaml < secret.yaml > sealed-secret.yaml
+#
+# Option 2: External Secrets Operator
+#   Install: helm install external-secrets external-secrets/external-secrets
+#   Configure to pull from AWS Secrets Manager, Vault, etc.
+#
+# Option 3: Kubernetes Secrets with RBAC
+#   Create secrets manually: kubectl create secret generic postgresql-secrets ...
+#   Ensure secrets are encrypted at rest (EncryptionConfiguration)
+#
+# =============================================================================
 apiVersion: v1
 kind: Secret
 metadata:
   name: postgresql-secrets
   namespace: database
+  annotations:
+    # WARNING: Replace this secret before production deployment
+    ai-gateway.io/security-level: "development-only"
+    ai-gateway.io/requires-rotation: "true"
 type: Opaque
 stringData:
-  postgres-password: "postgres-admin-password-change-me"
-  litellm-password: "litellm-password-change-me"
-  replication-password: "replication-password-change-me"
+  # DEVELOPMENT ONLY - Generate secure passwords for production:
+  # openssl rand -base64 32
+  postgres-password: "CHANGE_ME_postgres_dev_password"
+  litellm-password: "CHANGE_ME_litellm_dev_password"
+  replication-password: "CHANGE_ME_replication_dev_password"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -23,11 +49,23 @@ metadata:
   name: postgresql-init
   namespace: database
 data:
+  # NOTE: This script uses LITELLM_DB_PASSWORD environment variable
+  # which is injected from the postgresql-secrets Secret
+  init.sh: |
+    #!/bin/bash
+    set -e
+
+    # Create LiteLLM database and user using password from environment
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+      CREATE DATABASE litellm;
+      CREATE USER litellm WITH ENCRYPTED PASSWORD '${LITELLM_DB_PASSWORD}';
+      GRANT ALL PRIVILEGES ON DATABASE litellm TO litellm;
+    EOSQL
+
   init.sql: |
-    -- Create LiteLLM database and user
-    CREATE DATABASE litellm;
-    CREATE USER litellm WITH ENCRYPTED PASSWORD 'litellm-password-change-me';
-    GRANT ALL PRIVILEGES ON DATABASE litellm TO litellm;
+    -- This runs after init.sh creates the database and user
+    -- Connect to litellm database
+    \c litellm;
 
     -- Connect to litellm database
     \c litellm;
@@ -112,6 +150,11 @@ spec:
                 secretKeyRef:
                   name: postgresql-secrets
                   key: postgres-password
+            - name: LITELLM_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-secrets
+                  key: litellm-password
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
           volumeMounts:
