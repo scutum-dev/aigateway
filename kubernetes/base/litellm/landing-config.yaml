@@ -1,0 +1,25 @@
+# Landing Page Configuration
+# This ConfigMap injects runtime configuration for the landing page
+# The config.js file is mounted into nginx and loaded before the main script
+# Note: namespace is set dynamically during kubectl apply via Makefile
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: landing-config
+  labels:
+    app: landing-ui
+    app.kubernetes.io/name: landing-ui
+    app.kubernetes.io/component: config
+data:
+  config.js: |
+    // Runtime configuration injected at deploy time
+    // This file is mounted into the landing-ui nginx container
+    window.GATEWAY_CONFIG = {
+      apiKey: "LITELLM_MASTER_KEY_PLACEHOLDER",
+      apiUrl: "",
+      grafanaUrl: "/grafana",
+      adminUrl: "/admin",
+      temporalUrl: "/workflows",
+      docsUrl: "/docs",
+      jaegerUrl: "/jaeger"
+    };

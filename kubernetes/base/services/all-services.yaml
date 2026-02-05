@@ -908,6 +908,10 @@ spec:
           image: landing-ui:latest  # Replaced by Makefile
           ports:
             - containerPort: 80
+          volumeMounts:
+            - name: landing-config
+              mountPath: /usr/share/nginx/html/config.js
+              subPath: config.js
           resources:
             requests:
               cpu: 50m
@@ -915,6 +919,10 @@ spec:
             limits:
               cpu: 200m
               memory: 128Mi
+      volumes:
+        - name: landing-config
+          configMap:
+            name: landing-config
 ---
 apiVersion: v1
 kind: Service

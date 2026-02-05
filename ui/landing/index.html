@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Gateway - Unified LLM Infrastructure</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <!-- Runtime configuration - injected by Kubernetes ConfigMap in production -->
+    <script src="/config.js" onerror="console.log('config.js not found, using defaults')"></script>
     <style>
         :root {
             --primary: #6366f1;
@@ -307,10 +311,53 @@
             grid-template-columns: 1fr 380px;
         }
 
+        /* Playground Tabs */
+        .playground-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0,0,0,0.2);
+        }
+
+        .playground-tab {
+            padding: 14px 24px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .playground-tab:hover {
+            color: white;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .playground-tab.active {
+            color: var(--primary-light);
+            border-bottom-color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .playground-content {
+            display: none;
+        }
+
+        .playground-content.active {
+            display: block;
+        }
+
         /* Playground */
         .playground {
-            padding: 30px;
             border-right: 1px solid var(--border);
+        }
+
+        .playground-inner {
+            padding: 30px;
         }
 
         .model-selector {
@@ -389,7 +436,7 @@
             border-color: var(--primary);
         }
 
-        /* Cost Comparison - THE KEY SELLING POINT */
+        /* Cost Comparison */
         .cost-comparison {
             background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(99, 102, 241, 0.05));
             border: 1px solid rgba(16, 185, 129, 0.2);
@@ -514,6 +561,245 @@
         .response-stats strong {
             color: white;
             margin-left: 5px;
+        }
+
+        /* API Demo Panel */
+        .api-demo-panel {
+            padding: 30px;
+        }
+
+        .api-demo-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .api-demo-tab {
+            padding: 10px 16px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .api-demo-tab:hover {
+            border-color: var(--primary);
+        }
+
+        .api-demo-tab.active {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: var(--primary);
+            color: var(--primary-light);
+        }
+
+        .api-demo-content {
+            display: none;
+        }
+
+        .api-demo-content.active {
+            display: block;
+        }
+
+        .demo-card {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .demo-card h4 {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .demo-card h4 i {
+            color: var(--primary-light);
+        }
+
+        .demo-card p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .demo-input-group {
+            margin-bottom: 15px;
+        }
+
+        .demo-input-group label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .demo-input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .demo-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .demo-btn {
+            padding: 12px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .demo-btn:hover {
+            background: var(--primary-light);
+        }
+
+        .demo-result {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            display: none;
+        }
+
+        .demo-result.visible {
+            display: block;
+        }
+
+        .demo-result-success {
+            border-left: 3px solid var(--success);
+        }
+
+        .demo-result-info {
+            border-left: 3px solid var(--primary);
+        }
+
+        /* Code Samples Panel */
+        .code-samples-panel {
+            padding: 30px;
+        }
+
+        .code-lang-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .code-lang-tab {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .code-lang-tab:hover {
+            border-color: var(--primary);
+        }
+
+        .code-lang-tab.active {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: var(--primary);
+            color: var(--primary-light);
+        }
+
+        .code-sample-content {
+            display: none;
+        }
+
+        .code-sample-content.active {
+            display: block;
+        }
+
+        .code-block {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .code-block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 8px 8px 0 0;
+            border: 1px solid var(--border);
+            border-bottom: none;
+        }
+
+        .code-block-title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .copy-btn {
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .copy-btn.copied {
+            color: var(--success);
+            border-color: var(--success);
+        }
+
+        .code-block pre {
+            margin: 0;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            line-height: 1.6;
+        }
+
+        .code-block code {
+            font-family: 'JetBrains Mono', monospace;
         }
 
         /* Metrics Panel */
@@ -760,13 +1046,413 @@
 
         /* Streaming cursor */
         .streaming::after {
-            content: '▋';
+            content: '|';
             animation: blink 1s infinite;
         }
 
         @keyframes blink {
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0; }
+        }
+
+        /* MCP Server List */
+        .mcp-server-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .mcp-server-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .mcp-server-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 16px;
+        }
+
+        .mcp-server-info h5 {
+            font-size: 0.9rem;
+            margin-bottom: 2px;
+        }
+
+        .mcp-server-info p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .mcp-server-status {
+            margin-left: auto;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .mcp-server-status.online {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+        }
+
+        /* Prism overrides */
+        pre[class*="language-"] {
+            background: transparent !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        code[class*="language-"] {
+            font-size: 0.8rem !important;
+        }
+
+        /* Metrics Dashboard Panel */
+        .metrics-dashboard-panel {
+            padding: 30px;
+        }
+
+        .metrics-dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .metrics-dashboard-header h3 {
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .metrics-dashboard-header h3 i {
+            color: var(--primary-light);
+        }
+
+        .open-grafana-btn {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .open-grafana-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .grafana-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .grafana-dashboard-tab {
+            padding: 10px 18px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .grafana-dashboard-tab:hover {
+            border-color: var(--primary);
+        }
+
+        .grafana-dashboard-tab.active {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: var(--primary);
+            color: var(--primary-light);
+        }
+
+        .grafana-embed-container {
+            min-height: 400px;
+        }
+
+        .grafana-dashboard {
+            display: none;
+        }
+
+        .grafana-dashboard.active {
+            display: block;
+        }
+
+        .grafana-iframe-wrapper {
+            width: 100%;
+            height: 180px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+        }
+
+        .grafana-iframe-wrapper.full-width {
+            height: 220px;
+        }
+
+        .grafana-iframe-wrapper iframe {
+            width: 100%;
+            height: 100%;
+        }
+
+        .grafana-metrics-fallback {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .fallback-metric {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .fallback-metric.wide {
+            grid-column: span 2;
+        }
+
+        .fallback-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .fallback-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .fallback-chart {
+            height: 40px;
+            margin-top: 10px;
+            background: linear-gradient(90deg,
+                rgba(99, 102, 241, 0.3) 0%,
+                rgba(99, 102, 241, 0.5) 30%,
+                rgba(99, 102, 241, 0.3) 60%,
+                rgba(99, 102, 241, 0.6) 100%);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .fallback-chart::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Cost Breakdown */
+        .cost-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .cost-bar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cost-model {
+            width: 100px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .cost-bar-bg {
+            flex: 1;
+            height: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .cost-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .cost-amount {
+            width: 60px;
+            text-align: right;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Latency Bars */
+        .latency-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .latency-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .latency-bar-row span:first-child {
+            width: 80px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .latency-bar {
+            height: 8px;
+            background: linear-gradient(90deg, var(--success), var(--warning));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .latency-bar-row span:last-child {
+            width: 50px;
+            text-align: right;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        /* Provider Status Grid */
+        .provider-status-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .provider-status-card {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .provider-status-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .provider-status-card.online {
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .provider-status-card.degraded {
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        .provider-status-card.offline {
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .provider-status-card .provider-icon {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--primary-light);
+        }
+
+        .provider-status-card .provider-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .provider-status-card .provider-health {
+            font-size: 0.75rem;
+            color: var(--success);
+            margin-bottom: 10px;
+        }
+
+        .provider-status-card.degraded .provider-health {
+            color: var(--warning);
+        }
+
+        .provider-status-card.offline .provider-health {
+            color: var(--danger);
+        }
+
+        .provider-status-card .provider-stats {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        /* Refresh Bar */
+        .metrics-refresh-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .refresh-btn {
+            padding: 8px 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .refresh-btn:hover {
+            background: var(--primary-light);
         }
     </style>
 </head>
@@ -782,7 +1468,7 @@
                 AI Gateway
             </div>
             <div class="nav-links">
-                <a href="#demo">Live Demo</a>
+                <a href="#demo">Playground</a>
                 <a href="#features">Features</a>
                 <a href="http://localhost:3030" target="_blank">Analytics</a>
                 <a href="http://localhost:5173" target="_blank">Admin</a>
@@ -834,8 +1520,8 @@
     <!-- Demo Section -->
     <section class="demo-section" id="demo">
         <div class="section-header">
-            <h2>Try It Now</h2>
-            <p>Send a real request and see cost savings in action</p>
+            <h2>Interactive Playground</h2>
+            <p>Chat with models, explore API capabilities, and get code samples</p>
         </div>
 
         <div class="demo-container">
@@ -848,78 +1534,780 @@
 
             <div class="demo-body">
                 <div class="playground">
-                    <div class="model-selector">
-                        <label>Select Model</label>
-                        <div class="model-tabs" id="modelTabs">
-                            <div class="model-tab active" data-model="gpt-5-mini" data-input="0.10" data-output="0.40">
-                                GPT-5 Mini <span class="price">$0.10/1M</span>
+                    <!-- Playground Tabs -->
+                    <div class="playground-tabs">
+                        <div class="playground-tab active" data-tab="chat">
+                            <i class="fas fa-comments"></i> Chat
+                        </div>
+                        <div class="playground-tab" data-tab="api-demos">
+                            <i class="fas fa-flask"></i> API Demos
+                        </div>
+                        <div class="playground-tab" data-tab="code-samples">
+                            <i class="fas fa-code"></i> Code Samples
+                        </div>
+                        <div class="playground-tab" data-tab="metrics">
+                            <i class="fas fa-chart-line"></i> Metrics
+                        </div>
+                    </div>
+
+                    <!-- Chat Panel -->
+                    <div class="playground-content active" id="chat-panel">
+                        <div class="playground-inner">
+                            <div class="model-selector">
+                                <label>Select Model</label>
+                                <div class="model-tabs" id="modelTabs">
+                                    <div class="model-tab active" data-model="gpt-5-mini" data-input="0.10" data-output="0.40">
+                                        GPT-5 Mini <span class="price">$0.10/1M</span>
+                                    </div>
+                                    <div class="model-tab" data-model="gpt-5" data-input="2.00" data-output="8.00">
+                                        GPT-5 <span class="price">$2.00/1M</span>
+                                    </div>
+                                    <div class="model-tab" data-model="claude-haiku-4.5" data-input="0.20" data-output="1.00">
+                                        Claude Haiku 4.5 <span class="price">$0.20/1M</span>
+                                    </div>
+                                    <div class="model-tab" data-model="claude-sonnet-4.5" data-input="3.00" data-output="15.00">
+                                        Claude Sonnet 4.5 <span class="price">$3.00/1M</span>
+                                    </div>
+                                    <div class="model-tab" data-model="gemini-3-flash" data-input="0.05" data-output="0.20">
+                                        Gemini 3 Flash <span class="price">$0.05/1M</span>
+                                    </div>
+                                    <div class="model-tab" data-model="grok-3" data-input="1.00" data-output="4.00">
+                                        Grok 3 <span class="price">$1.00/1M</span>
+                                    </div>
+                                    <div class="model-tab" data-model="deepseek-v3" data-input="0.07" data-output="0.27">
+                                        DeepSeek V3 <span class="price">$0.07/1M</span>
+                                    </div>
+                                    <div class="model-tab" data-model="llama-3.1-8b" data-input="0.00" data-output="0.00">
+                                        Llama 3.1 8B <span class="price">Free (local)</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="model-tab" data-model="gpt-5" data-input="2.00" data-output="8.00">
-                                GPT-5 <span class="price">$2.00/1M</span>
+
+                            <div class="prompt-area">
+                                <label>Your Prompt</label>
+                                <textarea class="prompt-input" id="promptInput" placeholder="Ask anything...">What are the key benefits of using a unified AI gateway for enterprise applications?</textarea>
                             </div>
-                            <div class="model-tab" data-model="claude-haiku-4.5" data-input="0.20" data-output="1.00">
-                                Claude Haiku 4.5 <span class="price">$0.20/1M</span>
+
+                            <div class="cost-comparison">
+                                <h4><i class="fas fa-calculator"></i> Cost Prediction</h4>
+                                <div class="cost-row">
+                                    <span class="cost-label">Estimated Input Tokens</span>
+                                    <span class="cost-value" id="estInputTokens">~25</span>
+                                </div>
+                                <div class="cost-row">
+                                    <span class="cost-label">Estimated Output Tokens</span>
+                                    <span class="cost-value" id="estOutputTokens">~200</span>
+                                </div>
+                                <div class="cost-row">
+                                    <span class="cost-label">Direct API Cost</span>
+                                    <span class="cost-value" id="directCost">$0.000150</span>
+                                </div>
+                                <div class="cost-row">
+                                    <span class="cost-label">With AI Gateway</span>
+                                    <span class="cost-value highlight" id="gatewayCost">$0.000124</span>
+                                    <span class="savings-badge" id="savingsBadge">Save 17%</span>
+                                </div>
                             </div>
-                            <div class="model-tab" data-model="claude-sonnet-4.5" data-input="3.00" data-output="15.00">
-                                Claude Sonnet 4.5 <span class="price">$3.00/1M</span>
-                            </div>
-                            <div class="model-tab" data-model="gemini-3-flash" data-input="0.05" data-output="0.20">
-                                Gemini 3 Flash <span class="price">$0.05/1M</span>
-                            </div>
-                            <div class="model-tab" data-model="grok-3" data-input="1.00" data-output="4.00">
-                                Grok 3 <span class="price">$1.00/1M</span>
-                            </div>
-                            <div class="model-tab" data-model="deepseek-v3" data-input="0.07" data-output="0.27">
-                                DeepSeek V3 <span class="price">$0.07/1M</span>
-                            </div>
-                            <div class="model-tab" data-model="llama-3.1-8b" data-input="0.00" data-output="0.00">
-                                Llama 3.1 8B <span class="price">Free (local)</span>
+
+                            <button class="btn-send" id="sendBtn" onclick="sendRequest()">
+                                <i class="fas fa-paper-plane"></i> Send Request
+                            </button>
+
+                            <div class="response-area" id="responseArea">
+                                <div class="response-box">
+                                    <div class="response-header">
+                                        <span><i class="fas fa-robot"></i> <span id="responseModel">GPT-5 Mini</span></span>
+                                        <span id="responseTime">-</span>
+                                    </div>
+                                    <div class="response-content" id="responseContent"></div>
+                                    <div class="response-stats">
+                                        <span>Input: <strong id="actualInput">0</strong></span>
+                                        <span>Output: <strong id="actualOutput">0</strong></span>
+                                        <span>Cost: <strong id="actualCost">$0.00</strong></span>
+                                        <span>Latency: <strong id="actualLatency">0ms</strong></span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="prompt-area">
-                        <label>Your Prompt</label>
-                        <textarea class="prompt-input" id="promptInput" placeholder="Ask anything...">What are the key benefits of using a unified AI gateway for enterprise applications?</textarea>
-                    </div>
-
-                    <div class="cost-comparison">
-                        <h4><i class="fas fa-calculator"></i> Cost Prediction</h4>
-                        <div class="cost-row">
-                            <span class="cost-label">Estimated Input Tokens</span>
-                            <span class="cost-value" id="estInputTokens">~25</span>
-                        </div>
-                        <div class="cost-row">
-                            <span class="cost-label">Estimated Output Tokens</span>
-                            <span class="cost-value" id="estOutputTokens">~200</span>
-                        </div>
-                        <div class="cost-row">
-                            <span class="cost-label">Direct API Cost</span>
-                            <span class="cost-value" id="directCost">$0.000150</span>
-                        </div>
-                        <div class="cost-row">
-                            <span class="cost-label">With AI Gateway</span>
-                            <span class="cost-value highlight" id="gatewayCost">$0.000124</span>
-                            <span class="savings-badge" id="savingsBadge">Save 17%</span>
-                        </div>
-                    </div>
-
-                    <button class="btn-send" id="sendBtn" onclick="sendRequest()">
-                        <i class="fas fa-paper-plane"></i> Send Request
-                    </button>
-
-                    <div class="response-area" id="responseArea">
-                        <div class="response-box">
-                            <div class="response-header">
-                                <span><i class="fas fa-robot"></i> <span id="responseModel">GPT-4o Mini</span></span>
-                                <span id="responseTime">-</span>
+                    <!-- API Demos Panel -->
+                    <div class="playground-content" id="api-demos-panel">
+                        <div class="api-demo-panel">
+                            <div class="api-demo-tabs">
+                                <div class="api-demo-tab active" data-demo="cost-predictor">
+                                    <i class="fas fa-calculator"></i> Cost Predictor
+                                </div>
+                                <div class="api-demo-tab" data-demo="policy-router">
+                                    <i class="fas fa-route"></i> Policy Router
+                                </div>
+                                <div class="api-demo-tab" data-demo="semantic-cache">
+                                    <i class="fas fa-brain"></i> Semantic Cache
+                                </div>
+                                <div class="api-demo-tab" data-demo="mcp-gateway">
+                                    <i class="fas fa-plug"></i> MCP Gateway
+                                </div>
                             </div>
-                            <div class="response-content" id="responseContent"></div>
-                            <div class="response-stats">
-                                <span>Input: <strong id="actualInput">0</strong></span>
-                                <span>Output: <strong id="actualOutput">0</strong></span>
-                                <span>Cost: <strong id="actualCost">$0.00</strong></span>
-                                <span>Latency: <strong id="actualLatency">0ms</strong></span>
+
+                            <!-- Cost Predictor Demo -->
+                            <div class="api-demo-content active" id="cost-predictor-demo">
+                                <div class="demo-card">
+                                    <h4><i class="fas fa-calculator"></i> Cost Prediction API</h4>
+                                    <p>Estimate the cost of a request before sending it. Get input/output token estimates and cost breakdown by model.</p>
+
+                                    <div class="demo-input-group">
+                                        <label>Prompt Text</label>
+                                        <textarea class="demo-input" id="costPredictorInput" rows="3" placeholder="Enter your prompt...">Explain quantum computing in simple terms</textarea>
+                                    </div>
+
+                                    <div class="demo-input-group">
+                                        <label>Model</label>
+                                        <select class="demo-input" id="costPredictorModel">
+                                            <option value="gpt-5-mini">GPT-5 Mini</option>
+                                            <option value="gpt-5">GPT-5</option>
+                                            <option value="claude-sonnet-4.5">Claude Sonnet 4.5</option>
+                                            <option value="gemini-3-flash">Gemini 3 Flash</option>
+                                        </select>
+                                    </div>
+
+                                    <button class="demo-btn" onclick="runCostPredictor()">
+                                        <i class="fas fa-calculator"></i> Predict Cost
+                                    </button>
+
+                                    <div class="demo-result demo-result-success" id="costPredictorResult"></div>
+                                </div>
+                            </div>
+
+                            <!-- Policy Router Demo -->
+                            <div class="api-demo-content" id="policy-router-demo">
+                                <div class="demo-card">
+                                    <h4><i class="fas fa-route"></i> Intelligent Policy Routing</h4>
+                                    <p>See how the gateway routes requests based on Cedar policies. Different prompts trigger different routing rules.</p>
+
+                                    <div class="demo-input-group">
+                                        <label>Test Scenario</label>
+                                        <select class="demo-input" id="policyScenario">
+                                            <option value="cost-optimize">Cost Optimization (route to cheapest)</option>
+                                            <option value="latency-sla">Latency SLA (route to fastest)</option>
+                                            <option value="team-budget">Team Budget Check</option>
+                                            <option value="content-filter">Content Policy Filter</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="demo-input-group">
+                                        <label>Team ID</label>
+                                        <input type="text" class="demo-input" id="policyTeamId" value="engineering" placeholder="e.g., engineering, marketing">
+                                    </div>
+
+                                    <button class="demo-btn" onclick="runPolicyRouter()">
+                                        <i class="fas fa-route"></i> Simulate Routing
+                                    </button>
+
+                                    <div class="demo-result demo-result-info" id="policyRouterResult"></div>
+                                </div>
+                            </div>
+
+                            <!-- Semantic Cache Demo -->
+                            <div class="api-demo-content" id="semantic-cache-demo">
+                                <div class="demo-card">
+                                    <h4><i class="fas fa-brain"></i> Semantic Cache</h4>
+                                    <p>Test the semantic similarity cache. Similar prompts return cached responses instantly, saving cost and latency.</p>
+
+                                    <div class="demo-input-group">
+                                        <label>Original Query (cached)</label>
+                                        <input type="text" class="demo-input" id="cacheOriginal" value="What is machine learning?" readonly style="opacity: 0.7;">
+                                    </div>
+
+                                    <div class="demo-input-group">
+                                        <label>Test Query</label>
+                                        <input type="text" class="demo-input" id="cacheTest" placeholder="Try a similar question..." value="Explain what machine learning is">
+                                    </div>
+
+                                    <button class="demo-btn" onclick="runSemanticCache()">
+                                        <i class="fas fa-search"></i> Check Cache
+                                    </button>
+
+                                    <div class="demo-result demo-result-success" id="semanticCacheResult"></div>
+                                </div>
+                            </div>
+
+                            <!-- MCP Gateway Demo -->
+                            <div class="api-demo-content" id="mcp-gateway-demo">
+                                <div class="demo-card">
+                                    <h4><i class="fas fa-plug"></i> MCP Tool Federation</h4>
+                                    <p>View available MCP servers and their tools. Agents can access databases, file systems, and external APIs through a unified interface.</p>
+
+                                    <div class="mcp-server-list" id="mcpServerList">
+                                        <div class="mcp-server-item">
+                                            <div class="mcp-server-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">
+                                                <i class="fas fa-database"></i>
+                                            </div>
+                                            <div class="mcp-server-info">
+                                                <h5>PostgreSQL</h5>
+                                                <p>Query database, list tables, execute SQL</p>
+                                            </div>
+                                            <span class="mcp-server-status online">Online</span>
+                                        </div>
+                                        <div class="mcp-server-item">
+                                            <div class="mcp-server-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                                                <i class="fas fa-folder"></i>
+                                            </div>
+                                            <div class="mcp-server-info">
+                                                <h5>Filesystem</h5>
+                                                <p>Read files, list directories, search</p>
+                                            </div>
+                                            <span class="mcp-server-status online">Online</span>
+                                        </div>
+                                        <div class="mcp-server-item">
+                                            <div class="mcp-server-icon" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa;">
+                                                <i class="fab fa-github"></i>
+                                            </div>
+                                            <div class="mcp-server-info">
+                                                <h5>GitHub</h5>
+                                                <p>Create issues, PRs, manage repos</p>
+                                            </div>
+                                            <span class="mcp-server-status online">Online</span>
+                                        </div>
+                                        <div class="mcp-server-item">
+                                            <div class="mcp-server-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">
+                                                <i class="fas fa-globe"></i>
+                                            </div>
+                                            <div class="mcp-server-info">
+                                                <h5>Web Fetch</h5>
+                                                <p>Fetch URLs, scrape content, API calls</p>
+                                            </div>
+                                            <span class="mcp-server-status online">Online</span>
+                                        </div>
+                                    </div>
+
+                                    <button class="demo-btn" style="margin-top: 20px;" onclick="runMCPDemo()">
+                                        <i class="fas fa-sync"></i> Refresh Status
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Code Samples Panel -->
+                    <div class="playground-content" id="code-samples-panel">
+                        <div class="code-samples-panel">
+                            <div class="code-lang-tabs">
+                                <div class="code-lang-tab active" data-lang="python">
+                                    <i class="fab fa-python"></i> Python
+                                </div>
+                                <div class="code-lang-tab" data-lang="javascript">
+                                    <i class="fab fa-js"></i> JavaScript
+                                </div>
+                                <div class="code-lang-tab" data-lang="go">
+                                    <i class="fas fa-code"></i> Go
+                                </div>
+                                <div class="code-lang-tab" data-lang="java">
+                                    <i class="fab fa-java"></i> Java
+                                </div>
+                                <div class="code-lang-tab" data-lang="curl">
+                                    <i class="fas fa-terminal"></i> cURL
+                                </div>
+                            </div>
+
+                            <!-- Python -->
+                            <div class="code-sample-content active" id="python-sample">
+                                <div class="code-block">
+                                    <div class="code-block-header">
+                                        <span class="code-block-title">Using OpenAI SDK</span>
+                                        <button class="copy-btn" onclick="copyCode('python-openai')">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                    <pre><code class="language-python" id="python-openai">from openai import OpenAI
+
+client = OpenAI(
+    api_key="$LITELLM_KEY",
+    base_url="http://localhost:4000/v1"
+)
+
+response = client.chat.completions.create(
+    model="gpt-5-mini",
+    messages=[
+        {"role": "user", "content": "Hello, world!"}
+    ],
+    stream=True
+)
+
+for chunk in response:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")</code></pre>
+                                </div>
+
+                                <div class="code-block">
+                                    <div class="code-block-header">
+                                        <span class="code-block-title">Using Requests</span>
+                                        <button class="copy-btn" onclick="copyCode('python-requests')">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                    <pre><code class="language-python" id="python-requests">import requests
+
+response = requests.post(
+    "http://localhost:4000/v1/chat/completions",
+    headers={
+        "Authorization": "Bearer $LITELLM_KEY",
+        "Content-Type": "application/json"
+    },
+    json={
+        "model": "gpt-5-mini",
+        "messages": [{"role": "user", "content": "Hello!"}],
+        "max_tokens": 100
+    }
+)
+
+print(response.json()["choices"][0]["message"]["content"])</code></pre>
+                                </div>
+                            </div>
+
+                            <!-- JavaScript -->
+                            <div class="code-sample-content" id="javascript-sample">
+                                <div class="code-block">
+                                    <div class="code-block-header">
+                                        <span class="code-block-title">Using OpenAI SDK</span>
+                                        <button class="copy-btn" onclick="copyCode('js-openai')">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                    <pre><code class="language-javascript" id="js-openai">import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey: '$LITELLM_KEY',
+  baseURL: 'http://localhost:4000/v1'
+});
+
+const stream = await client.chat.completions.create({
+  model: 'gpt-5-mini',
+  messages: [{ role: 'user', content: 'Hello, world!' }],
+  stream: true
+});
+
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content || '');
+}</code></pre>
+                                </div>
+
+                                <div class="code-block">
+                                    <div class="code-block-header">
+                                        <span class="code-block-title">Using Fetch API</span>
+                                        <button class="copy-btn" onclick="copyCode('js-fetch')">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                    <pre><code class="language-javascript" id="js-fetch">const response = await fetch('http://localhost:4000/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer $LITELLM_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    model: 'gpt-5-mini',
+    messages: [{ role: 'user', content: 'Hello!' }],
+    stream: true
+  })
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  console.log(decoder.decode(value));
+}</code></pre>
+                                </div>
+                            </div>
+
+                            <!-- Go -->
+                            <div class="code-sample-content" id="go-sample">
+                                <div class="code-block">
+                                    <div class="code-block-header">
+                                        <span class="code-block-title">Using net/http</span>
+                                        <button class="copy-btn" onclick="copyCode('go-http')">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                    <pre><code class="language-go" id="go-http">package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    payload := map[string]interface{}{
+        "model": "gpt-5-mini",
+        "messages": []map[string]string{
+            {"role": "user", "content": "Hello!"},
+        },
+        "max_tokens": 100,
+    }
+
+    body, _ := json.Marshal(payload)
+    req, _ := http.NewRequest("POST",
+        "http://localhost:4000/v1/chat/completions",
+        bytes.NewBuffer(body))
+
+    req.Header.Set("Authorization", "Bearer $LITELLM_KEY")
+    req.Header.Set("Content-Type", "application/json")
+
+    client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Println(result)
+}</code></pre>
+                                </div>
+                            </div>
+
+                            <!-- Java -->
+                            <div class="code-sample-content" id="java-sample">
+                                <div class="code-block">
+                                    <div class="code-block-header">
+                                        <span class="code-block-title">Using HttpClient</span>
+                                        <button class="copy-btn" onclick="copyCode('java-http')">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                    <pre><code class="language-java" id="java-http">import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+public class GatewayExample {
+    public static void main(String[] args) throws Exception {
+        String json = """
+            {
+                "model": "gpt-5-mini",
+                "messages": [{"role": "user", "content": "Hello!"}],
+                "max_tokens": 100
+            }
+            """;
+
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create("http://localhost:4000/v1/chat/completions"))
+            .header("Authorization", "Bearer $LITELLM_KEY")
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(json))
+            .build();
+
+        HttpResponse&lt;String&gt; response = client.send(request,
+            HttpResponse.BodyHandlers.ofString());
+
+        System.out.println(response.body());
+    }
+}</code></pre>
+                                </div>
+                            </div>
+
+                            <!-- cURL -->
+                            <div class="code-sample-content" id="curl-sample">
+                                <div class="code-block">
+                                    <div class="code-block-header">
+                                        <span class="code-block-title">Basic Request</span>
+                                        <button class="copy-btn" onclick="copyCode('curl-basic')">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                    <pre><code class="language-bash" id="curl-basic">curl http://localhost:4000/v1/chat/completions \
+  -H "Authorization: Bearer $LITELLM_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-5-mini",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "max_tokens": 100
+  }'</code></pre>
+                                </div>
+
+                                <div class="code-block">
+                                    <div class="code-block-header">
+                                        <span class="code-block-title">Streaming Request</span>
+                                        <button class="copy-btn" onclick="copyCode('curl-stream')">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                    <pre><code class="language-bash" id="curl-stream">curl http://localhost:4000/v1/chat/completions \
+  -H "Authorization: Bearer $LITELLM_KEY" \
+  -H "Content-Type: application/json" \
+  -N --no-buffer \
+  -d '{
+    "model": "gpt-5-mini",
+    "messages": [{"role": "user", "content": "Tell me a story"}],
+    "stream": true
+  }'</code></pre>
+                                </div>
+
+                                <div class="code-block">
+                                    <div class="code-block-header">
+                                        <span class="code-block-title">List Models</span>
+                                        <button class="copy-btn" onclick="copyCode('curl-models')">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                    <pre><code class="language-bash" id="curl-models">curl http://localhost:4000/v1/models \
+  -H "Authorization: Bearer $LITELLM_KEY"</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Panel (Grafana Dashboards) -->
+                    <div class="playground-content" id="metrics-panel">
+                        <div class="metrics-dashboard-panel">
+                            <div class="metrics-dashboard-header">
+                                <h3><i class="fas fa-chart-line"></i> Live Metrics Dashboard</h3>
+                                <a href="http://localhost:3030" target="_blank" class="open-grafana-btn">
+                                    <i class="fas fa-external-link-alt"></i> Open Grafana
+                                </a>
+                            </div>
+
+                            <div class="grafana-selector">
+                                <div class="grafana-dashboard-tab active" data-dashboard="overview">
+                                    Overview
+                                </div>
+                                <div class="grafana-dashboard-tab" data-dashboard="cost">
+                                    Cost Analysis
+                                </div>
+                                <div class="grafana-dashboard-tab" data-dashboard="latency">
+                                    Latency
+                                </div>
+                                <div class="grafana-dashboard-tab" data-dashboard="providers">
+                                    Providers
+                                </div>
+                            </div>
+
+                            <div class="grafana-embed-container">
+                                <!-- Overview Dashboard -->
+                                <div class="grafana-dashboard active" id="dashboard-overview">
+                                    <div class="grafana-iframe-wrapper">
+                                        <iframe
+                                            src="http://localhost:3030/d-solo/ai-gateway-overview/ai-gateway-overview?orgId=1&panelId=1&theme=dark"
+                                            frameborder="0"
+                                            loading="lazy"
+                                        ></iframe>
+                                    </div>
+                                    <div class="grafana-iframe-wrapper">
+                                        <iframe
+                                            src="http://localhost:3030/d-solo/ai-gateway-overview/ai-gateway-overview?orgId=1&panelId=2&theme=dark"
+                                            frameborder="0"
+                                            loading="lazy"
+                                        ></iframe>
+                                    </div>
+                                    <div class="grafana-metrics-fallback">
+                                        <div class="fallback-metric">
+                                            <div class="fallback-label">Requests/min</div>
+                                            <div class="fallback-value" id="metric-rpm">--</div>
+                                            <div class="fallback-chart" id="chart-rpm"></div>
+                                        </div>
+                                        <div class="fallback-metric">
+                                            <div class="fallback-label">Success Rate</div>
+                                            <div class="fallback-value" id="metric-success">--</div>
+                                            <div class="fallback-chart" id="chart-success"></div>
+                                        </div>
+                                        <div class="fallback-metric">
+                                            <div class="fallback-label">Avg Latency</div>
+                                            <div class="fallback-value" id="metric-latency">--</div>
+                                            <div class="fallback-chart" id="chart-latency"></div>
+                                        </div>
+                                        <div class="fallback-metric">
+                                            <div class="fallback-label">Cost Today</div>
+                                            <div class="fallback-value" id="metric-cost">--</div>
+                                            <div class="fallback-chart" id="chart-cost"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Cost Dashboard -->
+                                <div class="grafana-dashboard" id="dashboard-cost">
+                                    <div class="grafana-iframe-wrapper full-width">
+                                        <iframe
+                                            src="http://localhost:3030/d-solo/ai-gateway-cost/cost-analysis?orgId=1&panelId=1&theme=dark"
+                                            frameborder="0"
+                                            loading="lazy"
+                                        ></iframe>
+                                    </div>
+                                    <div class="grafana-metrics-fallback">
+                                        <div class="fallback-metric wide">
+                                            <div class="fallback-label">Cost by Model (Today)</div>
+                                            <div class="cost-breakdown">
+                                                <div class="cost-bar-item">
+                                                    <span class="cost-model">GPT-5 Mini</span>
+                                                    <div class="cost-bar-bg">
+                                                        <div class="cost-bar-fill" style="width: 45%; background: #10a37f;"></div>
+                                                    </div>
+                                                    <span class="cost-amount">$12.45</span>
+                                                </div>
+                                                <div class="cost-bar-item">
+                                                    <span class="cost-model">Claude Sonnet</span>
+                                                    <div class="cost-bar-bg">
+                                                        <div class="cost-bar-fill" style="width: 30%; background: #d4a27f;"></div>
+                                                    </div>
+                                                    <span class="cost-amount">$8.20</span>
+                                                </div>
+                                                <div class="cost-bar-item">
+                                                    <span class="cost-model">Gemini Flash</span>
+                                                    <div class="cost-bar-bg">
+                                                        <div class="cost-bar-fill" style="width: 15%; background: #4285f4;"></div>
+                                                    </div>
+                                                    <span class="cost-amount">$4.10</span>
+                                                </div>
+                                                <div class="cost-bar-item">
+                                                    <span class="cost-model">DeepSeek V3</span>
+                                                    <div class="cost-bar-bg">
+                                                        <div class="cost-bar-fill" style="width: 10%; background: #3b82f6;"></div>
+                                                    </div>
+                                                    <span class="cost-amount">$2.75</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="fallback-metric">
+                                            <div class="fallback-label">Total Today</div>
+                                            <div class="fallback-value">$27.50</div>
+                                        </div>
+                                        <div class="fallback-metric">
+                                            <div class="fallback-label">Savings</div>
+                                            <div class="fallback-value" style="color: var(--success);">$11.20</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Latency Dashboard -->
+                                <div class="grafana-dashboard" id="dashboard-latency">
+                                    <div class="grafana-iframe-wrapper full-width">
+                                        <iframe
+                                            src="http://localhost:3030/d-solo/ai-gateway-latency/latency?orgId=1&panelId=1&theme=dark"
+                                            frameborder="0"
+                                            loading="lazy"
+                                        ></iframe>
+                                    </div>
+                                    <div class="grafana-metrics-fallback">
+                                        <div class="fallback-metric">
+                                            <div class="fallback-label">P50 Latency</div>
+                                            <div class="fallback-value">245ms</div>
+                                        </div>
+                                        <div class="fallback-metric">
+                                            <div class="fallback-label">P95 Latency</div>
+                                            <div class="fallback-value">890ms</div>
+                                        </div>
+                                        <div class="fallback-metric">
+                                            <div class="fallback-label">P99 Latency</div>
+                                            <div class="fallback-value">1.2s</div>
+                                        </div>
+                                        <div class="fallback-metric wide">
+                                            <div class="fallback-label">Latency by Provider</div>
+                                            <div class="latency-bars">
+                                                <div class="latency-bar-row">
+                                                    <span>OpenAI</span>
+                                                    <div class="latency-bar" style="width: 60%;"></div>
+                                                    <span>320ms</span>
+                                                </div>
+                                                <div class="latency-bar-row">
+                                                    <span>Anthropic</span>
+                                                    <div class="latency-bar" style="width: 80%;"></div>
+                                                    <span>420ms</span>
+                                                </div>
+                                                <div class="latency-bar-row">
+                                                    <span>Google</span>
+                                                    <div class="latency-bar" style="width: 40%;"></div>
+                                                    <span>210ms</span>
+                                                </div>
+                                                <div class="latency-bar-row">
+                                                    <span>Local</span>
+                                                    <div class="latency-bar" style="width: 20%;"></div>
+                                                    <span>85ms</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Providers Dashboard -->
+                                <div class="grafana-dashboard" id="dashboard-providers">
+                                    <div class="grafana-iframe-wrapper full-width">
+                                        <iframe
+                                            src="http://localhost:3030/d-solo/ai-gateway-providers/providers?orgId=1&panelId=1&theme=dark"
+                                            frameborder="0"
+                                            loading="lazy"
+                                        ></iframe>
+                                    </div>
+                                    <div class="grafana-metrics-fallback">
+                                        <div class="provider-status-grid">
+                                            <div class="provider-status-card online">
+                                                <div class="provider-icon"><i class="fas fa-robot"></i></div>
+                                                <div class="provider-name">OpenAI</div>
+                                                <div class="provider-health">Healthy</div>
+                                                <div class="provider-stats">
+                                                    <span>1.2k req/h</span>
+                                                    <span>99.9%</span>
+                                                </div>
+                                            </div>
+                                            <div class="provider-status-card online">
+                                                <div class="provider-icon"><i class="fas fa-brain"></i></div>
+                                                <div class="provider-name">Anthropic</div>
+                                                <div class="provider-health">Healthy</div>
+                                                <div class="provider-stats">
+                                                    <span>850 req/h</span>
+                                                    <span>99.8%</span>
+                                                </div>
+                                            </div>
+                                            <div class="provider-status-card online">
+                                                <div class="provider-icon"><i class="fab fa-google"></i></div>
+                                                <div class="provider-name">Google</div>
+                                                <div class="provider-health">Healthy</div>
+                                                <div class="provider-stats">
+                                                    <span>620 req/h</span>
+                                                    <span>99.7%</span>
+                                                </div>
+                                            </div>
+                                            <div class="provider-status-card online">
+                                                <div class="provider-icon"><i class="fas fa-bolt"></i></div>
+                                                <div class="provider-name">xAI</div>
+                                                <div class="provider-health">Healthy</div>
+                                                <div class="provider-stats">
+                                                    <span>340 req/h</span>
+                                                    <span>99.5%</span>
+                                                </div>
+                                            </div>
+                                            <div class="provider-status-card online">
+                                                <div class="provider-icon"><i class="fas fa-water"></i></div>
+                                                <div class="provider-name">DeepSeek</div>
+                                                <div class="provider-health">Healthy</div>
+                                                <div class="provider-stats">
+                                                    <span>280 req/h</span>
+                                                    <span>99.6%</span>
+                                                </div>
+                                            </div>
+                                            <div class="provider-status-card online">
+                                                <div class="provider-icon"><i class="fas fa-server"></i></div>
+                                                <div class="provider-name">Ollama</div>
+                                                <div class="provider-health">Healthy</div>
+                                                <div class="provider-stats">
+                                                    <span>150 req/h</span>
+                                                    <span>100%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="metrics-refresh-bar">
+                                <span><i class="fas fa-sync-alt"></i> Auto-refresh: 30s</span>
+                                <button class="refresh-btn" onclick="refreshMetrics()">
+                                    <i class="fas fa-redo"></i> Refresh Now
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1100,11 +2488,18 @@
         </div>
     </footer>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+
     <script>
         // State
-        let selectedModel = 'gpt-4o-mini';
-        let selectedInput = 0.15;
-        let selectedOutput = 0.60;
+        let selectedModel = 'gpt-5-mini';
+        let selectedInput = 0.10;
+        let selectedOutput = 0.40;
 
         let session = {
             requests: 0,
@@ -1114,8 +2509,77 @@
             providers: { openai: 0, anthropic: 0, google: 0, xai: 0, deepseek: 0, local: 0 }
         };
 
-        const API_KEY = '$LITELLM_KEY';
-        const API_URL = 'http://localhost:4000';
+        // Environment-aware configuration
+        // - localhost: use hardcoded dev defaults
+        // - production: use values injected via ConfigMap (window.GATEWAY_CONFIG)
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        // Config: injected at deploy time for production, defaults for local dev
+        const CONFIG = window.GATEWAY_CONFIG || {
+            apiKey: '$LITELLM_KEY',
+            apiUrl: 'http://localhost:4000',
+            grafanaUrl: 'http://localhost:3030',
+            adminUrl: 'http://localhost:5173',
+            temporalUrl: 'http://localhost:8088'
+        };
+
+        // Environment-aware URLs
+        const API_KEY = isLocal ? '$LITELLM_KEY' : CONFIG.apiKey;
+        const API_URL = isLocal ? 'http://localhost:4000' : CONFIG.apiUrl;
+        const GRAFANA_URL = isLocal ? 'http://localhost:3030' : (CONFIG.grafanaUrl || '/grafana');
+        const ADMIN_URL = isLocal ? 'http://localhost:5173' : (CONFIG.adminUrl || '/admin');
+        const TEMPORAL_URL = isLocal ? 'http://localhost:8088' : (CONFIG.temporalUrl || '/workflows');
+        const DOCS_URL = isLocal ? 'http://localhost:4000/docs' : '/docs';
+        const JAEGER_URL = isLocal ? 'http://localhost:16686' : '/jaeger';
+
+        // Update all localhost links to use environment-aware URLs
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update navigation and footer links
+            document.querySelectorAll('a[href*="localhost:3030"]').forEach(a => a.href = GRAFANA_URL);
+            document.querySelectorAll('a[href*="localhost:5173"]').forEach(a => a.href = ADMIN_URL);
+            document.querySelectorAll('a[href*="localhost:8088"]').forEach(a => a.href = TEMPORAL_URL);
+            document.querySelectorAll('a[href*="localhost:4000/docs"]').forEach(a => a.href = DOCS_URL);
+            document.querySelectorAll('a[href*="localhost:16686"]').forEach(a => a.href = JAEGER_URL);
+
+            // Update Grafana iframes (only if not localhost - iframes won't work cross-origin)
+            if (!isLocal) {
+                document.querySelectorAll('iframe[src*="localhost:3030"]').forEach(iframe => {
+                    // Hide iframes in production as embedded Grafana requires auth
+                    iframe.style.display = 'none';
+                    iframe.parentElement.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">View metrics in <a href="' + GRAFANA_URL + '" target="_blank" style="color: var(--primary-light);">Grafana Dashboard</a></div>';
+                });
+            }
+        });
+
+        // Playground tab switching
+        document.querySelectorAll('.playground-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.playground-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.playground-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.tab}-panel`).classList.add('active');
+            });
+        });
+
+        // API Demo tab switching
+        document.querySelectorAll('.api-demo-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.api-demo-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.api-demo-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.demo}-demo`).classList.add('active');
+            });
+        });
+
+        // Code language tab switching
+        document.querySelectorAll('.code-lang-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.code-lang-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.code-sample-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.lang}-sample`).classList.add('active');
+            });
+        });
 
         // Model selection
         document.querySelectorAll('.model-tab').forEach(tab => {
@@ -1134,10 +2598,10 @@
         function updateCostPreview() {
             const prompt = document.getElementById('promptInput').value;
             const inputTokens = Math.ceil(prompt.length / 4);
-            const outputTokens = 200; // Estimate
+            const outputTokens = 200;
 
             const directCost = (inputTokens * selectedInput / 1000000) + (outputTokens * selectedOutput / 1000000);
-            const gatewayCost = directCost * 0.83; // 17% savings simulation
+            const gatewayCost = directCost * 0.83;
             const savings = ((directCost - gatewayCost) / directCost * 100).toFixed(0);
 
             document.getElementById('estInputTokens').textContent = `~${inputTokens}`;
@@ -1203,7 +2667,6 @@
                 document.getElementById('responseContent').textContent = content;
                 const latency = Date.now() - startTime;
 
-                // Update metrics
                 const cost = (usage.prompt_tokens * selectedInput / 1000000) + (usage.completion_tokens * selectedOutput / 1000000);
                 const saved = cost * 0.17;
 
@@ -1213,13 +2676,11 @@
                 document.getElementById('actualCost').textContent = `$${cost.toFixed(6)}`;
                 document.getElementById('actualLatency').textContent = `${latency}ms`;
 
-                // Session metrics
                 session.requests++;
                 session.spent += cost;
                 session.saved += saved;
                 session.latencies.push(latency);
 
-                // Provider tracking
                 if (selectedModel.includes('gpt') || selectedModel.includes('o3') || selectedModel.includes('o4')) session.providers.openai++;
                 else if (selectedModel.includes('claude')) session.providers.anthropic++;
                 else if (selectedModel.includes('gemini')) session.providers.google++;
@@ -1245,7 +2706,6 @@
             const avgLat = session.latencies.reduce((a, b) => a + b, 0) / session.latencies.length;
             document.getElementById('avgLatency').textContent = `${Math.round(avgLat)}ms`;
 
-            // Provider bars
             const total = Object.values(session.providers).reduce((a, b) => a + b, 0);
             if (total > 0) {
                 const providers = ['openai', 'anthropic', 'google', 'xai', 'deepseek', 'local'];
@@ -1259,6 +2719,185 @@
             }
         }
 
+        // API Demo functions
+        function runCostPredictor() {
+            const prompt = document.getElementById('costPredictorInput').value;
+            const model = document.getElementById('costPredictorModel').value;
+
+            const prices = {
+                'gpt-5-mini': { input: 0.10, output: 0.40 },
+                'gpt-5': { input: 2.00, output: 8.00 },
+                'claude-sonnet-4.5': { input: 3.00, output: 15.00 },
+                'gemini-3-flash': { input: 0.05, output: 0.20 }
+            };
+
+            const inputTokens = Math.ceil(prompt.length / 4);
+            const outputTokens = 150;
+            const price = prices[model];
+            const cost = (inputTokens * price.input / 1000000) + (outputTokens * price.output / 1000000);
+
+            const result = document.getElementById('costPredictorResult');
+            result.innerHTML = `
+                <div style="color: var(--success); margin-bottom: 10px;"><i class="fas fa-check-circle"></i> Cost Prediction Complete</div>
+                <div>Model: <strong>${model}</strong></div>
+                <div>Input Tokens: <strong>${inputTokens}</strong></div>
+                <div>Est. Output Tokens: <strong>${outputTokens}</strong></div>
+                <div>Estimated Cost: <strong style="color: var(--success);">$${cost.toFixed(6)}</strong></div>
+            `;
+            result.classList.add('visible');
+        }
+
+        function runPolicyRouter() {
+            const scenario = document.getElementById('policyScenario').value;
+            const teamId = document.getElementById('policyTeamId').value;
+
+            const scenarios = {
+                'cost-optimize': {
+                    decision: 'Route to DeepSeek V3',
+                    reason: 'Lowest cost per token while meeting quality threshold',
+                    model: 'deepseek-v3',
+                    savings: '85%'
+                },
+                'latency-sla': {
+                    decision: 'Route to GPT-5 Mini (Edge)',
+                    reason: 'Meets 200ms p99 latency SLA requirement',
+                    model: 'gpt-5-mini',
+                    savings: '40%'
+                },
+                'team-budget': {
+                    decision: teamId === 'engineering' ? 'Allow (Budget: $500/$1000)' : 'Allow (Budget: $200/$500)',
+                    reason: `Team "${teamId}" has remaining budget`,
+                    model: 'gpt-5-mini',
+                    savings: '17%'
+                },
+                'content-filter': {
+                    decision: 'Pass (No policy violations)',
+                    reason: 'Content passes all safety filters',
+                    model: 'gpt-5-mini',
+                    savings: '17%'
+                }
+            };
+
+            const s = scenarios[scenario];
+            const result = document.getElementById('policyRouterResult');
+            result.innerHTML = `
+                <div style="color: var(--primary-light); margin-bottom: 10px;"><i class="fas fa-route"></i> Routing Decision</div>
+                <div>Decision: <strong>${s.decision}</strong></div>
+                <div>Reason: <strong>${s.reason}</strong></div>
+                <div>Selected Model: <strong>${s.model}</strong></div>
+                <div>Cost Savings: <strong style="color: var(--success);">${s.savings}</strong></div>
+            `;
+            result.classList.add('visible');
+        }
+
+        function runSemanticCache() {
+            const original = document.getElementById('cacheOriginal').value.toLowerCase();
+            const test = document.getElementById('cacheTest').value.toLowerCase();
+
+            // Simple similarity check
+            const originalWords = new Set(original.split(/\s+/));
+            const testWords = test.split(/\s+/);
+            const matches = testWords.filter(w => originalWords.has(w)).length;
+            const similarity = (matches / Math.max(originalWords.size, testWords.length) * 100).toFixed(0);
+
+            const isHit = similarity >= 60;
+
+            const result = document.getElementById('semanticCacheResult');
+            result.innerHTML = `
+                <div style="color: ${isHit ? 'var(--success)' : 'var(--warning)'}; margin-bottom: 10px;">
+                    <i class="fas fa-${isHit ? 'check-circle' : 'clock'}"></i>
+                    Cache ${isHit ? 'HIT' : 'MISS'}
+                </div>
+                <div>Similarity Score: <strong>${similarity}%</strong></div>
+                <div>Threshold: <strong>60%</strong></div>
+                <div>Latency: <strong style="color: var(--success);">${isHit ? '2ms (cached)' : '~800ms (API call)'}</strong></div>
+                <div>Cost: <strong style="color: var(--success);">${isHit ? '$0.00' : '$0.000150'}</strong></div>
+            `;
+            result.classList.add('visible');
+        }
+
+        function runMCPDemo() {
+            const items = document.querySelectorAll('.mcp-server-item');
+            items.forEach(item => {
+                const status = item.querySelector('.mcp-server-status');
+                status.textContent = 'Checking...';
+                status.className = 'mcp-server-status';
+                status.style.background = 'rgba(255,255,255,0.1)';
+                status.style.color = 'var(--text-muted)';
+            });
+
+            setTimeout(() => {
+                items.forEach(item => {
+                    const status = item.querySelector('.mcp-server-status');
+                    status.textContent = 'Online';
+                    status.className = 'mcp-server-status online';
+                    status.style.background = '';
+                    status.style.color = '';
+                });
+            }, 1000);
+        }
+
+        // Copy code function
+        function copyCode(elementId) {
+            const code = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = event.target.closest('.copy-btn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        // Grafana dashboard tab switching
+        document.querySelectorAll('.grafana-dashboard-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.grafana-dashboard-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.grafana-dashboard').forEach(d => d.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`dashboard-${tab.dataset.dashboard}`).classList.add('active');
+            });
+        });
+
+        // Refresh metrics function
+        function refreshMetrics() {
+            const btn = document.querySelector('.refresh-btn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+
+            // Simulate metric updates
+            setTimeout(() => {
+                const rpm = Math.floor(Math.random() * 100) + 50;
+                const success = (99 + Math.random()).toFixed(1);
+                const latency = Math.floor(Math.random() * 200) + 150;
+                const cost = (Math.random() * 10 + 20).toFixed(2);
+
+                document.getElementById('metric-rpm').textContent = rpm;
+                document.getElementById('metric-success').textContent = success + '%';
+                document.getElementById('metric-latency').textContent = latency + 'ms';
+                document.getElementById('metric-cost').textContent = '$' + cost;
+
+                btn.innerHTML = '<i class="fas fa-redo"></i> Refresh Now';
+            }, 1000);
+        }
+
+        // Initialize metrics with sample data
+        function initMetrics() {
+            document.getElementById('metric-rpm').textContent = '72';
+            document.getElementById('metric-success').textContent = '99.8%';
+            document.getElementById('metric-latency').textContent = '245ms';
+            document.getElementById('metric-cost').textContent = '$27.50';
+        }
+
+        // Auto-refresh metrics every 30 seconds
+        setInterval(() => {
+            if (document.getElementById('metrics-panel').classList.contains('active')) {
+                refreshMetrics();
+            }
+        }, 30000);
+
         // Smooth scroll
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
@@ -1271,6 +2910,8 @@
 
         // Initial
         updateCostPreview();
+        initMetrics();
+        Prism.highlightAll();
     </script>
 </body>
 </html>

@@ -304,19 +304,29 @@ _wait: ## Wait for services to be ready (after images are built)
 	@echo "$(CYAN)Waiting for services to be ready...$(RESET)"
 	@NAMESPACE=$$(cd $(TF_DIR) && terraform output -raw namespace) && \
 	REPO=$$(cd $(TF_DIR) && terraform output -raw artifact_registry) && \
+	API_KEY=$$(cd $(TF_DIR) && terraform output -raw api_key) && \
+	OVERLAY=$$([ "$(ENV)" = "demo" ] && echo "demo-ephemeral" || echo "$(ENV)") && \
+	echo "Recreating landing-ui with volume mounts..." && \
+	kubectl -n $$NAMESPACE delete deployment landing-ui --ignore-not-found=true && \
+	kubectl kustomize kubernetes/overlays/$$OVERLAY | kubectl apply -f - && \
+	echo "Injecting API key into landing-config ConfigMap..." && \
+	sed "s/LITELLM_MASTER_KEY_PLACEHOLDER/$$API_KEY/g" kubernetes/base/litellm/landing-config.yaml | kubectl apply -n $$NAMESPACE -f - && \
 	echo "Updating custom service images..." && \
 	kubectl -n $$NAMESPACE set image deployment/cost-predictor cost-predictor=$$REPO/cost-predictor:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/policy-router policy-router=$$REPO/policy-router:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/workflow-engine workflow-engine=$$REPO/workflow-engine:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/semantic-cache semantic-cache=$$REPO/semantic-cache:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/landing-ui landing-ui=$$REPO/landing-ui:latest || true && \
-	echo "Restarting deployments to pick up new images..." && \
+	echo "Restarting landing-ui to pick up ConfigMap..." && \
+	kubectl -n $$NAMESPACE rollout restart deployment/landing-ui && \
+	echo "Restarting other deployments..." && \
 	kubectl -n $$NAMESPACE rollout restart deployment/admin-api deployment/admin-ui deployment/cost-predictor deployment/policy-router deployment/workflow-engine deployment/semantic-cache || true && \
 	echo "Waiting for core pods..." && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=postgresql --timeout=300s && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=redis --timeout=300s && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=litellm --timeout=300s && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=admin-api --timeout=300s && \
+	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=landing-ui --timeout=300s && \
 	echo "$(GREEN)✓ All services ready$(RESET)"
 
 _seed: ## Seed demo data (skipped for prod)
@@ -337,6 +347,24 @@ _seed: ## Seed demo data (skipped for prod)
 
 _output: ## Show deployment outputs
 	@cd $(TF_DIR) && terraform output
+
+redeploy-k8s: ## Force re-apply Kubernetes manifests (ENV=demo|staging|prod)
+	@echo "$(CYAN)Re-applying Kubernetes manifests for $(ENV)...$(RESET)"
+	@cd $(TF_DIR) && terraform init -backend-config="prefix=$(ENV)" -reconfigure -input=false > /dev/null
+	@NAMESPACE=$$(cd $(TF_DIR) && terraform output -raw namespace) && \
+	API_KEY=$$(cd $(TF_DIR) && terraform output -raw api_key) && \
+	OVERLAY=$$([ "$(ENV)" = "demo" ] && echo "demo-ephemeral" || echo "$(ENV)") && \
+	echo "Deleting landing-ui deployment to force clean recreation..." && \
+	kubectl -n $$NAMESPACE delete deployment landing-ui --ignore-not-found=true && \
+	echo "Applying kustomize overlay ($$OVERLAY)..." && \
+	kubectl kustomize kubernetes/overlays/$$OVERLAY | kubectl apply -f - && \
+	echo "Injecting API key into landing-config..." && \
+	sed "s/LITELLM_MASTER_KEY_PLACEHOLDER/$$API_KEY/g" kubernetes/base/litellm/landing-config.yaml | kubectl apply -n $$NAMESPACE -f - && \
+	echo "Updating landing-ui image..." && \
+	REPO=$$(cd $(TF_DIR) && terraform output -raw artifact_registry) && \
+	kubectl -n $$NAMESPACE set image deployment/landing-ui landing-ui=$$REPO/landing-ui:latest && \
+	kubectl -n $$NAMESPACE rollout status deployment/landing-ui && \
+	echo "$(GREEN)✓ Kubernetes manifests re-applied$(RESET)"
 
 # Destroy targets
 destroy: ## Destroy environment (ENV=demo|staging|prod)
