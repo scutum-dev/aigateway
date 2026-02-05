@@ -327,17 +327,43 @@ spec:
     spec:
       containers:
         - name: workflow-engine
-          image: python:3.11-slim
-          command: ["sh", "-c", "echo 'Workflow engine placeholder' && sleep infinity"]
+          image: workflow-engine:latest  # Replaced by Makefile
           ports:
             - containerPort: 8085
+          env:
+            - name: PORT
+              value: "8085"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: DATABASE_URL
+            - name: LITELLM_URL
+              value: "http://litellm:4000"
+            - name: LITELLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: LITELLM_MASTER_KEY
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector:4317"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8085
+            initialDelaySeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8085
+            initialDelaySeconds: 10
           resources:
             requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
-              cpu: 500m
+              cpu: 200m
               memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
 ---
 apiVersion: v1
 kind: Service
@@ -371,10 +397,28 @@ spec:
     spec:
       containers:
         - name: policy-router
-          image: python:3.11-slim
-          command: ["sh", "-c", "echo 'Policy router placeholder' && sleep infinity"]
+          image: policy-router:latest  # Replaced by Makefile
           ports:
             - containerPort: 8084
+          env:
+            - name: PORT
+              value: "8084"
+            - name: LITELLM_URL
+              value: "http://litellm:4000"
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector:4317"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8084
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8084
+            initialDelaySeconds: 5
           resources:
             requests:
               cpu: 100m
@@ -748,10 +792,32 @@ spec:
     spec:
       containers:
         - name: semantic-cache
-          image: python:3.11-slim
-          command: ["sh", "-c", "echo 'Semantic Cache placeholder' && sleep infinity"]
+          image: semantic-cache:latest  # Replaced by Makefile
           ports:
             - containerPort: 8083
+          env:
+            - name: PORT
+              value: "8083"
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: OPENAI_API_KEY
+                  optional: true
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector:4317"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8083
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8083
+            initialDelaySeconds: 5
           resources:
             requests:
               cpu: 100m

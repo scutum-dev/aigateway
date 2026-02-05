@@ -46,12 +46,17 @@ output "credentials" {
 output "urls" {
   description = "Service URLs"
   value = {
-    gateway   = "https://${local.full_domain}"
-    api_docs  = "https://${local.full_domain}/docs"
-    health    = "https://${local.full_domain}/health/readiness"
-    admin_ui  = "https://${local.full_domain}/admin"
-    admin_api = "https://${local.full_domain}/admin-api"
-    grafana   = "https://${local.full_domain}/grafana"
+    gateway        = "https://${local.full_domain}"
+    api_docs       = "https://${local.full_domain}/docs"
+    health         = "https://${local.full_domain}/health/readiness"
+    admin_ui       = "https://${local.full_domain}/admin"
+    admin_api      = "https://${local.full_domain}/admin-api"
+    grafana        = "https://${local.full_domain}/grafana"
+    cost_predictor = "https://${local.full_domain}/cost-predictor"
+    policy_router  = "https://${local.full_domain}/policy-router"
+    workflows      = "https://${local.full_domain}/workflows"
+    mcp_gateway    = "https://${local.full_domain}/mcp"
+    semantic_cache = "https://${local.full_domain}/semantic-cache"
   }
 }
 

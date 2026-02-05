@@ -406,16 +406,92 @@ resource "kubernetes_ingress_v1" "gateway" {
     rule {
       host = local.full_domain
       http {
-        # Admin API - /api and /auth routes (must be before /)
+        # LiteLLM API routes (must be before /)
+        path {
+          path      = "/v1"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "litellm"
+              port { number = 4000 }
+            }
+          }
+        }
+
+        path {
+          path      = "/docs"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "litellm"
+              port { number = 4000 }
+            }
+          }
+        }
+
+        path {
+          path      = "/openapi.json"
+          path_type = "Exact"
+          backend {
+            service {
+              name = "litellm"
+              port { number = 4000 }
+            }
+          }
+        }
+
+        path {
+          path      = "/health"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "litellm"
+              port { number = 4000 }
+            }
+          }
+        }
+
+        path {
+          path      = "/key"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "litellm"
+              port { number = 4000 }
+            }
+          }
+        }
+
+        path {
+          path      = "/model"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "litellm"
+              port { number = 4000 }
+            }
+          }
+        }
+
+        path {
+          path      = "/spend"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "litellm"
+              port { number = 4000 }
+            }
+          }
+        }
+
+        # Admin API routes
         path {
           path      = "/api"
           path_type = "Prefix"
           backend {
             service {
               name = "admin-api"
-              port {
-                number = 8086
-              }
+              port { number = 8086 }
             }
           }
         }
@@ -426,23 +502,19 @@ resource "kubernetes_ingress_v1" "gateway" {
           backend {
             service {
               name = "admin-api"
-              port {
-                number = 8086
-              }
+              port { number = 8086 }
             }
           }
         }
 
-        # LiteLLM Gateway API - default route
+        # Landing page - default route
         path {
           path      = "/"
           path_type = "Prefix"
           backend {
             service {
-              name = "litellm"
-              port {
-                number = 4000
-              }
+              name = "landing-ui"
+              port { number = 9999 }
             }
           }
         }
@@ -626,6 +698,174 @@ resource "kubernetes_ingress_v1" "cost_predictor" {
               port {
                 number = 8080
               }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Policy Router Ingress (Cedar policy-based routing)
+resource "kubernetes_ingress_v1" "policy_router" {
+  depends_on = [
+    null_resource.deploy_services,
+    helm_release.nginx_ingress,
+    null_resource.cluster_issuer
+  ]
+
+  metadata {
+    name      = "policy-router-ingress"
+    namespace = local.namespace
+    annotations = {
+      "cert-manager.io/cluster-issuer"                    = "letsencrypt-prod"
+      "nginx.ingress.kubernetes.io/rewrite-target"        = "/$2"
+      "nginx.ingress.kubernetes.io/use-regex"             = "true"
+    }
+  }
+
+  spec {
+    ingress_class_name = "nginx"
+    tls {
+      hosts       = [local.full_domain]
+      secret_name = "gateway-tls"
+    }
+    rule {
+      host = local.full_domain
+      http {
+        path {
+          path      = "/policy-router(/|$)(.*)"
+          path_type = "ImplementationSpecific"
+          backend {
+            service {
+              name = "policy-router"
+              port { number = 8084 }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Workflow Engine Ingress (LangGraph workflows)
+resource "kubernetes_ingress_v1" "workflow_engine" {
+  depends_on = [
+    null_resource.deploy_services,
+    helm_release.nginx_ingress,
+    null_resource.cluster_issuer
+  ]
+
+  metadata {
+    name      = "workflow-engine-ingress"
+    namespace = local.namespace
+    annotations = {
+      "cert-manager.io/cluster-issuer"                    = "letsencrypt-prod"
+      "nginx.ingress.kubernetes.io/rewrite-target"        = "/$2"
+      "nginx.ingress.kubernetes.io/use-regex"             = "true"
+    }
+  }
+
+  spec {
+    ingress_class_name = "nginx"
+    tls {
+      hosts       = [local.full_domain]
+      secret_name = "gateway-tls"
+    }
+    rule {
+      host = local.full_domain
+      http {
+        path {
+          path      = "/workflows(/|$)(.*)"
+          path_type = "ImplementationSpecific"
+          backend {
+            service {
+              name = "workflow-engine"
+              port { number = 8085 }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Agent Gateway Ingress (MCP + A2A protocols)
+resource "kubernetes_ingress_v1" "agentgateway" {
+  depends_on = [
+    null_resource.deploy_services,
+    helm_release.nginx_ingress,
+    null_resource.cluster_issuer
+  ]
+
+  metadata {
+    name      = "agentgateway-ingress"
+    namespace = local.namespace
+    annotations = {
+      "cert-manager.io/cluster-issuer"                    = "letsencrypt-prod"
+      "nginx.ingress.kubernetes.io/rewrite-target"        = "/$2"
+      "nginx.ingress.kubernetes.io/use-regex"             = "true"
+    }
+  }
+
+  spec {
+    ingress_class_name = "nginx"
+    tls {
+      hosts       = [local.full_domain]
+      secret_name = "gateway-tls"
+    }
+    rule {
+      host = local.full_domain
+      http {
+        path {
+          path      = "/mcp(/|$)(.*)"
+          path_type = "ImplementationSpecific"
+          backend {
+            service {
+              name = "agentgateway"
+              port { number = 9000 }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Semantic Cache Ingress
+resource "kubernetes_ingress_v1" "semantic_cache" {
+  depends_on = [
+    null_resource.deploy_services,
+    helm_release.nginx_ingress,
+    null_resource.cluster_issuer
+  ]
+
+  metadata {
+    name      = "semantic-cache-ingress"
+    namespace = local.namespace
+    annotations = {
+      "cert-manager.io/cluster-issuer"                    = "letsencrypt-prod"
+      "nginx.ingress.kubernetes.io/rewrite-target"        = "/$2"
+      "nginx.ingress.kubernetes.io/use-regex"             = "true"
+    }
+  }
+
+  spec {
+    ingress_class_name = "nginx"
+    tls {
+      hosts       = [local.full_domain]
+      secret_name = "gateway-tls"
+    }
+    rule {
+      host = local.full_domain
+      http {
+        path {
+          path      = "/semantic-cache(/|$)(.*)"
+          path_type = "ImplementationSpecific"
+          backend {
+            service {
+              name = "semantic-cache"
+              port { number = 8083 }
             }
           }
         }
