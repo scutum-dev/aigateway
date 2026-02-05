@@ -2,6 +2,29 @@
 
 This checklist ensures all components are properly configured for production deployment.
 
+## Security Fixes Applied
+
+The following security hardening has been implemented in the codebase:
+
+| Fix | Description | Status |
+|-----|-------------|--------|
+| CORS Restriction | Origins restricted by environment (no wildcards) | ✅ Done |
+| Request Size Limits | 1MB limit on all FastAPI services | ✅ Done |
+| SQL Injection Prevention | Validation for LLM-generated SQL queries | ✅ Done |
+| Graceful Shutdown | Request draining and trace flushing | ✅ Done |
+| Secure Headers | Restricted allowed methods and headers | ✅ Done |
+
+### Remaining Security Tasks
+
+| Task | Description | Priority |
+|------|-------------|----------|
+| Sealed Secrets | Move DB passwords from ConfigMaps | High |
+| OTEL CORS | Restrict metrics endpoint origins | Medium |
+| MCP Secrets | Configure MCP server credentials | Medium |
+| Vault Token Rotation | Implement auto-renewal | Medium |
+
+---
+
 ## Pre-Deployment Checklist
 
 ### 1. Secrets Management
@@ -291,6 +314,13 @@ curl https://api.example.com/metrics | head -20
 
 ## Security Hardening
 
+### Application Security (Implemented)
+- [x] CORS restricted to environment-specific origins (no wildcards in production)
+- [x] Request size limits (1MB) to prevent DoS attacks
+- [x] SQL injection prevention for LLM-generated queries
+- [x] Graceful shutdown handlers with request draining
+- [x] JWT authentication with configurable expiry
+
 ### Container Security
 - [x] Non-root user (`runAsNonRoot: true`)
 - [x] Read-only root filesystem where possible
@@ -303,6 +333,21 @@ curl https://api.example.com/metrics | head -20
 - [x] TLS for all external traffic
 - [ ] mTLS for service-to-service (optional)
 - [ ] Egress firewall rules
+
+### Production Environment Variables (Required)
+```bash
+# Set CORS origins for production
+export CORS_ORIGINS="https://admin.yourdomain.com,https://api.yourdomain.com"
+
+# Set environment mode
+export ENVIRONMENT=production
+
+# Request size limit (optional, default 1MB)
+export MAX_REQUEST_SIZE_BYTES=1048576
+
+# Shutdown timeout (optional, default 30s)
+export SHUTDOWN_TIMEOUT_SECONDS=30
+```
 
 ### Audit & Compliance
 - [ ] Enable Kubernetes audit logging
