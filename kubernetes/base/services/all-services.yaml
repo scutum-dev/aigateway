@@ -415,10 +415,31 @@ spec:
     spec:
       containers:
         - name: cost-predictor
-          image: python:3.11-slim
-          command: ["sh", "-c", "echo 'Cost predictor placeholder' && sleep infinity"]
+          image: cost-predictor:latest  # Replaced by kustomize/terraform
           ports:
-            - containerPort: 8081
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: LITELLM_URL
+              value: "http://litellm:4000"
+            - name: LITELLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: LITELLM_MASTER_KEY
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector:4317"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
           resources:
             requests:
               cpu: 100m
@@ -435,8 +456,8 @@ metadata:
     app: cost-predictor
 spec:
   ports:
-    - port: 8081
-      targetPort: 8081
+    - port: 8080
+      targetPort: 8080
   selector:
     app: cost-predictor
 ---

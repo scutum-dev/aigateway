@@ -588,6 +588,52 @@ resource "kubernetes_ingress_v1" "grafana" {
   }
 }
 
+# Cost Predictor Ingress
+resource "kubernetes_ingress_v1" "cost_predictor" {
+  depends_on = [
+    null_resource.deploy_services,
+    helm_release.nginx_ingress,
+    null_resource.cluster_issuer
+  ]
+
+  metadata {
+    name      = "cost-predictor-ingress"
+    namespace = local.namespace
+    annotations = {
+      "cert-manager.io/cluster-issuer"                    = "letsencrypt-prod"
+      "nginx.ingress.kubernetes.io/rewrite-target"        = "/$2"
+      "nginx.ingress.kubernetes.io/use-regex"             = "true"
+    }
+  }
+
+  spec {
+    ingress_class_name = "nginx"
+
+    tls {
+      hosts       = [local.full_domain]
+      secret_name = "gateway-tls"
+    }
+
+    rule {
+      host = local.full_domain
+      http {
+        path {
+          path      = "/cost-predictor(/|$)(.*)"
+          path_type = "ImplementationSpecific"
+          backend {
+            service {
+              name = "cost-predictor"
+              port {
+                number = 8080
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 # =============================================================================
 # Patch Deployments with Images and Scaling
 # =============================================================================
@@ -633,6 +679,10 @@ resource "null_resource" "patch_deployments" {
       kubectl -n ${local.namespace} delete deployment litellm --ignore-not-found=true
       kubectl kustomize ${path.module}/../../kubernetes/overlays/${var.kustomize_overlay} | kubectl apply -f -
 
+      # Configure LiteLLM for Swagger docs to use correct base URL
+      kubectl -n ${local.namespace} set env deployment/litellm \
+        PROXY_BASE_URL=https://${local.full_domain} || true
+
       # Restart LiteLLM to pick up config changes
       kubectl -n ${local.namespace} rollout restart deployment/litellm || true
 
@@ -645,6 +695,7 @@ resource "null_resource" "patch_deployments" {
     replicas         = var.litellm_replicas
     min_replicas     = var.min_replicas
     max_replicas     = var.max_replicas
+    full_domain      = local.full_domain
     litellm_config   = filemd5("${path.module}/../../kubernetes/base/litellm/configmap.yaml")
     litellm_deploy   = filemd5("${path.module}/../../kubernetes/base/litellm/deployment.yaml")
   }

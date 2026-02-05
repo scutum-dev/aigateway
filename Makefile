@@ -283,18 +283,25 @@ _build: ## Build and push Docker images to Artifact Registry
 	echo "Building admin-ui..." && \
 	docker build $$PLATFORM_FLAG -t $$REPO/admin-ui:latest ./ui/admin && \
 	docker push $$REPO/admin-ui:latest && \
+	echo "Building cost-predictor..." && \
+	docker build $$PLATFORM_FLAG -t $$REPO/cost-predictor:latest ./src/cost-predictor && \
+	docker push $$REPO/cost-predictor:latest && \
 	echo "$(GREEN)✓ Images built and pushed$(RESET)"
 
 _wait: ## Wait for services to be ready (after images are built)
 	@echo "$(CYAN)Waiting for services to be ready...$(RESET)"
 	@NAMESPACE=$$(cd $(TF_DIR) && terraform output -raw namespace) && \
+	REPO=$$(cd $(TF_DIR) && terraform output -raw artifact_registry) && \
+	echo "Updating cost-predictor image..." && \
+	kubectl -n $$NAMESPACE set image deployment/cost-predictor cost-predictor=$$REPO/cost-predictor:latest || true && \
 	echo "Restarting deployments to pick up new images..." && \
-	kubectl -n $$NAMESPACE rollout restart deployment/admin-api deployment/admin-ui || true && \
+	kubectl -n $$NAMESPACE rollout restart deployment/admin-api deployment/admin-ui deployment/cost-predictor || true && \
 	echo "Waiting for pods..." && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=postgresql --timeout=300s && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=redis --timeout=300s && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=litellm --timeout=300s && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=admin-api --timeout=300s && \
+	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=cost-predictor --timeout=300s && \
 	echo "$(GREEN)✓ All services ready$(RESET)"
 
 _seed: ## Seed demo data (skipped for prod)
