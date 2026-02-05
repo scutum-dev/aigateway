@@ -2503,6 +2503,8 @@ public class GatewayExample {
 
         let session = {
             requests: 0,
+            successes: 0,
+            failures: 0,
             spent: 0,
             saved: 0,
             latencies: [],
@@ -2541,12 +2543,10 @@ public class GatewayExample {
             document.querySelectorAll('a[href*="localhost:4000/docs"]').forEach(a => a.href = DOCS_URL);
             document.querySelectorAll('a[href*="localhost:16686"]').forEach(a => a.href = JAEGER_URL);
 
-            // Update Grafana iframes (only if not localhost - iframes won't work cross-origin)
+            // Hide Grafana iframes in production (they require auth)
             if (!isLocal) {
                 document.querySelectorAll('iframe[src*="localhost:3030"]').forEach(iframe => {
-                    // Hide iframes in production as embedded Grafana requires auth
                     iframe.style.display = 'none';
-                    iframe.parentElement.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">View metrics in <a href="' + GRAFANA_URL + '" target="_blank" style="color: var(--primary-light);">Grafana Dashboard</a></div>';
                 });
             }
         });
@@ -2677,6 +2677,7 @@ public class GatewayExample {
                 document.getElementById('actualLatency').textContent = `${latency}ms`;
 
                 session.requests++;
+                session.successes++;
                 session.spent += cost;
                 session.saved += saved;
                 session.latencies.push(latency);
@@ -2692,6 +2693,9 @@ public class GatewayExample {
 
             } catch (error) {
                 document.getElementById('responseContent').innerHTML = `<span style="color: #ef4444;">Error: ${error.message}</span>`;
+                session.requests++;
+                session.failures++;
+                updateSessionMetrics();
             }
 
             btn.disabled = false;
@@ -2703,7 +2707,9 @@ public class GatewayExample {
             document.getElementById('totalSpent').textContent = `$${session.spent.toFixed(4)}`;
             document.getElementById('totalSaved').textContent = `$${session.saved.toFixed(4)}`;
 
-            const avgLat = session.latencies.reduce((a, b) => a + b, 0) / session.latencies.length;
+            const avgLat = session.latencies.length > 0
+                ? session.latencies.reduce((a, b) => a + b, 0) / session.latencies.length
+                : 0;
             document.getElementById('avgLatency').textContent = `${Math.round(avgLat)}ms`;
 
             const total = Object.values(session.providers).reduce((a, b) => a + b, 0);
@@ -2717,6 +2723,22 @@ public class GatewayExample {
                     if (pctEl) pctEl.textContent = `${pct.toFixed(0)}%`;
                 });
             }
+
+            // Update Grafana fallback metrics with real session data
+            const rpmEl = document.getElementById('metric-rpm');
+            const successEl = document.getElementById('metric-success');
+            const latencyEl = document.getElementById('metric-latency');
+            const costEl = document.getElementById('metric-cost');
+
+            if (rpmEl) rpmEl.textContent = session.requests;
+            if (successEl) {
+                const successRate = session.requests > 0
+                    ? ((session.successes || session.requests) / session.requests * 100).toFixed(1)
+                    : '--';
+                successEl.textContent = successRate !== '--' ? `${successRate}%` : '--';
+            }
+            if (latencyEl) latencyEl.textContent = avgLat > 0 ? `${Math.round(avgLat)}ms` : '--';
+            if (costEl) costEl.textContent = session.spent > 0 ? `$${session.spent.toFixed(4)}` : '--';
         }
 
         // API Demo functions
