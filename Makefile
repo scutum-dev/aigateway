@@ -295,6 +295,9 @@ _build: ## Build and push Docker images to Artifact Registry
 	echo "Building semantic-cache..." && \
 	docker build $$PLATFORM_FLAG -t $$REPO/semantic-cache:latest ./src/semantic-cache && \
 	docker push $$REPO/semantic-cache:latest && \
+	echo "Building landing-ui..." && \
+	docker build $$PLATFORM_FLAG -t $$REPO/landing-ui:latest ./ui/landing && \
+	docker push $$REPO/landing-ui:latest && \
 	echo "$(GREEN)✓ Images built and pushed$(RESET)"
 
 _wait: ## Wait for services to be ready (after images are built)
@@ -306,6 +309,7 @@ _wait: ## Wait for services to be ready (after images are built)
 	kubectl -n $$NAMESPACE set image deployment/policy-router policy-router=$$REPO/policy-router:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/workflow-engine workflow-engine=$$REPO/workflow-engine:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/semantic-cache semantic-cache=$$REPO/semantic-cache:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/landing-ui landing-ui=$$REPO/landing-ui:latest || true && \
 	echo "Restarting deployments to pick up new images..." && \
 	kubectl -n $$NAMESPACE rollout restart deployment/admin-api deployment/admin-ui deployment/cost-predictor deployment/policy-router deployment/workflow-engine deployment/semantic-cache || true && \
 	echo "Waiting for core pods..." && \

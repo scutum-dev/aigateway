@@ -905,7 +905,7 @@ spec:
     spec:
       containers:
         - name: landing-ui
-          image: nginx:alpine
+          image: landing-ui:latest  # Replaced by Makefile
           ports:
             - containerPort: 80
           resources:
