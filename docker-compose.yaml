@@ -133,6 +133,8 @@ services:
     build:
       context: ./ui/admin
       dockerfile: Dockerfile
+      args:
+        VITE_BASE: /
     container_name: admin-ui
     ports:
       - "${ADMIN_UI_PORT:-5173}:80"
@@ -544,13 +546,12 @@ services:
     restart: unless-stopped
 
   landing-ui:
-    image: nginx:1.25-alpine
+    build:
+      context: ./ui/landing
+      dockerfile: Dockerfile
     container_name: landing-ui
-    profiles: ["infra", "full"]
     ports:
-      - "9999:80"
-    volumes:
-      - ./ui:/usr/share/nginx/html:ro
+      - "${LANDING_UI_PORT:-9999}:80"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
       interval: 10s

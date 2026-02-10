@@ -18,9 +18,9 @@
 ENV_FILE ?= .env
 
 # Docker Compose command (supports both v1 and v2)
-DOCKER_COMPOSE := docker compose
+DOCKER_COMPOSE := docker compose --env-file config/.env
 ifeq ($(shell docker compose version 2>/dev/null),)
-	DOCKER_COMPOSE := docker-compose
+	DOCKER_COMPOSE := docker-compose --env-file config/.env
 endif
 
 # Colors for output (works on most terminals)
@@ -66,9 +66,10 @@ env-check: ## Verify environment configuration
 # DOCKER COMPOSE - CORE
 # =============================================================================
 
-up: ## Start core services (postgres, redis, litellm, admin)
+up: ## Start core services (postgres, redis, litellm, admin, landing)
 	$(DOCKER_COMPOSE) up -d
 	@echo "$(GREEN)Core services started$(RESET)"
+	@echo "  Landing:  http://localhost:$${LANDING_UI_PORT:-9999}"
 	@echo "  Admin UI: http://localhost:$${ADMIN_UI_PORT:-5173}"
 	@echo "  LiteLLM:  http://localhost:$${LITELLM_PORT:-4000}"
 
@@ -122,8 +123,8 @@ build: ## Build all custom images
 build-no-cache: ## Build all images without cache
 	$(DOCKER_COMPOSE) --profile full build --no-cache
 
-build-admin: ## Build admin-api and admin-ui
-	$(DOCKER_COMPOSE) build admin-api admin-ui
+build-admin: ## Build admin-api, admin-ui, and landing-ui
+	$(DOCKER_COMPOSE) build admin-api admin-ui landing-ui
 
 # =============================================================================
 # LOGS & STATUS
@@ -281,7 +282,7 @@ _build: ## Build and push Docker images to Artifact Registry
 	docker build $$PLATFORM_FLAG -t $$REPO/admin-api:latest ./src/admin-api && \
 	docker push $$REPO/admin-api:latest && \
 	echo "Building admin-ui..." && \
-	docker build $$PLATFORM_FLAG -t $$REPO/admin-ui:latest ./ui/admin && \
+	docker build $$PLATFORM_FLAG --build-arg VITE_BASE=/admin/ -t $$REPO/admin-ui:latest ./ui/admin && \
 	docker push $$REPO/admin-ui:latest && \
 	echo "Building cost-predictor..." && \
 	docker build $$PLATFORM_FLAG -t $$REPO/cost-predictor:latest ./src/cost-predictor && \
@@ -312,6 +313,8 @@ _wait: ## Wait for services to be ready (after images are built)
 	echo "Injecting API key into landing-config ConfigMap..." && \
 	sed "s/LITELLM_MASTER_KEY_PLACEHOLDER/$$API_KEY/g" kubernetes/base/litellm/landing-config.yaml | kubectl apply -n $$NAMESPACE -f - && \
 	echo "Updating custom service images..." && \
+	kubectl -n $$NAMESPACE set image deployment/admin-api admin-api=$$REPO/admin-api:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/admin-ui admin-ui=$$REPO/admin-ui:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/cost-predictor cost-predictor=$$REPO/cost-predictor:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/policy-router policy-router=$$REPO/policy-router:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/workflow-engine workflow-engine=$$REPO/workflow-engine:latest || true && \
@@ -326,6 +329,7 @@ _wait: ## Wait for services to be ready (after images are built)
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=redis --timeout=300s && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=litellm --timeout=300s && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=admin-api --timeout=300s && \
+	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=admin-ui --timeout=300s && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=landing-ui --timeout=300s && \
 	echo "$(GREEN)✓ All services ready$(RESET)"
 
