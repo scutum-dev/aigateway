@@ -297,24 +297,25 @@ _build: ## Build and push Docker images to Artifact Registry
 		PLATFORM_FLAG="--platform linux/amd64"; \
 		echo "Detected ARM64, building for linux/amd64..."; \
 	fi && \
+	SHARED="--build-context shared=./src/shared" && \
 	gcloud auth configure-docker $$REGION-docker.pkg.dev --quiet && \
 	echo "Building admin-api..." && \
-	docker build $$PLATFORM_FLAG -t $$REPO/admin-api:latest ./src/admin-api && \
+	docker build $$PLATFORM_FLAG $$SHARED -t $$REPO/admin-api:latest ./src/admin-api && \
 	docker push $$REPO/admin-api:latest && \
 	echo "Building admin-ui..." && \
 	docker build $$PLATFORM_FLAG --build-arg VITE_BASE=/admin/ -t $$REPO/admin-ui:latest ./ui/admin && \
 	docker push $$REPO/admin-ui:latest && \
 	echo "Building cost-predictor..." && \
-	docker build $$PLATFORM_FLAG -t $$REPO/cost-predictor:latest ./src/cost-predictor && \
+	docker build $$PLATFORM_FLAG $$SHARED -t $$REPO/cost-predictor:latest ./src/cost-predictor && \
 	docker push $$REPO/cost-predictor:latest && \
 	echo "Building policy-router..." && \
-	docker build $$PLATFORM_FLAG -t $$REPO/policy-router:latest ./src/policy-router && \
+	docker build $$PLATFORM_FLAG $$SHARED -t $$REPO/policy-router:latest ./src/policy-router && \
 	docker push $$REPO/policy-router:latest && \
 	echo "Building workflow-engine..." && \
-	docker build $$PLATFORM_FLAG -t $$REPO/workflow-engine:latest ./src/workflow-engine && \
+	docker build $$PLATFORM_FLAG $$SHARED -t $$REPO/workflow-engine:latest ./src/workflow-engine && \
 	docker push $$REPO/workflow-engine:latest && \
 	echo "Building semantic-cache..." && \
-	docker build $$PLATFORM_FLAG -t $$REPO/semantic-cache:latest ./src/semantic-cache && \
+	docker build $$PLATFORM_FLAG $$SHARED -t $$REPO/semantic-cache:latest ./src/semantic-cache && \
 	docker push $$REPO/semantic-cache:latest && \
 	echo "Building landing-ui..." && \
 	docker build $$PLATFORM_FLAG -t $$REPO/landing-ui:latest ./ui/landing && \
