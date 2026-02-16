@@ -5,14 +5,13 @@ import {
   useUpdateGuardrail,
   useDeleteGuardrail,
   useGuardrailEvents,
-  useScanText,
 } from '../api/hooks'
 import { SkeletonCard } from '../components/Skeleton'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
 import type { GuardrailConfig, GuardrailConfigCreate } from '../types'
 
-type Tab = 'profiles' | 'events' | 'scanner'
+type Tab = 'profiles' | 'events'
 
 const DEFAULT_NEW: GuardrailConfigCreate = {
   name: '',
@@ -81,17 +80,12 @@ export default function Guardrails() {
   const createGuardrail = useCreateGuardrail()
   const updateGuardrail = useUpdateGuardrail()
   const deleteGuardrail = useDeleteGuardrail()
-  const scanText = useScanText()
   const toast = useToast()
 
   const [showCreate, setShowCreate] = useState(false)
   const [editing, setEditing] = useState<GuardrailConfig | null>(null)
   const [form, setForm] = useState<GuardrailConfigCreate>({ ...DEFAULT_NEW })
   const [deleteId, setDeleteId] = useState<string | null>(null)
-
-  // Scanner test state
-  const [scanInput, setScanInput] = useState('')
-  const [scanDirection, setScanDirection] = useState<'input' | 'output'>('input')
 
   const handleCreate = async () => {
     if (!form.name) { toast('error', 'Name is required'); return }
@@ -125,15 +119,6 @@ export default function Guardrails() {
       setDeleteId(null)
     } catch {
       toast('error', 'Failed to delete guardrail profile')
-    }
-  }
-
-  const handleScan = async () => {
-    if (!scanInput.trim()) { toast('error', 'Enter text to scan'); return }
-    try {
-      await scanText.mutateAsync({ text: scanInput, direction: scanDirection })
-    } catch {
-      toast('error', 'Scan failed - LLM Guard may not be available')
     }
   }
 
@@ -189,7 +174,7 @@ export default function Guardrails() {
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
-          {(['profiles', 'events', 'scanner'] as Tab[]).map((t) => (
+          {(['profiles', 'events'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -199,7 +184,7 @@ export default function Guardrails() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              {t === 'scanner' ? 'Test Scanner' : t}
+              {t}
             </button>
           ))}
         </nav>
@@ -518,82 +503,6 @@ export default function Guardrails() {
         </div>
       )}
 
-      {/* ================================================================= */}
-      {/* SCANNER TEST TAB */}
-      {/* ================================================================= */}
-      {tab === 'scanner' && (
-        <div className="space-y-4">
-          <div className="card space-y-4">
-            <h3 className="font-semibold">Test Scanner</h3>
-            <p className="text-sm text-gray-500">
-              Paste text below to run it through the guardrail scanners. Requires LLM Guard to be installed.
-            </p>
-            <div className="flex gap-4 items-end">
-              <div className="flex-1">
-                <label className="label">Direction</label>
-                <select
-                  className="input"
-                  value={scanDirection}
-                  onChange={(e) => setScanDirection(e.target.value as 'input' | 'output')}
-                >
-                  <option value="input">Input (request)</option>
-                  <option value="output">Output (response)</option>
-                </select>
-              </div>
-              <button
-                onClick={handleScan}
-                disabled={scanText.isPending}
-                className="btn btn-primary"
-              >
-                {scanText.isPending ? 'Scanning...' : 'Scan'}
-              </button>
-            </div>
-            <textarea
-              className="input min-h-[120px] font-mono text-sm"
-              placeholder="Enter text to scan..."
-              value={scanInput}
-              onChange={(e) => setScanInput(e.target.value)}
-            />
-          </div>
-
-          {scanText.data && (
-            <div className="card space-y-3">
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-1 rounded text-sm font-medium ${
-                  scanText.data.is_valid
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-red-100 text-red-700'
-                }`}>
-                  {scanText.data.is_valid ? 'PASSED' : 'FLAGGED'}
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                {scanText.data.results.map((r, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm py-1 border-b border-gray-100 last:border-0">
-                    <span className="font-medium">{r.scanner}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-gray-500">Score: {r.risk_score}</span>
-                      <span className={r.is_valid ? 'text-green-600' : 'text-red-600'}>
-                        {r.is_valid ? 'Pass' : 'Fail'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {scanText.data.sanitized_text && scanText.data.sanitized_text !== scanInput && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-1">Sanitized Output</h4>
-                  <pre className="bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap">
-                    {scanText.data.sanitized_text}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }

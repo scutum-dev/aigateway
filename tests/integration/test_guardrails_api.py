@@ -32,7 +32,7 @@ for mod_name in [
 
 import deps
 from auth import get_current_user, require_admin
-from routers.guardrails import router, GuardrailConfig, GuardrailEvent
+from routers.guardrails import router, GuardrailConfig
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -283,18 +283,3 @@ class TestGuardrailEvents:
         assert resp.status_code == 200
 
 
-# ============================================================================
-# Scan endpoint
-# ============================================================================
-
-
-class TestScanEndpoint:
-    @pytest.mark.asyncio
-    async def test_scan_llm_guard_not_installed(self, client, mock_pool):
-        """Should return 501 when LLM Guard is not available."""
-        resp = await client.post("/api/v1/guardrails/scan", json={
-            "text": "test input",
-            "direction": "input",
-        })
-        # In test environment, llm_guard won't be installed → 501
-        assert resp.status_code == 501

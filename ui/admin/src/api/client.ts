@@ -33,8 +33,6 @@ import type {
   GuardrailConfigCreate,
   GuardrailConfigUpdate,
   GuardrailEvent,
-  GuardrailScanRequest,
-  GuardrailScanResponse,
 } from '../types'
 
 // Use Vite's BASE_URL so API calls route through the admin-ui nginx proxy
@@ -267,10 +265,6 @@ export const guardrailsApi = {
   },
   events: async (params?: { team_id?: string; event_type?: string; limit?: number; offset?: number }): Promise<GuardrailEvent[]> => {
     const response = await api.get('/guardrail-events', { params })
-    return response.data
-  },
-  scan: async (data: GuardrailScanRequest): Promise<GuardrailScanResponse> => {
-    const response = await api.post('/guardrails/scan', data)
     return response.data
   },
 }

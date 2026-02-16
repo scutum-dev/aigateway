@@ -358,18 +358,3 @@ export interface GuardrailEvent {
   created_at: string | null
 }
 
-export interface GuardrailScanRequest {
-  text: string
-  guardrail_config_id?: string
-  direction?: 'input' | 'output'
-}
-
-export interface GuardrailScanResponse {
-  is_valid: boolean
-  sanitized_text: string | null
-  results: Array<{
-    scanner: string
-    is_valid: boolean
-    risk_score: number
-  }>
-}

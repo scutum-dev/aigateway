@@ -95,17 +95,6 @@ class GuardrailEvent(BaseModel):
     created_at: Optional[str] = None
 
 
-class ScanRequest(BaseModel):
-    text: str
-    guardrail_config_id: Optional[str] = None
-    direction: str = "input"
-
-
-class ScanResponse(BaseModel):
-    is_valid: bool
-    sanitized_text: Optional[str] = None
-    results: List[dict] = []
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -368,66 +357,3 @@ async def list_guardrail_events(
         return [_row_to_event(row) for row in rows]
 
 
-# ---------------------------------------------------------------------------
-# Ad-hoc scan
-# ---------------------------------------------------------------------------
-
-@router.post("/guardrails/scan", response_model=ScanResponse)
-async def scan_text(
-    request: ScanRequest,
-    user: UserInfo = Depends(get_current_user),
-):
-    """Run ad-hoc text through guardrail scanners for testing."""
-    try:
-        from llm_guard.input_scanners import (
-            PromptInjection,
-            Toxicity as InputToxicity,
-            Secrets,
-            InvisibleText,
-        )
-        from llm_guard.output_scanners import (
-            Toxicity as OutputToxicity,
-            MaliciousURLs,
-            Sensitive,
-        )
-    except ImportError:
-        raise HTTPException(
-            status_code=501,
-            detail="LLM Guard is not installed on this instance. "
-                   "Guardrail scanning requires the LiteLLM container with guardrail dependencies.",
-        )
-
-    results = []
-    sanitized = request.text
-    is_valid = True
-
-    if request.direction == "input":
-        scanners = [
-            ("PromptInjection", PromptInjection()),
-            ("Toxicity", InputToxicity()),
-            ("Secrets", Secrets()),
-            ("InvisibleText", InvisibleText()),
-        ]
-    else:
-        scanners = [
-            ("Toxicity", OutputToxicity()),
-            ("MaliciousURLs", MaliciousURLs()),
-            ("Sensitive", Sensitive()),
-        ]
-
-    for name, scanner in scanners:
-        scanned_text, valid, score = scanner.scan(sanitized)
-        results.append({
-            "scanner": name,
-            "is_valid": valid,
-            "risk_score": round(score, 4) if isinstance(score, float) else score,
-        })
-        if not valid:
-            is_valid = False
-        sanitized = scanned_text
-
-    return ScanResponse(
-        is_valid=is_valid,
-        sanitized_text=sanitized,
-        results=results,
-    )

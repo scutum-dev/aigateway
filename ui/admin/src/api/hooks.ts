@@ -43,8 +43,6 @@ import type {
   GuardrailConfigCreate,
   GuardrailConfigUpdate,
   GuardrailEvent,
-  GuardrailScanRequest,
-  GuardrailScanResponse,
 } from '../types'
 
 // Models hooks
@@ -349,12 +347,6 @@ export function useGuardrailEvents(params?: { team_id?: string; event_type?: str
     queryKey: ['guardrail-events', params],
     queryFn: () => guardrailsApi.events(params),
     refetchInterval: 30000,
-  })
-}
-
-export function useScanText() {
-  return useMutation<GuardrailScanResponse, Error, GuardrailScanRequest>({
-    mutationFn: guardrailsApi.scan,
   })
 }
 
