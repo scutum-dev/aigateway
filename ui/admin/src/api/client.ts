@@ -1,4 +1,23 @@
 import axios from 'axios'
+import type {
+  ModelConfig,
+  ModelUpdate,
+  Budget,
+  BudgetCreate,
+  BudgetUpdate,
+  Team,
+  TeamCreate,
+  TeamMemberAdd,
+  MCPServerConfig,
+  MCPServerCreate,
+  WorkflowSummary,
+  RealtimeMetrics,
+  PlatformSettings,
+  LoginResponse,
+  RoutingPolicy,
+  RoutingPolicyCreate,
+  UserInfo,
+} from '../types'
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -33,11 +52,11 @@ export default api
 
 // Auth API
 export const authApi = {
-  login: async (apiKey: string) => {
+  login: async (apiKey: string): Promise<LoginResponse> => {
     const response = await axios.post('/auth/login', { api_key: apiKey })
     return response.data
   },
-  me: async () => {
+  me: async (): Promise<UserInfo> => {
     const response = await api.get('/auth/me')
     return response.data
   },
@@ -45,11 +64,11 @@ export const authApi = {
 
 // Models API
 export const modelsApi = {
-  list: async () => {
+  list: async (): Promise<ModelConfig[]> => {
     const response = await api.get('/models')
     return response.data
   },
-  update: async (modelId: string, data: any) => {
+  update: async (modelId: string, data: ModelUpdate): Promise<ModelConfig> => {
     const response = await api.put(`/models/${modelId}`, data)
     return response.data
   },
@@ -57,15 +76,15 @@ export const modelsApi = {
 
 // Routing Policies API
 export const policiesApi = {
-  list: async () => {
+  list: async (): Promise<RoutingPolicy[]> => {
     const response = await api.get('/routing-policies')
     return response.data
   },
-  create: async (data: any) => {
+  create: async (data: RoutingPolicyCreate): Promise<RoutingPolicy> => {
     const response = await api.post('/routing-policies', data)
     return response.data
   },
-  delete: async (id: string) => {
+  delete: async (id: string): Promise<void> => {
     const response = await api.delete(`/routing-policies/${id}`)
     return response.data
   },
@@ -73,15 +92,15 @@ export const policiesApi = {
 
 // Budgets API
 export const budgetsApi = {
-  list: async () => {
+  list: async (): Promise<Budget[]> => {
     const response = await api.get('/budgets')
     return response.data
   },
-  create: async (data: any) => {
+  create: async (data: BudgetCreate): Promise<Budget> => {
     const response = await api.post('/budgets', data)
     return response.data
   },
-  update: async (id: string, data: any) => {
+  update: async (id: string, data: BudgetUpdate): Promise<Budget> => {
     const response = await api.put(`/budgets/${id}`, data)
     return response.data
   },
@@ -89,15 +108,15 @@ export const budgetsApi = {
 
 // Teams API
 export const teamsApi = {
-  list: async () => {
+  list: async (): Promise<Team[]> => {
     const response = await api.get('/teams')
     return response.data
   },
-  create: async (data: any) => {
+  create: async (data: TeamCreate): Promise<Team> => {
     const response = await api.post('/teams', data)
     return response.data
   },
-  addMember: async (teamId: string, data: any) => {
+  addMember: async (teamId: string, data: TeamMemberAdd): Promise<Team> => {
     const response = await api.post(`/teams/${teamId}/members`, data)
     return response.data
   },
@@ -105,11 +124,11 @@ export const teamsApi = {
 
 // MCP Servers API
 export const mcpServersApi = {
-  list: async () => {
+  list: async (): Promise<MCPServerConfig[]> => {
     const response = await api.get('/mcp-servers')
     return response.data
   },
-  create: async (data: any) => {
+  create: async (data: MCPServerCreate): Promise<MCPServerConfig> => {
     const response = await api.post('/mcp-servers', data)
     return response.data
   },
@@ -117,7 +136,7 @@ export const mcpServersApi = {
 
 // Workflows API
 export const workflowsApi = {
-  list: async () => {
+  list: async (): Promise<WorkflowSummary[]> => {
     const response = await api.get('/workflows')
     return response.data
   },
@@ -125,7 +144,7 @@ export const workflowsApi = {
 
 // Metrics API
 export const metricsApi = {
-  realtime: async () => {
+  realtime: async (): Promise<RealtimeMetrics> => {
     const response = await api.get('/metrics/realtime')
     return response.data
   },
@@ -133,11 +152,11 @@ export const metricsApi = {
 
 // Settings API
 export const settingsApi = {
-  get: async () => {
+  get: async (): Promise<PlatformSettings> => {
     const response = await api.get('/settings')
     return response.data
   },
-  update: async (data: any) => {
+  update: async (data: PlatformSettings): Promise<PlatformSettings> => {
     const response = await api.put('/settings', data)
     return response.data
   },

@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/client';
+import ConfirmDialog from '../ConfirmDialog';
+import { useToast } from '../Toast';
 
 interface PolicyRule {
   id: string;
@@ -263,8 +265,10 @@ const CedarPreview: React.FC<{ policy: PolicyRule }> = ({ policy }) => {
 // Main Policy Editor Component
 export const PolicyEditor: React.FC = () => {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyRule | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Fetch policies
   const { data: policies = [], isLoading } = useQuery({
@@ -296,6 +300,10 @@ export const PolicyEditor: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['routing-policies'] });
       setSelectedPolicy(null);
       setIsCreating(false);
+      toast('success', 'Policy saved successfully');
+    },
+    onError: () => {
+      toast('error', 'Failed to save policy');
     },
   });
 
@@ -307,6 +315,10 @@ export const PolicyEditor: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['routing-policies'] });
       setSelectedPolicy(null);
+      toast('success', 'Policy deleted');
+    },
+    onError: () => {
+      toast('error', 'Failed to delete policy');
     },
   });
 
@@ -389,10 +401,19 @@ export const PolicyEditor: React.FC = () => {
               <h2 className="text-2xl font-bold">
                 {isCreating ? 'Create Policy' : 'Edit Policy'}
               </h2>
+              <ConfirmDialog
+                isOpen={showDeleteConfirm}
+                onClose={() => setShowDeleteConfirm(false)}
+                onConfirm={() => deleteMutation.mutate(selectedPolicy.id)}
+                title="Delete Policy?"
+                message={`Are you sure you want to delete "${selectedPolicy.name}"? This action cannot be undone.`}
+                confirmLabel="Delete Policy"
+                confirmVariant="danger"
+              />
               <div className="flex gap-2">
                 {!isCreating && (
                   <button
-                    onClick={() => deleteMutation.mutate(selectedPolicy.id)}
+                    onClick={() => setShowDeleteConfirm(true)}
                     className="px-4 py-2 text-red-600 border border-red-300 rounded-md hover:bg-red-50"
                   >
                     Delete

@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import { useBudgets, useCreateBudget, useUpdateBudget } from '../api/hooks'
-import { PlusIcon, PencilIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, XMarkIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline'
+import { SkeletonCard } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
+import { useToast } from '../components/Toast'
+import type { Budget } from '../types'
 
 interface BudgetForm {
   name: string
@@ -27,14 +31,21 @@ export default function Budgets() {
   const { data: budgets, isLoading, error } = useBudgets()
   const createBudget = useCreateBudget()
   const updateBudget = useUpdateBudget()
+  const toast = useToast()
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<BudgetForm>(emptyForm)
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Budgets</h1>
+          <p className="text-gray-600">Manage cost limits and alerts</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
       </div>
     )
   }
@@ -49,12 +60,17 @@ export default function Budgets() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    await createBudget.mutateAsync(form)
-    setShowForm(false)
-    setForm(emptyForm)
+    try {
+      await createBudget.mutateAsync(form)
+      toast('success', 'Budget created successfully')
+      setShowForm(false)
+      setForm(emptyForm)
+    } catch {
+      toast('error', 'Failed to create budget')
+    }
   }
 
-  const handleEdit = (budget: any) => {
+  const handleEdit = (budget: Budget) => {
     setEditingId(budget.id)
     setForm({
       name: budget.name,
@@ -71,19 +87,24 @@ export default function Budgets() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingId) return
-    await updateBudget.mutateAsync({
-      id: editingId,
-      data: {
-        name: form.name,
-        monthly_limit: form.monthly_limit,
-        soft_limit_percent: form.soft_limit_percent,
-        hard_limit_percent: form.hard_limit_percent,
-        alert_email: form.alert_email || null,
-        is_active: form.is_active,
-      },
-    })
-    setEditingId(null)
-    setForm(emptyForm)
+    try {
+      await updateBudget.mutateAsync({
+        id: editingId,
+        data: {
+          name: form.name,
+          monthly_limit: form.monthly_limit,
+          soft_limit_percent: form.soft_limit_percent,
+          hard_limit_percent: form.hard_limit_percent,
+          alert_email: form.alert_email || null,
+          is_active: form.is_active,
+        },
+      })
+      toast('success', 'Budget updated successfully')
+      setEditingId(null)
+      setForm(emptyForm)
+    } catch {
+      toast('error', 'Failed to update budget')
+    }
   }
 
   const handleCancel = () => {
@@ -92,7 +113,7 @@ export default function Budgets() {
     setForm(emptyForm)
   }
 
-  const getUtilization = (budget: any) => {
+  const getUtilization = (budget: Budget) => {
     return (budget.current_spend / budget.monthly_limit) * 100
   }
 
@@ -255,76 +276,80 @@ export default function Budgets() {
       {showForm && renderForm(false)}
       {editingId && renderForm(true)}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {budgets?.map((budget: any) => {
-          const utilization = getUtilization(budget)
-          return (
-            <div key={budget.id} className="card">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-semibold">{budget.name}</h3>
-                  <p className="text-sm text-gray-500 capitalize">
-                    {budget.entity_type}
-                    {budget.entity_id && `: ${budget.entity_id}`}
+      {(!budgets || budgets.length === 0) ? (
+        <EmptyState
+          icon={CurrencyDollarIcon}
+          title="No budgets configured"
+          description="Set up cost limits and alerts to keep spending under control."
+          actionLabel="Create Budget"
+          onAction={() => setShowForm(true)}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {budgets.map((budget) => {
+            const utilization = getUtilization(budget)
+            return (
+              <div key={budget.id} className="card">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="font-semibold">{budget.name}</h3>
+                    <p className="text-sm text-gray-500 capitalize">
+                      {budget.entity_type}
+                      {budget.entity_id && `: ${budget.entity_id}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleEdit(budget)}
+                      className="text-gray-400 hover:text-primary-600 p-1"
+                      title="Edit budget"
+                    >
+                      <PencilIcon className="w-4 h-4" />
+                    </button>
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        budget.is_active
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {budget.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>
+                      ${budget.current_spend?.toFixed(2)} / $
+                      {budget.monthly_limit?.toFixed(2)}
+                    </span>
+                    <span>{utilization.toFixed(1)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${getUtilizationColor(
+                        utilization,
+                        budget.soft_limit_percent,
+                        budget.hard_limit_percent
+                      )}`}
+                      style={{ width: `${Math.min(utilization, 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                <div className="text-sm text-gray-500 space-y-1">
+                  <p>
+                    Soft limit: {(budget.soft_limit_percent * 100).toFixed(0)}%
                   </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleEdit(budget)}
-                    className="text-gray-400 hover:text-primary-600 p-1"
-                    title="Edit budget"
-                  >
-                    <PencilIcon className="w-4 h-4" />
-                  </button>
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      budget.is_active
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}
-                  >
-                    {budget.is_active ? 'Active' : 'Inactive'}
-                  </span>
+                  <p>
+                    Hard limit: {(budget.hard_limit_percent * 100).toFixed(0)}%
+                  </p>
+                  {budget.alert_email && <p>Alert: {budget.alert_email}</p>}
                 </div>
               </div>
-
-              <div className="mb-4">
-                <div className="flex justify-between text-sm mb-1">
-                  <span>
-                    ${budget.current_spend?.toFixed(2)} / $
-                    {budget.monthly_limit?.toFixed(2)}
-                  </span>
-                  <span>{utilization.toFixed(1)}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full ${getUtilizationColor(
-                      utilization,
-                      budget.soft_limit_percent,
-                      budget.hard_limit_percent
-                    )}`}
-                    style={{ width: `${Math.min(utilization, 100)}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="text-sm text-gray-500 space-y-1">
-                <p>
-                  Soft limit: {(budget.soft_limit_percent * 100).toFixed(0)}%
-                </p>
-                <p>
-                  Hard limit: {(budget.hard_limit_percent * 100).toFixed(0)}%
-                </p>
-                {budget.alert_email && <p>Alert: {budget.alert_email}</p>}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {(!budgets || budgets.length === 0) && (
-        <div className="text-center py-12 text-gray-500">
-          No budgets configured yet
+            )
+          })}
         </div>
       )}
     </div>

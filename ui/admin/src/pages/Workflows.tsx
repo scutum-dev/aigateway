@@ -1,26 +1,11 @@
 import { useWorkflows } from '../api/hooks'
 import { CircleStackIcon, PlayIcon } from '@heroicons/react/24/outline'
+import { SkeletonCard } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 
 export default function Workflows() {
   const { data: workflows, isLoading, error } = useWorkflows()
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 text-red-700 p-4 rounded-lg">
-        Failed to load workflows
-      </div>
-    )
-  }
-
-  // Built-in templates
   const templates = [
     {
       type: 'research',
@@ -62,6 +47,28 @@ export default function Workflows() {
     },
   ]
 
+  if (isLoading) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Workflows</h1>
+          <p className="text-gray-600">Pre-built and custom workflow templates</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 text-red-700 p-4 rounded-lg">
+        Failed to load workflows
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -71,7 +78,6 @@ export default function Workflows() {
         </p>
       </div>
 
-      {/* Pre-built Templates */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Pre-built Templates</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -102,7 +108,7 @@ export default function Workflows() {
                         {node}
                       </span>
                       {idx < template.nodes.length - 1 && (
-                        <span className="mx-1 text-gray-400">→</span>
+                        <span className="mx-1 text-gray-400">&rarr;</span>
                       )}
                     </span>
                   ))}
@@ -118,13 +124,12 @@ export default function Workflows() {
         </div>
       </div>
 
-      {/* Custom Workflows */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Custom Workflows</h2>
 
         {workflows && workflows.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {workflows.map((workflow: any) => (
+            {workflows.map((workflow) => (
               <div key={workflow.id} className="card">
                 <div className="flex items-start justify-between mb-4">
                   <div>
@@ -162,12 +167,11 @@ export default function Workflows() {
             ))}
           </div>
         ) : (
-          <div className="card text-center py-8 text-gray-500">
-            <p>No custom workflows defined yet.</p>
-            <p className="text-sm mt-1">
-              Use the Workflow Engine API to create custom workflows.
-            </p>
-          </div>
+          <EmptyState
+            icon={CircleStackIcon}
+            title="No custom workflows"
+            description="Use the Workflow Engine API to create custom workflows based on the templates above."
+          />
         )}
       </div>
     </div>

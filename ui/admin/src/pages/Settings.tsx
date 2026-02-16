@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useSettings, useUpdateSettings } from '../api/hooks'
+import { SkeletonCard } from '../components/Skeleton'
+import ConfirmDialog from '../components/ConfirmDialog'
+import { useToast } from '../components/Toast'
+import type { PlatformSettings } from '../types'
 
 export default function Settings() {
   const { data: settings, isLoading, error } = useSettings()
   const updateSettings = useUpdateSettings()
-  const [form, setForm] = useState({
+  const toast = useToast()
+  const [form, setForm] = useState<PlatformSettings>({
     default_model: 'gpt-4o-mini',
     global_rate_limit: 1000,
     enable_caching: true,
@@ -14,7 +19,7 @@ export default function Settings() {
     enable_routing_policies: true,
     maintenance_mode: false,
   })
-  const [saved, setSaved] = useState(false)
+  const [showMaintenanceConfirm, setShowMaintenanceConfirm] = useState(false)
 
   useEffect(() => {
     if (settings) {
@@ -24,8 +29,12 @@ export default function Settings() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+          <p className="text-gray-600">Platform-wide configuration</p>
+        </div>
+        {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
       </div>
     )
   }
@@ -40,9 +49,20 @@ export default function Settings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await updateSettings.mutateAsync(form)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    try {
+      await updateSettings.mutateAsync(form)
+      toast('success', 'Settings saved successfully')
+    } catch {
+      toast('error', 'Failed to save settings')
+    }
+  }
+
+  const handleMaintenanceToggle = () => {
+    if (!form.maintenance_mode) {
+      setShowMaintenanceConfirm(true)
+    } else {
+      setForm({ ...form, maintenance_mode: false })
+    }
   }
 
   return (
@@ -51,6 +71,16 @@ export default function Settings() {
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-600">Platform-wide configuration</p>
       </div>
+
+      <ConfirmDialog
+        isOpen={showMaintenanceConfirm}
+        onClose={() => setShowMaintenanceConfirm(false)}
+        onConfirm={() => setForm({ ...form, maintenance_mode: true })}
+        title="Enable Maintenance Mode?"
+        message="This will block all API requests except health checks. Make sure to save settings after confirming."
+        confirmLabel="Enable Maintenance Mode"
+        confirmVariant="danger"
+      />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* General Settings */}
@@ -242,9 +272,7 @@ export default function Settings() {
             </div>
             <button
               type="button"
-              onClick={() =>
-                setForm({ ...form, maintenance_mode: !form.maintenance_mode })
-              }
+              onClick={handleMaintenanceToggle}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 form.maintenance_mode ? 'bg-red-600' : 'bg-gray-300'
               }`}
@@ -259,15 +287,10 @@ export default function Settings() {
         </div>
 
         {/* Save Button */}
-        <div className="flex items-center space-x-4">
+        <div>
           <button type="submit" className="btn btn-primary">
             Save Settings
           </button>
-          {saved && (
-            <span className="text-green-600 text-sm">
-              Settings saved successfully!
-            </span>
-          )}
         </div>
       </form>
     </div>

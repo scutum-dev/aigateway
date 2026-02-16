@@ -9,10 +9,27 @@ import {
   metricsApi,
   settingsApi,
 } from './client'
+import type {
+  ModelConfig,
+  ModelUpdate,
+  Budget,
+  BudgetCreate,
+  BudgetUpdate,
+  Team,
+  TeamCreate,
+  TeamMemberAdd,
+  MCPServerConfig,
+  MCPServerCreate,
+  WorkflowSummary,
+  RealtimeMetrics,
+  PlatformSettings,
+  RoutingPolicy,
+  RoutingPolicyCreate,
+} from '../types'
 
 // Models hooks
 export function useModels() {
-  return useQuery({
+  return useQuery<ModelConfig[]>({
     queryKey: ['models'],
     queryFn: modelsApi.list,
   })
@@ -20,9 +37,8 @@ export function useModels() {
 
 export function useUpdateModel() {
   const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ modelId, data }: { modelId: string; data: any }) =>
-      modelsApi.update(modelId, data),
+  return useMutation<ModelConfig, Error, { modelId: string; data: ModelUpdate }>({
+    mutationFn: ({ modelId, data }) => modelsApi.update(modelId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['models'] })
     },
@@ -31,7 +47,7 @@ export function useUpdateModel() {
 
 // Routing Policies hooks
 export function useRoutingPolicies() {
-  return useQuery({
+  return useQuery<RoutingPolicy[]>({
     queryKey: ['routing-policies'],
     queryFn: policiesApi.list,
   })
@@ -39,7 +55,7 @@ export function useRoutingPolicies() {
 
 export function useCreatePolicy() {
   const queryClient = useQueryClient()
-  return useMutation({
+  return useMutation<RoutingPolicy, Error, RoutingPolicyCreate>({
     mutationFn: policiesApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['routing-policies'] })
@@ -49,7 +65,7 @@ export function useCreatePolicy() {
 
 export function useDeletePolicy() {
   const queryClient = useQueryClient()
-  return useMutation({
+  return useMutation<void, Error, string>({
     mutationFn: policiesApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['routing-policies'] })
@@ -59,7 +75,7 @@ export function useDeletePolicy() {
 
 // Budgets hooks
 export function useBudgets() {
-  return useQuery({
+  return useQuery<Budget[]>({
     queryKey: ['budgets'],
     queryFn: budgetsApi.list,
   })
@@ -67,7 +83,7 @@ export function useBudgets() {
 
 export function useCreateBudget() {
   const queryClient = useQueryClient()
-  return useMutation({
+  return useMutation<Budget, Error, BudgetCreate>({
     mutationFn: budgetsApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budgets'] })
@@ -77,9 +93,8 @@ export function useCreateBudget() {
 
 export function useUpdateBudget() {
   const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
-      budgetsApi.update(id, data),
+  return useMutation<Budget, Error, { id: string; data: BudgetUpdate }>({
+    mutationFn: ({ id, data }) => budgetsApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budgets'] })
     },
@@ -88,7 +103,7 @@ export function useUpdateBudget() {
 
 // Teams hooks
 export function useTeams() {
-  return useQuery({
+  return useQuery<Team[]>({
     queryKey: ['teams'],
     queryFn: teamsApi.list,
   })
@@ -96,7 +111,7 @@ export function useTeams() {
 
 export function useCreateTeam() {
   const queryClient = useQueryClient()
-  return useMutation({
+  return useMutation<Team, Error, TeamCreate>({
     mutationFn: teamsApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] })
@@ -106,9 +121,8 @@ export function useCreateTeam() {
 
 export function useAddTeamMember() {
   const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ teamId, data }: { teamId: string; data: any }) =>
-      teamsApi.addMember(teamId, data),
+  return useMutation<Team, Error, { teamId: string; data: TeamMemberAdd }>({
+    mutationFn: ({ teamId, data }) => teamsApi.addMember(teamId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] })
     },
@@ -117,7 +131,7 @@ export function useAddTeamMember() {
 
 // MCP Servers hooks
 export function useMCPServers() {
-  return useQuery({
+  return useQuery<MCPServerConfig[]>({
     queryKey: ['mcp-servers'],
     queryFn: mcpServersApi.list,
   })
@@ -125,7 +139,7 @@ export function useMCPServers() {
 
 export function useCreateMCPServer() {
   const queryClient = useQueryClient()
-  return useMutation({
+  return useMutation<MCPServerConfig, Error, MCPServerCreate>({
     mutationFn: mcpServersApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mcp-servers'] })
@@ -135,7 +149,7 @@ export function useCreateMCPServer() {
 
 // Workflows hooks
 export function useWorkflows() {
-  return useQuery({
+  return useQuery<WorkflowSummary[]>({
     queryKey: ['workflows'],
     queryFn: workflowsApi.list,
   })
@@ -143,16 +157,16 @@ export function useWorkflows() {
 
 // Metrics hooks
 export function useRealtimeMetrics() {
-  return useQuery({
+  return useQuery<RealtimeMetrics>({
     queryKey: ['metrics', 'realtime'],
     queryFn: metricsApi.realtime,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 30000,
   })
 }
 
 // Settings hooks
 export function useSettings() {
-  return useQuery({
+  return useQuery<PlatformSettings>({
     queryKey: ['settings'],
     queryFn: settingsApi.get,
   })
@@ -160,7 +174,7 @@ export function useSettings() {
 
 export function useUpdateSettings() {
   const queryClient = useQueryClient()
-  return useMutation({
+  return useMutation<PlatformSettings, Error, PlatformSettings>({
     mutationFn: settingsApi.update,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] })

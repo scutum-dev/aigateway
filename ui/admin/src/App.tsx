@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { authApi } from './api/client'
+import type { UserInfo } from './types'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -13,14 +15,15 @@ import Settings from './pages/Settings'
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<UserInfo | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token')
     if (token) {
-      // Verify token is still valid
       const expiresAt = localStorage.getItem('token_expires_at')
       if (expiresAt && new Date(expiresAt) > new Date()) {
         setIsAuthenticated(true)
+        authApi.me().then(setUser).catch(() => {})
       } else {
         localStorage.removeItem('admin_token')
         localStorage.removeItem('token_expires_at')
@@ -33,12 +36,14 @@ function App() {
     localStorage.setItem('admin_token', token)
     localStorage.setItem('token_expires_at', expiresAt)
     setIsAuthenticated(true)
+    authApi.me().then(setUser).catch(() => {})
   }
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token')
     localStorage.removeItem('token_expires_at')
     setIsAuthenticated(false)
+    setUser(null)
   }
 
   if (isLoading) {
@@ -54,7 +59,7 @@ function App() {
   }
 
   return (
-    <Layout onLogout={handleLogout}>
+    <Layout onLogout={handleLogout} user={user}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/models" element={<Models />} />

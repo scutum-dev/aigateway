@@ -1,10 +1,14 @@
 import { useState } from 'react'
 import { useMCPServers, useCreateMCPServer } from '../api/hooks'
 import { PlusIcon, ServerIcon } from '@heroicons/react/24/outline'
+import { SkeletonCard } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
+import { useToast } from '../components/Toast'
 
 export default function MCPServers() {
   const { data: servers, isLoading, error } = useMCPServers()
   const createServer = useCreateMCPServer()
+  const toast = useToast()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({
     name: '',
@@ -17,8 +21,14 @@ export default function MCPServers() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">MCP Servers</h1>
+          <p className="text-gray-600">Configure Model Context Protocol servers</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
       </div>
     )
   }
@@ -33,23 +43,21 @@ export default function MCPServers() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await createServer.mutateAsync({
-      name: form.name,
-      server_type: form.server_type,
-      command: form.command || undefined,
-      url: form.url || undefined,
-      args: form.args ? form.args.split(' ') : [],
-      env: form.env ? JSON.parse(form.env) : {},
-    })
-    setShowForm(false)
-    setForm({
-      name: '',
-      server_type: 'stdio',
-      command: '',
-      url: '',
-      args: '',
-      env: '',
-    })
+    try {
+      await createServer.mutateAsync({
+        name: form.name,
+        server_type: form.server_type,
+        command: form.command || undefined,
+        url: form.url || undefined,
+        args: form.args ? form.args.split(' ') : [],
+        env: form.env ? JSON.parse(form.env) : {},
+      })
+      toast('success', 'MCP server added successfully')
+      setShowForm(false)
+      setForm({ name: '', server_type: 'stdio', command: '', url: '', args: '', env: '' })
+    } catch {
+      toast('error', 'Failed to add MCP server')
+    }
   }
 
   return (
@@ -163,79 +171,83 @@ export default function MCPServers() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {servers?.map((server: any) => (
-          <div key={server.id} className="card">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-gray-100 rounded-lg mr-3">
-                  <ServerIcon className="w-5 h-5 text-gray-600" />
+      {(!servers || servers.length === 0) ? (
+        <EmptyState
+          icon={ServerIcon}
+          title="No MCP servers configured"
+          description="Add MCP servers to extend your gateway with tools and context."
+          actionLabel="Add Server"
+          onAction={() => setShowForm(true)}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {servers.map((server) => (
+            <div key={server.id} className="card">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center">
+                  <div className="p-2 bg-gray-100 rounded-lg mr-3">
+                    <ServerIcon className="w-5 h-5 text-gray-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{server.name}</h3>
+                    <p className="text-sm text-gray-500">{server.server_type}</p>
+                  </div>
                 </div>
+                <span
+                  className={`px-2 py-1 rounded text-xs ${
+                    server.is_active
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  {server.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+
+              {server.command && (
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-1">Command:</p>
+                  <code className="text-xs bg-gray-100 p-2 rounded block overflow-x-auto">
+                    {server.command}
+                  </code>
+                </div>
+              )}
+
+              {server.url && (
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-1">URL:</p>
+                  <code className="text-xs bg-gray-100 p-2 rounded block">
+                    {server.url}
+                  </code>
+                </div>
+              )}
+
+              {server.args && server.args.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-1">Arguments:</p>
+                  <code className="text-xs bg-gray-100 p-2 rounded block">
+                    {server.args.join(' ')}
+                  </code>
+                </div>
+              )}
+
+              {server.tools && server.tools.length > 0 && (
                 <div>
-                  <h3 className="font-semibold">{server.name}</h3>
-                  <p className="text-sm text-gray-500">{server.server_type}</p>
+                  <p className="text-xs text-gray-500 mb-1">Tools:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {server.tools.map((tool: string) => (
+                      <span
+                        key={tool}
+                        className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs"
+                      >
+                        {tool}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <span
-                className={`px-2 py-1 rounded text-xs ${
-                  server.is_active
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-gray-100 text-gray-700'
-                }`}
-              >
-                {server.is_active ? 'Active' : 'Inactive'}
-              </span>
+              )}
             </div>
-
-            {server.command && (
-              <div className="mb-3">
-                <p className="text-xs text-gray-500 mb-1">Command:</p>
-                <code className="text-xs bg-gray-100 p-2 rounded block overflow-x-auto">
-                  {server.command}
-                </code>
-              </div>
-            )}
-
-            {server.url && (
-              <div className="mb-3">
-                <p className="text-xs text-gray-500 mb-1">URL:</p>
-                <code className="text-xs bg-gray-100 p-2 rounded block">
-                  {server.url}
-                </code>
-              </div>
-            )}
-
-            {server.args && server.args.length > 0 && (
-              <div className="mb-3">
-                <p className="text-xs text-gray-500 mb-1">Arguments:</p>
-                <code className="text-xs bg-gray-100 p-2 rounded block">
-                  {server.args.join(' ')}
-                </code>
-              </div>
-            )}
-
-            {server.tools && server.tools.length > 0 && (
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Tools:</p>
-                <div className="flex flex-wrap gap-1">
-                  {server.tools.map((tool: string) => (
-                    <span
-                      key={tool}
-                      className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs"
-                    >
-                      {tool}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {(!servers || servers.length === 0) && (
-        <div className="text-center py-12 text-gray-500">
-          No MCP servers configured yet
+          ))}
         </div>
       )}
     </div>

@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { useTeams, useCreateTeam, useAddTeamMember } from '../api/hooks'
-import { PlusIcon, UserPlusIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, UserPlusIcon, UserGroupIcon } from '@heroicons/react/24/outline'
+import { SkeletonCard } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
+import { useToast } from '../components/Toast'
 
 export default function Teams() {
   const { data: teams, isLoading, error } = useTeams()
   const createTeam = useCreateTeam()
   const addMember = useAddTeamMember()
+  const toast = useToast()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({
     name: '',
@@ -16,13 +20,19 @@ export default function Teams() {
   const [addMemberTeam, setAddMemberTeam] = useState<string | null>(null)
   const [memberForm, setMemberForm] = useState({
     user_id: '',
-    role: 'member',
+    role: 'member' as 'member' | 'admin',
   })
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Teams</h1>
+          <p className="text-gray-600">Manage teams and members</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
       </div>
     )
   }
@@ -37,30 +47,35 @@ export default function Teams() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await createTeam.mutateAsync({
-      ...form,
-      monthly_budget: form.monthly_budget
-        ? parseFloat(form.monthly_budget)
-        : null,
-    })
-    setShowForm(false)
-    setForm({
-      name: '',
-      description: '',
-      monthly_budget: '',
-      default_model: '',
-    })
+    try {
+      await createTeam.mutateAsync({
+        ...form,
+        monthly_budget: form.monthly_budget
+          ? parseFloat(form.monthly_budget)
+          : null,
+      })
+      toast('success', 'Team created successfully')
+      setShowForm(false)
+      setForm({ name: '', description: '', monthly_budget: '', default_model: '' })
+    } catch {
+      toast('error', 'Failed to create team')
+    }
   }
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!addMemberTeam) return
-    await addMember.mutateAsync({
-      teamId: addMemberTeam,
-      data: memberForm,
-    })
-    setAddMemberTeam(null)
-    setMemberForm({ user_id: '', role: 'member' })
+    try {
+      await addMember.mutateAsync({
+        teamId: addMemberTeam,
+        data: memberForm,
+      })
+      toast('success', 'Member added successfully')
+      setAddMemberTeam(null)
+      setMemberForm({ user_id: '', role: 'member' })
+    } catch {
+      toast('error', 'Failed to add member')
+    }
   }
 
   return (
@@ -165,7 +180,7 @@ export default function Teams() {
                 <select
                   value={memberForm.role}
                   onChange={(e) =>
-                    setMemberForm({ ...memberForm, role: e.target.value })
+                    setMemberForm({ ...memberForm, role: e.target.value as 'member' | 'admin' })
                   }
                   className="input"
                 >
@@ -190,81 +205,85 @@ export default function Teams() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {teams?.map((team: any) => (
-          <div key={team.id} className="card">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="font-semibold">{team.name}</h3>
-                {team.description && (
-                  <p className="text-sm text-gray-500">{team.description}</p>
-                )}
-              </div>
-              <span
-                className={`px-2 py-1 rounded text-xs ${
-                  team.is_active
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-gray-100 text-gray-700'
-                }`}
-              >
-                {team.is_active ? 'Active' : 'Inactive'}
-              </span>
-            </div>
-
-            <div className="space-y-2 text-sm">
-              {team.monthly_budget && (
-                <p>
-                  <span className="text-gray-500">Budget:</span> $
-                  {team.monthly_budget.toFixed(2)}/mo
-                </p>
-              )}
-              {team.default_model && (
-                <p>
-                  <span className="text-gray-500">Default Model:</span>{' '}
-                  {team.default_model}
-                </p>
-              )}
-              <p>
-                <span className="text-gray-500">Members:</span>{' '}
-                {team.members?.length || 0}
-              </p>
-            </div>
-
-            {team.members && team.members.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <p className="text-xs text-gray-500 mb-2">Members:</p>
-                <div className="flex flex-wrap gap-1">
-                  {team.members.slice(0, 5).map((member: string) => (
-                    <span
-                      key={member}
-                      className="px-2 py-1 bg-gray-100 rounded text-xs"
-                    >
-                      {member}
-                    </span>
-                  ))}
-                  {team.members.length > 5 && (
-                    <span className="px-2 py-1 text-gray-500 text-xs">
-                      +{team.members.length - 5} more
-                    </span>
+      {(!teams || teams.length === 0) ? (
+        <EmptyState
+          icon={UserGroupIcon}
+          title="No teams yet"
+          description="Create teams to organize users and manage access."
+          actionLabel="Create Team"
+          onAction={() => setShowForm(true)}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {teams.map((team) => (
+            <div key={team.id} className="card">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="font-semibold">{team.name}</h3>
+                  {team.description && (
+                    <p className="text-sm text-gray-500">{team.description}</p>
                   )}
                 </div>
+                <span
+                  className={`px-2 py-1 rounded text-xs ${
+                    team.is_active
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  {team.is_active ? 'Active' : 'Inactive'}
+                </span>
               </div>
-            )}
 
-            <button
-              onClick={() => setAddMemberTeam(team.id)}
-              className="mt-4 btn btn-secondary w-full text-sm"
-            >
-              <UserPlusIcon className="w-4 h-4 mr-2" />
-              Add Member
-            </button>
-          </div>
-        ))}
-      </div>
+              <div className="space-y-2 text-sm">
+                {team.monthly_budget && (
+                  <p>
+                    <span className="text-gray-500">Budget:</span> $
+                    {team.monthly_budget.toFixed(2)}/mo
+                  </p>
+                )}
+                {team.default_model && (
+                  <p>
+                    <span className="text-gray-500">Default Model:</span>{' '}
+                    {team.default_model}
+                  </p>
+                )}
+                <p>
+                  <span className="text-gray-500">Members:</span>{' '}
+                  {team.members?.length || 0}
+                </p>
+              </div>
 
-      {(!teams || teams.length === 0) && (
-        <div className="text-center py-12 text-gray-500">
-          No teams configured yet
+              {team.members && team.members.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <p className="text-xs text-gray-500 mb-2">Members:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {team.members.slice(0, 5).map((member: string) => (
+                      <span
+                        key={member}
+                        className="px-2 py-1 bg-gray-100 rounded text-xs"
+                      >
+                        {member}
+                      </span>
+                    ))}
+                    {team.members.length > 5 && (
+                      <span className="px-2 py-1 text-gray-500 text-xs">
+                        +{team.members.length - 5} more
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => setAddMemberTeam(team.id)}
+                className="mt-4 btn btn-secondary w-full text-sm"
+              >
+                <UserPlusIcon className="w-4 h-4 mr-2" />
+                Add Member
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -45,6 +45,16 @@ A unified AI infrastructure platform with 100+ models across 9 providers. Featur
                └─────────────────────┘  └─────────┘
 ```
 
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| **[Quickstart](docs/guides/QUICKSTART.md)** | Get running in 5 minutes with Docker |
+| **[API Integration](docs/guides/API_INTEGRATION.md)** | Code examples in Python, TypeScript, Go, and curl |
+| **[Model Routing](docs/guides/MODEL_ROUTING.md)** | How intelligent model selection works |
+| **[Cost Management](docs/guides/COST_MANAGEMENT.md)** | Budgets, alerts, and FinOps reporting |
+| **[Admin UI Guide](docs/guides/ADMIN_GUIDE.md)** | Page-by-page walkthrough of the Admin Console |
+
 ## Components
 
 | Component | Port | Description |
