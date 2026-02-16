@@ -130,6 +130,174 @@ Per-key default: $100/month, 100 RPM, 100,000 TPM
 
 Adjust these values in the config file or override them per team/user through the Admin UI.
 
+## Cost Predictor
+
+The Cost Predictor service (port 8080) estimates the cost of an LLM request **before** execution. Enable it with the `finops` profile:
+
+```bash
+docker compose --env-file config/.env --profile finops up -d
+```
+
+### Predicting Request Cost
+
+```bash
+curl -X POST http://localhost:8080/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4.5",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Explain quantum computing in one paragraph."}
+    ],
+    "max_tokens": 500
+  }'
+```
+
+Response:
+```json
+{
+  "model": "claude-sonnet-4.5",
+  "input_tokens": 28,
+  "estimated_output_tokens": 275,
+  "input_cost_usd": 0.000084,
+  "estimated_output_cost_usd": 0.004125,
+  "total_estimated_cost_usd": 0.004209,
+  "budget_remaining_usd": 95.42,
+  "within_budget": true,
+  "warning": null
+}
+```
+
+Pass an `X-Api-Key` header to also check against the key's budget:
+
+```bash
+curl -X POST http://localhost:8080/predict \
+  -H "Content-Type: application/json" \
+  -H "X-Api-Key: $API_KEY" \
+  -d '{"model": "gpt-5", "messages": [{"role": "user", "content": "Hello"}]}'
+```
+
+### Output Token Estimation
+
+The predictor uses model-specific verbosity profiles to estimate output tokens:
+
+| Model Type | Utilization of max_tokens | Output/Input Ratio |
+|------------|--------------------------|-------------------|
+| Reasoning (o3, o3-pro) | 85-90% | 4-5x |
+| Powerful (opus, gpt-5.2) | 65-70% | 2.5-3x |
+| Standard (sonnet, gpt-5) | 55% | 2x |
+| Fast (mini, haiku) | 35-40% | 1.2-1.5x |
+
+### Budget Validation
+
+```bash
+curl -X POST http://localhost:8080/budget/check \
+  -H "Content-Type: application/json" \
+  -d '{
+    "api_key": "$API_KEY",
+    "estimated_cost": 0.05
+  }'
+```
+
+Response:
+```json
+{
+  "allowed": true,
+  "budget_limit": 100.0,
+  "current_spend": 42.58,
+  "remaining": 57.42,
+  "message": null
+}
+```
+
+### Model Pricing
+
+```bash
+# Get all model pricing (cost per 1M tokens)
+curl http://localhost:8080/pricing
+
+# Update pricing for a model
+curl -X POST "http://localhost:8080/pricing/update?model=gpt-5&input_cost=2.5&output_cost=10.0"
+```
+
+### Cost Predictor Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/predict` | Predict cost of a request (with optional budget check) |
+| POST | `/budget/check` | Check if a cost fits within a key's budget |
+| GET | `/pricing` | Get all model pricing |
+| POST | `/pricing/update` | Update pricing for a model |
+| GET | `/health` | Health check |
+
+## Budget Webhook
+
+The Budget Webhook service (port 8081) acts as a LiteLLM webhook that enforces budget limits on every request. It runs as part of the `finops` profile.
+
+### How It Works
+
+LiteLLM calls the webhook before and after each request:
+
+1. **Pre-request** (`/webhook/pre-request`): Checks the API key's budget, predicts the request cost, and blocks the request if it would exceed the hard limit.
+2. **Post-request** (`/webhook/post-request`): Records actual costs to the `cost_tracking_daily` table for FinOps reporting.
+
+### Enforcement Flow
+
+```
+Request arrives → Pre-request webhook
+                       │
+              ┌────────┴────────┐
+              │                 │
+         Usage < 80%      80% ≤ Usage < 100%      Usage ≥ 100%
+         (Allow)          (Allow + Warning)        (Block 429)
+              │                 │                       │
+              ▼                 ▼                       ▼
+         Process request   Process request         Reject request
+              │                 │                  + Send alert
+              ▼                 ▼
+         Post-request webhook
+         (Record actual cost)
+```
+
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SOFT_LIMIT_THRESHOLD` | `0.8` | Percentage at which warnings are sent (80%) |
+| `HARD_LIMIT_THRESHOLD` | `1.0` | Percentage at which requests are blocked (100%) |
+| `ALERT_WEBHOOK_URL` | (none) | External webhook URL for alert notifications |
+| `COST_PREDICTOR_URL` | `http://localhost:8080` | Cost predictor service URL |
+
+### Budget Alert Types
+
+| Alert Type | Trigger | Action |
+|------------|---------|--------|
+| `approaching_limit` | Spend ≥ soft limit | Allow request, send notification |
+| `request_exceeds_budget` | Estimated cost > remaining budget | Block request |
+| `budget_exceeded` | Spend ≥ hard limit | Block request, send notification |
+
+### Viewing Alerts
+
+```bash
+# Get recent alerts
+curl http://localhost:8081/alerts
+
+# Filter by team
+curl "http://localhost:8081/alerts?team_id=engineering"
+
+# Filter by user
+curl "http://localhost:8081/alerts?user_id=user-123"
+```
+
+### Budget Webhook Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/webhook/pre-request` | Pre-request budget validation (called by LiteLLM) |
+| POST | `/webhook/post-request` | Post-request cost recording (called by LiteLLM) |
+| GET | `/alerts` | List recent budget alerts |
+| GET | `/health` | Health check |
+
 ## FinOps Reporter
 
 The FinOps Reporter service (port 8082) provides detailed cost analytics endpoints. Enable it with the `finops` profile:

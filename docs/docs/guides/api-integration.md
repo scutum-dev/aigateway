@@ -18,6 +18,8 @@ For production, generate per-user or per-team API keys through the Admin UI or A
 |-------------|----------------------------------------|
 | Local       | `http://localhost:4000`                |
 | Production  | `https://api.aicontrolplane.dev`       |
+| Docs        | `https://docs.aicontrolplane.dev`      |
+| Admin UI    | `https://api.aicontrolplane.dev/admin` |
 
 All OpenAI-compatible endpoints live under `/v1/`:
 - `POST /v1/chat/completions` -- chat completions (streaming and non-streaming)
@@ -273,21 +275,61 @@ Key fallback chains configured by default:
 
 ## Admin API
 
-The Admin API at `http://localhost:8086` provides management endpoints for programmatic configuration. It uses JWT authentication:
+The Admin API at `http://localhost:8086` (production: `https://api.aicontrolplane.dev/admin/api/v1`) provides management endpoints for programmatic configuration. It uses JWT authentication:
 
 ```bash
 # Get a JWT token
 TOKEN=$(curl -s http://localhost:8086/auth/login \
   -H "Content-Type: application/json" \
   -d '{"api_key": "$LITELLM_KEY"}' | jq -r '.access_token')
+```
 
-# List all models
+### Available Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/models` | List all model configurations |
+| PUT | `/api/v1/models/{model_id}` | Update a model configuration |
+| GET | `/api/v1/budgets` | List all budgets |
+| POST | `/api/v1/budgets` | Create a budget |
+| PUT | `/api/v1/budgets/{id}` | Update a budget |
+| GET | `/api/v1/teams` | List all teams |
+| POST | `/api/v1/teams` | Create a team |
+| GET | `/api/v1/keys` | List all API keys |
+| POST | `/api/v1/keys/generate` | Generate a new API key |
+| POST | `/api/v1/keys/update` | Update an API key |
+| POST | `/api/v1/keys/delete` | Delete API keys |
+| GET | `/api/v1/mcp-servers` | List MCP server configs |
+| POST | `/api/v1/mcp-servers` | Create an MCP server config |
+| PUT | `/api/v1/mcp-servers/{id}` | Update an MCP server config |
+| POST | `/api/v1/mcp-servers/{id}/test` | Test MCP server connectivity |
+| GET | `/api/v1/mcp-servers/sync/preview` | Preview Agent Gateway config |
+| POST | `/api/v1/mcp-servers/sync` | Deploy MCP configs to Agent Gateway |
+| GET | `/api/v1/workflows` | List workflow definitions |
+| POST | `/api/v1/workflows` | Create a workflow |
+| POST | `/api/v1/workflow-executions` | Execute a workflow |
+| GET | `/api/v1/workflow-executions` | List workflow executions |
+| GET | `/api/v1/workflow-executions/{id}` | Get execution details |
+| GET | `/api/v1/routing-policies` | List routing policies |
+| POST | `/api/v1/routing-policies` | Create a routing policy |
+| GET | `/api/v1/metrics/realtime` | Get real-time platform metrics |
+| GET | `/api/v1/settings` | Get platform settings |
+| PUT | `/api/v1/settings` | Update platform settings |
+
+```bash
+# Example: List models
 curl http://localhost:8086/api/v1/models \
   -H "Authorization: Bearer $TOKEN"
 
-# List budgets
-curl http://localhost:8086/api/v1/budgets \
+# Example: Generate an API key
+curl -X POST http://localhost:8086/api/v1/keys/generate \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"key_alias": "my-service", "max_budget": 100, "duration": "90d"}'
+
+# Example: Preview Agent Gateway config
+curl http://localhost:8086/api/v1/mcp-servers/sync/preview \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-See the [Admin UI Guide](./admin-guide.md) for the full Admin API reference and the web console walkthrough.
+See the [Admin UI Guide](./admin-guide.md) for the full web console walkthrough.

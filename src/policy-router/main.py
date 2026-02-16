@@ -23,8 +23,6 @@ from decimal import Decimal
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
 from pydantic import BaseModel
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -44,45 +42,12 @@ from models import (
 from cedar_engine import CedarEngine
 from metrics_collector import MetricsCollector
 from routing_strategy import RoutingStrategy
+from shared.cors import get_cors_origins
+from shared.middleware import ServiceAuthMiddleware, RequestSizeLimitMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Environment configuration
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-
-# Request size limit (1MB default)
-MAX_REQUEST_SIZE = int(os.getenv("MAX_REQUEST_SIZE_BYTES", 1_048_576))
-
-
-class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
-    """Middleware to limit request body size and prevent DoS attacks."""
-
-    async def dispatch(self, request: Request, call_next):
-        content_length = request.headers.get("content-length")
-        if content_length:
-            if int(content_length) > MAX_REQUEST_SIZE:
-                return Response(
-                    content='{"detail": "Request body too large"}',
-                    status_code=413,
-                    media_type="application/json"
-                )
-        return await call_next(request)
-
-
-def get_cors_origins() -> list[str]:
-    """Get allowed CORS origins based on environment."""
-    if ENVIRONMENT == "production":
-        origins = os.getenv("CORS_ORIGINS", "").split(",")
-        return [o.strip() for o in origins if o.strip()]
-    return [
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-    ]
-
 
 # Global resources
 http_client: Optional[httpx.AsyncClient] = None
@@ -298,6 +263,9 @@ app = FastAPI(
 
 # Add request size limit middleware (must be added first)
 app.add_middleware(RequestSizeLimitMiddleware)
+
+# Add service auth middleware
+app.add_middleware(ServiceAuthMiddleware)
 
 # Add CORS middleware with environment-specific origins
 cors_origins = get_cors_origins()
@@ -568,30 +536,37 @@ async def list_models(include_metrics: bool = Query(default=True)):
 async def get_recent_decisions(
     user_id: Optional[str] = None,
     team_id: Optional[str] = None,
-    limit: int = Query(default=100, le=1000)
+    limit: int = Query(default=50, le=500),
+    offset: int = Query(default=0, ge=0),
 ):
-    """Get recent routing decisions."""
+    """Get recent routing decisions with pagination."""
     if not db_pool:
-        return {"decisions": [], "message": "Database not available"}
+        return {"decisions": [], "total": 0, "limit": limit, "offset": offset, "message": "Database not available"}
 
     try:
         async with db_pool.acquire() as conn:
-            query = "SELECT * FROM routing_decisions WHERE 1=1"
+            where_clause = "WHERE 1=1"
             params = []
             param_idx = 1
 
             if user_id:
-                query += f" AND user_id = ${param_idx}"
+                where_clause += f" AND user_id = ${param_idx}"
                 params.append(user_id)
                 param_idx += 1
 
             if team_id:
-                query += f" AND team_id = ${param_idx}"
+                where_clause += f" AND team_id = ${param_idx}"
                 params.append(team_id)
                 param_idx += 1
 
-            query += f" ORDER BY timestamp DESC LIMIT ${param_idx}"
+            # Get total count
+            count_query = f"SELECT COUNT(*) FROM routing_decisions {where_clause}"
+            total_count = await conn.fetchval(count_query, *params)
+
+            # Get paginated results
+            query = f"SELECT * FROM routing_decisions {where_clause} ORDER BY timestamp DESC LIMIT ${param_idx} OFFSET ${param_idx + 1}"
             params.append(limit)
+            params.append(offset)
 
             rows = await conn.fetch(query, *params)
 
@@ -608,7 +583,10 @@ async def get_recent_decisions(
                         "decision_reason": row["decision_reason"],
                     }
                     for row in rows
-                ]
+                ],
+                "total": total_count,
+                "limit": limit,
+                "offset": offset,
             }
     except Exception as e:
         logger.error(f"Failed to get decisions: {e}")

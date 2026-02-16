@@ -255,6 +255,7 @@ export interface PlatformSettings {
   enable_cost_tracking: boolean
   enable_budget_enforcement: boolean
   enable_routing_policies: boolean
+  enable_guardrails: boolean
   maintenance_mode: boolean
 }
 
@@ -296,4 +297,79 @@ export interface RoutingPolicyCreate {
 export interface UserInfo {
   user_id: string
   role: string
+}
+
+// Guardrails
+export interface GuardrailConfig {
+  id: string
+  name: string
+  description: string | null
+  enable_prompt_injection: boolean
+  prompt_injection_threshold: number
+  enable_pii_detection: boolean
+  pii_action: string
+  pii_entities: string[]
+  enable_toxicity: boolean
+  toxicity_threshold: number
+  banned_topics: string[]
+  enable_secrets_detection: boolean
+  enable_invisible_text: boolean
+  enable_malicious_urls: boolean
+  enable_sensitive_output: boolean
+  mode: string
+  on_fail: string
+  is_active: boolean
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface GuardrailConfigCreate {
+  name: string
+  description?: string
+  enable_prompt_injection?: boolean
+  prompt_injection_threshold?: number
+  enable_pii_detection?: boolean
+  pii_action?: string
+  pii_entities?: string[]
+  enable_toxicity?: boolean
+  toxicity_threshold?: number
+  banned_topics?: string[]
+  enable_secrets_detection?: boolean
+  enable_invisible_text?: boolean
+  enable_malicious_urls?: boolean
+  enable_sensitive_output?: boolean
+  mode?: string
+  on_fail?: string
+  is_active?: boolean
+}
+
+export interface GuardrailConfigUpdate extends Partial<GuardrailConfigCreate> {}
+
+export interface GuardrailEvent {
+  id: string
+  event_type: string
+  scanner_name: string
+  user_id: string | null
+  team_id: string | null
+  model: string | null
+  risk_score: number | null
+  action_taken: string
+  details: Record<string, unknown>
+  created_at: string | null
+}
+
+export interface GuardrailScanRequest {
+  text: string
+  guardrail_config_id?: string
+  direction?: 'input' | 'output'
+}
+
+export interface GuardrailScanResponse {
+  is_valid: boolean
+  sanitized_text: string | null
+  results: Array<{
+    scanner: string
+    is_valid: boolean
+    risk_score: number
+  }>
 }

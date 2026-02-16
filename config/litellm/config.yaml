@@ -1076,6 +1076,16 @@ litellm_settings:
   stream_timeout: 600
 
 # ===========================================
+# Guardrails Configuration
+# ===========================================
+guardrails:
+  - guardrail_name: "gateway-guardrail"
+    litellm_params:
+      guardrail: guardrail_handler.GatewayGuardrail
+      mode: "pre_call"
+      default_on: true
+
+# ===========================================
 # Budget Configuration
 # ===========================================
 budget_config:

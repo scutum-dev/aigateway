@@ -9,6 +9,7 @@ import {
   workflowsApi,
   metricsApi,
   settingsApi,
+  guardrailsApi,
 } from './client'
 import type {
   ModelConfig,
@@ -38,6 +39,12 @@ import type {
   PlatformSettings,
   RoutingPolicy,
   RoutingPolicyCreate,
+  GuardrailConfig,
+  GuardrailConfigCreate,
+  GuardrailConfigUpdate,
+  GuardrailEvent,
+  GuardrailScanRequest,
+  GuardrailScanResponse,
 } from '../types'
 
 // Models hooks
@@ -296,6 +303,58 @@ export function useRealtimeMetrics() {
     queryKey: ['metrics', 'realtime'],
     queryFn: metricsApi.realtime,
     refetchInterval: 30000,
+  })
+}
+
+// Guardrails hooks
+export function useGuardrails() {
+  return useQuery<GuardrailConfig[]>({
+    queryKey: ['guardrails'],
+    queryFn: guardrailsApi.list,
+  })
+}
+
+export function useCreateGuardrail() {
+  const queryClient = useQueryClient()
+  return useMutation<GuardrailConfig, Error, GuardrailConfigCreate>({
+    mutationFn: guardrailsApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guardrails'] })
+    },
+  })
+}
+
+export function useUpdateGuardrail() {
+  const queryClient = useQueryClient()
+  return useMutation<GuardrailConfig, Error, { id: string; data: GuardrailConfigUpdate }>({
+    mutationFn: ({ id, data }) => guardrailsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guardrails'] })
+    },
+  })
+}
+
+export function useDeleteGuardrail() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: guardrailsApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guardrails'] })
+    },
+  })
+}
+
+export function useGuardrailEvents(params?: { team_id?: string; event_type?: string }) {
+  return useQuery<GuardrailEvent[]>({
+    queryKey: ['guardrail-events', params],
+    queryFn: () => guardrailsApi.events(params),
+    refetchInterval: 30000,
+  })
+}
+
+export function useScanText() {
+  return useMutation<GuardrailScanResponse, Error, GuardrailScanRequest>({
+    mutationFn: guardrailsApi.scan,
   })
 }
 

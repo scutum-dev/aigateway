@@ -27,6 +27,8 @@ export default function Models() {
   const [providerFilter, setProviderFilter] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<SortKey>('model_id')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 20
 
   const providers = useMemo(() => {
     if (!models) return []
@@ -63,6 +65,12 @@ export default function Models() {
 
     return result
   }, [models, search, providerFilter, sortKey, sortDir])
+
+  const totalFiltered = filtered.length
+  const totalPages = Math.ceil(totalFiltered / pageSize)
+  const startIdx = (currentPage - 1) * pageSize
+  const endIdx = startIdx + pageSize
+  const paginatedModels = filtered.slice(startIdx, endIdx)
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -158,7 +166,7 @@ export default function Models() {
             type="text"
             placeholder="Search models..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
             className="input pl-10"
           />
         </div>
@@ -190,7 +198,8 @@ export default function Models() {
       </div>
 
       <p className="text-sm text-gray-500">
-        Showing {filtered.length} of {models.length} models
+        Showing {Math.min(startIdx + 1, totalFiltered)}–{Math.min(endIdx, totalFiltered)} of {totalFiltered} models
+        {totalFiltered !== models.length && ` (filtered from ${models.length})`}
       </p>
 
       <div className="card overflow-hidden">
@@ -236,7 +245,7 @@ export default function Models() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filtered.map((model) => (
+            {paginatedModels.map((model) => (
               <tr key={model.model_id}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="font-mono text-sm">{model.model_id}</span>
@@ -373,6 +382,29 @@ export default function Models() {
             ))}
           </tbody>
         </table>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200">
+            <span className="text-sm text-gray-500">
+              Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm border rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="px-3 py-1 text-sm border rounded disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

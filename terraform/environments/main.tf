@@ -241,6 +241,7 @@ resource "kubernetes_secret" "gateway_secrets" {
     VERTEX_PROJECT        = var.vertex_project != "" ? var.vertex_project : var.project_id
     JWT_SECRET_KEY        = "jwt-secret-${var.project_id}"
     GRAFANA_PASSWORD      = var.grafana_password
+    INTERNAL_SERVICE_KEY  = var.internal_service_key
   }
 }
 

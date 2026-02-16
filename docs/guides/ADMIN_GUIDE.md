@@ -19,11 +19,12 @@ After logging in, you see a dark sidebar on the left with the following pages:
 | Page         | Icon        | Description                              |
 |-------------|-------------|------------------------------------------|
 | Dashboard   | Home        | Real-time metrics and charts             |
+| API Keys    | Key         | API key generation and management        |
 | Models      | Cube        | Model configuration table                |
 | Budgets     | Dollar      | Budget cards with spending limits        |
 | Teams       | User Group  | Team management with members             |
 | MCP Servers | Server      | Model Context Protocol server config     |
-| Workflows   | Database    | Workflow templates                       |
+| Workflows   | Database    | Workflow templates and execution history |
 | Settings    | Gear        | Platform-wide toggles and defaults       |
 
 The sidebar can be collapsed to icon-only mode using the chevron toggle. A **Logout** button is at the bottom.
@@ -161,6 +162,38 @@ Each card shows:
    - **Role** -- either `member` or `admin`
 3. Click **Add** to save. The member appears in the team card immediately.
 
+## API Keys
+
+The API Keys page lets you create and manage API keys for authenticating against the LLM proxy. Keys are managed through LiteLLM and can have per-key budgets, model restrictions, and team assignments.
+
+### Key List
+
+The page displays all API keys in a table showing:
+- **Key** (masked) -- the API key value, partially hidden for security
+- **Alias** -- a human-readable name for the key
+- **Spend** -- total spend accumulated by this key
+- **Max Budget** -- spending cap for the key (if set)
+- **Models** -- list of models this key is allowed to access (empty means all)
+- **Team** -- the team this key belongs to (if any)
+- **Expires** -- expiration date (if set)
+
+### Generating a Key
+
+1. Click **Generate Key** in the top-right corner.
+2. Fill in the form:
+   - **Key Alias** -- a descriptive name (e.g., "backend-service-prod")
+   - **Max Budget** ($) -- optional spending cap
+   - **Models** -- optional comma-separated list of allowed models
+   - **Team ID** -- optional team assignment
+   - **Duration** -- optional expiry (e.g., "30d", "90d")
+3. Click **Generate**.
+4. **Copy the key immediately** -- it will not be shown again.
+
+### Updating and Revoking Keys
+
+- Click **Edit** on any key row to update its alias, budget, models, or duration.
+- Click **Revoke** to permanently delete a key. This action cannot be undone.
+
 ## MCP Servers
 
 The MCP Servers page manages Model Context Protocol server configurations that extend the gateway with external tools.
@@ -192,6 +225,31 @@ Each server is displayed as a card showing:
 - **stdio servers** are local processes that communicate via stdin/stdout. The gateway spawns them as child processes. Use these for tools like file system access, Brave Search, or GitHub.
 - **http servers** are remote services that expose an HTTP endpoint. The gateway connects to them over the network. Use these for cloud-hosted tool services.
 
+### Testing a Server
+
+Click the **Test** button on any server card to verify connectivity:
+- For **http** servers, the gateway makes an HTTP request to the configured URL and reports the status code.
+- For **stdio** servers, the gateway validates the command and arguments are configured correctly.
+
+A toast notification shows the test result.
+
+### Deploy to Gateway
+
+MCP server configurations stored in the database are not automatically applied to the running Agent Gateway. To push your changes:
+
+1. Click **"Preview Config"** in the page header to see the YAML that will be generated for the Agent Gateway.
+2. Review the preview -- it shows all active servers mapped to the agentgateway `config.yaml` format.
+3. Click **"Deploy to Gateway"** to push the config.
+4. A confirmation dialog shows the number of active servers that will be deployed.
+5. Click **Deploy** to update the Agent Gateway's ConfigMap and trigger a rolling restart.
+
+The deploy operation:
+- Patches the `agentgateway-config` Kubernetes ConfigMap with the generated YAML
+- Triggers a rolling restart of the Agent Gateway deployment via annotation patch
+- Existing connections drain gracefully (zero downtime with a PodDisruptionBudget)
+
+> **Note:** Deploy to Gateway requires Kubernetes. In local Docker Compose development, the button will return an informational error.
+
 ## Workflows
 
 The Workflows page shows pre-built workflow templates and any custom workflows configured in the database.
@@ -217,6 +275,36 @@ Workflows require the `workflows` profile to be active:
 ```bash
 docker compose --env-file config/.env --profile workflows up -d
 ```
+
+### Testing a Workflow
+
+Each pre-built template and custom workflow has a **Test Workflow** (or **Run**) button:
+
+1. Click the button to open the execute modal.
+2. Enter a prompt describing what you want the workflow to do.
+3. Click **Execute** to start the workflow.
+4. A success toast confirms the execution has started.
+
+### Execution History
+
+Below the workflow cards, the **Execution History** table shows all past runs with:
+- **ID** -- short execution identifier
+- **Workflow** -- the workflow name
+- **Status** -- pending, running, completed, or failed (color-coded badges)
+- **Cost** -- total cost of the execution
+- **Started** -- timestamp when the execution began
+- **Duration** -- elapsed time
+
+### Execution Details
+
+Click any row in the Execution History table to expand a detail panel showing:
+
+- **Step-by-step progress** -- each workflow node with a status indicator (green = completed, blue = running, red = failed, gray = pending), duration, and per-step cost
+- **Output** -- the final result from the workflow, displayed in a formatted code block
+- **Error details** -- if the execution failed, the error message is shown in a red banner
+- **Summary footer** -- total tokens, total cost, duration, and the current node (for running executions)
+
+The detail panel auto-refreshes every 2 seconds while the execution is running or pending.
 
 ## Settings
 

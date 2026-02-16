@@ -26,6 +26,14 @@ JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "change-in-production-please")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 8
 
+# Validate JWT secret at startup
+_environment = os.getenv("ENVIRONMENT", "development")
+if _environment == "production" and JWT_SECRET_KEY == "change-in-production-please":
+    raise RuntimeError(
+        "FATAL: JWT_SECRET_KEY is set to the default value in production. "
+        "Set a strong, unique JWT_SECRET_KEY environment variable."
+    )
+
 # LiteLLM configuration
 LITELLM_URL = os.getenv("LITELLM_URL", "http://localhost:4000")
 LITELLM_MASTER_KEY = os.getenv("LITELLM_MASTER_KEY", "$LITELLM_KEY")

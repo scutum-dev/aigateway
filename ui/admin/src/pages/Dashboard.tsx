@@ -35,6 +35,7 @@ ChartJS.register(
 export default function Dashboard() {
   const { data: metrics, isLoading, error } = useRealtimeMetrics()
 
+  // Cost chart: cumulative linear approximation until hourly tracking is available
   const costChartData = useMemo(() => {
     const totalCost = metrics?.total_cost_today || 0
     const hours = Array.from({ length: 12 }, (_, i) => `${(i * 2).toString().padStart(2, '0')}:00`)
@@ -42,15 +43,15 @@ export default function Dashboard() {
     const values = hours.map((_, i) => {
       const hour = i * 2
       if (hour > now) return null
-      const fraction = (Math.sin(hour / 3) + 1.5) / 24
-      return +(totalCost * fraction).toFixed(2)
+      if (now === 0) return 0
+      return +((totalCost * hour) / now).toFixed(2)
     })
 
     return {
       labels: hours,
       datasets: [
         {
-          label: 'Cost ($)',
+          label: 'Cumulative Cost ($)',
           data: values,
           borderColor: '#6366f1',
           backgroundColor: 'rgba(99, 102, 241, 0.1)',

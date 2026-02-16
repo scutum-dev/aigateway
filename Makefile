@@ -175,8 +175,26 @@ db-reset: ## Reset database (WARNING: destroys data)
 test: ## Run all tests
 	cd tests && python -m pytest -v
 
-test-integration: ## Run integration tests
-	cd tests && python -m pytest integration/ -v
+test-unit: ## Run unit tests (no running services needed)
+	python -m pytest tests/unit/ -v
+
+test-coverage: ## Run unit + integration tests with coverage report
+	python -m pytest tests/unit/ tests/integration/test_cost_predictor_api.py tests/integration/test_budget_webhook_api.py tests/integration/test_finops_reporter_api.py tests/integration/test_semantic_cache_api.py -v --cov --cov-report=term-missing --cov-report=html
+
+test-frontend: ## Run frontend tests
+	cd ui/admin && npm test
+
+test-all: ## Run all tests (Python unit + integration + frontend)
+	@echo "$(CYAN)Running Python unit tests...$(RESET)"
+	python -m pytest tests/unit/ -v --cov --cov-report=term-missing
+	@echo "$(CYAN)Running Python integration tests...$(RESET)"
+	python -m pytest tests/integration/test_cost_predictor_api.py tests/integration/test_budget_webhook_api.py tests/integration/test_finops_reporter_api.py tests/integration/test_semantic_cache_api.py -v --cov --cov-append --cov-report=term-missing
+	@echo "$(CYAN)Running frontend tests...$(RESET)"
+	cd ui/admin && npm test
+	@echo "$(GREEN)All tests passed$(RESET)"
+
+test-integration: ## Run integration tests (API endpoints with mocked backends)
+	python -m pytest tests/integration/test_cost_predictor_api.py tests/integration/test_budget_webhook_api.py tests/integration/test_finops_reporter_api.py tests/integration/test_semantic_cache_api.py -v
 
 test-api: ## Test API endpoints
 	@echo "$(CYAN)Testing LiteLLM health...$(RESET)"

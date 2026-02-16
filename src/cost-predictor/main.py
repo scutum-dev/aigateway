@@ -21,8 +21,6 @@ from contextlib import asynccontextmanager
 import tiktoken
 from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
 from pydantic import BaseModel, Field
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -31,51 +29,12 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.resources import Resource
 import httpx
+from shared.cors import get_cors_origins
+from shared.middleware import ServiceAuthMiddleware, RequestSizeLimitMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Environment configuration
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-
-# Request size limit (1MB default)
-MAX_REQUEST_SIZE = int(os.getenv("MAX_REQUEST_SIZE_BYTES", 1_048_576))
-
-
-class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
-    """Middleware to limit request body size and prevent DoS attacks."""
-
-    async def dispatch(self, request: Request, call_next):
-        content_length = request.headers.get("content-length")
-        if content_length:
-            if int(content_length) > MAX_REQUEST_SIZE:
-                return Response(
-                    content='{"detail": "Request body too large"}',
-                    status_code=413,
-                    media_type="application/json"
-                )
-        return await call_next(request)
-
-
-def get_cors_origins() -> list[str]:
-    """Get allowed CORS origins based on environment."""
-    if ENVIRONMENT == "production":
-        origins = os.getenv("CORS_ORIGINS", "").split(",")
-        configured = [o.strip() for o in origins if o.strip()]
-        return configured or [
-            "https://aicontrolplane.dev",
-            "https://api.aicontrolplane.dev",
-        ]
-    return [
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://localhost:6001",
-        "http://localhost:9999",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:6001",
-    ]
 
 # Model pricing (cost per 1M tokens)
 # These should be synced with LiteLLM configuration
@@ -264,6 +223,9 @@ app = FastAPI(
 # Add request size limit middleware (must be added first)
 app.add_middleware(RequestSizeLimitMiddleware)
 
+# Add inter-service authentication middleware
+app.add_middleware(ServiceAuthMiddleware)
+
 # Add CORS middleware with environment-specific origins
 cors_origins = get_cors_origins()
 app.add_middleware(
@@ -271,7 +233,7 @@ app.add_middleware(
     allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Api-Key"],
+    allow_headers=["Authorization", "Content-Type", "X-Api-Key", "X-Service-Key"],
 )
 
 # Instrument with OpenTelemetry

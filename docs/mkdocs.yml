@@ -23,12 +23,19 @@ theme:
 
 nav:
   - Home: index.md
-  - Guides:
+  - Getting Started:
       - Quickstart: guides/quickstart.md
       - API Integration: guides/api-integration.md
+      - Comparison: guides/comparison.md
+  - Features:
       - Model Routing: guides/model-routing.md
+      - Semantic Caching: guides/semantic-caching.md
+      - MCP Servers: guides/mcp-servers.md
+      - Workflows: guides/workflows.md
       - Cost Management: guides/cost-management.md
+  - Operations:
       - Admin Guide: guides/admin-guide.md
+      - Observability: guides/observability.md
 
 markdown_extensions:
   - admonition

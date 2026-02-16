@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { authApi } from './api/client'
 import type { UserInfo } from './types'
 import Layout from './components/Layout'
+import ErrorBoundary from './components/ErrorBoundary'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import APIKeys from './pages/APIKeys'
@@ -10,6 +11,7 @@ import Models from './pages/Models'
 import Budgets from './pages/Budgets'
 import Teams from './pages/Teams'
 import MCPServers from './pages/MCPServers'
+import Guardrails from './pages/Guardrails'
 import Workflows from './pages/Workflows'
 import Settings from './pages/Settings'
 
@@ -61,6 +63,7 @@ function App() {
 
   return (
     <Layout onLogout={handleLogout} user={user}>
+      <ErrorBoundary>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/api-keys" element={<APIKeys />} />
@@ -68,10 +71,12 @@ function App() {
         <Route path="/budgets" element={<Budgets />} />
         <Route path="/teams" element={<Teams />} />
         <Route path="/mcp-servers" element={<MCPServers />} />
+        <Route path="/guardrails" element={<Guardrails />} />
         <Route path="/workflows" element={<Workflows />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </ErrorBoundary>
     </Layout>
   )
 }

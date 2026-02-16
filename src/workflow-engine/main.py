@@ -37,11 +37,12 @@ from tools.mcp_binding import MCPClient
 from templates import ResearchAgentWorkflow, CodingAgentWorkflow, DataAnalysisWorkflow
 from api.routes import router, set_dependencies
 from api.websocket import websocket_endpoint, send_execution_update
+from shared.cors import get_cors_origins
+from shared.middleware import ServiceAuthMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 # Global resources
 db_pool: Optional[asyncpg.Pool] = None
@@ -294,13 +295,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Add service auth middleware
+app.add_middleware(ServiceAuthMiddleware)
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Service-Key"],
 )
 
 # Instrument with OpenTelemetry

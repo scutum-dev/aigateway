@@ -7,7 +7,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application
-COPY main.py .
+COPY main.py notifier.py ./
+
+# Copy shared library (injected via docker compose additional_contexts)
+COPY --from=shared . /app/shared/
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser

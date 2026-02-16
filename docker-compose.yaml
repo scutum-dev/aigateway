@@ -62,7 +62,9 @@ services:
     restart: unless-stopped
 
   litellm:
-    image: ghcr.io/berriai/litellm:main-latest
+    build:
+      context: ./config/litellm
+      dockerfile: Dockerfile
     container_name: litellm
     ports:
       - "${LITELLM_PORT:-4000}:4000"
@@ -71,6 +73,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_URL: redis://redis:6379
+      ENABLE_GUARDRAILS: "${ENABLE_GUARDRAILS:-true}"
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
@@ -105,6 +109,8 @@ services:
     build:
       context: ./src/admin-api
       dockerfile: Dockerfile
+      additional_contexts:
+        shared: ./src/shared
     container_name: admin-api
     ports:
       - "${ADMIN_API_PORT:-8086}:8086"
@@ -114,9 +120,13 @@ services:
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-$LITELLM_KEY}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-in-production}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      REDIS_URL: redis://redis:6379
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
       litellm:
         condition: service_healthy
     healthcheck:
@@ -310,6 +320,8 @@ services:
     build:
       context: ./src/workflow-engine
       dockerfile: Dockerfile
+      additional_contexts:
+        shared: ./src/shared
     container_name: workflow-engine
     profiles: ["workflows", "full"]
     ports:
@@ -320,6 +332,7 @@ services:
       LITELLM_API_KEY: ${LITELLM_MASTER_KEY:-$LITELLM_KEY}
       AGENT_GATEWAY_URL: http://agentgateway:3000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -338,6 +351,8 @@ services:
     build:
       context: ./src/a2a-runtime
       dockerfile: Dockerfile
+      additional_contexts:
+        shared: ./src/shared
     container_name: a2a-runtime
     profiles: ["workflows", "full"]
     ports:
@@ -348,6 +363,7 @@ services:
       REDIS_URL: redis://redis:6379
       LITELLM_URL: http://litellm:4000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
     depends_on:
       - redis
       - temporal
@@ -389,6 +405,8 @@ services:
     build:
       context: ./src/policy-router
       dockerfile: Dockerfile
+      additional_contexts:
+        shared: ./src/shared
     container_name: policy-router
     profiles: ["experimental", "full"]
     ports:
@@ -399,6 +417,7 @@ services:
       PROMETHEUS_URL: http://prometheus:9090
       CEDAR_POLICIES_PATH: /etc/cedar/policies
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
     volumes:
       - ./config/agentgateway/policies:/etc/cedar/policies:ro
     depends_on:
@@ -417,6 +436,8 @@ services:
     build:
       context: ./src/semantic-cache
       dockerfile: Dockerfile
+      additional_contexts:
+        shared: ./src/shared
     container_name: semantic-cache
     profiles: ["experimental", "full"]
     ports:
@@ -429,6 +450,7 @@ services:
       SIMILARITY_THRESHOLD: "0.90"
       CACHE_TTL_SECONDS: "3600"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
     depends_on:
       - redis
       - litellm
@@ -449,6 +471,8 @@ services:
     build:
       context: ./src/cost-predictor
       dockerfile: Dockerfile
+      additional_contexts:
+        shared: ./src/shared
     container_name: cost-predictor
     profiles: ["finops", "full"]
     ports:
@@ -456,6 +480,7 @@ services:
     environment:
       LITELLM_URL: http://litellm:4000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
     networks:
       - gateway-network
     restart: unless-stopped
@@ -464,6 +489,8 @@ services:
     build:
       context: ./src/budget-webhook
       dockerfile: Dockerfile
+      additional_contexts:
+        shared: ./src/shared
     container_name: budget-webhook
     profiles: ["finops", "full"]
     ports:
@@ -473,6 +500,15 @@ services:
       LITELLM_URL: http://litellm:4000
       COST_PREDICTOR_URL: http://cost-predictor:8080
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      PAGERDUTY_ROUTING_KEY: ${PAGERDUTY_ROUTING_KEY:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_ALERT_RECIPIENTS: ${SMTP_ALERT_RECIPIENTS:-}
     depends_on:
       - postgres
       - cost-predictor
@@ -484,6 +520,8 @@ services:
     build:
       context: ./src/finops-reporter
       dockerfile: Dockerfile
+      additional_contexts:
+        shared: ./src/shared
     container_name: finops-reporter
     profiles: ["finops", "full"]
     ports:
@@ -491,6 +529,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
     depends_on:
       - postgres
     networks:

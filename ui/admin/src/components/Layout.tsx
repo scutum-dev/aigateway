@@ -9,6 +9,7 @@ import {
   UserGroupIcon,
   ServerIcon,
   CircleStackIcon,
+  ShieldCheckIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
   ChevronRightIcon,
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'Budgets', href: '/budgets', icon: CurrencyDollarIcon },
   { name: 'Teams', href: '/teams', icon: UserGroupIcon },
   { name: 'MCP Servers', href: '/mcp-servers', icon: ServerIcon },
+  { name: 'Guardrails', href: '/guardrails', icon: ShieldCheckIcon },
   { name: 'Workflows', href: '/workflows', icon: CircleStackIcon },
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
 ]
@@ -42,6 +44,7 @@ const routeLabels: Record<string, string> = {
   '/budgets': 'Budgets',
   '/teams': 'Teams',
   '/mcp-servers': 'MCP Servers',
+  '/guardrails': 'Guardrails',
   '/workflows': 'Workflows',
   '/settings': 'Settings',
 }

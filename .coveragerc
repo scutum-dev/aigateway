@@ -1,0 +1,21 @@
+[run]
+source =
+    src/admin-api
+    src/cost-predictor
+    src/budget-webhook
+    src/semantic-cache
+    src/finops-reporter
+    src/policy-router
+    src/workflow-engine
+    src/a2a-runtime
+
+[report]
+fail_under = 60
+show_missing = true
+exclude_lines =
+    pragma: no cover
+    if __name__ == "__main__"
+    pass
+
+[html]
+directory = htmlcov

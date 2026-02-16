@@ -15,15 +15,13 @@ Features:
 import os
 import logging
 from typing import Optional
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from contextlib import asynccontextmanager
 from decimal import Decimal
 from enum import Enum
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from opentelemetry import trace
@@ -36,52 +34,12 @@ import asyncpg
 import csv
 import io
 import json
+from shared.cors import get_cors_origins
+from shared.middleware import ServiceAuthMiddleware, RequestSizeLimitMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Environment configuration
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-
-# Request size limit (1MB default)
-MAX_REQUEST_SIZE = int(os.getenv("MAX_REQUEST_SIZE_BYTES", 1_048_576))
-
-
-class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
-    """Middleware to limit request body size and prevent DoS attacks."""
-
-    async def dispatch(self, request: Request, call_next):
-        content_length = request.headers.get("content-length")
-        if content_length:
-            if int(content_length) > MAX_REQUEST_SIZE:
-                return Response(
-                    content='{"detail": "Request body too large"}',
-                    status_code=413,
-                    media_type="application/json"
-                )
-        return await call_next(request)
-
-
-def get_cors_origins() -> list[str]:
-    """Get allowed CORS origins based on environment."""
-    if ENVIRONMENT == "production":
-        origins = os.getenv("CORS_ORIGINS", "").split(",")
-        configured = [o.strip() for o in origins if o.strip()]
-        return configured or [
-            "https://aicontrolplane.dev",
-            "https://api.aicontrolplane.dev",
-        ]
-    return [
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://localhost:6001",
-        "http://localhost:9999",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:6001",
-    ]
-
 
 class ReportPeriod(str, Enum):
     """Report time periods."""
@@ -203,6 +161,9 @@ app = FastAPI(
 # Add request size limit middleware (must be added first)
 app.add_middleware(RequestSizeLimitMiddleware)
 
+# Add inter-service authentication middleware
+app.add_middleware(ServiceAuthMiddleware)
+
 # Add CORS middleware with environment-specific origins
 cors_origins = get_cors_origins()
 app.add_middleware(
@@ -210,7 +171,7 @@ app.add_middleware(
     allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-Service-Key"],
 )
 
 # Instrument with OpenTelemetry
@@ -374,7 +335,7 @@ async def get_cost_report(
                         total_cost=float(row["total_cost"])
                     ) for row in team_breakdown
                 ],
-                generated_at=datetime.utcnow()
+                generated_at=datetime.now(timezone.utc)
             )
 
 

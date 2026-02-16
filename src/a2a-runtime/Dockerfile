@@ -8,7 +8,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application
-COPY main.py .
+COPY . .
+
+# Copy shared library (injected via docker compose additional_contexts)
+COPY --from=shared . /app/shared/
 
 # Expose port
 EXPOSE 8087

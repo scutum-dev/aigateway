@@ -17,6 +17,7 @@ export default function Settings() {
     enable_cost_tracking: true,
     enable_budget_enforcement: true,
     enable_routing_policies: true,
+    enable_guardrails: true,
     maintenance_mode: false,
   })
   const [showMaintenanceConfirm, setShowMaintenanceConfirm] = useState(false)
@@ -249,6 +250,37 @@ export default function Settings() {
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                     form.enable_routing_policies
+                      ? 'translate-x-6'
+                      : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="font-medium">Guardrails</label>
+                <p className="text-sm text-gray-500">
+                  Content safety scanning and PII protection
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    enable_guardrails: !form.enable_guardrails,
+                  })
+                }
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  form.enable_guardrails
+                    ? 'bg-primary-600'
+                    : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    form.enable_guardrails
                       ? 'translate-x-6'
                       : 'translate-x-1'
                   }`}

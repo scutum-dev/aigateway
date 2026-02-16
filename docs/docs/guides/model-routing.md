@@ -108,6 +108,206 @@ curl http://localhost:8086/api/v1/routing-policies \
 
 Policies are evaluated from highest to lowest priority. The first matching policy determines the permitted model set.
 
+## Cedar Policy Engine
+
+For advanced routing logic, the platform includes a dedicated **Policy Router** service (port 8084) powered by [Cedar](https://www.cedarpolicy.com/), Amazon's open-source authorization policy language. Cedar provides declarative, auditable policies that go beyond simple allow/deny rules.
+
+Enable the Policy Router with the `experimental` profile:
+
+```bash
+docker compose --env-file config/.env --profile experimental up -d
+```
+
+### How It Works
+
+```
+Request → Policy Router (:8084)
+               │
+               ├── Load models from DB (with real-time Prometheus metrics)
+               ├── Evaluate each model against Cedar policies
+               ├── Filter out denied models
+               ├── Rank remaining models (cost, latency, load)
+               └── Return selected model + fallbacks
+```
+
+The Policy Router fetches live metrics from Prometheus (error rates, latency percentiles, RPM) and injects them into the Cedar evaluation context. This means policies react to real-time conditions -- a model experiencing high error rates is automatically routed around.
+
+### Cedar Policy Syntax
+
+Cedar policies use a `permit`/`forbid` model. Each policy has:
+
+- **Effect**: `permit` (allow) or `forbid` (deny)
+- **Principal**: Who is making the request (user or team)
+- **Action**: What operation (`routing:select_model`)
+- **Resource**: The model being evaluated
+- **Conditions**: `when` clauses that check context and resource attributes
+
+```cedar
+// Block premium models when budget is very low
+@id("cost-003")
+forbid (principal, action == Action::"routing:select_model", resource)
+when {
+    context.cost_budget_remaining < 5.0 &&
+    resource.tier == "premium"
+};
+```
+
+### Built-In Policy Rules
+
+The platform ships with routing policies in `config/agentgateway/policies/routing-rules.cedar`:
+
+**Cost-Based Routing:**
+
+| Rule | Trigger | Effect |
+|------|---------|--------|
+| `cost-001` | Budget < $10 remaining | Permit self-hosted models (vLLM) |
+| `cost-002` | Budget between $10-$50 | Permit budget/free tier models only |
+| `cost-003` | Budget < $5 remaining | Forbid premium models |
+
+**Latency SLA Enforcement:**
+
+| Rule | Trigger | Effect |
+|------|---------|--------|
+| `latency-001` | Model latency exceeds request SLA | Forbid that model |
+| `latency-002` | Request needs < 1000ms, model is < 500ms | Permit (prefer fast models) |
+
+**Circuit Breaker:**
+
+| Rule | Trigger | Effect |
+|------|---------|--------|
+| `circuit-001` | Model error rate > 5% | Forbid (soft circuit break) |
+| `circuit-002` | Model error rate > 10% | Forbid (hard circuit break) |
+
+**Priority-Based:**
+
+| Rule | Trigger | Effect |
+|------|---------|--------|
+| `priority-001` | High priority request | Permit premium models regardless of budget |
+| `priority-002` | Low priority request | Permit budget/free/self-hosted models only |
+
+**Default:**
+
+| Rule | Trigger | Effect |
+|------|---------|--------|
+| `default-001` | Always | Permit (ensures requests aren't blocked by default) |
+
+`forbid` rules override `permit` rules -- so `circuit-001` will block a model even if `default-001` permits it.
+
+### Writing Custom Cedar Policies
+
+Add `.cedar` files to `config/agentgateway/policies/` and hot-reload without restarting:
+
+```cedar
+// Restrict the "interns" team to budget models only
+@id("team-interns-001")
+forbid (principal == team::"interns", action == Action::"routing:select_model", resource)
+when {
+    resource.tier == "premium"
+};
+
+// Force compliance team to use Anthropic models (data residency)
+@id("compliance-001")
+forbid (principal == team::"compliance", action == Action::"routing:select_model", resource)
+when {
+    resource.provider != "anthropic"
+};
+```
+
+Then hot-reload:
+
+```bash
+curl -X POST http://localhost:8084/policies/reload
+# {"status": "ok", "policies_loaded": 5}
+```
+
+### Policy Router Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/route` | Evaluate policies and select optimal model |
+| POST | `/evaluate` | Direct Cedar policy evaluation (for debugging) |
+| POST | `/policies/reload` | Hot-reload policies from disk |
+| GET | `/models` | List all models with real-time metrics |
+| GET | `/decisions` | Recent routing decisions (from database) |
+| GET | `/health` | Health check |
+
+### Routing a Request
+
+```bash
+curl -X POST http://localhost:8084/route \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user-123",
+    "team_id": "engineering",
+    "requested_model": "smart",
+    "budget_remaining": 45.00,
+    "latency_sla_ms": 5000,
+    "priority": "normal",
+    "messages": [
+      {"role": "user", "content": "Explain quantum computing"}
+    ],
+    "max_tokens": 500
+  }'
+```
+
+Response:
+
+```json
+{
+  "selected_model": "claude-sonnet-4.5",
+  "fallback_models": ["gpt-5", "gemini-3-pro"],
+  "decision_reason": "Selected based on cost efficiency within budget constraints",
+  "estimated_cost": 0.0045,
+  "estimated_latency_ms": 2100
+}
+```
+
+### Debugging Policy Decisions
+
+Use the `/evaluate` endpoint to test a specific policy evaluation without routing:
+
+```bash
+curl -X POST http://localhost:8084/evaluate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "principal": "user::user-123",
+    "action": "routing:select_model",
+    "resource": "model::gpt-5.2",
+    "context": {
+      "cost_budget_remaining": 3.0,
+      "latency_sla_ms": 5000,
+      "priority": "normal",
+      "tier": "premium",
+      "provider": "openai",
+      "current_error_rate": 0.02,
+      "current_latency_ms": 2500
+    }
+  }'
+```
+
+Response:
+
+```json
+{
+  "decision": "deny",
+  "reasons": ["cost-003: premium models forbidden when budget < $5"],
+  "errors": []
+}
+```
+
+### Viewing Routing History
+
+```bash
+# All recent decisions
+curl http://localhost:8084/decisions
+
+# Filter by team
+curl "http://localhost:8084/decisions?team_id=engineering&limit=50"
+
+# Filter by user
+curl "http://localhost:8084/decisions?user_id=user-123"
+```
+
 ## Usage-Based Ranking
 
 After filtering for availability and policy, the gateway ranks the remaining candidate models using a usage-based routing strategy. This means:
@@ -207,4 +407,12 @@ docker compose --env-file config/.env --profile observability up -d
 - **Use group aliases** (`fast`, `smart`, `powerful`) instead of pinning to specific models. This gives the gateway flexibility to route around failures and balance load.
 - **Set latency SLAs** on models to match your application requirements. The gateway will prefer models that meet the SLA.
 - **Keep fallback chains cross-provider** so that a single provider outage does not take down your application.
+- **Use Cedar policies for complex rules** -- team restrictions, compliance constraints, and budget-aware routing are best expressed as declarative policies rather than code changes.
 - **Monitor the dashboard** regularly to spot unexpected routing patterns or cost spikes.
+- **Check routing decisions** via the `/decisions` endpoint to audit why specific models were selected or rejected.
+
+## Related Guides
+
+- [Cost Management](./cost-management.md) -- budgets, alerts, and FinOps reporting
+- [Observability](./observability.md) -- Grafana dashboards and Prometheus metrics that feed into routing decisions
+- [API Integration](./api-integration.md) -- how to send requests through the gateway

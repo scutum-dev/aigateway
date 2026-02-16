@@ -38,6 +38,26 @@ spec:
               value: "http://litellm:4000"
             - name: WORKFLOW_ENGINE_URL
               value: "http://workflow-engine:8085"
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: INTERNAL_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: INTERNAL_SERVICE_KEY
+                  optional: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8086
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8086
+            initialDelaySeconds: 10
+            periodSeconds: 10
           resources:
             requests:
               cpu: 100m
@@ -90,6 +110,18 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /etc/otel
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               cpu: 100m
@@ -187,6 +219,18 @@ spec:
           env:
             - name: COLLECTOR_OTLP_ENABLED
               value: "true"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 16686
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 16686
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               cpu: 100m
@@ -245,6 +289,16 @@ spec:
               value: postgres
             - name: POSTGRES_SEEDS
               value: postgresql
+          livenessProbe:
+            tcpSocket:
+              port: 7233
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            tcpSocket:
+              port: 7233
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               cpu: 200m
@@ -291,6 +345,18 @@ spec:
           env:
             - name: TEMPORAL_ADDRESS
               value: temporal:7233
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               cpu: 50m
@@ -351,6 +417,12 @@ spec:
                   key: LITELLM_MASTER_KEY
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://otel-collector:4317"
+            - name: INTERNAL_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: INTERNAL_SERVICE_KEY
+                  optional: true
           livenessProbe:
             httpGet:
               path: /health
@@ -413,6 +485,12 @@ spec:
               value: "redis://redis:6379"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://otel-collector:4317"
+            - name: INTERNAL_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: INTERNAL_SERVICE_KEY
+                  optional: true
           livenessProbe:
             httpGet:
               path: /health
@@ -478,6 +556,12 @@ spec:
                   key: LITELLM_MASTER_KEY
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://otel-collector:4317"
+            - name: INTERNAL_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: INTERNAL_SERVICE_KEY
+                  optional: true
           livenessProbe:
             httpGet:
               path: /health
@@ -532,6 +616,16 @@ spec:
           command: ["sh", "-c", "echo 'Budget webhook placeholder' && sleep infinity"]
           ports:
             - containerPort: 8082
+          livenessProbe:
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               cpu: 100m
@@ -576,6 +670,16 @@ spec:
           command: ["sh", "-c", "echo 'FinOps reporter placeholder' && sleep infinity"]
           ports:
             - containerPort: 8083
+          livenessProbe:
+            tcpSocket:
+              port: 8083
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            tcpSocket:
+              port: 8083
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               cpu: 100m
@@ -620,6 +724,18 @@ spec:
           ports:
             - containerPort: 80
             - containerPort: 443
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
           resources:
             requests:
               cpu: 50m
@@ -668,6 +784,18 @@ spec:
           image: admin-ui:latest  # Replaced by Makefile
           ports:
             - containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
           resources:
             requests:
               cpu: 50m
@@ -712,6 +840,16 @@ spec:
           command: ["sh", "-c", "echo 'A2A Runtime placeholder' && sleep infinity"]
           ports:
             - containerPort: 8087
+          livenessProbe:
+            tcpSocket:
+              port: 8087
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            tcpSocket:
+              port: 8087
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               cpu: 100m
@@ -756,6 +894,16 @@ spec:
           command: ["sh", "-c", "echo 'GPU Stub placeholder' && sleep infinity"]
           ports:
             - containerPort: 8090
+          livenessProbe:
+            tcpSocket:
+              port: 8090
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            tcpSocket:
+              port: 8090
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               cpu: 50m
@@ -812,6 +960,12 @@ spec:
                   optional: true
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://otel-collector:4317"
+            - name: INTERNAL_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: INTERNAL_SERVICE_KEY
+                  optional: true
           livenessProbe:
             httpGet:
               path: /health
@@ -869,6 +1023,18 @@ spec:
           env:
             - name: VAULT_DEV_ROOT_TOKEN_ID
               value: root-token-for-dev
+          livenessProbe:
+            httpGet:
+              path: /v1/sys/health
+              port: 8200
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /v1/sys/health
+              port: 8200
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               cpu: 100m
@@ -916,6 +1082,18 @@ spec:
             - name: landing-config
               mountPath: /usr/share/nginx/html/config.js
               subPath: config.js
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
           resources:
             requests:
               cpu: 50m
@@ -963,6 +1141,18 @@ spec:
           image: docs-site:latest  # Replaced by Makefile
           ports:
             - containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
           resources:
             requests:
               cpu: 50m

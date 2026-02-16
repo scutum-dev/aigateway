@@ -29,6 +29,8 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.resources import Resource
 import httpx
 import asyncpg
+from shared.cors import get_cors_origins
+from shared.middleware import ServiceAuthMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -105,19 +107,28 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Add service auth middleware (webhook paths are unauthenticated for LiteLLM callbacks)
+app.add_middleware(
+    ServiceAuthMiddleware,
+    unauthenticated_paths={"/health", "/ready", "/live", "/healthz", "/webhook/pre-request", "/webhook/post-request"},
+)
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Service-Key"],
 )
 
 # Instrument with OpenTelemetry
 FastAPIInstrumentor.instrument_app(app)
 
 tracer = trace.get_tracer(__name__)
+
+# Inter-service authentication
+INTERNAL_SERVICE_KEY = os.getenv("INTERNAL_SERVICE_KEY", "")
 
 # Budget thresholds
 SOFT_LIMIT_THRESHOLD = float(os.getenv("SOFT_LIMIT_THRESHOLD", "0.8"))  # 80%
@@ -151,13 +162,17 @@ async def predict_cost(model: str, messages: list, max_tokens: Optional[int]) ->
     predictor_url = os.getenv("COST_PREDICTOR_URL", "http://localhost:8080")
 
     try:
+        headers = {}
+        if INTERNAL_SERVICE_KEY:
+            headers["X-Service-Key"] = INTERNAL_SERVICE_KEY
         response = await http_client.post(
             f"{predictor_url}/predict",
             json={
                 "model": model,
                 "messages": messages,
                 "max_tokens": max_tokens
-            }
+            },
+            headers=headers,
         )
 
         if response.status_code == 200:
@@ -189,29 +204,9 @@ async def record_alert(alert: BudgetAlert):
 
 
 async def send_notification(alert: BudgetAlert):
-    """Send budget alert notification (webhook, email, Slack, etc.)."""
-    webhook_url = os.getenv("ALERT_WEBHOOK_URL")
-
-    if not webhook_url:
-        logger.info(f"Alert (no webhook configured): {alert.message}")
-        return
-
-    try:
-        await http_client.post(
-            webhook_url,
-            json={
-                "type": alert.alert_type,
-                "user_id": alert.user_id,
-                "team_id": alert.team_id,
-                "threshold": alert.threshold_percent,
-                "current_spend": alert.current_spend,
-                "budget_limit": alert.budget_limit,
-                "message": alert.message,
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }
-        )
-    except Exception as e:
-        logger.error(f"Failed to send notification: {e}")
+    """Send budget alert notification to all configured channels."""
+    from notifier import send_all_notifications
+    await send_all_notifications(alert, http_client)
 
 
 @app.get("/health")

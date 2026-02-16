@@ -29,6 +29,12 @@ import type {
   RoutingPolicy,
   RoutingPolicyCreate,
   UserInfo,
+  GuardrailConfig,
+  GuardrailConfigCreate,
+  GuardrailConfigUpdate,
+  GuardrailEvent,
+  GuardrailScanRequest,
+  GuardrailScanResponse,
 } from '../types'
 
 // Use Vite's BASE_URL so API calls route through the admin-ui nginx proxy
@@ -226,6 +232,45 @@ export const workflowsApi = {
 export const metricsApi = {
   realtime: async (): Promise<RealtimeMetrics> => {
     const response = await api.get('/metrics/realtime')
+    return response.data
+  },
+}
+
+// Guardrails API
+export const guardrailsApi = {
+  list: async (): Promise<GuardrailConfig[]> => {
+    const response = await api.get('/guardrails')
+    return response.data
+  },
+  create: async (data: GuardrailConfigCreate): Promise<GuardrailConfig> => {
+    const response = await api.post('/guardrails', data)
+    return response.data
+  },
+  get: async (id: string): Promise<GuardrailConfig> => {
+    const response = await api.get(`/guardrails/${id}`)
+    return response.data
+  },
+  update: async (id: string, data: GuardrailConfigUpdate): Promise<GuardrailConfig> => {
+    const response = await api.put(`/guardrails/${id}`, data)
+    return response.data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/guardrails/${id}`)
+  },
+  assignToTeam: async (configId: string, teamId: string, priority?: number): Promise<void> => {
+    await api.post(`/guardrails/${configId}/assign/${teamId}`, null, {
+      params: priority !== undefined ? { priority } : undefined,
+    })
+  },
+  unassignFromTeam: async (configId: string, teamId: string): Promise<void> => {
+    await api.delete(`/guardrails/${configId}/assign/${teamId}`)
+  },
+  events: async (params?: { team_id?: string; event_type?: string; limit?: number; offset?: number }): Promise<GuardrailEvent[]> => {
+    const response = await api.get('/guardrail-events', { params })
+    return response.data
+  },
+  scan: async (data: GuardrailScanRequest): Promise<GuardrailScanResponse> => {
+    const response = await api.post('/guardrails/scan', data)
     return response.data
   },
 }

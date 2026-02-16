@@ -55,6 +55,7 @@ This starts the core services:
 | Admin API  | http://localhost:8086      | Configuration & management |
 | Admin UI   | http://localhost:5173      | Web admin console          |
 | Landing UI | http://localhost:9999      | Interactive playground     |
+| Docs Site  | http://localhost:8089      | Developer documentation    |
 | PostgreSQL | localhost:5432             | Database                   |
 | Redis      | localhost:6379             | Cache                      |
 
@@ -125,9 +126,12 @@ Navigate to **http://localhost:5173** in your browser.
 3. You will land on the **Dashboard** showing today's request count, cost, and model usage
 
 From the sidebar, explore:
+- **API Keys** -- generate and manage API keys with budgets and model restrictions
 - **Models** -- see all 100+ configured models, filter by provider, edit routing tiers
 - **Budgets** -- create spending limits for teams or users
 - **Teams** -- organize users into teams with default models
+- **MCP Servers** -- configure Model Context Protocol servers for tool access
+- **Workflows** -- run and monitor LangGraph workflow templates
 - **Settings** -- toggle caching, cost tracking, routing policies, and more
 
 ## 6. Explore the Playground

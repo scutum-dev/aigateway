@@ -16,12 +16,14 @@ import os
 import json
 import hashlib
 import time
-from datetime import datetime, timedelta
+import logging
+import struct
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any, Tuple
 from contextlib import asynccontextmanager
 
 import numpy as np
-from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import httpx
@@ -32,6 +34,10 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
+from shared.cors import get_cors_origins
+from shared.middleware import ServiceAuthMiddleware
+
+logger = logging.getLogger(__name__)
 
 # Configuration
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
@@ -157,13 +163,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Add service auth middleware
+app.add_middleware(ServiceAuthMiddleware)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Service-Key"],
 )
 
 # OpenTelemetry instrumentation
@@ -173,10 +182,25 @@ FastAPIInstrumentor.instrument_app(app)
 async def init_cache_index():
     """Initialize Redis search index for vector similarity."""
     try:
-        # Check if index exists
-        await redis_client.execute_command("FT._LIST")
+        await redis_client.execute_command("FT.INFO", "idx:semantic_cache")
+        logger.info("Semantic cache index already exists")
     except Exception:
-        pass  # Index operations will work without explicit creation for simple use
+        try:
+            await redis_client.execute_command(
+                "FT.CREATE", "idx:semantic_cache",
+                "ON", "HASH",
+                "PREFIX", "1", "semantic_cache:",
+                "SCHEMA",
+                "model", "TAG",
+                "user_id", "TAG",
+                "embedding", "VECTOR", "FLAT", "6",
+                    "TYPE", "FLOAT32",
+                    "DIM", "1536",
+                    "DISTANCE_METRIC", "COSINE",
+            )
+            logger.info("Created semantic cache vector index")
+        except Exception as e:
+            logger.warning(f"Could not create vector index, falling back to scan: {e}")
 
 
 async def get_embedding(text: str, api_key: Optional[str] = None) -> List[float]:
@@ -243,68 +267,124 @@ def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 
+async def _find_similar_scan(
+    embedding: List[float],
+    model: str,
+    user_id: Optional[str],
+    threshold: float,
+    span,
+) -> Optional[Tuple[CacheEntry, float]]:
+    """Fallback O(n) scan for when RediSearch is not available."""
+    pattern = f"semantic_cache:{model}:*"
+    keys = []
+    async for key in redis_client.scan_iter(match=pattern):
+        keys.append(key)
+
+    if not keys:
+        span.set_attribute("candidates", 0)
+        return None
+
+    span.set_attribute("candidates", len(keys))
+
+    best_match = None
+    best_similarity = threshold
+
+    for key in keys:
+        try:
+            data = await redis_client.hget(key, "data")
+            if not data:
+                # Try legacy string format
+                data = await redis_client.get(key)
+                if not data:
+                    continue
+                entry_data = json.loads(data)
+            else:
+                entry_data = json.loads(data)
+                emb_bytes = await redis_client.hget(key, "embedding")
+                if emb_bytes:
+                    dim = len(emb_bytes) // 4
+                    entry_data["embedding"] = list(struct.unpack(f'{dim}f', emb_bytes))
+                else:
+                    continue
+
+            entry = CacheEntry(**entry_data)
+
+            if datetime.fromisoformat(entry.expires_at) < datetime.now(timezone.utc):
+                await redis_client.delete(key)
+                continue
+
+            if user_id and entry.user_id and entry.user_id != user_id:
+                continue
+
+            similarity = cosine_similarity(embedding, entry.embedding)
+
+            if similarity > best_similarity:
+                best_similarity = similarity
+                best_match = entry
+
+        except Exception:
+            continue
+
+    if best_match:
+        span.set_attribute("hit", True)
+        span.set_attribute("similarity", best_similarity)
+        return (best_match, best_similarity)
+
+    span.set_attribute("hit", False)
+    return None
+
+
 async def find_similar_cached(
     embedding: List[float],
     model: str,
     user_id: Optional[str] = None,
     threshold: float = SIMILARITY_THRESHOLD,
 ) -> Optional[Tuple[CacheEntry, float]]:
-    """Find similar cached entry using vector similarity."""
+    """Find similar cached entry using Redis vector search with O(n) fallback."""
     with tracer.start_as_current_span("find_similar_cached") as span:
         span.set_attribute("model", model)
         span.set_attribute("threshold", threshold)
 
-        # Get all cache keys for this model
-        pattern = f"semantic_cache:{model}:*"
-        keys = []
-        async for key in redis_client.scan_iter(match=pattern):
-            keys.append(key)
+        query_blob = struct.pack(f'{len(embedding)}f', *embedding)
 
-        if not keys:
-            span.set_attribute("candidates", 0)
-            return None
+        try:
+            filter_expr = f"@model:{{{model}}}"
+            results = await redis_client.execute_command(
+                "FT.SEARCH", "idx:semantic_cache",
+                f"({filter_expr})=>[KNN 1 @embedding $query_vec AS similarity]",
+                "PARAMS", "2", "query_vec", query_blob,
+                "SORTBY", "similarity",
+                "RETURN", "2", "data", "similarity",
+                "LIMIT", "0", "1",
+                "DIALECT", "2",
+            )
 
-        span.set_attribute("candidates", len(keys))
+            if results[0] == 0:
+                span.set_attribute("hit", False)
+                return None
 
-        best_match = None
-        best_similarity = threshold
+            fields = results[2]
+            field_dict = dict(zip(fields[0::2], fields[1::2]))
 
-        # Compare embeddings
-        for key in keys:
-            try:
-                data = await redis_client.get(key)
-                if not data:
-                    continue
+            # RediSearch COSINE distance: 0 = identical, 2 = opposite
+            distance = float(field_dict[b"similarity"])
+            similarity = 1.0 - distance
 
-                entry_data = json.loads(data)
-                entry = CacheEntry(**entry_data)
+            if similarity < threshold:
+                span.set_attribute("hit", False)
+                return None
 
-                # Check if expired
-                if datetime.fromisoformat(entry.expires_at) < datetime.utcnow():
-                    await redis_client.delete(key)
-                    continue
+            entry_data = json.loads(field_dict[b"data"])
+            entry_data["embedding"] = embedding  # placeholder
+            entry = CacheEntry(**entry_data)
 
-                # Check user isolation if specified
-                if user_id and entry.user_id and entry.user_id != user_id:
-                    continue
-
-                # Compute similarity
-                similarity = cosine_similarity(embedding, entry.embedding)
-
-                if similarity > best_similarity:
-                    best_similarity = similarity
-                    best_match = entry
-
-            except Exception:
-                continue
-
-        if best_match:
             span.set_attribute("hit", True)
-            span.set_attribute("similarity", best_similarity)
-            return (best_match, best_similarity)
+            span.set_attribute("similarity", similarity)
+            return (entry, similarity)
 
-        span.set_attribute("hit", False)
-        return None
+        except Exception as e:
+            logger.warning(f"Vector search failed, falling back to scan: {e}")
+            return await _find_similar_scan(embedding, model, user_id, threshold, span)
 
 
 @app.get("/health")
@@ -359,11 +439,14 @@ async def cache_lookup(
             # Update hit count
             entry.hit_count += 1
             cache_key = f"semantic_cache:{request.model}:{entry.key}"
-            await redis_client.set(
-                cache_key,
-                json.dumps(entry.model_dump()),
-                ex=CACHE_TTL_SECONDS,
-            )
+            try:
+                raw_data = await redis_client.hget(cache_key, "data")
+                if raw_data:
+                    stored = json.loads(raw_data)
+                    stored["hit_count"] = entry.hit_count
+                    await redis_client.hset(cache_key, "data", json.dumps(stored))
+            except Exception:
+                pass
 
             # Update stats
             cache_stats["hits"] += 1
@@ -412,7 +495,7 @@ async def cache_store(
 
         # Create cache entry
         cache_key = compute_cache_key(request.messages, request.model, request.user_id)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         entry = CacheEntry(
             key=cache_key,
@@ -428,13 +511,19 @@ async def cache_store(
             expires_at=(now + timedelta(seconds=CACHE_TTL_SECONDS)).isoformat(),
         )
 
-        # Store in Redis
+        # Store in Redis as HASH for vector search
+        embedding_bytes = struct.pack(f'{len(embedding)}f', *embedding)
         redis_key = f"semantic_cache:{request.model}:{cache_key}"
-        await redis_client.set(
-            redis_key,
-            json.dumps(entry.model_dump()),
-            ex=CACHE_TTL_SECONDS,
-        )
+        entry_data = entry.model_dump()
+        entry_data.pop("embedding")  # stored separately as binary
+
+        await redis_client.hset(redis_key, mapping={
+            "data": json.dumps(entry_data),
+            "model": request.model,
+            "user_id": request.user_id or "",
+            "embedding": embedding_bytes,
+        })
+        await redis_client.expire(redis_key, CACHE_TTL_SECONDS)
 
         span.set_attribute("cache_key", cache_key)
 
@@ -482,7 +571,7 @@ async def cache_invalidate_user(user_id: str):
 
     async for key in redis_client.scan_iter(match=pattern):
         try:
-            data = await redis_client.get(key)
+            data = await redis_client.hget(key, "data")
             if data:
                 entry = json.loads(data)
                 if entry.get("user_id") == user_id:
@@ -554,7 +643,7 @@ async def list_cache_entries(
             break
 
         try:
-            data = await redis_client.get(key)
+            data = await redis_client.hget(key, "data")
             if data:
                 entry = json.loads(data)
                 # Filter by user if specified

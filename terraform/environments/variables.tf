@@ -125,6 +125,13 @@ variable "grafana_password" {
   default     = "admin"
 }
 
+variable "internal_service_key" {
+  description = "Shared key for inter-service authentication"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # =============================================================================
 # Environment Configuration
 # =============================================================================

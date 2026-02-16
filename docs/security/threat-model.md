@@ -197,7 +197,7 @@ Goal: Exceed Budget Without Detection
 | R-001 | API key exposure via logs | Medium | Critical | HIGH | Mitigated (log scrubbing) |
 | R-002 | Cross-tenant data access | Low | Critical | MEDIUM | Mitigated (Cedar policies) |
 | R-003 | Budget bypass via direct access | Medium | High | HIGH | Mitigated (NetworkPolicy) |
-| R-004 | Prompt injection attacks | High | Medium | HIGH | Partial (guardrails WIP) |
+| R-004 | Prompt injection attacks | High | Medium | HIGH | Mitigated (LLM Guard + Presidio) |
 | R-005 | Supply chain compromise | Low | Critical | MEDIUM | Mitigated (image signing) |
 
 ## 8. Compliance Mapping
