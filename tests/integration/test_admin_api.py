@@ -464,6 +464,54 @@ class TestTeamManagement:
             )
             assert response.status_code in [200, 201]
 
+    def test_update_team(
+        self, http_client: httpx.Client, auth_headers: dict
+    ):
+        """Test updating a team."""
+        team_name = f"test-team-{uuid.uuid4().hex[:8]}"
+        create_response = http_client.post(
+            "/api/v1/teams",
+            headers=auth_headers,
+            json={
+                "name": team_name,
+                "description": "Test team",
+                "monthly_budget": 100.0,
+            },
+        )
+        if create_response.status_code in [200, 201]:
+            team_id = create_response.json()["id"]
+
+            response = http_client.put(
+                f"/api/v1/teams/{team_id}",
+                headers=auth_headers,
+                json={"monthly_budget": 999.0},
+            )
+            assert response.status_code == 200
+            assert response.json()["monthly_budget"] == 999.0
+
+    def test_delete_team(
+        self, http_client: httpx.Client, auth_headers: dict
+    ):
+        """Test deleting a team."""
+        team_name = f"test-team-{uuid.uuid4().hex[:8]}"
+        create_response = http_client.post(
+            "/api/v1/teams",
+            headers=auth_headers,
+            json={
+                "name": team_name,
+                "description": "Temp team to delete",
+            },
+        )
+        if create_response.status_code in [200, 201]:
+            team_id = create_response.json()["id"]
+
+            response = http_client.delete(
+                f"/api/v1/teams/{team_id}",
+                headers=auth_headers,
+            )
+            assert response.status_code == 200
+            assert response.json()["status"] == "deleted"
+
     def test_list_team_members(
         self, http_client: httpx.Client, auth_headers: dict
     ):

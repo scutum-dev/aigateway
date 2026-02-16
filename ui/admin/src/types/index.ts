@@ -77,9 +77,25 @@ export interface TeamCreate {
   default_model: string
 }
 
+export interface TeamUpdate {
+  name?: string
+  description?: string | null
+  monthly_budget?: number | null
+  default_model?: string | null
+  is_active?: boolean
+}
+
 export interface TeamMemberAdd {
   user_id: string
   role: 'member' | 'admin'
+}
+
+export interface GuardrailAssignment {
+  team_id: string
+  team_name: string
+  guardrail_config_id: string
+  config_name: string
+  priority: number
 }
 
 export interface MCPServerConfig {

@@ -19,7 +19,9 @@ import type {
   BudgetUpdate,
   Team,
   TeamCreate,
+  TeamUpdate,
   TeamMemberAdd,
+  GuardrailAssignment,
   MCPServerConfig,
   MCPServerCreate,
   MCPServerUpdate,
@@ -137,9 +139,30 @@ export function useCreateTeam() {
   })
 }
 
+export function useUpdateTeam() {
+  const queryClient = useQueryClient()
+  return useMutation<Team, Error, { id: string; data: TeamUpdate }>({
+    mutationFn: ({ id, data }) => teamsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
+    },
+  })
+}
+
+export function useDeleteTeam() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: teamsApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
+      queryClient.invalidateQueries({ queryKey: ['guardrail-assignments'] })
+    },
+  })
+}
+
 export function useAddTeamMember() {
   const queryClient = useQueryClient()
-  return useMutation<Team, Error, { teamId: string; data: TeamMemberAdd }>({
+  return useMutation<{ status: string }, Error, { teamId: string; data: TeamMemberAdd }>({
     mutationFn: ({ teamId, data }) => teamsApi.addMember(teamId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] })
@@ -338,6 +361,7 @@ export function useDeleteGuardrail() {
     mutationFn: guardrailsApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guardrails'] })
+      queryClient.invalidateQueries({ queryKey: ['guardrail-assignments'] })
     },
   })
 }
@@ -347,6 +371,33 @@ export function useGuardrailEvents(params?: { team_id?: string; event_type?: str
     queryKey: ['guardrail-events', params],
     queryFn: () => guardrailsApi.events(params),
     refetchInterval: 30000,
+  })
+}
+
+export function useGuardrailAssignments() {
+  return useQuery<GuardrailAssignment[]>({
+    queryKey: ['guardrail-assignments'],
+    queryFn: guardrailsApi.assignments,
+  })
+}
+
+export function useAssignGuardrail() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, { configId: string; teamId: string; priority?: number }>({
+    mutationFn: ({ configId, teamId, priority }) => guardrailsApi.assignToTeam(configId, teamId, priority),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guardrail-assignments'] })
+    },
+  })
+}
+
+export function useUnassignGuardrail() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, { configId: string; teamId: string }>({
+    mutationFn: ({ configId, teamId }) => guardrailsApi.unassignFromTeam(configId, teamId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guardrail-assignments'] })
+    },
   })
 }
 

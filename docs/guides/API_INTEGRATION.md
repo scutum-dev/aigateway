@@ -295,6 +295,9 @@ TOKEN=$(curl -s http://localhost:8086/auth/login \
 | PUT | `/api/v1/budgets/{id}` | Update a budget |
 | GET | `/api/v1/teams` | List all teams |
 | POST | `/api/v1/teams` | Create a team |
+| PUT | `/api/v1/teams/{team_id}` | Update a team |
+| DELETE | `/api/v1/teams/{team_id}` | Delete a team |
+| GET | `/api/v1/guardrail-assignments` | List guardrail-to-team assignments |
 | GET | `/api/v1/keys` | List all API keys |
 | POST | `/api/v1/keys/generate` | Generate a new API key |
 | POST | `/api/v1/keys/update` | Update an API key |

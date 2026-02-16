@@ -5,6 +5,7 @@ import {
   useUpdateGuardrail,
   useDeleteGuardrail,
   useGuardrailEvents,
+  useGuardrailAssignments,
 } from '../api/hooks'
 import { SkeletonCard } from '../components/Skeleton'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -77,6 +78,7 @@ export default function Guardrails() {
   const [tab, setTab] = useState<Tab>('profiles')
   const { data: configs, isLoading, error } = useGuardrails()
   const { data: events } = useGuardrailEvents()
+  const { data: assignments } = useGuardrailAssignments()
   const createGuardrail = useCreateGuardrail()
   const updateGuardrail = useUpdateGuardrail()
   const deleteGuardrail = useDeleteGuardrail()
@@ -390,6 +392,7 @@ export default function Guardrails() {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scanners</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teams</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">On Fail</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -422,6 +425,17 @@ export default function Guardrails() {
                           ))}
                         </div>
                       </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {(assignments ?? [])
+                            .filter((a) => a.guardrail_config_id === cfg.id)
+                            .map((a) => (
+                              <span key={a.team_id} className="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded text-xs">
+                                {a.team_name}
+                              </span>
+                            ))}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-sm capitalize">{cfg.on_fail}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -449,7 +463,7 @@ export default function Guardrails() {
                 })}
                 {(configs ?? []).length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                       No guardrail profiles configured
                     </td>
                   </tr>

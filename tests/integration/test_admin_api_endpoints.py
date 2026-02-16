@@ -377,6 +377,7 @@ class TestTeamEndpoints:
             "default_model": "gpt-4o",
             "is_active": True,
             "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
         }
 
     @pytest.mark.asyncio
@@ -407,6 +408,57 @@ class TestTeamEndpoints:
         )
         assert resp.status_code == 200
         assert resp.json()["name"] == "Platform"
+
+    @pytest.mark.asyncio
+    async def test_update_team_success(self, client):
+        """PUT /api/v1/teams/{id} should update a team."""
+        pool, conn = _mock_db_pool()
+        conn.fetchrow.return_value = self._team_row()
+        conn.fetch.return_value = []  # no members
+        _mod.db_pool = pool
+        resp = await client.put(
+            "/api/v1/teams/t-1",
+            json={"name": "Platform-v2"},
+            headers=_auth_headers(),
+        )
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_update_team_empty_body(self, client):
+        """PUT /api/v1/teams/{id} with no fields returns 400."""
+        pool, conn = _mock_db_pool()
+        _mod.db_pool = pool
+        resp = await client.put(
+            "/api/v1/teams/t-1",
+            json={},
+            headers=_auth_headers(),
+        )
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_delete_team_success(self, client):
+        """DELETE /api/v1/teams/{id} should delete a team."""
+        pool, conn = _mock_db_pool()
+        conn.execute.return_value = "DELETE 1"
+        _mod.db_pool = pool
+        resp = await client.delete(
+            "/api/v1/teams/t-1",
+            headers=_auth_headers(),
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "deleted"
+
+    @pytest.mark.asyncio
+    async def test_delete_team_not_found(self, client):
+        """DELETE /api/v1/teams/{id} returns 404 for unknown team."""
+        pool, conn = _mock_db_pool()
+        conn.execute.return_value = "DELETE 0"
+        _mod.db_pool = pool
+        resp = await client.delete(
+            "/api/v1/teams/t-999",
+            headers=_auth_headers(),
+        )
+        assert resp.status_code == 404
 
     @pytest.mark.asyncio
     async def test_add_team_member_success(self, client):

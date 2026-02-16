@@ -212,6 +212,22 @@ curl -X DELETE http://localhost:8086/api/v1/guardrails/{config_id}/assign/{team_
   -H "Authorization: Bearer $TOKEN"
 ```
 
+### List All Assignments
+
+Retrieve all guardrail-to-team assignments across the platform. Optionally filter by team.
+
+```bash
+# List all assignments
+curl "http://localhost:8086/api/v1/guardrail-assignments" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Filter by team
+curl "http://localhost:8086/api/v1/guardrail-assignments?team_id=team-123" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+The response includes each assignment's profile ID, team ID, and priority.
+
 ## Audit Log
 
 Every scanner trigger (block, PII detection, output flag) is recorded in the `guardrail_events` table.

@@ -253,6 +253,35 @@ class TestTeamAssignment:
 # ============================================================================
 
 
+class TestGuardrailAssignments:
+    @pytest.mark.asyncio
+    async def test_list_assignments_empty(self, client, mock_pool):
+        _, conn = mock_pool
+        conn.fetch.return_value = []
+        resp = await client.get("/api/v1/guardrail-assignments")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    @pytest.mark.asyncio
+    async def test_list_assignments_with_data(self, client, mock_pool):
+        _, conn = mock_pool
+        conn.fetch.return_value = [
+            {
+                "team_id": uuid4(),
+                "team_name": "engineering",
+                "guardrail_config_id": SAMPLE_CONFIG_ROW["id"],
+                "config_name": "test-profile",
+                "priority": 0,
+            },
+        ]
+        resp = await client.get("/api/v1/guardrail-assignments")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["team_name"] == "engineering"
+        assert data[0]["config_name"] == "test-profile"
+
+
 class TestGuardrailEvents:
     @pytest.mark.asyncio
     async def test_list_events_empty(self, client, mock_pool):

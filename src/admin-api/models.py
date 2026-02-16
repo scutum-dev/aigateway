@@ -107,6 +107,7 @@ class Team(BaseModel):
     default_model: Optional[str] = None
     is_active: bool = True
     created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 
 class TeamCreate(BaseModel):

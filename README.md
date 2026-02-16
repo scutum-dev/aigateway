@@ -284,6 +284,8 @@ kubectl apply -k kubernetes/overlays/production # Production
 | GET/PUT | `/api/v1/routing-policies` | Routing policy CRUD |
 | GET/POST | `/api/v1/budgets` | Budget management |
 | GET/POST | `/api/v1/teams` | Team management |
+| PUT/DELETE | `/api/v1/teams/{team_id}` | Update/delete a team |
+| GET | `/api/v1/guardrail-assignments` | List guardrail-to-team assignments |
 | GET/POST | `/api/v1/mcp-servers` | MCP server configuration |
 | GET/POST | `/api/v1/workflows` | Workflow templates |
 | GET | `/api/v1/metrics/realtime` | Real-time metrics |

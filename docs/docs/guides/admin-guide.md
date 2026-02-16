@@ -154,6 +154,33 @@ Each card shows:
    - **Default Model** (optional model name)
 3. Click **Create**.
 
+### Editing a Team
+
+1. Click the **pencil icon** on any team card.
+2. The card switches to an edit form with the same fields as creation.
+3. Modify the values and click **Save**, or click the **X** to cancel.
+
+Via API:
+
+```bash
+curl -X PUT http://localhost:8086/api/v1/teams/{team_id} \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"description": "Updated description", "monthly_budget": 500}'
+```
+
+### Deleting a Team
+
+1. Click the **delete icon** on any team card.
+2. Confirm the deletion in the dialog.
+
+Via API:
+
+```bash
+curl -X DELETE http://localhost:8086/api/v1/teams/{team_id} \
+  -H "Authorization: Bearer $TOKEN"
+```
+
 ### Adding Members
 
 1. Click the **Add Member** icon on any team card.

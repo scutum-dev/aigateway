@@ -7,7 +7,9 @@ import type {
   BudgetUpdate,
   Team,
   TeamCreate,
+  TeamUpdate,
   TeamMemberAdd,
+  GuardrailAssignment,
   MCPServerConfig,
   MCPServerCreate,
   MCPServerUpdate,
@@ -137,7 +139,14 @@ export const teamsApi = {
     const response = await api.post('/teams', data)
     return response.data
   },
-  addMember: async (teamId: string, data: TeamMemberAdd): Promise<Team> => {
+  update: async (id: string, data: TeamUpdate): Promise<Team> => {
+    const response = await api.put(`/teams/${id}`, data)
+    return response.data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/teams/${id}`)
+  },
+  addMember: async (teamId: string, data: TeamMemberAdd): Promise<{ status: string }> => {
     const response = await api.post(`/teams/${teamId}/members`, data)
     return response.data
   },
@@ -262,6 +271,10 @@ export const guardrailsApi = {
   },
   unassignFromTeam: async (configId: string, teamId: string): Promise<void> => {
     await api.delete(`/guardrails/${configId}/assign/${teamId}`)
+  },
+  assignments: async (): Promise<GuardrailAssignment[]> => {
+    const response = await api.get('/guardrail-assignments')
+    return response.data
   },
   events: async (params?: { team_id?: string; event_type?: string; limit?: number; offset?: number }): Promise<GuardrailEvent[]> => {
     const response = await api.get('/guardrail-events', { params })

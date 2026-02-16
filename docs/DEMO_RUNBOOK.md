@@ -63,6 +63,9 @@ GET    /api/v1/budgets          - List budgets
 POST   /api/v1/budgets          - Create budget
 GET    /api/v1/teams            - List teams
 POST   /api/v1/teams            - Create team
+PUT    /api/v1/teams/{team_id}  - Update team
+DELETE /api/v1/teams/{team_id}  - Delete team
+GET    /api/v1/guardrail-assignments - List guardrail-to-team assignments
 GET    /api/v1/mcp-servers      - List MCP servers
 GET    /api/v1/workflows        - List workflows
 GET    /api/v1/metrics/realtime - Real-time metrics

@@ -443,6 +443,7 @@ class TestTeamsRouter:
             "default_model": "gpt-4o",
             "is_active": True,
             "created_at": datetime(2025, 1, 1, tzinfo=timezone.utc),
+            "updated_at": datetime(2025, 1, 1, tzinfo=timezone.utc),
         }
         member_rows = [{"user_id": "alice"}, {"user_id": "bob"}]
 
@@ -471,6 +472,7 @@ class TestTeamsRouter:
             "default_model": None,
             "is_active": True,
             "created_at": datetime(2025, 6, 1, tzinfo=timezone.utc),
+            "updated_at": datetime(2025, 6, 1, tzinfo=timezone.utc),
         }
         conn = _make_async_conn(fetchrow_return=returned_row)
         deps.db_pool = _make_pool(conn)
@@ -489,6 +491,65 @@ class TestTeamsRouter:
         data = resp.json()
         assert data["id"] == "t-new"
         assert data["members"] == []
+
+    @pytest.mark.asyncio
+    async def test_update_team(self, client):
+        """PUT /teams/{id} updates team fields."""
+        updated_row = {
+            "id": "t-1",
+            "name": "Renamed",
+            "description": "Infra team",
+            "monthly_budget": 2000.0,
+            "default_model": "gpt-4o",
+            "is_active": True,
+            "created_at": datetime(2025, 1, 1, tzinfo=timezone.utc),
+            "updated_at": datetime(2025, 6, 1, tzinfo=timezone.utc),
+        }
+        conn = _make_async_conn(fetchrow_return=updated_row, fetch_return=[])
+        deps.db_pool = _make_pool(conn)
+
+        async with client:
+            resp = await client.put(
+                "/api/v1/teams/t-1",
+                json={"name": "Renamed", "monthly_budget": 2000.0},
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "Renamed"
+
+    @pytest.mark.asyncio
+    async def test_update_team_empty_body(self, client):
+        """PUT /teams/{id} with empty body returns 400."""
+        conn = _make_async_conn()
+        deps.db_pool = _make_pool(conn)
+
+        async with client:
+            resp = await client.put("/api/v1/teams/t-1", json={})
+
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_delete_team(self, client):
+        """DELETE /teams/{id} removes team."""
+        conn = _make_async_conn(execute_return="DELETE 1")
+        deps.db_pool = _make_pool(conn)
+
+        async with client:
+            resp = await client.delete("/api/v1/teams/t-1")
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "deleted"
+
+    @pytest.mark.asyncio
+    async def test_delete_team_not_found(self, client):
+        """DELETE /teams/{id} returns 404 for missing team."""
+        conn = _make_async_conn(execute_return="DELETE 0")
+        deps.db_pool = _make_pool(conn)
+
+        async with client:
+            resp = await client.delete("/api/v1/teams/t-999")
+
+        assert resp.status_code == 404
 
     @pytest.mark.asyncio
     async def test_add_team_member(self, client):

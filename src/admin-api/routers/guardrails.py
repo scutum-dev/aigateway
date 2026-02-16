@@ -82,6 +82,14 @@ class GuardrailConfig(BaseModel):
     updated_at: Optional[str] = None
 
 
+class GuardrailAssignment(BaseModel):
+    team_id: str
+    team_name: str
+    guardrail_config_id: str
+    config_name: str
+    priority: int = 0
+
+
 class GuardrailEvent(BaseModel):
     id: str
     event_type: str
@@ -288,6 +296,36 @@ async def assign_guardrail_to_team(
         """, team_id, config_id, priority)
 
     return {"status": "assigned"}
+
+
+@router.get("/guardrail-assignments", response_model=List[GuardrailAssignment])
+async def list_guardrail_assignments(
+    user: UserInfo = Depends(get_current_user),
+):
+    """List all team-guardrail assignments."""
+    if not deps.db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with deps.db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT tg.team_id, t.name AS team_name,
+                   tg.guardrail_config_id, gc.name AS config_name,
+                   tg.priority
+            FROM team_guardrails tg
+            JOIN teams t ON t.id = tg.team_id
+            JOIN guardrail_configs gc ON gc.id = tg.guardrail_config_id
+            ORDER BY t.name, gc.name
+        """)
+        return [
+            GuardrailAssignment(
+                team_id=str(row["team_id"]),
+                team_name=row["team_name"],
+                guardrail_config_id=str(row["guardrail_config_id"]),
+                config_name=row["config_name"],
+                priority=row["priority"],
+            )
+            for row in rows
+        ]
 
 
 @router.delete("/guardrails/{config_id}/assign/{team_id}")
