@@ -113,7 +113,7 @@ case "$ENVIRONMENT" in
     ;;
 esac
 
-echo "=== AI Gateway Deployment ==="
+echo "=== AI Control Plane Deployment ==="
 echo "Environment: $ENVIRONMENT"
 echo "Config file: $ENV_FILE"
 echo ""

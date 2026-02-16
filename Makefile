@@ -1,5 +1,5 @@
 # =============================================================================
-# AI Gateway Platform - Makefile
+# AI Control Plane Platform - Makefile
 # =============================================================================
 # Cross-platform commands for development and deployment
 # Works on: macOS, Linux, Windows (with make installed)
@@ -34,7 +34,7 @@ RESET := \033[0m
 # =============================================================================
 
 help: ## Show this help message
-	@echo "$(CYAN)AI Gateway Platform$(RESET)"
+	@echo "$(CYAN)AI Control Plane Platform$(RESET)"
 	@echo ""
 	@echo "$(GREEN)Usage:$(RESET)"
 	@echo "  make [target]"
@@ -66,12 +66,14 @@ env-check: ## Verify environment configuration
 # DOCKER COMPOSE - CORE
 # =============================================================================
 
-up: ## Start core services (postgres, redis, litellm, admin, landing)
+up: ## Start core services (postgres, redis, litellm, admin, landing, docs, playground)
 	$(DOCKER_COMPOSE) up -d
 	@echo "$(GREEN)Core services started$(RESET)"
-	@echo "  Landing:  http://localhost:$${LANDING_UI_PORT:-9999}"
-	@echo "  Admin UI: http://localhost:$${ADMIN_UI_PORT:-5173}"
-	@echo "  LiteLLM:  http://localhost:$${LITELLM_PORT:-4000}"
+	@echo "  Landing:    http://localhost:$${LANDING_UI_PORT:-9999}"
+	@echo "  Playground: http://localhost:$${PLAYGROUND_UI_PORT:-6001}"
+	@echo "  Docs:       http://localhost:$${DOCS_SITE_PORT:-8089}"
+	@echo "  Admin UI:   http://localhost:$${ADMIN_UI_PORT:-5173}"
+	@echo "  LiteLLM:    http://localhost:$${LITELLM_PORT:-4000}"
 
 down: ## Stop all services
 	$(DOCKER_COMPOSE) --profile full down
@@ -123,8 +125,8 @@ build: ## Build all custom images
 build-no-cache: ## Build all images without cache
 	$(DOCKER_COMPOSE) --profile full build --no-cache
 
-build-admin: ## Build admin-api, admin-ui, and landing-ui
-	$(DOCKER_COMPOSE) build admin-api admin-ui landing-ui
+build-admin: ## Build admin-api, admin-ui, landing-ui, docs-site, and playground-ui
+	$(DOCKER_COMPOSE) build admin-api admin-ui landing-ui docs-site playground-ui
 
 # =============================================================================
 # LOGS & STATUS
@@ -233,7 +235,7 @@ open-grafana: ## Open Grafana in browser
 # =============================================================================
 
 version: ## Show version information
-	@echo "$(CYAN)AI Gateway Platform$(RESET)"
+	@echo "$(CYAN)AI Control Plane Platform$(RESET)"
 	@echo "Docker: $$(docker --version)"
 	@echo "Docker Compose: $$($(DOCKER_COMPOSE) version --short 2>/dev/null || $(DOCKER_COMPOSE) version)"
 	@echo "Kubernetes: $$(kubectl version --client --short 2>/dev/null || echo 'not installed')"

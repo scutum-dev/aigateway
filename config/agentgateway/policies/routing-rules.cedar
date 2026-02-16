@@ -1,5 +1,5 @@
 // =============================================================================
-// Cedar Policies for AI Gateway Model Routing
+// Cedar Policies for AI Control Plane Model Routing
 // =============================================================================
 // These policies control which models can be selected for routing based on
 // cost, latency, budget, and capability constraints.

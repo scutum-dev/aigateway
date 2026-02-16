@@ -1,4 +1,4 @@
-# AI Gateway Platform - GKE Module
+# AI Control Plane Platform - GKE Module
 # Production-ready GKE cluster with GPU support for Mumbai (asia-south1)
 
 terraform {

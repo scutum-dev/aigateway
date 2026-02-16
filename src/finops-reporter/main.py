@@ -1,7 +1,7 @@
 """
 FinOps Reporter Service
 
-A FastAPI service that generates FinOps reports for AI Gateway usage.
+A FastAPI service that generates FinOps reports for AI Control Plane usage.
 Provides cost analytics, budget reports, and usage insights.
 
 Features:
@@ -191,7 +191,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="FinOps Reporter Service",
-    description="Generate cost reports and analytics for AI Gateway",
+    description="Generate cost reports and analytics for AI Control Plane",
     version="1.0.0",
     lifespan=lifespan,
 )

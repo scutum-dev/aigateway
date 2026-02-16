@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "AI Gateway Platform Overview - LLM usage, costs, and performance",
+  "description": "AI Control Plane Platform Overview - LLM usage, costs, and performance",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -995,7 +995,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "AI Gateway Platform Overview",
+  "title": "AI Control Plane Platform Overview",
   "uid": "ai-gateway-overview",
   "version": 1,
   "weekStart": ""

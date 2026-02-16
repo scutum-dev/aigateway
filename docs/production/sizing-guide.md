@@ -9,7 +9,7 @@
 
 ## Overview
 
-This guide provides sizing recommendations for the AI Gateway Platform based on expected workload characteristics. Sizes are categorized into Small, Medium, Large, and Enterprise tiers.
+This guide provides sizing recommendations for the AI Control Plane Platform based on expected workload characteristics. Sizes are categorized into Small, Medium, Large, and Enterprise tiers.
 
 ---
 

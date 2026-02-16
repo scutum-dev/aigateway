@@ -10,7 +10,7 @@
 
 ## Overview
 
-This runbook covers rotation procedures for all secrets in the AI Gateway Platform. Secrets are managed in HashiCorp Vault with automatic rotation where possible.
+This runbook covers rotation procedures for all secrets in the AI Control Plane Platform. Secrets are managed in HashiCorp Vault with automatic rotation where possible.
 
 ## Secret Inventory
 

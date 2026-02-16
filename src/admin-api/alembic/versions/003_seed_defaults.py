@@ -30,7 +30,7 @@ def upgrade() -> None:
     op.execute("""
         INSERT INTO platform_settings (key, value)
         VALUES
-            ('general', '{"platform_name": "AI Gateway", "default_model": "gpt-4o-mini", "max_tokens_default": 4096}'),
+            ('general', '{"platform_name": "AI Control Plane", "default_model": "gpt-4o-mini", "max_tokens_default": 4096}'),
             ('security', '{"require_api_key": true, "allowed_origins": ["*"], "rate_limit_enabled": true}'),
             ('notifications', '{"budget_alerts": true, "error_alerts": true, "slack_webhook": null}')
         ON CONFLICT (key) DO UPDATE SET

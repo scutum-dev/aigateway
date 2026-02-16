@@ -1,0 +1,47 @@
+site_name: AI Control Plane Platform
+site_description: Unified AI infrastructure — 100+ models, 9 providers, intelligent routing, cost management
+site_url: https://aicontrolplane.com/docs
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: indigo
+    accent: indigo
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+nav:
+  - Home: index.md
+  - Guides:
+      - Quickstart: guides/quickstart.md
+      - API Integration: guides/api-integration.md
+      - Model Routing: guides/model-routing.md
+      - Cost Management: guides/cost-management.md
+      - Admin Guide: guides/admin-guide.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+
+plugins:
+  - search

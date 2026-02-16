@@ -1,7 +1,7 @@
 """
 Admin API Service
 
-A FastAPI service providing administrative endpoints for the AI Gateway platform.
+A FastAPI service providing administrative endpoints for the AI Control Plane platform.
 
 Features:
 - JWT authentication (validates against LiteLLM API keys)
@@ -208,8 +208,8 @@ def _run_migrations():
 
 
 app = FastAPI(
-    title="AI Gateway Admin API",
-    description="Administrative API for managing the AI Gateway platform",
+    title="AI Control Plane Admin API",
+    description="Administrative API for managing the AI Control Plane platform",
     version="1.0.0",
     lifespan=lifespan,
 )

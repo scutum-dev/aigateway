@@ -77,7 +77,7 @@ processors:
         value: "1.0.0"
         action: upsert
 
-  # Attributes processor for AI Gateway specific attributes
+  # Attributes processor for AI Control Plane specific attributes
   attributes/ai_gateway:
     actions:
       # Add cost tracking attributes

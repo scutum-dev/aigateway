@@ -1,4 +1,4 @@
-# AI Gateway - Fully Ephemeral Demo Environment
+# AI Control Plane - Fully Ephemeral Demo Environment
 # Single command: terraform apply - creates infra, builds images, deploys services, sets up SSL, seeds data
 # Single command: terraform destroy - tears everything down
 #
@@ -222,7 +222,7 @@ provider "helm" {
 resource "google_artifact_registry_repository" "main" {
   location      = var.region
   repository_id = "gateway-images"
-  description   = "Docker images for AI Gateway"
+  description   = "Docker images for AI Control Plane"
   format        = "DOCKER"
   project       = var.project_id
 }
@@ -773,7 +773,7 @@ output "access_commands" {
   sensitive = true
   value     = <<-EOT
 
-    === AI Gateway ${upper(var.environment)} Environment Ready ===
+    === AI Control Plane ${upper(var.environment)} Environment Ready ===
 
     Gateway URL: https://${var.subdomain}.${var.domain}
     API Key: ${var.litellm_master_key}

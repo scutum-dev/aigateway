@@ -1,5 +1,5 @@
 /**
- * k6 Load Test for AI Gateway Platform
+ * k6 Load Test for AI Control Plane Platform
  *
  * Tests:
  * - Sustained load at 1000+ RPS

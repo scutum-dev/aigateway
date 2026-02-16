@@ -61,7 +61,7 @@ function SidebarContent({
           </div>
         ) : (
           <>
-            <h1 className="text-xl font-bold">AI Gateway</h1>
+            <h1 className="text-xl font-bold">AI Control Plane</h1>
             <p className="text-sm text-gray-400">Admin Console</p>
           </>
         )}

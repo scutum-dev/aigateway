@@ -1,4 +1,4 @@
-# AI Gateway - Multi-Environment Terraform Configuration
+# AI Control Plane - Multi-Environment Terraform Configuration
 #
 # Usage:
 #   make demo      - Deploy demo environment
@@ -57,7 +57,7 @@ data "google_billing_account" "account" {
 
 resource "google_billing_budget" "monthly" {
   billing_account = data.google_billing_account.account.id
-  display_name    = "AI Gateway ${var.environment} Budget"
+  display_name    = "AI Control Plane ${var.environment} Budget"
 
   budget_filter {
     projects = ["projects/${data.google_project.current.number}"]
@@ -101,7 +101,7 @@ locals {
 resource "google_artifact_registry_repository" "main" {
   location      = var.region
   repository_id = "gateway-images"
-  description   = "Docker images for AI Gateway"
+  description   = "Docker images for AI Control Plane"
   format        = "DOCKER"
   project       = var.project_id
 }

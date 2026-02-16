@@ -1,4 +1,4 @@
-# AI Gateway Platform - GCP VPC Module
+# AI Control Plane Platform - GCP VPC Module
 # Production-ready VPC for GKE in Mumbai (asia-south1)
 
 # -----------------------------------------------------------------------------

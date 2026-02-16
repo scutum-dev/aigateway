@@ -51,7 +51,7 @@ case "$ENVIRONMENT" in
     ;;
 esac
 
-echo "=== Initializing Vault for AI Gateway ==="
+echo "=== Initializing Vault for AI Control Plane ==="
 echo "Environment: $ENVIRONMENT"
 echo "Vault Address: $VAULT_ADDR"
 echo "Vault Path Prefix: $VAULT_PATH_PREFIX"

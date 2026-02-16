@@ -36,7 +36,7 @@ features:
   cedar_policies: true
   jwt_authentication: true
 
-  # AI Gateway features
+  # AI Control Plane features
   litellm_enabled: true
   policy_router: true
   cost_predictor: true

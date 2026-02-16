@@ -1,4 +1,4 @@
-# LiteLLM Service for AI Gateway Platform
+# LiteLLM Service for AI Control Plane Platform
 # Namespace and secrets are managed by overlays
 ---
 apiVersion: v1

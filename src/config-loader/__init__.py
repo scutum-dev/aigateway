@@ -1,5 +1,5 @@
 """
-AI Gateway Configuration Loader
+AI Control Plane Configuration Loader
 
 Environment-aware configuration management with Vault integration.
 Loads feature flags and secrets based on the target environment.

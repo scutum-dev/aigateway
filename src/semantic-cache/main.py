@@ -1,5 +1,5 @@
 """
-Semantic Cache Service for AI Gateway Platform.
+Semantic Cache Service for AI Control Plane Platform.
 
 Provides intelligent caching of LLM responses based on semantic similarity
 of prompts using vector embeddings.

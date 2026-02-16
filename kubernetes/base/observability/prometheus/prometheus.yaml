@@ -1,4 +1,4 @@
-# Prometheus for AI Gateway Platform
+# Prometheus for AI Control Plane Platform
 # Namespace is managed by overlays
 ---
 apiVersion: v1

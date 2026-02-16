@@ -1,7 +1,7 @@
 """
 LiteLLM gateway adapter.
 
-Primary adapter for the AI Gateway platform, providing access
+Primary adapter for the AI Control Plane platform, providing access
 to all models through LiteLLM's unified proxy.
 """
 
@@ -23,7 +23,7 @@ class LiteLLMAdapter(AbstractGateway):
     LiteLLM gateway adapter.
 
     Provides access to all models configured in LiteLLM proxy.
-    This is the primary adapter for the AI Gateway platform.
+    This is the primary adapter for the AI Control Plane platform.
     """
 
     def __init__(

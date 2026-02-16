@@ -1,4 +1,4 @@
-# AI Gateway Platform - Prometheus Alerting Rules
+# AI Control Plane Platform - Prometheus Alerting Rules
 # Comprehensive alerts for SLOs, FinOps, and operational health
 
 apiVersion: monitoring.coreos.com/v1

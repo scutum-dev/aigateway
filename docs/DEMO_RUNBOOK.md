@@ -1,4 +1,4 @@
-# AI Gateway Demo Runbook
+# AI Control Plane Demo Runbook
 
 ## Quick Status Check
 
@@ -77,10 +77,10 @@ GET    /api/v1/settings         - Platform settings
 
 | Dashboard | URL | Data Source |
 |-----------|-----|-------------|
-| AI Gateway Overview | /d/ai-gateway-overview | Prometheus |
+| AI Control Plane Overview | /d/ai-gateway-overview | Prometheus |
 | FinOps Cost Tracking | /d/finops-cost-tracking | PostgreSQL |
 
-### AI Gateway Overview shows:
+### AI Control Plane Overview shows:
 - Total Requests, Error Rate, P95 Latency
 - Total Spend, Total Tokens
 - Request Rate by Model (time series)
@@ -211,7 +211,7 @@ curl http://localhost:8085/api/v1/executions/{id} | jq
 
 ### Grafana (http://localhost:3030)
 - Login: admin / admin@123
-- Dashboards: AI Gateway → AI Gateway Overview, FinOps Cost Tracking
+- Dashboards: AI Control Plane → AI Control Plane Overview, FinOps Cost Tracking
 
 ### Prometheus (http://localhost:9090)
 ```promql

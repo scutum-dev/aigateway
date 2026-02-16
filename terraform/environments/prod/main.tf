@@ -1,4 +1,4 @@
-# AI Gateway Platform - Production Environment
+# AI Control Plane Platform - Production Environment
 # Terraform configuration for production deployment
 
 terraform {
@@ -243,7 +243,7 @@ resource "aws_security_group" "redis" {
 
 resource "aws_elasticache_replication_group" "main" {
   replication_group_id = "${var.cluster_name}-redis"
-  description          = "Redis cluster for AI Gateway"
+  description          = "Redis cluster for AI Control Plane"
 
   engine               = "redis"
   engine_version       = "7.1"

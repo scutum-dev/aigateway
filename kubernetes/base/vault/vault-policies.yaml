@@ -33,7 +33,7 @@ data:
     }
 
   platform-team-policy.hcl: |
-    # Platform Team - Manage AI Gateway secrets
+    # Platform Team - Manage AI Control Plane secrets
     path "secret/data/ai-gateway/*" {
       capabilities = ["create", "read", "update", "delete", "list"]
     }
@@ -98,7 +98,7 @@ data:
     }
 
   ai-gateway-app-policy.hcl: |
-    # AI Gateway Application Policy
+    # AI Control Plane Application Policy
     # Used by the gateway pods via Kubernetes auth
     path "secret/data/ai-gateway/providers/*" {
       capabilities = ["read"]
@@ -121,7 +121,7 @@ data:
 
     VAULT_ADDR=${VAULT_ADDR:-"http://127.0.0.1:8200"}
 
-    echo "=== Setting up Vault for AI Gateway ==="
+    echo "=== Setting up Vault for AI Control Plane ==="
 
     # Enable KV v2 secrets engine
     echo "Enabling secrets engine..."
@@ -151,7 +151,7 @@ data:
     vault write auth/kubernetes/config \
       kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443"
 
-    # Create role for AI Gateway application
+    # Create role for AI Control Plane application
     vault write auth/kubernetes/role/ai-gateway \
       bound_service_account_names=agentgateway,litellm \
       bound_service_account_namespaces=agentgateway,litellm \

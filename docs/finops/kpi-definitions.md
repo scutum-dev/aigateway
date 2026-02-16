@@ -10,7 +10,7 @@
 
 ## Overview
 
-This document defines the Key Performance Indicators (KPIs) for AI Gateway Platform cost management. These metrics enable teams to understand, optimize, and govern LLM spending.
+This document defines the Key Performance Indicators (KPIs) for AI Control Plane Platform cost management. These metrics enable teams to understand, optimize, and govern LLM spending.
 
 ---
 
@@ -414,7 +414,7 @@ Savings Ratio = 1 - (Self-hosted Cost / Equivalent API Cost)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          AI Gateway FinOps Dashboard                         │
+│                          AI Control Plane FinOps Dashboard                         │
 ├─────────────┬─────────────┬─────────────┬─────────────┬─────────────────────┤
 │ Total Spend │ Cost/Request│ Budget Used │ Cache Hit % │    Burn Rate        │
 │   (24h)     │    (avg)    │   (month)   │             │  (days remaining)   │

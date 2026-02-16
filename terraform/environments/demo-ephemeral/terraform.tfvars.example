@@ -1,4 +1,4 @@
-# AI Gateway Demo - Complete Configuration
+# AI Control Plane Demo - Complete Configuration
 # Copy to terraform.tfvars and fill in your values
 project_id = "your-gcp-project-id"
 region     = "asia-south1"

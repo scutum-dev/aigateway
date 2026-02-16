@@ -1,4 +1,4 @@
-# AI Gateway - Demo Environment Configuration
+# AI Control Plane - Demo Environment Configuration
 #
 # Usage:
 #   1. Copy this file: cp demo.tfvars.example demo.tfvars

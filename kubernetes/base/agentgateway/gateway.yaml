@@ -1,4 +1,4 @@
-# Agent Gateway Deployment for AI Gateway Platform
+# Agent Gateway Deployment for AI Control Plane Platform
 # Namespace and secrets are managed by overlays
 ---
 apiVersion: v1

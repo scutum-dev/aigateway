@@ -1,4 +1,4 @@
-# AI Gateway - Variables
+# AI Control Plane - Variables
 # Environment-specific values are set in *.tfvars files
 
 # =============================================================================

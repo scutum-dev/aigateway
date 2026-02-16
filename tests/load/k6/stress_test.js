@@ -1,5 +1,5 @@
 /**
- * k6 Stress Test for AI Gateway Platform
+ * k6 Stress Test for AI Control Plane Platform
  *
  * Purpose: Find the breaking point of the system
  *

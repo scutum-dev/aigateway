@@ -1,4 +1,4 @@
-# AI Gateway Platform - GCP Production Environment (Mumbai)
+# AI Control Plane Platform - GCP Production Environment (Mumbai)
 # Terraform configuration for production deployment on GKE
 
 terraform {

@@ -1,4 +1,4 @@
-# AI Gateway - Demo Environment
+# AI Control Plane - Demo Environment
 # Ephemeral GKE Autopilot + Persistent Cloud SQL
 #
 # Usage:

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# AI Gateway Interactive Demo Script
+# AI Control Plane Interactive Demo Script
 #
 # Usage: ./scripts/demo.sh [scenario]
 #

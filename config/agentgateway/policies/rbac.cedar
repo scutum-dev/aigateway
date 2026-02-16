@@ -1,5 +1,5 @@
 // ============================================================================
-// AI Gateway Platform - Cedar RBAC Policies
+// AI Control Plane Platform - Cedar RBAC Policies
 // Version: 1.0
 //
 // Cedar Policy Language: https://www.cedarpolicy.com/
@@ -7,7 +7,7 @@
 // ============================================================================
 
 // ============================================================================
-// NAMESPACE: AI Gateway
+// NAMESPACE: AI Control Plane
 // ============================================================================
 
 namespace AIGateway {

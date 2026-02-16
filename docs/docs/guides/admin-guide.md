@@ -270,7 +270,7 @@ All settings changes take effect immediately -- no restart is required.
 
 ## Related Guides
 
-- [Quickstart Guide](./QUICKSTART.md) -- get the platform running in 5 minutes
-- [API Integration Guide](./API_INTEGRATION.md) -- code examples for all languages
-- [Model Routing Guide](./MODEL_ROUTING.md) -- understand how models are selected
-- [Cost Management Guide](./COST_MANAGEMENT.md) -- budgets, alerts, and FinOps reporting
+- [Quickstart Guide](./quickstart.md) -- get the platform running in 5 minutes
+- [API Integration Guide](./api-integration.md) -- code examples for all languages
+- [Model Routing Guide](./model-routing.md) -- understand how models are selected
+- [Cost Management Guide](./cost-management.md) -- budgets, alerts, and FinOps reporting

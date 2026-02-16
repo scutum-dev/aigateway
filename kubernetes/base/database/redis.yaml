@@ -1,4 +1,4 @@
-# Redis Deployment for AI Gateway Platform
+# Redis Deployment for AI Control Plane Platform
 # Used for LiteLLM caching
 ---
 apiVersion: apps/v1

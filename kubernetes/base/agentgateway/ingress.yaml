@@ -1,4 +1,4 @@
-# Nginx Ingress for AI Gateway Platform
+# Nginx Ingress for AI Control Plane Platform
 # This ingress provides:
 # - TLS termination with cert-manager
 # - Path-based routing to internal services

@@ -1,5 +1,5 @@
 """
-Temporal A2A Runtime Service for AI Gateway Platform.
+Temporal A2A Runtime Service for AI Control Plane Platform.
 
 Provides agent-to-agent orchestration using Temporal workflows for:
 - Durable agent execution with automatic retries

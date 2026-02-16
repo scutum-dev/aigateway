@@ -180,7 +180,7 @@ docker compose logs admin-api
 
 ## Next Steps
 
-- [API Integration Guide](./API_INTEGRATION.md) -- code examples in Python, TypeScript, Go, and curl
-- [Model Routing Guide](./MODEL_ROUTING.md) -- understand how models are selected and routed
-- [Cost Management Guide](./COST_MANAGEMENT.md) -- set up budgets, alerts, and cost optimization
-- [Admin UI Guide](./ADMIN_GUIDE.md) -- detailed walkthrough of every admin console page
+- [API Integration Guide](./api-integration.md) -- code examples in Python, TypeScript, Go, and curl
+- [Model Routing Guide](./model-routing.md) -- understand how models are selected and routed
+- [Cost Management Guide](./cost-management.md) -- set up budgets, alerts, and cost optimization
+- [Admin UI Guide](./admin-guide.md) -- detailed walkthrough of every admin console page

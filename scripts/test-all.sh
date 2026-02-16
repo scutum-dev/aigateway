@@ -1,5 +1,5 @@
 #!/bin/bash
-# Comprehensive test script for AI Gateway Platform
+# Comprehensive test script for AI Control Plane Platform
 # Tests all features: LLM routing, cost tracking, Vault, etc.
 # Works without vault CLI - uses curl API calls
 
@@ -59,7 +59,7 @@ skip_test() {
 
 echo ""
 echo -e "${BLUE}══════════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}           AI Gateway Platform - Test Suite                   ${NC}"
+echo -e "${BLUE}           AI Control Plane Platform - Test Suite                   ${NC}"
 echo -e "${BLUE}══════════════════════════════════════════════════════════════${NC}"
 echo ""
 

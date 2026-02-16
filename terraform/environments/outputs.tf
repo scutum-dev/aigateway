@@ -1,4 +1,4 @@
-# AI Gateway - Outputs
+# AI Control Plane - Outputs
 
 output "cluster_name" {
   description = "GKE cluster name"
@@ -81,7 +81,7 @@ output "access_commands" {
   sensitive   = true
   value       = <<-EOT
 
-    === AI Gateway ${upper(var.environment)} Environment Ready ===
+    === AI Control Plane ${upper(var.environment)} Environment Ready ===
 
     Gateway URL: https://${local.full_domain}
     API Key: ${var.litellm_master_key}

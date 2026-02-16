@@ -1,4 +1,4 @@
-# AI Gateway Platform - VPC Module
+# AI Control Plane Platform - VPC Module
 # Production-ready VPC with multi-AZ support
 
 terraform {

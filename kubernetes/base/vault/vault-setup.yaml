@@ -1,4 +1,4 @@
-# Vault Installation and Configuration for AI Gateway
+# Vault Installation and Configuration for AI Control Plane
 # Includes team-based RBAC policies
 apiVersion: v1
 kind: Namespace

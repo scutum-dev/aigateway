@@ -1,4 +1,4 @@
-# AI Gateway - Shared Configuration
+# AI Control Plane - Shared Configuration
 #
 # Copy this file to terraform.tfvars and fill in your values.
 # These values are used across all environments (demo, staging, prod).

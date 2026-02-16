@@ -290,4 +290,4 @@ curl http://localhost:8086/api/v1/budgets \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-See the [Admin UI Guide](./ADMIN_GUIDE.md) for the full Admin API reference and the web console walkthrough.
+See the [Admin UI Guide](./admin-guide.md) for the full Admin API reference and the web console walkthrough.

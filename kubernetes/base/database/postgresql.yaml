@@ -1,4 +1,4 @@
-# PostgreSQL StatefulSet for AI Gateway Platform
+# PostgreSQL StatefulSet for AI Control Plane Platform
 # Namespace and secrets are managed by overlays
 ---
 apiVersion: v1

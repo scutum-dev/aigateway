@@ -1,4 +1,4 @@
-# AI Gateway - Terraform Backend Configuration
+# AI Control Plane - Terraform Backend Configuration
 #
 # Uses GCS backend with prefix for multi-environment state isolation.
 # The prefix is set via -backend-config during terraform init:

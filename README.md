@@ -1,4 +1,4 @@
-# AI Gateway Platform
+# AI Control Plane Platform
 
 A unified AI infrastructure platform with 100+ models across 9 providers. Features intelligent routing, workflow orchestration, semantic caching, and enterprise-grade cost management.
 
@@ -458,7 +458,7 @@ pytest e2e/ -v
 ## Monitoring
 
 ### Grafana Dashboards
-- **AI Gateway Overview** - Request rates, latencies, costs
+- **AI Control Plane Overview** - Request rates, latencies, costs
 - **vLLM Performance** - GPU utilization, queue depth
 - **Budget Alerts** - Budget utilization by user/team
 - **Workflow Metrics** - Execution counts, durations, costs

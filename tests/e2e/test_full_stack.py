@@ -1,5 +1,5 @@
 """
-End-to-End tests for the complete AI Gateway stack.
+End-to-End tests for the complete AI Control Plane stack.
 
 These tests verify the full request flow from client through
 LiteLLM -> Agent Gateway -> LLM Provider/vLLM.

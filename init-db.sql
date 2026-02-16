@@ -1,4 +1,4 @@
--- Initialize databases for AI Gateway Platform
+-- Initialize databases for AI Control Plane Platform
 -- This runs when postgres container starts fresh
 
 -- Create LiteLLM database and user
@@ -309,4 +309,4 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- Done
-SELECT 'AI Gateway database initialized successfully' as status;
+SELECT 'AI Control Plane database initialized successfully' as status;

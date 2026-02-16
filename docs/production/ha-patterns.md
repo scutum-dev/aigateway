@@ -9,7 +9,7 @@
 
 ## Overview
 
-This document describes high availability (HA) patterns for the AI Gateway Platform, covering single-region HA, multi-region deployment, and disaster recovery strategies.
+This document describes high availability (HA) patterns for the AI Control Plane Platform, covering single-region HA, multi-region deployment, and disaster recovery strategies.
 
 ---
 
@@ -166,7 +166,7 @@ spec:
     │   (PRIMARY)       │       │   (SECONDARY)       │       │   (SECONDARY)     │
     │                   │       │                     │       │                   │
     │  ┌─────────────┐  │       │  ┌─────────────┐   │       │  ┌─────────────┐  │
-    │  │ AI Gateway  │  │       │  │ AI Gateway  │   │       │  │ AI Gateway  │  │
+    │  │ AI Control Plane  │  │       │  │ AI Control Plane  │   │       │  │ AI Control Plane  │  │
     │  │   Stack     │  │       │  │   Stack     │   │       │  │   Stack     │  │
     │  └─────────────┘  │       │  └─────────────┘   │       │  └─────────────┘  │
     │                   │       │                     │       │                   │

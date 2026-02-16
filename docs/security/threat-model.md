@@ -1,4 +1,4 @@
-# AI Gateway Platform - Threat Model
+# AI Control Plane Platform - Threat Model
 
 ## Document Information
 | Field | Value |

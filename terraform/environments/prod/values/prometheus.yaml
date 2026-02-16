@@ -1,4 +1,4 @@
-# Prometheus Stack Values for AI Gateway Production
+# Prometheus Stack Values for AI Control Plane Production
 # kube-prometheus-stack Helm chart configuration
 
 # Global configuration
@@ -29,7 +29,7 @@ prometheus:
             requests:
               storage: 100Gi
 
-    # Additional scrape configs for AI Gateway
+    # Additional scrape configs for AI Control Plane
     additionalScrapeConfigs:
       - job_name: 'litellm'
         kubernetes_sd_configs:
@@ -116,7 +116,7 @@ grafana:
       providers:
         - name: 'ai-gateway'
           orgId: 1
-          folder: 'AI Gateway'
+          folder: 'AI Control Plane'
           type: file
           disableDeletion: true
           editable: false

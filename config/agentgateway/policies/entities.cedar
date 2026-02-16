@@ -1,9 +1,9 @@
 // ============================================================================
-// AI Gateway Platform - Cedar Entity Definitions
+// AI Control Plane Platform - Cedar Entity Definitions
 // Version: 1.0
 // Last Updated: 2026-02
 //
-// Entity instances for the AI Gateway Cedar policies
+// Entity instances for the AI Control Plane Cedar policies
 // In production, these are dynamically loaded from PostgreSQL/Vault
 // ============================================================================
 

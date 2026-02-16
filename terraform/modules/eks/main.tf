@@ -1,4 +1,4 @@
-# AI Gateway Platform - EKS Module
+# AI Control Plane Platform - EKS Module
 # Production-ready EKS cluster with GPU support
 
 terraform {
