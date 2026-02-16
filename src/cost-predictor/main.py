@@ -66,8 +66,11 @@ def get_cors_origins() -> list[str]:
     return [
         "http://localhost:5173",
         "http://localhost:3000",
+        "http://localhost:6001",
+        "http://localhost:9999",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
+        "http://127.0.0.1:6001",
     ]
 
 # Model pricing (cost per 1M tokens)
@@ -77,13 +80,32 @@ MODEL_PRICING = {
     "llama-3.1-70b": {"input": Decimal("0.10"), "output": Decimal("0.30")},
     "llama-3.1-8b": {"input": Decimal("0.05"), "output": Decimal("0.15")},
     # OpenAI models
-    "gpt-4o": {"input": Decimal("2.50"), "output": Decimal("10.00")},
+    "gpt-5-mini": {"input": Decimal("0.15"), "output": Decimal("0.60")},
     "gpt-4o-mini": {"input": Decimal("0.15"), "output": Decimal("0.60")},
+    "gpt-5": {"input": Decimal("2.50"), "output": Decimal("10.00")},
+    "gpt-4o": {"input": Decimal("2.50"), "output": Decimal("10.00")},
+    "gpt-5.2": {"input": Decimal("5.00"), "output": Decimal("15.00")},
     "gpt-4-turbo": {"input": Decimal("10.00"), "output": Decimal("30.00")},
+    "o3": {"input": Decimal("10.00"), "output": Decimal("40.00")},
+    "o3-pro": {"input": Decimal("12.00"), "output": Decimal("48.00")},
+    "o4-mini": {"input": Decimal("1.10"), "output": Decimal("4.40")},
     # Anthropic models
+    "claude-haiku-4.5": {"input": Decimal("0.80"), "output": Decimal("4.00")},
+    "claude-sonnet-4.5": {"input": Decimal("3.00"), "output": Decimal("15.00")},
+    "claude-sonnet-4": {"input": Decimal("3.00"), "output": Decimal("15.00")},
+    "claude-opus-4.5": {"input": Decimal("15.00"), "output": Decimal("75.00")},
+    "claude-opus-4": {"input": Decimal("15.00"), "output": Decimal("75.00")},
     "claude-3-5-sonnet": {"input": Decimal("3.00"), "output": Decimal("15.00")},
     "claude-3-opus": {"input": Decimal("15.00"), "output": Decimal("75.00")},
     "claude-3-haiku": {"input": Decimal("0.25"), "output": Decimal("1.25")},
+    # xAI models
+    "grok-3-mini": {"input": Decimal("0.30"), "output": Decimal("0.50")},
+    "grok-3": {"input": Decimal("2.00"), "output": Decimal("10.00")},
+    "grok-4": {"input": Decimal("3.00"), "output": Decimal("15.00")},
+    "grok-4-heavy": {"input": Decimal("5.00"), "output": Decimal("25.00")},
+    # DeepSeek models
+    "deepseek-chat": {"input": Decimal("0.27"), "output": Decimal("1.10")},
+    "deepseek-coder": {"input": Decimal("0.14"), "output": Decimal("0.28")},
 }
 
 # Token encoding cache
@@ -273,14 +295,55 @@ def get_model_pricing(model: str) -> dict[str, Decimal]:
     return {"input": Decimal("1.00"), "output": Decimal("3.00")}
 
 
-def estimate_output_tokens(input_tokens: int, max_tokens: Optional[int]) -> int:
-    """Estimate output tokens based on input and max_tokens setting."""
-    if max_tokens:
-        # Use max_tokens as upper bound, estimate 60% usage
-        return int(max_tokens * 0.6)
+def estimate_output_tokens(input_tokens: int, max_tokens: Optional[int], model: str = "") -> int:
+    """Estimate output tokens using model-specific verbosity profiles.
 
-    # Heuristic: output is typically 1-2x input for conversational
-    return min(input_tokens * 2, 4096)
+    Different model families have different output characteristics:
+    - Reasoning models (o3, o4) produce chain-of-thought, using more tokens
+    - Large/opus models tend to give detailed, verbose answers
+    - Mini/haiku models are concise
+    - Standard models fall in between
+    """
+    model_lower = model.lower()
+
+    # Model-specific utilization rates (fraction of max_tokens typically used)
+    # and verbosity multipliers (output/input ratio when max_tokens not set)
+    profiles = {
+        # Reasoning models: heavy chain-of-thought, use most of budget
+        "o3":           {"utilization": 0.85, "multiplier": 4.0},
+        "o3-pro":       {"utilization": 0.90, "multiplier": 5.0},
+        "o4-mini":      {"utilization": 0.75, "multiplier": 3.5},
+        # Powerful/verbose models
+        "opus":         {"utilization": 0.70, "multiplier": 3.0},
+        "gpt-5.2":      {"utilization": 0.65, "multiplier": 2.5},
+        "grok-4-heavy": {"utilization": 0.65, "multiplier": 2.5},
+        # Standard models
+        "gpt-5":        {"utilization": 0.55, "multiplier": 2.0},
+        "gpt-4o":       {"utilization": 0.55, "multiplier": 2.0},
+        "sonnet":       {"utilization": 0.55, "multiplier": 2.0},
+        "grok-4":       {"utilization": 0.55, "multiplier": 2.0},
+        "grok-3":       {"utilization": 0.50, "multiplier": 1.8},
+        # Fast/concise models
+        "mini":         {"utilization": 0.40, "multiplier": 1.5},
+        "haiku":        {"utilization": 0.35, "multiplier": 1.2},
+        "grok-3-mini":  {"utilization": 0.40, "multiplier": 1.5},
+    }
+
+    # Find matching profile (check specific names first, then partial match)
+    profile = None
+    for key in sorted(profiles.keys(), key=len, reverse=True):
+        if key in model_lower:
+            profile = profiles[key]
+            break
+
+    if profile is None:
+        profile = {"utilization": 0.55, "multiplier": 2.0}
+
+    if max_tokens:
+        return int(max_tokens * profile["utilization"])
+
+    # No max_tokens: estimate from input length with model verbosity
+    return min(int(input_tokens * profile["multiplier"]), 4096)
 
 
 @app.get("/health")
@@ -320,7 +383,7 @@ async def predict_cost(
         span.set_attribute("input_tokens", input_tokens)
 
         # Estimate output tokens
-        estimated_output = estimate_output_tokens(input_tokens, request.max_tokens)
+        estimated_output = estimate_output_tokens(input_tokens, request.max_tokens, request.model)
         span.set_attribute("estimated_output_tokens", estimated_output)
 
         # Get pricing

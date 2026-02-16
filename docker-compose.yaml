@@ -424,8 +424,9 @@ services:
     environment:
       REDIS_URL: redis://redis:6379
       LITELLM_URL: http://litellm:4000
+      LITELLM_API_KEY: ${LITELLM_MASTER_KEY:-$LITELLM_KEY}
       EMBEDDING_MODEL: text-embedding-3-small
-      SIMILARITY_THRESHOLD: "0.92"
+      SIMILARITY_THRESHOLD: "0.90"
       CACHE_TTL_SECONDS: "3600"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
@@ -552,6 +553,38 @@ services:
     container_name: landing-ui
     ports:
       - "${LANDING_UI_PORT:-9999}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
+  docs-site:
+    build:
+      context: ./docs
+      dockerfile: Dockerfile
+    container_name: docs-site
+    ports:
+      - "${DOCS_SITE_PORT:-8089}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
+  playground-ui:
+    build:
+      context: ./ui/playground
+      dockerfile: Dockerfile
+    container_name: playground-ui
+    ports:
+      - "${PLAYGROUND_UI_PORT:-6001}:80"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
       interval: 10s

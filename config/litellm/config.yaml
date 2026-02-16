@@ -793,6 +793,24 @@ model_list:
       mode: "audio_speech"
 
   # Embeddings
+  - model_name: "text-embedding-3-small"
+    litellm_params:
+      model: "openai/text-embedding-3-small"
+      api_key: "os.environ/OPENAI_API_KEY"
+      timeout: 60
+    model_info:
+      id: "text-embedding-3-small"
+      mode: "embedding"
+
+  - model_name: "text-embedding-3-large"
+    litellm_params:
+      model: "openai/text-embedding-3-large"
+      api_key: "os.environ/OPENAI_API_KEY"
+      timeout: 60
+    model_info:
+      id: "text-embedding-3-large"
+      mode: "embedding"
+
   - model_name: "azure-text-embedding-3-large"
     litellm_params:
       model: "azure/text-embedding-3-large"

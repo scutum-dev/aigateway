@@ -40,6 +40,7 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 SIMILARITY_THRESHOLD = float(os.getenv("SIMILARITY_THRESHOLD", "0.92"))
 CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "3600"))
 MAX_CACHE_ENTRIES = int(os.getenv("MAX_CACHE_ENTRIES", "10000"))
+LITELLM_API_KEY = os.getenv("LITELLM_API_KEY", "")
 OTEL_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
 
 # OpenTelemetry setup
@@ -184,8 +185,9 @@ async def get_embedding(text: str, api_key: Optional[str] = None) -> List[float]
         span.set_attribute("text_length", len(text))
 
         headers = {"Content-Type": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
+        key = api_key or LITELLM_API_KEY
+        if key:
+            headers["Authorization"] = f"Bearer {key}"
 
         try:
             response = await http_client.post(
