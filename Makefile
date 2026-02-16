@@ -301,6 +301,9 @@ _build: ## Build and push Docker images to Artifact Registry
 	echo "Building landing-ui..." && \
 	docker build $$PLATFORM_FLAG -t $$REPO/landing-ui:latest ./ui/landing && \
 	docker push $$REPO/landing-ui:latest && \
+	echo "Building docs-site..." && \
+	docker build $$PLATFORM_FLAG -t $$REPO/docs-site:latest ./docs && \
+	docker push $$REPO/docs-site:latest && \
 	echo "$(GREEN)✓ Images built and pushed$(RESET)"
 
 _wait: ## Wait for services to be ready (after images are built)
@@ -322,17 +325,18 @@ _wait: ## Wait for services to be ready (after images are built)
 	kubectl -n $$NAMESPACE set image deployment/workflow-engine workflow-engine=$$REPO/workflow-engine:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/semantic-cache semantic-cache=$$REPO/semantic-cache:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/landing-ui landing-ui=$$REPO/landing-ui:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/docs-site docs-site=$$REPO/docs-site:latest || true && \
 	echo "Restarting landing-ui to pick up ConfigMap..." && \
 	kubectl -n $$NAMESPACE rollout restart deployment/landing-ui && \
 	echo "Restarting other deployments..." && \
-	kubectl -n $$NAMESPACE rollout restart deployment/admin-api deployment/admin-ui deployment/cost-predictor deployment/policy-router deployment/workflow-engine deployment/semantic-cache || true && \
+	kubectl -n $$NAMESPACE rollout restart deployment/admin-api deployment/admin-ui deployment/docs-site deployment/cost-predictor deployment/policy-router deployment/workflow-engine deployment/semantic-cache || true && \
 	echo "Waiting for core pods..." && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=postgresql --timeout=300s && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=redis --timeout=300s && \
-	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=litellm --timeout=300s && \
-	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=admin-api --timeout=300s && \
-	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=admin-ui --timeout=300s && \
-	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=landing-ui --timeout=300s && \
+	kubectl -n $$NAMESPACE rollout status deployment/litellm -n $$NAMESPACE --timeout=300s && \
+	kubectl -n $$NAMESPACE rollout status deployment/admin-api -n $$NAMESPACE --timeout=300s && \
+	kubectl -n $$NAMESPACE rollout status deployment/admin-ui -n $$NAMESPACE --timeout=300s && \
+	kubectl -n $$NAMESPACE rollout status deployment/landing-ui -n $$NAMESPACE --timeout=300s && \
 	echo "$(GREEN)✓ All services ready$(RESET)"
 
 _seed: ## Seed demo data (skipped for prod)
@@ -366,10 +370,21 @@ redeploy-k8s: ## Force re-apply Kubernetes manifests (ENV=demo|staging|prod)
 	kubectl kustomize kubernetes/overlays/$$OVERLAY | kubectl apply -f - && \
 	echo "Injecting API key into landing-config..." && \
 	sed "s/LITELLM_MASTER_KEY_PLACEHOLDER/$$API_KEY/g" kubernetes/base/litellm/landing-config.yaml | kubectl apply -n $$NAMESPACE -f - && \
-	echo "Updating landing-ui image..." && \
+	echo "Updating custom service images..." && \
 	REPO=$$(cd $(TF_DIR) && terraform output -raw artifact_registry) && \
-	kubectl -n $$NAMESPACE set image deployment/landing-ui landing-ui=$$REPO/landing-ui:latest && \
-	kubectl -n $$NAMESPACE rollout status deployment/landing-ui && \
+	kubectl -n $$NAMESPACE set image deployment/admin-api admin-api=$$REPO/admin-api:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/admin-ui admin-ui=$$REPO/admin-ui:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/cost-predictor cost-predictor=$$REPO/cost-predictor:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/policy-router policy-router=$$REPO/policy-router:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/workflow-engine workflow-engine=$$REPO/workflow-engine:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/semantic-cache semantic-cache=$$REPO/semantic-cache:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/landing-ui landing-ui=$$REPO/landing-ui:latest || true && \
+	echo "Restarting custom deployments..." && \
+	kubectl -n $$NAMESPACE rollout restart deployment/admin-api deployment/admin-ui deployment/landing-ui deployment/cost-predictor deployment/policy-router deployment/workflow-engine deployment/semantic-cache || true && \
+	echo "Waiting for core services..." && \
+	kubectl -n $$NAMESPACE rollout status deployment/admin-api --timeout=120s && \
+	kubectl -n $$NAMESPACE rollout status deployment/admin-ui --timeout=120s && \
+	kubectl -n $$NAMESPACE rollout status deployment/landing-ui --timeout=120s && \
 	echo "$(GREEN)✓ Kubernetes manifests re-applied$(RESET)"
 
 # Destroy targets

@@ -5,6 +5,7 @@ import type { UserInfo } from './types'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import APIKeys from './pages/APIKeys'
 import Models from './pages/Models'
 import Budgets from './pages/Budgets'
 import Teams from './pages/Teams'
@@ -62,6 +63,7 @@ function App() {
     <Layout onLogout={handleLogout} user={user}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/api-keys" element={<APIKeys />} />
         <Route path="/models" element={<Models />} />
         <Route path="/budgets" element={<Budgets />} />
         <Route path="/teams" element={<Teams />} />

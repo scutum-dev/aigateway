@@ -3,3 +3,4 @@ kind: Kustomization
 
 resources:
   - all-services.yaml
+  - admin-api-rbac.yaml

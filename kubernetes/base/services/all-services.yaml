@@ -17,10 +17,10 @@ spec:
       labels:
         app: admin-api
     spec:
+      serviceAccountName: admin-api
       containers:
         - name: admin-api
-          image: python:3.11-slim
-          command: ["sh", "-c", "pip install fastapi uvicorn asyncpg httpx python-jose && echo 'Admin API placeholder' && sleep infinity"]
+          image: admin-api:latest  # Replaced by Makefile
           ports:
             - containerPort: 8086
           env:
@@ -34,6 +34,10 @@ spec:
                 secretKeyRef:
                   name: gateway-secrets
                   key: LITELLM_MASTER_KEY
+            - name: LITELLM_URL
+              value: "http://litellm:4000"
+            - name: WORKFLOW_ENGINE_URL
+              value: "http://workflow-engine:8085"
           resources:
             requests:
               cpu: 100m
@@ -661,7 +665,7 @@ spec:
     spec:
       containers:
         - name: admin-ui
-          image: nginx:alpine
+          image: admin-ui:latest  # Replaced by Makefile
           ports:
             - containerPort: 80
           resources:
@@ -936,3 +940,46 @@ spec:
       targetPort: 80
   selector:
     app: landing-ui
+---
+# Docs Site
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docs-site
+  labels:
+    app: docs-site
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docs-site
+  template:
+    metadata:
+      labels:
+        app: docs-site
+    spec:
+      containers:
+        - name: docs-site
+          image: docs-site:latest  # Replaced by Makefile
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docs-site
+  labels:
+    app: docs-site
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: docs-site

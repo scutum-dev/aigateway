@@ -5,6 +5,7 @@ import {
   budgetsApi,
   teamsApi,
   mcpServersApi,
+  keysApi,
   workflowsApi,
   metricsApi,
   settingsApi,
@@ -20,7 +21,19 @@ import type {
   TeamMemberAdd,
   MCPServerConfig,
   MCPServerCreate,
+  MCPServerUpdate,
+  MCPTestResult,
+  GatewaySyncResult,
+  GatewayConfigPreview,
   WorkflowSummary,
+  WorkflowCreate,
+  WorkflowExecuteRequest,
+  WorkflowExecutionSummary,
+  WorkflowExecutionDetail,
+  KeyGenerateRequest,
+  KeyGenerateResponse,
+  KeyUpdateRequest,
+  KeyDeleteRequest,
   RealtimeMetrics,
   PlatformSettings,
   RoutingPolicy,
@@ -147,11 +160,133 @@ export function useCreateMCPServer() {
   })
 }
 
+export function useUpdateMCPServer() {
+  const queryClient = useQueryClient()
+  return useMutation<MCPServerConfig, Error, { id: string; data: MCPServerUpdate }>({
+    mutationFn: ({ id, data }) => mcpServersApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mcp-servers'] })
+    },
+  })
+}
+
+export function useDeleteMCPServer() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: mcpServersApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mcp-servers'] })
+    },
+  })
+}
+
+export function useTestMCPServer() {
+  return useMutation<MCPTestResult, Error, string>({
+    mutationFn: mcpServersApi.test,
+  })
+}
+
+export function useSyncMCPToGateway() {
+  const queryClient = useQueryClient()
+  return useMutation<GatewaySyncResult, Error>({
+    mutationFn: mcpServersApi.sync,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mcp-servers'] })
+    },
+  })
+}
+
+export function useGatewayConfigPreview() {
+  return useQuery<GatewayConfigPreview>({
+    queryKey: ['mcp-servers', 'gateway-preview'],
+    queryFn: mcpServersApi.previewConfig,
+    enabled: false, // only fetch on demand
+  })
+}
+
+// API Keys hooks
+export function useAPIKeys() {
+  return useQuery<unknown>({
+    queryKey: ['api-keys'],
+    queryFn: keysApi.list,
+  })
+}
+
+export function useGenerateKey() {
+  const queryClient = useQueryClient()
+  return useMutation<KeyGenerateResponse, Error, KeyGenerateRequest>({
+    mutationFn: keysApi.generate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['api-keys'] })
+    },
+  })
+}
+
+export function useUpdateKey() {
+  const queryClient = useQueryClient()
+  return useMutation<unknown, Error, KeyUpdateRequest>({
+    mutationFn: keysApi.update,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['api-keys'] })
+    },
+  })
+}
+
+export function useDeleteKey() {
+  const queryClient = useQueryClient()
+  return useMutation<unknown, Error, KeyDeleteRequest>({
+    mutationFn: keysApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['api-keys'] })
+    },
+  })
+}
+
 // Workflows hooks
 export function useWorkflows() {
   return useQuery<WorkflowSummary[]>({
     queryKey: ['workflows'],
     queryFn: workflowsApi.list,
+  })
+}
+
+export function useCreateWorkflow() {
+  const queryClient = useQueryClient()
+  return useMutation<WorkflowSummary, Error, WorkflowCreate>({
+    mutationFn: workflowsApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflows'] })
+    },
+  })
+}
+
+export function useWorkflowExecutions() {
+  return useQuery<WorkflowExecutionSummary[]>({
+    queryKey: ['workflow-executions'],
+    queryFn: workflowsApi.listExecutions,
+    refetchInterval: 10000,
+  })
+}
+
+export function useWorkflowExecution(executionId: string | null) {
+  return useQuery<WorkflowExecutionDetail>({
+    queryKey: ['workflow-executions', executionId],
+    queryFn: () => workflowsApi.getExecution(executionId!),
+    enabled: !!executionId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      return status === 'running' || status === 'pending' ? 2000 : false
+    },
+  })
+}
+
+export function useExecuteWorkflow() {
+  const queryClient = useQueryClient()
+  return useMutation<unknown, Error, WorkflowExecuteRequest>({
+    mutationFn: workflowsApi.execute,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflow-executions'] })
+    },
   })
 }
 

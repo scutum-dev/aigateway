@@ -21,7 +21,7 @@ variable "region" {
 # =============================================================================
 
 variable "aws_region" {
-  description = "AWS region for Route53 and Bedrock"
+  description = "AWS region for Bedrock"
   type        = string
   default     = "ap-south-1"
 }
@@ -31,21 +31,21 @@ variable "aws_region" {
 # =============================================================================
 
 variable "domain" {
-  description = "Base domain (must exist in Route53)"
+  description = "Base domain"
   type        = string
-  default     = "deos.dev"
+  default     = "aicontrolplane.dev"
 }
 
 variable "subdomain" {
-  description = "Subdomain for gateway"
+  description = "Subdomain for API"
   type        = string
-  default     = "gateway"
+  default     = "api"
 }
 
 variable "letsencrypt_email" {
   description = "Email for Let's Encrypt certificates"
   type        = string
-  default     = "admin@deos.dev"
+  default     = "admin@aicontrolplane.dev"
 }
 
 # =============================================================================

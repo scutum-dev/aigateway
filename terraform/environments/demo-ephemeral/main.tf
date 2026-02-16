@@ -120,21 +120,21 @@ variable "aws_region" {
 }
 
 variable "domain" {
-  description = "Base domain (must exist in Route53)"
+  description = "Base domain"
   type        = string
-  default     = "deos.dev"
+  default     = "aicontrolplane.dev"
 }
 
 variable "subdomain" {
-  description = "Subdomain for gateway"
+  description = "Subdomain for API"
   type        = string
-  default     = "gateway"
+  default     = "api"
 }
 
 variable "letsencrypt_email" {
   description = "Email for Let's Encrypt certificates"
   type        = string
-  default     = "admin@deos.dev"
+  default     = "admin@aicontrolplane.dev"
 }
 
 variable "grafana_password" {
@@ -470,6 +470,12 @@ resource "helm_release" "cert_manager" {
     value = "cert-manager"
   }
 
+  # Use public DNS for HTTP-01 self-checks (GKE NodeLocal DNS can cache NXDOMAIN)
+  set {
+    name  = "extraArgs[0]"
+    value = "--acme-http01-solver-nameservers=8.8.8.8:53\\,8.8.4.4:53"
+  }
+
   wait = true
 }
 
@@ -658,16 +664,19 @@ resource "null_resource" "seed_demo_data" {
 }
 
 # =============================================================================
-# AWS Route53 DNS
+# Cloud DNS
 # =============================================================================
 
-data "aws_route53_zone" "main" {
-  name = "${var.domain}."
+resource "google_dns_managed_zone" "main" {
+  name        = "aicontrolplane-dev"
+  dns_name    = "${var.domain}."
+  description = "AI Control Plane DNS zone"
+  project     = var.project_id
 }
 
-# Wait for LoadBalancer IP and update Route53
-resource "null_resource" "update_route53" {
-  depends_on = [helm_release.nginx_ingress]
+# Wait for LoadBalancer IP and create DNS A records
+resource "null_resource" "update_dns" {
+  depends_on = [helm_release.nginx_ingress, google_dns_managed_zone.main]
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -677,24 +686,26 @@ resource "null_resource" "update_route53" {
         if [ -n "$LB_IP" ] && [ "$LB_IP" != "null" ]; then
           echo "Got LoadBalancer IP: $LB_IP"
 
-          # Update Route53 A record
-          aws route53 change-resource-record-sets \
-            --hosted-zone-id ${data.aws_route53_zone.main.zone_id} \
-            --change-batch '{
-              "Changes": [
-                {
-                  "Action": "UPSERT",
-                  "ResourceRecordSet": {
-                    "Name": "${var.subdomain}.${var.domain}",
-                    "Type": "A",
-                    "TTL": 60,
-                    "ResourceRecords": [{"Value": "'$LB_IP'"}]
-                  }
-                }
-              ]
-            }'
+          # Create A record for root domain
+          gcloud dns record-sets delete "${var.domain}." \
+            --zone="${google_dns_managed_zone.main.name}" \
+            --type="A" --project="${var.project_id}" 2>/dev/null || true
+          gcloud dns record-sets create "${var.domain}." \
+            --zone="${google_dns_managed_zone.main.name}" \
+            --type="A" --ttl=60 --rrdatas="$LB_IP" \
+            --project="${var.project_id}"
 
-          echo "Route53 updated: ${var.subdomain}.${var.domain} -> $LB_IP"
+          # Create A record for api subdomain
+          gcloud dns record-sets delete "${var.subdomain}.${var.domain}." \
+            --zone="${google_dns_managed_zone.main.name}" \
+            --type="A" --project="${var.project_id}" 2>/dev/null || true
+          gcloud dns record-sets create "${var.subdomain}.${var.domain}." \
+            --zone="${google_dns_managed_zone.main.name}" \
+            --type="A" --ttl=60 --rrdatas="$LB_IP" \
+            --project="${var.project_id}"
+
+          echo "Cloud DNS updated: ${var.domain} -> $LB_IP"
+          echo "Cloud DNS updated: ${var.subdomain}.${var.domain} -> $LB_IP"
           exit 0
         fi
         echo "Waiting for IP... ($i/60)"
@@ -708,6 +719,11 @@ resource "null_resource" "update_route53" {
   triggers = {
     cluster_id = google_container_cluster.main.id
   }
+}
+
+output "nameservers" {
+  description = "Set these nameservers in GoDaddy for aicontrolplane.dev"
+  value       = google_dns_managed_zone.main.name_servers
 }
 
 # =============================================================================

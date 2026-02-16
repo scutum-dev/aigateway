@@ -10,7 +10,19 @@ import type {
   TeamMemberAdd,
   MCPServerConfig,
   MCPServerCreate,
+  MCPServerUpdate,
+  MCPTestResult,
+  GatewaySyncResult,
+  GatewayConfigPreview,
   WorkflowSummary,
+  WorkflowCreate,
+  WorkflowExecuteRequest,
+  WorkflowExecutionSummary,
+  WorkflowExecutionDetail,
+  KeyGenerateRequest,
+  KeyGenerateResponse,
+  KeyUpdateRequest,
+  KeyDeleteRequest,
   RealtimeMetrics,
   PlatformSettings,
   LoginResponse,
@@ -19,8 +31,13 @@ import type {
   UserInfo,
 } from '../types'
 
+// Use Vite's BASE_URL so API calls route through the admin-ui nginx proxy
+// Production: BASE_URL=/admin/ → baseURL=/admin/api/v1 (hits admin-ui ingress)
+// Dev: BASE_URL=/ → baseURL=/api/v1 (hits vite proxy)
+const basePath = import.meta.env.BASE_URL.replace(/\/+$/, '')
+
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: `${basePath}/api/v1`,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -42,7 +59,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('admin_token')
       localStorage.removeItem('token_expires_at')
-      window.location.href = '/'
+      window.location.href = basePath || '/'
     }
     return Promise.reject(error)
   }
@@ -53,7 +70,7 @@ export default api
 // Auth API
 export const authApi = {
   login: async (apiKey: string): Promise<LoginResponse> => {
-    const response = await axios.post('/auth/login', { api_key: apiKey })
+    const response = await axios.post(`${basePath}/auth/login`, { api_key: apiKey })
     return response.data
   },
   me: async (): Promise<UserInfo> => {
@@ -132,12 +149,75 @@ export const mcpServersApi = {
     const response = await api.post('/mcp-servers', data)
     return response.data
   },
+  update: async (id: string, data: MCPServerUpdate): Promise<MCPServerConfig> => {
+    const response = await api.put(`/mcp-servers/${id}`, data)
+    return response.data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/mcp-servers/${id}`)
+  },
+  test: async (id: string): Promise<MCPTestResult> => {
+    const response = await api.post(`/mcp-servers/${id}/test`)
+    return response.data
+  },
+  sync: async (): Promise<GatewaySyncResult> => {
+    const response = await api.post('/mcp-servers/sync')
+    return response.data
+  },
+  previewConfig: async (): Promise<GatewayConfigPreview> => {
+    const response = await api.get('/mcp-servers/sync/preview')
+    return response.data
+  },
+}
+
+// API Keys API (proxy to LiteLLM)
+export const keysApi = {
+  list: async (): Promise<unknown> => {
+    const response = await api.get('/keys')
+    return response.data
+  },
+  generate: async (data: KeyGenerateRequest): Promise<KeyGenerateResponse> => {
+    const response = await api.post('/keys/generate', data)
+    return response.data
+  },
+  getInfo: async (key: string): Promise<unknown> => {
+    const response = await api.get(`/keys/${encodeURIComponent(key)}`)
+    return response.data
+  },
+  update: async (data: KeyUpdateRequest): Promise<unknown> => {
+    const response = await api.post('/keys/update', data)
+    return response.data
+  },
+  delete: async (data: KeyDeleteRequest): Promise<unknown> => {
+    const response = await api.post('/keys/delete', data)
+    return response.data
+  },
 }
 
 // Workflows API
 export const workflowsApi = {
   list: async (): Promise<WorkflowSummary[]> => {
     const response = await api.get('/workflows')
+    return response.data
+  },
+  create: async (data: WorkflowCreate): Promise<WorkflowSummary> => {
+    const response = await api.post('/workflows', data)
+    return response.data
+  },
+  listTemplates: async (): Promise<unknown> => {
+    const response = await api.get('/workflow-templates')
+    return response.data
+  },
+  execute: async (data: WorkflowExecuteRequest): Promise<unknown> => {
+    const response = await api.post('/workflow-executions', data)
+    return response.data
+  },
+  listExecutions: async (): Promise<WorkflowExecutionSummary[]> => {
+    const response = await api.get('/workflow-executions')
+    return response.data
+  },
+  getExecution: async (id: string): Promise<WorkflowExecutionDetail> => {
+    const response = await api.get(`/workflow-executions/${id}`)
     return response.data
   },
 }

@@ -6,7 +6,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: admin@deos.dev
+    email: admin@aicontrolplane.dev
     privateKeySecretRef:
       name: letsencrypt-prod-key
     solvers:
@@ -28,12 +28,30 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - gateway.deos.dev
+        - api.aicontrolplane.dev
+        - docs.aicontrolplane.dev
       secretName: gateway-tls
   rules:
-    - host: gateway.deos.dev
+    - host: docs.aicontrolplane.dev
       http:
         paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: docs-site
+                port:
+                  number: 80
+    - host: api.aicontrolplane.dev
+      http:
+        paths:
+          - path: /admin
+            pathType: Prefix
+            backend:
+              service:
+                name: admin-ui
+                port:
+                  number: 5173
           - path: /
             pathType: Prefix
             backend:

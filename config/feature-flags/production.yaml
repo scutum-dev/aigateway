@@ -10,16 +10,16 @@ vault_prefix: "secret/ai-gateway/production"
 # IMPORTANT: Update these values for your production deployment
 
 domain:
-  base: "gateway.deos.dev"        # Production domain
+  base: "aicontrolplane.dev"     # Production domain
   scheme: "https"                 # Always HTTPS in production
 
   use_subdomains: true            # Subdomain routing for cleaner URLs
 
   subdomains:
-    api: "api"                    # api.gateway.deos.dev → LiteLLM
-    admin: "admin"                # admin.gateway.deos.dev → Admin UI
-    grafana: "grafana"            # grafana.gateway.deos.dev → Grafana
-    jaeger: "jaeger"              # jaeger.gateway.deos.dev → Jaeger
+    api: "api"                    # api.aicontrolplane.dev → LiteLLM + API
+    admin: "admin"                # admin via api.aicontrolplane.dev/admin
+    grafana: "grafana"            # grafana via api.aicontrolplane.dev/grafana
+    jaeger: "jaeger"              # jaeger via api.aicontrolplane.dev/jaeger
 
   # OR use path-based routing (alternative)
   # use_subdomains: false

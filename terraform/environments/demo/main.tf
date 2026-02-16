@@ -31,7 +31,7 @@ variable "region" {
 variable "domain" {
   description = "Domain name"
   type        = string
-  default     = "gateway.deos.dev"
+  default     = "aicontrolplane.dev"
 }
 
 provider "google" {

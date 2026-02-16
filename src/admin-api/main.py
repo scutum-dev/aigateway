@@ -47,11 +47,13 @@ from models import (
     RoutingPolicy, RoutingPolicyCreate,
     Budget, BudgetCreate, BudgetUpdate,
     Team, TeamCreate, TeamUpdate, TeamMember,
-    MCPServerConfig, MCPServerCreate,
-    WorkflowSummary,
+    MCPServerConfig, MCPServerCreate, MCPServerUpdate,
+    WorkflowSummary, WorkflowExecuteRequest, WorkflowExecutionSummary, WorkflowCreate,
+    KeyGenerateRequest, KeyUpdateRequest, KeyDeleteRequest,
     RealtimeMetrics,
     PlatformSettings,
 )
+from gateway_sync import build_gateway_config, sync_configmap, restart_gateway
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -61,6 +63,7 @@ logger = logging.getLogger(__name__)
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://litellm:litellm@localhost:5432/litellm")
 LITELLM_URL = os.getenv("LITELLM_URL", "http://localhost:4000")
 LITELLM_MASTER_KEY = os.getenv("LITELLM_MASTER_KEY", "$LITELLM_KEY")
+WORKFLOW_ENGINE_URL = os.getenv("WORKFLOW_ENGINE_URL", "http://localhost:8085")
 OTEL_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
@@ -563,6 +566,33 @@ async def add_team_member(
 # MCP Server Endpoints
 # =============================================================================
 
+def _parse_env(val) -> dict:
+    """Parse env field which may be a dict (jsonb) or a JSON string."""
+    if isinstance(val, dict):
+        return val
+    if isinstance(val, str):
+        try:
+            return json.loads(val)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return {}
+
+
+def _row_to_mcp(row) -> MCPServerConfig:
+    """Convert database row to MCPServerConfig."""
+    return MCPServerConfig(
+        id=str(row["id"]),
+        name=row["name"],
+        server_type=row["server_type"],
+        command=row["command"],
+        url=row["url"],
+        args=row["args"] or [],
+        env=_parse_env(row["env"]),
+        tools=row["tools"] or [],
+        is_active=row["is_active"],
+    )
+
+
 @app.get("/api/v1/mcp-servers", response_model=List[MCPServerConfig])
 async def list_mcp_servers(user: UserInfo = Depends(get_current_user)):
     """List all MCP server configurations."""
@@ -571,20 +601,7 @@ async def list_mcp_servers(user: UserInfo = Depends(get_current_user)):
 
     async with db_pool.acquire() as conn:
         rows = await conn.fetch("SELECT * FROM mcp_servers ORDER BY name")
-        return [
-            MCPServerConfig(
-                id=str(row["id"]),
-                name=row["name"],
-                server_type=row["server_type"],
-                command=row["command"],
-                url=row["url"],
-                args=row["args"] or [],
-                env=row["env"] or {},
-                tools=row["tools"] or [],
-                is_active=row["is_active"],
-            )
-            for row in rows
-        ]
+        return [_row_to_mcp(row) for row in rows]
 
 
 @app.post("/api/v1/mcp-servers", response_model=MCPServerConfig)
@@ -604,17 +621,269 @@ async def create_mcp_server(
         """, server.name, server.server_type, server.command, server.url,
             server.args, json.dumps(server.env))
 
-        return MCPServerConfig(
-            id=str(row["id"]),
-            name=row["name"],
-            server_type=row["server_type"],
-            command=row["command"],
-            url=row["url"],
-            args=row["args"] or [],
-            env=row["env"] or {},
-            tools=row["tools"] or [],
-            is_active=row["is_active"],
+        return _row_to_mcp(row)
+
+
+@app.get("/api/v1/mcp-servers/sync/preview")
+async def preview_gateway_config(user: UserInfo = Depends(get_current_user)):
+    """Preview the Agent Gateway config that would be deployed."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("SELECT * FROM mcp_servers WHERE is_active = true ORDER BY name")
+        servers = [
+            {
+                "name": row["name"],
+                "server_type": row["server_type"],
+                "command": row["command"],
+                "url": row["url"],
+                "args": row["args"] or [],
+                "env": _parse_env(row["env"]),
+            }
+            for row in rows
+        ]
+
+    config_yaml = build_gateway_config(servers)
+    return {
+        "active_servers": len(servers),
+        "config_yaml": config_yaml,
+    }
+
+
+@app.post("/api/v1/mcp-servers/sync")
+async def sync_mcp_to_gateway(user: UserInfo = Depends(require_admin)):
+    """Deploy active MCP server configs to the Agent Gateway ConfigMap and restart."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("SELECT * FROM mcp_servers WHERE is_active = true ORDER BY name")
+        servers = [
+            {
+                "name": row["name"],
+                "server_type": row["server_type"],
+                "command": row["command"],
+                "url": row["url"],
+                "args": row["args"] or [],
+                "env": _parse_env(row["env"]),
+            }
+            for row in rows
+        ]
+
+    cm_result = await sync_configmap(servers)
+    if cm_result["status"] == "error":
+        return {
+            "status": "error",
+            "servers_synced": len(servers),
+            "configmap": cm_result,
+            "restart": {"status": "skipped"},
+        }
+
+    restart_result = await restart_gateway()
+
+    return {
+        "status": "ok" if restart_result["status"] == "ok" else "partial",
+        "servers_synced": len(servers),
+        "configmap": cm_result,
+        "restart": restart_result,
+    }
+
+
+@app.put("/api/v1/mcp-servers/{server_id}", response_model=MCPServerConfig)
+async def update_mcp_server(
+    server_id: str,
+    update: MCPServerUpdate,
+    user: UserInfo = Depends(require_admin)
+):
+    """Update an MCP server configuration."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    updates = []
+    params = []
+    param_idx = 1
+
+    for field, value in update.model_dump(exclude_unset=True).items():
+        if value is not None:
+            if field == "env":
+                updates.append(f"{field} = ${param_idx}")
+                params.append(json.dumps(value))
+            else:
+                updates.append(f"{field} = ${param_idx}")
+                params.append(value)
+            param_idx += 1
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No updates provided")
+
+    params.append(server_id)
+
+    async with db_pool.acquire() as conn:
+        query = f"UPDATE mcp_servers SET {', '.join(updates)} WHERE id = ${param_idx} RETURNING *"
+        row = await conn.fetchrow(query, *params)
+
+        if not row:
+            raise HTTPException(status_code=404, detail="MCP server not found")
+
+        return _row_to_mcp(row)
+
+
+@app.delete("/api/v1/mcp-servers/{server_id}")
+async def delete_mcp_server(
+    server_id: str,
+    user: UserInfo = Depends(require_admin)
+):
+    """Delete an MCP server configuration."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with db_pool.acquire() as conn:
+        result = await conn.execute("DELETE FROM mcp_servers WHERE id = $1", server_id)
+        if result == "DELETE 0":
+            raise HTTPException(status_code=404, detail="MCP server not found")
+
+    return {"status": "deleted"}
+
+
+@app.post("/api/v1/mcp-servers/{server_id}/test")
+async def test_mcp_server(
+    server_id: str,
+    user: UserInfo = Depends(get_current_user)
+):
+    """Test connectivity to an MCP server."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM mcp_servers WHERE id = $1", server_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="MCP server not found")
+
+    server_type = row["server_type"]
+
+    if server_type == "http":
+        url = row["url"]
+        if not url:
+            return {"status": "error", "message": "No URL configured"}
+        try:
+            response = await http_client.get(url, timeout=5.0)
+            return {"status": "ok", "message": f"Reachable — HTTP {response.status_code}"}
+        except httpx.ConnectError:
+            return {"status": "error", "message": f"Cannot connect to {url}"}
+        except httpx.TimeoutException:
+            return {"status": "error", "message": f"Timeout connecting to {url}"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+    else:
+        # stdio: validate config is complete (can't test binary from admin-api container)
+        command = row["command"]
+        if not command:
+            return {"status": "error", "message": "No command configured"}
+        args = row["args"] or []
+        env = _parse_env(row["env"])
+        parts = [command] + list(args)
+        return {"status": "ok", "message": f"Config valid: {' '.join(parts)}"}
+
+
+# =============================================================================
+# API Key Endpoints (proxy to LiteLLM)
+# =============================================================================
+
+@app.post("/api/v1/keys/generate")
+async def generate_key(
+    request: KeyGenerateRequest,
+    user: UserInfo = Depends(require_admin)
+):
+    """Generate a new API key via LiteLLM."""
+    try:
+        response = await http_client.post(
+            f"{LITELLM_URL}/key/generate",
+            json=request.model_dump(exclude_none=True),
+            headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"},
         )
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.get("/api/v1/keys")
+async def list_keys(user: UserInfo = Depends(get_current_user)):
+    """List all API keys via LiteLLM."""
+    try:
+        response = await http_client.get(
+            f"{LITELLM_URL}/key/list",
+            headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"},
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.get("/api/v1/keys/{key}")
+async def get_key_info(
+    key: str,
+    user: UserInfo = Depends(get_current_user)
+):
+    """Get info about a specific API key via LiteLLM."""
+    try:
+        response = await http_client.get(
+            f"{LITELLM_URL}/key/info",
+            params={"key": key},
+            headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"},
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.post("/api/v1/keys/update")
+async def update_key(
+    request: KeyUpdateRequest,
+    user: UserInfo = Depends(require_admin)
+):
+    """Update an API key via LiteLLM."""
+    try:
+        response = await http_client.post(
+            f"{LITELLM_URL}/key/update",
+            json=request.model_dump(exclude_none=True),
+            headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"},
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.post("/api/v1/keys/delete")
+async def delete_keys(
+    request: KeyDeleteRequest,
+    user: UserInfo = Depends(require_admin)
+):
+    """Delete API keys via LiteLLM."""
+    try:
+        response = await http_client.post(
+            f"{LITELLM_URL}/key/delete",
+            json=request.model_dump(),
+            headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"},
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 # =============================================================================
@@ -644,6 +913,109 @@ async def list_workflows(user: UserInfo = Depends(get_current_user)):
             )
             for row in rows
         ]
+
+
+@app.post("/api/v1/workflows", response_model=WorkflowSummary)
+async def create_workflow(
+    workflow: WorkflowCreate,
+    user: UserInfo = Depends(require_admin)
+):
+    """Create a new workflow definition."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with db_pool.acquire() as conn:
+        graph_def = json.dumps(workflow.config or {"template": workflow.template_type})
+        row = await conn.fetchrow("""
+            INSERT INTO workflow_definitions (name, template_type, description, graph_definition, is_active)
+            VALUES ($1, $2, $3, $4, true)
+            RETURNING *
+        """, workflow.name, workflow.template_type, workflow.description, graph_def)
+
+        return WorkflowSummary(
+            id=str(row["id"]),
+            name=row["name"],
+            template_type=row["template_type"],
+            description=row["description"],
+            is_active=row["is_active"],
+            created_at=row["created_at"],
+        )
+
+
+@app.get("/api/v1/workflow-templates")
+async def list_workflow_templates(user: UserInfo = Depends(get_current_user)):
+    """List available workflow templates from the Workflow Engine."""
+    try:
+        response = await http_client.get(
+            f"{WORKFLOW_ENGINE_URL}/api/v1/templates",
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.post("/api/v1/workflow-executions")
+async def execute_workflow(
+    request: WorkflowExecuteRequest,
+    user: UserInfo = Depends(get_current_user)
+):
+    """Execute a workflow via the Workflow Engine."""
+    try:
+        # Translate admin-api model to workflow engine format
+        payload = {
+            "template": request.template_type,
+            "input": {"text": request.input_text},
+        }
+        if request.user_id:
+            payload["user_id"] = request.user_id
+        if request.team_id:
+            payload["team_id"] = request.team_id
+        response = await http_client.post(
+            f"{WORKFLOW_ENGINE_URL}/api/v1/executions",
+            json=payload,
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.get("/api/v1/workflow-executions")
+async def list_workflow_executions(user: UserInfo = Depends(get_current_user)):
+    """List workflow executions from the Workflow Engine."""
+    try:
+        response = await http_client.get(
+            f"{WORKFLOW_ENGINE_URL}/api/v1/executions",
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.get("/api/v1/workflow-executions/{execution_id}")
+async def get_workflow_execution(
+    execution_id: str,
+    user: UserInfo = Depends(get_current_user)
+):
+    """Get a specific workflow execution from the Workflow Engine."""
+    try:
+        response = await http_client.get(
+            f"{WORKFLOW_ENGINE_URL}/api/v1/executions/{execution_id}",
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 # =============================================================================

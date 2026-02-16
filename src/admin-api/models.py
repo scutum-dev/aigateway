@@ -156,6 +156,55 @@ class MCPServerCreate(BaseModel):
     env: Dict[str, str] = Field(default_factory=dict)
 
 
+class MCPServerUpdate(BaseModel):
+    """Update MCP server configuration."""
+    name: Optional[str] = None
+    server_type: Optional[str] = None
+    command: Optional[str] = None
+    url: Optional[str] = None
+    args: Optional[List[str]] = None
+    env: Optional[Dict[str, str]] = None
+    is_active: Optional[bool] = None
+
+
+# API Keys (proxy to LiteLLM)
+class KeyGenerateRequest(BaseModel):
+    """Request to generate a new API key."""
+    key_alias: Optional[str] = None
+    max_budget: Optional[float] = None
+    models: Optional[List[str]] = None
+    team_id: Optional[str] = None
+    duration: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class KeyUpdateRequest(BaseModel):
+    """Request to update an API key."""
+    key: str
+    key_alias: Optional[str] = None
+    max_budget: Optional[float] = None
+    models: Optional[List[str]] = None
+    duration: Optional[str] = None
+
+
+class KeyDeleteRequest(BaseModel):
+    """Request to delete API keys."""
+    keys: List[str]
+
+
+class APIKeyInfo(BaseModel):
+    """API key information."""
+    token: Optional[str] = None
+    key_alias: Optional[str] = None
+    key_name: Optional[str] = None
+    spend: Optional[float] = 0.0
+    max_budget: Optional[float] = None
+    models: Optional[List[str]] = None
+    team_id: Optional[str] = None
+    expires: Optional[str] = None
+    created_at: Optional[str] = None
+
+
 # Workflows
 class WorkflowSummary(BaseModel):
     """Workflow summary for listing."""
@@ -165,6 +214,34 @@ class WorkflowSummary(BaseModel):
     description: Optional[str]
     is_active: bool
     created_at: Optional[datetime]
+
+
+class WorkflowExecuteRequest(BaseModel):
+    """Request to execute a workflow."""
+    workflow_name: Optional[str] = None
+    template_type: str
+    input_text: str
+    user_id: Optional[str] = None
+    team_id: Optional[str] = None
+    config: Optional[Dict[str, Any]] = None
+
+
+class WorkflowExecutionSummary(BaseModel):
+    """Workflow execution summary."""
+    id: str
+    workflow_name: Optional[str] = None
+    status: str
+    total_cost: Optional[float] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+
+
+class WorkflowCreate(BaseModel):
+    """Create a new workflow definition."""
+    name: str
+    template_type: str
+    description: Optional[str] = None
+    config: Optional[Dict[str, Any]] = None
 
 
 # Metrics

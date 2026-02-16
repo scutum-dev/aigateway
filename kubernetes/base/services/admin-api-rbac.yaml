@@ -1,0 +1,34 @@
+# RBAC for admin-api to sync MCP configs to the Agent Gateway
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-api
+  labels:
+    app: admin-api
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: admin-api-gateway-sync
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["agentgateway-config"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["agentgateway"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: admin-api-gateway-sync
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: admin-api-gateway-sync
+subjects:
+  - kind: ServiceAccount
+    name: admin-api

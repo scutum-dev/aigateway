@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { Dialog, Transition } from '@headlessui/react'
 import {
   HomeIcon,
+  KeyIcon,
   CubeIcon,
   CurrencyDollarIcon,
   UserGroupIcon,
@@ -25,6 +26,7 @@ interface LayoutProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
+  { name: 'API Keys', href: '/api-keys', icon: KeyIcon },
   { name: 'Models', href: '/models', icon: CubeIcon },
   { name: 'Budgets', href: '/budgets', icon: CurrencyDollarIcon },
   { name: 'Teams', href: '/teams', icon: UserGroupIcon },
@@ -35,6 +37,7 @@ const navigation = [
 
 const routeLabels: Record<string, string> = {
   '/': 'Dashboard',
+  '/api-keys': 'API Keys',
   '/models': 'Models',
   '/budgets': 'Budgets',
   '/teams': 'Teams',

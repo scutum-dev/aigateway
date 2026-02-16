@@ -9,14 +9,14 @@ vault_prefix: "secret/ai-gateway/staging"
 # =============================================================================
 
 domain:
-  base: "staging.gateway.deos.dev"  # Staging subdomain
+  base: "aicontrolplane.dev"       # Same domain, staging overlay changes replicas
   scheme: "https"
 
   use_subdomains: true
 
   subdomains:
-    api: "api"                    # api.staging.gateway.deos.dev
-    admin: "admin"                # admin.staging.gateway.deos.dev
+    api: "api"                    # api.aicontrolplane.dev
+    admin: "admin"                # admin via api.aicontrolplane.dev/admin
     grafana: "grafana"
     jaeger: "jaeger"
 

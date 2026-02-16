@@ -62,7 +62,11 @@ def get_cors_origins() -> list[str]:
     """Get allowed CORS origins based on environment."""
     if ENVIRONMENT == "production":
         origins = os.getenv("CORS_ORIGINS", "").split(",")
-        return [o.strip() for o in origins if o.strip()]
+        configured = [o.strip() for o in origins if o.strip()]
+        return configured or [
+            "https://aicontrolplane.dev",
+            "https://api.aicontrolplane.dev",
+        ]
     return [
         "http://localhost:5173",
         "http://localhost:3000",

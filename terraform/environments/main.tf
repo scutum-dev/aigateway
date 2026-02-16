@@ -340,6 +340,12 @@ resource "helm_release" "cert_manager" {
     value = "cert-manager"
   }
 
+  # Use public DNS for HTTP-01 self-checks (GKE NodeLocal DNS can cache NXDOMAIN)
+  set {
+    name  = "extraArgs[0]"
+    value = "--acme-http01-solver-nameservers=8.8.8.8:53\\,8.8.4.4:53"
+  }
+
   wait = true
 }
 
@@ -433,6 +439,17 @@ resource "kubernetes_ingress_v1" "gateway" {
         path {
           path      = "/docs/"
           path_type = "Exact"
+          backend {
+            service {
+              name = "litellm"
+              port { number = 4000 }
+            }
+          }
+        }
+
+        path {
+          path      = "/swagger"
+          path_type = "Prefix"
           backend {
             service {
               name = "litellm"
@@ -981,16 +998,111 @@ resource "null_resource" "patch_deployments" {
 # =============================================================================
 
 # =============================================================================
-# AWS Route53 DNS
+# Landing Page Ingress (root domain → landing-ui)
 # =============================================================================
 
-data "aws_route53_zone" "main" {
-  name = "${var.domain}."
+resource "kubernetes_ingress_v1" "landing" {
+  depends_on = [
+    null_resource.deploy_services,
+    helm_release.nginx_ingress,
+    null_resource.cluster_issuer
+  ]
+
+  metadata {
+    name      = "landing-ingress"
+    namespace = local.namespace
+    annotations = {
+      "cert-manager.io/cluster-issuer"                 = "letsencrypt-prod"
+      "nginx.ingress.kubernetes.io/proxy-body-size"    = "50m"
+    }
+  }
+
+  spec {
+    ingress_class_name = "nginx"
+
+    tls {
+      hosts       = [var.domain]
+      secret_name = "landing-tls"
+    }
+
+    rule {
+      host = var.domain
+      http {
+        path {
+          path      = "/"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "landing-ui"
+              port { number = 9999 }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
-# Wait for LoadBalancer IP and update Route53
-resource "null_resource" "update_route53" {
-  depends_on = [helm_release.nginx_ingress]
+# =============================================================================
+# Docs Site Ingress (docs.aicontrolplane.dev → docs-site)
+# =============================================================================
+
+resource "kubernetes_ingress_v1" "docs" {
+  depends_on = [
+    null_resource.deploy_services,
+    helm_release.nginx_ingress,
+    null_resource.cluster_issuer
+  ]
+
+  metadata {
+    name      = "docs-ingress"
+    namespace = local.namespace
+    annotations = {
+      "cert-manager.io/cluster-issuer"                 = "letsencrypt-prod"
+      "nginx.ingress.kubernetes.io/proxy-body-size"    = "10m"
+    }
+  }
+
+  spec {
+    ingress_class_name = "nginx"
+
+    tls {
+      hosts       = ["docs.${var.domain}"]
+      secret_name = "docs-tls"
+    }
+
+    rule {
+      host = "docs.${var.domain}"
+      http {
+        path {
+          path      = "/"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "docs-site"
+              port { number = 80 }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# =============================================================================
+# Cloud DNS
+# =============================================================================
+
+resource "google_dns_managed_zone" "main" {
+  name        = "aicontrolplane-dev"
+  dns_name    = "${var.domain}."
+  description = "AI Control Plane DNS zone"
+  project     = var.project_id
+}
+
+# Wait for LoadBalancer IP and create DNS A records
+resource "null_resource" "update_dns" {
+  depends_on = [helm_release.nginx_ingress, google_dns_managed_zone.main]
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -1000,24 +1112,36 @@ resource "null_resource" "update_route53" {
         if [ -n "$LB_IP" ] && [ "$LB_IP" != "null" ]; then
           echo "Got LoadBalancer IP: $LB_IP"
 
-          # Update Route53 A record
-          aws route53 change-resource-record-sets \
-            --hosted-zone-id ${data.aws_route53_zone.main.zone_id} \
-            --change-batch '{
-              "Changes": [
-                {
-                  "Action": "UPSERT",
-                  "ResourceRecordSet": {
-                    "Name": "${local.full_domain}",
-                    "Type": "A",
-                    "TTL": 60,
-                    "ResourceRecords": [{"Value": "'$LB_IP'"}]
-                  }
-                }
-              ]
-            }'
+          # Create A record for root domain
+          gcloud dns record-sets delete "${var.domain}." \
+            --zone="${google_dns_managed_zone.main.name}" \
+            --type="A" --project="${var.project_id}" 2>/dev/null || true
+          gcloud dns record-sets create "${var.domain}." \
+            --zone="${google_dns_managed_zone.main.name}" \
+            --type="A" --ttl=60 --rrdatas="$LB_IP" \
+            --project="${var.project_id}"
 
-          echo "Route53 updated: ${local.full_domain} -> $LB_IP"
+          # Create A record for api subdomain
+          gcloud dns record-sets delete "${local.full_domain}." \
+            --zone="${google_dns_managed_zone.main.name}" \
+            --type="A" --project="${var.project_id}" 2>/dev/null || true
+          gcloud dns record-sets create "${local.full_domain}." \
+            --zone="${google_dns_managed_zone.main.name}" \
+            --type="A" --ttl=60 --rrdatas="$LB_IP" \
+            --project="${var.project_id}"
+
+          # Create A record for docs subdomain
+          gcloud dns record-sets delete "docs.${var.domain}." \
+            --zone="${google_dns_managed_zone.main.name}" \
+            --type="A" --project="${var.project_id}" 2>/dev/null || true
+          gcloud dns record-sets create "docs.${var.domain}." \
+            --zone="${google_dns_managed_zone.main.name}" \
+            --type="A" --ttl=60 --rrdatas="$LB_IP" \
+            --project="${var.project_id}"
+
+          echo "Cloud DNS updated: ${var.domain} -> $LB_IP"
+          echo "Cloud DNS updated: ${local.full_domain} -> $LB_IP"
+          echo "Cloud DNS updated: docs.${var.domain} -> $LB_IP"
           exit 0
         fi
         echo "Waiting for IP... ($i/60)"
@@ -1031,4 +1155,13 @@ resource "null_resource" "update_route53" {
   triggers = {
     cluster_id = google_container_cluster.main.id
   }
+}
+
+# =============================================================================
+# Outputs
+# =============================================================================
+
+output "nameservers" {
+  description = "Set these nameservers in GoDaddy for aicontrolplane.dev"
+  value       = google_dns_managed_zone.main.name_servers
 }

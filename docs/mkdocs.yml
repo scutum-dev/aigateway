@@ -1,6 +1,6 @@
 site_name: AI Control Plane Platform
 site_description: Unified AI infrastructure — 100+ models, 9 providers, intelligent routing, cost management
-site_url: https://aicontrolplane.com/docs
+site_url: https://docs.aicontrolplane.dev
 
 theme:
   name: material

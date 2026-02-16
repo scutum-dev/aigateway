@@ -104,6 +104,73 @@ export interface MCPServerCreate {
   env: Record<string, string>
 }
 
+export interface MCPServerUpdate {
+  name?: string
+  server_type?: string
+  command?: string
+  url?: string
+  args?: string[]
+  env?: Record<string, string>
+  is_active?: boolean
+}
+
+export interface MCPTestResult {
+  status: 'ok' | 'error'
+  message: string
+}
+
+export interface GatewaySyncResult {
+  status: 'ok' | 'partial' | 'error'
+  servers_synced: number
+  configmap: { status: string; message?: string }
+  restart: { status: string; message?: string }
+}
+
+export interface GatewayConfigPreview {
+  active_servers: number
+  config_yaml: string
+}
+
+export interface APIKeyInfo {
+  token: string | null
+  key_alias: string | null
+  key_name: string | null
+  spend: number
+  max_budget: number | null
+  models: string[] | null
+  team_id: string | null
+  expires: string | null
+  created_at: string | null
+}
+
+export interface KeyGenerateRequest {
+  key_alias?: string
+  max_budget?: number
+  models?: string[]
+  team_id?: string
+  duration?: string
+  metadata?: Record<string, unknown>
+}
+
+export interface KeyGenerateResponse {
+  key: string
+  key_name: string
+  expires: string | null
+  [key: string]: unknown
+}
+
+export interface KeyUpdateRequest {
+  key: string
+  key_alias?: string
+  max_budget?: number
+  models?: string[]
+  duration?: string
+}
+
+export interface KeyDeleteRequest {
+  keys: string[]
+}
+
 export interface WorkflowSummary {
   id: string
   name: string
@@ -111,6 +178,64 @@ export interface WorkflowSummary {
   description: string | null
   is_active: boolean
   created_at: string
+}
+
+export interface WorkflowExecuteRequest {
+  workflow_name?: string
+  template_type: string
+  input_text: string
+  user_id?: string
+  team_id?: string
+  config?: Record<string, unknown>
+}
+
+export interface WorkflowExecutionSummary {
+  id: string
+  workflow_name: string | null
+  status: string
+  total_cost: number | null
+  started_at: string | null
+  completed_at: string | null
+}
+
+export interface WorkflowStep {
+  node_name: string
+  step_order: number
+  status: string
+  output_data: Record<string, unknown> | null
+  cost: number
+  duration_ms: number
+  error: string | null
+}
+
+export interface WorkflowExecutionDetail {
+  id: string
+  workflow_name: string | null
+  template_type: string | null
+  status: string
+  input: Record<string, unknown>
+  output: Record<string, unknown> | null
+  current_node: string | null
+  error: string | null
+  total_tokens: number
+  total_cost: number
+  duration_ms: number
+  steps: WorkflowStep[]
+  created_at: string | null
+  completed_at: string | null
+}
+
+export interface WorkflowCreate {
+  name: string
+  template_type: string
+  description?: string
+  config?: Record<string, unknown>
+}
+
+export interface WorkflowTemplate {
+  type: string
+  name: string
+  description: string
 }
 
 export interface RealtimeMetrics {

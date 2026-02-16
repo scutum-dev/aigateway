@@ -17,7 +17,7 @@ For production, generate per-user or per-team API keys through the Admin UI or A
 | Environment | Base URL                                |
 |-------------|----------------------------------------|
 | Local       | `http://localhost:4000`                |
-| Production  | `https://gateway.deos.dev`             |
+| Production  | `https://api.aicontrolplane.dev`       |
 
 All OpenAI-compatible endpoints live under `/v1/`:
 - `POST /v1/chat/completions` -- chat completions (streaming and non-streaming)

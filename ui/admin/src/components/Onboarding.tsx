@@ -26,7 +26,7 @@ export default function Onboarding() {
   const hasTeam = (teams?.length || 0) > 0
 
   const steps = [
-    { label: 'API keys configured', done: hasApiKeys, href: '/settings' },
+    { label: 'API keys configured', done: hasApiKeys, href: '/api-keys' },
     { label: 'Models available', done: hasModels, href: '/models' },
     { label: 'First budget set', done: hasBudget, href: '/budgets' },
     { label: 'Team created', done: hasTeam, href: '/teams' },
