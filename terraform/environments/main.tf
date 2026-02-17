@@ -747,7 +747,7 @@ resource "kubernetes_ingress_v1" "cost_predictor" {
       host = local.full_domain
       http {
         path {
-          path      = "/cost-predictor(/|$)(.*)"
+          path      = "/cost(/|$)(.*)"
           path_type = "ImplementationSpecific"
           backend {
             service {
@@ -917,7 +917,7 @@ resource "kubernetes_ingress_v1" "semantic_cache" {
       host = local.full_domain
       http {
         path {
-          path      = "/semantic-cache(/|$)(.*)"
+          path      = "/cache(/|$)(.*)"
           path_type = "ImplementationSpecific"
           backend {
             service {
@@ -976,6 +976,11 @@ resource "null_resource" "patch_deployments" {
       kubectl -n ${local.namespace} delete deployment litellm --ignore-not-found=true
       kubectl kustomize ${path.module}/../../kubernetes/overlays/${var.kustomize_overlay} | kubectl apply -f -
 
+      # Create guardrail handler ConfigMap for LiteLLM custom guardrails
+      kubectl -n ${local.namespace} create configmap litellm-guardrail \
+        --from-file=guardrail_handler.py=${path.module}/../../config/litellm/guardrail_handler.py \
+        --dry-run=client -o yaml | kubectl apply -f -
+
       # Configure LiteLLM for Swagger docs to use correct base URL
       kubectl -n ${local.namespace} set env deployment/litellm \
         PROXY_BASE_URL=https://${local.full_domain} || true
@@ -995,6 +1000,7 @@ resource "null_resource" "patch_deployments" {
     full_domain      = local.full_domain
     litellm_config   = filemd5("${path.module}/../../kubernetes/base/litellm/configmap.yaml")
     litellm_deploy   = filemd5("${path.module}/../../kubernetes/base/litellm/deployment.yaml")
+    guardrail_handler = filemd5("${path.module}/../../config/litellm/guardrail_handler.py")
   }
 }
 
@@ -1087,6 +1093,190 @@ resource "kubernetes_ingress_v1" "docs" {
             service {
               name = "docs-site"
               port { number = 80 }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Deck UI Ingress (Product showcase at /deck)
+resource "kubernetes_ingress_v1" "deck_ui" {
+  depends_on = [
+    null_resource.deploy_services,
+    helm_release.nginx_ingress,
+    null_resource.cluster_issuer
+  ]
+
+  metadata {
+    name      = "deck-ui-ingress"
+    namespace = local.namespace
+    annotations = {
+      "cert-manager.io/cluster-issuer"                    = "letsencrypt-prod"
+      "nginx.ingress.kubernetes.io/rewrite-target"        = "/$2"
+      "nginx.ingress.kubernetes.io/use-regex"             = "true"
+    }
+  }
+
+  spec {
+    ingress_class_name = "nginx"
+
+    tls {
+      hosts       = [local.full_domain]
+      secret_name = "gateway-tls"
+    }
+
+    rule {
+      host = local.full_domain
+      http {
+        path {
+          path      = "/deck(/|$)(.*)"
+          path_type = "ImplementationSpecific"
+          backend {
+            service {
+              name = "deck-ui"
+              port {
+                number = 80
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Budget Webhook Ingress (Pre/post request budget hooks at /budget-webhook)
+resource "kubernetes_ingress_v1" "budget_webhook" {
+  depends_on = [
+    null_resource.deploy_services,
+    helm_release.nginx_ingress,
+    null_resource.cluster_issuer
+  ]
+
+  metadata {
+    name      = "budget-webhook-ingress"
+    namespace = local.namespace
+    annotations = {
+      "cert-manager.io/cluster-issuer"                    = "letsencrypt-prod"
+      "nginx.ingress.kubernetes.io/rewrite-target"        = "/$2"
+      "nginx.ingress.kubernetes.io/use-regex"             = "true"
+    }
+  }
+
+  spec {
+    ingress_class_name = "nginx"
+
+    tls {
+      hosts       = [local.full_domain]
+      secret_name = "gateway-tls"
+    }
+
+    rule {
+      host = local.full_domain
+      http {
+        path {
+          path      = "/budget-webhook(/|$)(.*)"
+          path_type = "ImplementationSpecific"
+          backend {
+            service {
+              name = "budget-webhook"
+              port {
+                number = 8081
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# FinOps Reporter Ingress (Cost reports at /finops)
+resource "kubernetes_ingress_v1" "finops_reporter" {
+  depends_on = [
+    null_resource.deploy_services,
+    helm_release.nginx_ingress,
+    null_resource.cluster_issuer
+  ]
+
+  metadata {
+    name      = "finops-reporter-ingress"
+    namespace = local.namespace
+    annotations = {
+      "cert-manager.io/cluster-issuer"                    = "letsencrypt-prod"
+      "nginx.ingress.kubernetes.io/rewrite-target"        = "/$2"
+      "nginx.ingress.kubernetes.io/use-regex"             = "true"
+    }
+  }
+
+  spec {
+    ingress_class_name = "nginx"
+
+    tls {
+      hosts       = [local.full_domain]
+      secret_name = "gateway-tls"
+    }
+
+    rule {
+      host = local.full_domain
+      http {
+        path {
+          path      = "/finops(/|$)(.*)"
+          path_type = "ImplementationSpecific"
+          backend {
+            service {
+              name = "finops-reporter"
+              port {
+                number = 8082
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Playground UI Ingress (Interactive LLM testing at /playground)
+resource "kubernetes_ingress_v1" "playground_ui" {
+  depends_on = [
+    null_resource.deploy_services,
+    helm_release.nginx_ingress,
+    null_resource.cluster_issuer
+  ]
+
+  metadata {
+    name      = "playground-ui-ingress"
+    namespace = local.namespace
+    annotations = {
+      "cert-manager.io/cluster-issuer"                    = "letsencrypt-prod"
+      "nginx.ingress.kubernetes.io/rewrite-target"        = "/$2"
+      "nginx.ingress.kubernetes.io/use-regex"             = "true"
+    }
+  }
+
+  spec {
+    ingress_class_name = "nginx"
+
+    tls {
+      hosts       = [local.full_domain]
+      secret_name = "gateway-tls"
+    }
+
+    rule {
+      host = local.full_domain
+      http {
+        path {
+          path      = "/playground(/|$)(.*)"
+          path_type = "ImplementationSpecific"
+          backend {
+            service {
+              name = "playground-ui"
+              port {
+                number = 80
+              }
             }
           }
         }

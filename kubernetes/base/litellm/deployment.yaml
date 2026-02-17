@@ -128,7 +128,12 @@ spec:
             - "4000"
           volumeMounts:
             - name: config
-              mountPath: /etc/litellm
+              mountPath: /etc/litellm/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            - name: guardrail
+              mountPath: /etc/litellm/guardrail_handler.py
+              subPath: guardrail_handler.py
               readOnly: true
           resources:
             requests:
@@ -160,6 +165,9 @@ spec:
         - name: config
           configMap:
             name: litellm-config
+        - name: guardrail
+          configMap:
+            name: litellm-guardrail
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:

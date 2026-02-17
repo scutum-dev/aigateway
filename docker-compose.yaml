@@ -601,6 +601,21 @@ services:
       - gateway-network
     restart: unless-stopped
 
+  deck-ui:
+    build:
+      context: ./ui/deck
+    container_name: deck-ui
+    ports:
+      - "${DECK_UI_PORT:-6002}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
   docs-site:
     build:
       context: ./docs

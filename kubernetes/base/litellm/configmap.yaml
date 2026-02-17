@@ -706,6 +706,27 @@ data:
           input_cost_per_token: 0.0
           output_cost_per_token: 0.0
 
+      # ===========================================
+      # Embeddings
+      # ===========================================
+      - model_name: "text-embedding-3-small"
+        litellm_params:
+          model: "openai/text-embedding-3-small"
+          api_key: "os.environ/OPENAI_API_KEY"
+          timeout: 60
+        model_info:
+          id: "text-embedding-3-small"
+          mode: "embedding"
+
+      - model_name: "text-embedding-3-large"
+        litellm_params:
+          model: "openai/text-embedding-3-large"
+          api_key: "os.environ/OPENAI_API_KEY"
+          timeout: 60
+        model_info:
+          id: "text-embedding-3-large"
+          mode: "embedding"
+
       # Fallback stubs - show helpful error if Ollama not running
       - model_name: "llama-3.1-70b-fallback"
         litellm_params:
@@ -873,3 +894,13 @@ data:
       add_function_to_prompt: true
       request_timeout: 300
       stream_timeout: 600
+
+    # ===========================================
+    # Guardrails Configuration
+    # ===========================================
+    guardrails:
+      - guardrail_name: "gateway-guardrail"
+        litellm_params:
+          guardrail: guardrail_handler.GatewayGuardrail
+          mode: "pre_call"
+          default_on: true

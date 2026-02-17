@@ -66,10 +66,11 @@ env-check: ## Verify environment configuration
 # DOCKER COMPOSE - CORE
 # =============================================================================
 
-up: ## Start core services (postgres, redis, litellm, admin, landing, docs, playground)
+up: ## Start core services (postgres, redis, litellm, admin, landing, deck, docs, playground)
 	$(DOCKER_COMPOSE) up -d
 	@echo "$(GREEN)Core services started$(RESET)"
 	@echo "  Landing:    http://localhost:$${LANDING_UI_PORT:-9999}"
+	@echo "  Deck:       http://localhost:$${DECK_UI_PORT:-6002}"
 	@echo "  Playground: http://localhost:$${PLAYGROUND_UI_PORT:-6001}"
 	@echo "  Docs:       http://localhost:$${DOCS_SITE_PORT:-8089}"
 	@echo "  Admin UI:   http://localhost:$${ADMIN_UI_PORT:-5173}"
@@ -125,8 +126,8 @@ build: ## Build all custom images
 build-no-cache: ## Build all images without cache
 	$(DOCKER_COMPOSE) --profile full build --no-cache
 
-build-admin: ## Build admin-api, admin-ui, landing-ui, docs-site, and playground-ui
-	$(DOCKER_COMPOSE) build admin-api admin-ui landing-ui docs-site playground-ui
+build-admin: ## Build all custom services
+	$(DOCKER_COMPOSE) build admin-api admin-ui landing-ui deck-ui docs-site playground-ui budget-webhook finops-reporter
 
 # =============================================================================
 # LOGS & STATUS
@@ -299,6 +300,9 @@ _build: ## Build and push Docker images to Artifact Registry
 	fi && \
 	SHARED="--build-context shared=./src/shared" && \
 	gcloud auth configure-docker $$REGION-docker.pkg.dev --quiet && \
+	echo "Building litellm (custom with guardrails)..." && \
+	docker build $$PLATFORM_FLAG -t $$REPO/litellm:latest ./config/litellm && \
+	docker push $$REPO/litellm:latest && \
 	echo "Building admin-api..." && \
 	docker build $$PLATFORM_FLAG $$SHARED -t $$REPO/admin-api:latest ./src/admin-api && \
 	docker push $$REPO/admin-api:latest && \
@@ -320,6 +324,18 @@ _build: ## Build and push Docker images to Artifact Registry
 	echo "Building landing-ui..." && \
 	docker build $$PLATFORM_FLAG -t $$REPO/landing-ui:latest ./ui/landing && \
 	docker push $$REPO/landing-ui:latest && \
+	echo "Building deck-ui..." && \
+	docker build $$PLATFORM_FLAG -t $$REPO/deck-ui:latest ./ui/deck && \
+	docker push $$REPO/deck-ui:latest && \
+	echo "Building budget-webhook..." && \
+	docker build $$PLATFORM_FLAG $$SHARED -t $$REPO/budget-webhook:latest ./src/budget-webhook && \
+	docker push $$REPO/budget-webhook:latest && \
+	echo "Building finops-reporter..." && \
+	docker build $$PLATFORM_FLAG $$SHARED -t $$REPO/finops-reporter:latest ./src/finops-reporter && \
+	docker push $$REPO/finops-reporter:latest && \
+	echo "Building playground-ui..." && \
+	docker build $$PLATFORM_FLAG -t $$REPO/playground-ui:latest ./ui/playground && \
+	docker push $$REPO/playground-ui:latest && \
 	echo "Building docs-site..." && \
 	docker build $$PLATFORM_FLAG -t $$REPO/docs-site:latest ./docs && \
 	docker push $$REPO/docs-site:latest && \
@@ -336,19 +352,26 @@ _wait: ## Wait for services to be ready (after images are built)
 	kubectl kustomize kubernetes/overlays/$$OVERLAY | kubectl apply -f - && \
 	echo "Injecting API key into landing-config ConfigMap..." && \
 	sed "s/LITELLM_MASTER_KEY_PLACEHOLDER/$$API_KEY/g" kubernetes/base/litellm/landing-config.yaml | kubectl apply -n $$NAMESPACE -f - && \
+	echo "Creating guardrail handler ConfigMap..." && \
+	kubectl -n $$NAMESPACE create configmap litellm-guardrail --from-file=guardrail_handler.py=config/litellm/guardrail_handler.py --dry-run=client -o yaml | kubectl apply -f - && \
 	echo "Updating custom service images..." && \
+	kubectl -n $$NAMESPACE set image deployment/litellm litellm=$$REPO/litellm:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/admin-api admin-api=$$REPO/admin-api:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/admin-ui admin-ui=$$REPO/admin-ui:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/cost-predictor cost-predictor=$$REPO/cost-predictor:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/policy-router policy-router=$$REPO/policy-router:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/workflow-engine workflow-engine=$$REPO/workflow-engine:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/semantic-cache semantic-cache=$$REPO/semantic-cache:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/budget-webhook budget-webhook=$$REPO/budget-webhook:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/finops-reporter finops-reporter=$$REPO/finops-reporter:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/landing-ui landing-ui=$$REPO/landing-ui:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/deck-ui deck-ui=$$REPO/deck-ui:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/playground-ui playground-ui=$$REPO/playground-ui:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/docs-site docs-site=$$REPO/docs-site:latest || true && \
 	echo "Restarting landing-ui to pick up ConfigMap..." && \
 	kubectl -n $$NAMESPACE rollout restart deployment/landing-ui && \
 	echo "Restarting other deployments..." && \
-	kubectl -n $$NAMESPACE rollout restart deployment/admin-api deployment/admin-ui deployment/docs-site deployment/cost-predictor deployment/policy-router deployment/workflow-engine deployment/semantic-cache || true && \
+	kubectl -n $$NAMESPACE rollout restart deployment/litellm deployment/admin-api deployment/admin-ui deployment/deck-ui deployment/playground-ui deployment/docs-site deployment/cost-predictor deployment/policy-router deployment/workflow-engine deployment/semantic-cache deployment/budget-webhook deployment/finops-reporter || true && \
 	echo "Waiting for core pods..." && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=postgresql --timeout=300s && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=redis --timeout=300s && \
@@ -389,17 +412,24 @@ redeploy-k8s: ## Force re-apply Kubernetes manifests (ENV=demo|staging|prod)
 	kubectl kustomize kubernetes/overlays/$$OVERLAY | kubectl apply -f - && \
 	echo "Injecting API key into landing-config..." && \
 	sed "s/LITELLM_MASTER_KEY_PLACEHOLDER/$$API_KEY/g" kubernetes/base/litellm/landing-config.yaml | kubectl apply -n $$NAMESPACE -f - && \
+	echo "Creating guardrail handler ConfigMap..." && \
+	kubectl -n $$NAMESPACE create configmap litellm-guardrail --from-file=guardrail_handler.py=config/litellm/guardrail_handler.py --dry-run=client -o yaml | kubectl apply -f - && \
 	echo "Updating custom service images..." && \
 	REPO=$$(cd $(TF_DIR) && terraform output -raw artifact_registry) && \
+	kubectl -n $$NAMESPACE set image deployment/litellm litellm=$$REPO/litellm:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/admin-api admin-api=$$REPO/admin-api:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/admin-ui admin-ui=$$REPO/admin-ui:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/cost-predictor cost-predictor=$$REPO/cost-predictor:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/policy-router policy-router=$$REPO/policy-router:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/workflow-engine workflow-engine=$$REPO/workflow-engine:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/semantic-cache semantic-cache=$$REPO/semantic-cache:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/budget-webhook budget-webhook=$$REPO/budget-webhook:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/finops-reporter finops-reporter=$$REPO/finops-reporter:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/landing-ui landing-ui=$$REPO/landing-ui:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/deck-ui deck-ui=$$REPO/deck-ui:latest || true && \
+	kubectl -n $$NAMESPACE set image deployment/playground-ui playground-ui=$$REPO/playground-ui:latest || true && \
 	echo "Restarting custom deployments..." && \
-	kubectl -n $$NAMESPACE rollout restart deployment/admin-api deployment/admin-ui deployment/landing-ui deployment/cost-predictor deployment/policy-router deployment/workflow-engine deployment/semantic-cache || true && \
+	kubectl -n $$NAMESPACE rollout restart deployment/litellm deployment/admin-api deployment/admin-ui deployment/landing-ui deployment/deck-ui deployment/playground-ui deployment/cost-predictor deployment/policy-router deployment/workflow-engine deployment/semantic-cache deployment/budget-webhook deployment/finops-reporter || true && \
 	echo "Waiting for core services..." && \
 	kubectl -n $$NAMESPACE rollout status deployment/admin-api --timeout=120s && \
 	kubectl -n $$NAMESPACE rollout status deployment/admin-ui --timeout=120s && \

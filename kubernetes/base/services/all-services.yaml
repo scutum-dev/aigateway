@@ -612,18 +612,26 @@ spec:
     spec:
       containers:
         - name: budget-webhook
-          image: python:3.11-slim
-          command: ["sh", "-c", "echo 'Budget webhook placeholder' && sleep infinity"]
+          image: budget-webhook:latest  # Replaced by Makefile
           ports:
-            - containerPort: 8082
+            - containerPort: 8081
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-credentials
+                  key: uri
+                  optional: true
           livenessProbe:
-            tcpSocket:
-              port: 8082
+            httpGet:
+              path: /health
+              port: 8081
             initialDelaySeconds: 10
             periodSeconds: 15
           readinessProbe:
-            tcpSocket:
-              port: 8082
+            httpGet:
+              path: /health
+              port: 8081
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:
@@ -642,8 +650,8 @@ metadata:
     app: budget-webhook
 spec:
   ports:
-    - port: 8082
-      targetPort: 8082
+    - port: 8081
+      targetPort: 8081
   selector:
     app: budget-webhook
 ---
@@ -666,18 +674,26 @@ spec:
     spec:
       containers:
         - name: finops-reporter
-          image: python:3.11-slim
-          command: ["sh", "-c", "echo 'FinOps reporter placeholder' && sleep infinity"]
+          image: finops-reporter:latest  # Replaced by Makefile
           ports:
-            - containerPort: 8083
+            - containerPort: 8082
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-credentials
+                  key: uri
+                  optional: true
           livenessProbe:
-            tcpSocket:
-              port: 8083
+            httpGet:
+              path: /health
+              port: 8082
             initialDelaySeconds: 10
             periodSeconds: 15
           readinessProbe:
-            tcpSocket:
-              port: 8083
+            httpGet:
+              path: /health
+              port: 8082
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:
@@ -696,8 +712,8 @@ metadata:
     app: finops-reporter
 spec:
   ports:
-    - port: 8083
-      targetPort: 8083
+    - port: 8082
+      targetPort: 8082
   selector:
     app: finops-reporter
 ---
@@ -952,6 +968,14 @@ spec:
               value: "8083"
             - name: REDIS_URL
               value: "redis://redis:6379"
+            - name: LITELLM_URL
+              value: "http://litellm:4000"
+            - name: LITELLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: LITELLM_MASTER_KEY
+                  optional: true
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -1118,6 +1142,116 @@ spec:
       targetPort: 80
   selector:
     app: landing-ui
+---
+# Deck UI (Product Showcase)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deck-ui
+  labels:
+    app: deck-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deck-ui
+  template:
+    metadata:
+      labels:
+        app: deck-ui
+    spec:
+      containers:
+        - name: deck-ui
+          image: deck-ui:latest  # Replaced by Makefile
+          ports:
+            - containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: deck-ui
+  labels:
+    app: deck-ui
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: deck-ui
+---
+# Playground UI (Interactive LLM Testing)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: playground-ui
+  labels:
+    app: playground-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: playground-ui
+  template:
+    metadata:
+      labels:
+        app: playground-ui
+    spec:
+      containers:
+        - name: playground-ui
+          image: playground-ui:latest  # Replaced by Makefile
+          ports:
+            - containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: playground-ui
+  labels:
+    app: playground-ui
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: playground-ui
 ---
 # Docs Site
 apiVersion: apps/v1

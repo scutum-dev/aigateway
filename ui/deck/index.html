@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Control Plane - Product Deck</title>
+<link rel="stylesheet" href="https://unpkg.com/reveal.js@5.2.1/dist/reveal.css">
+<link rel="stylesheet" href="https://unpkg.com/reveal.js@5.2.1/plugin/highlight/monokai.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root {
+  --orange: #F7901D;
+  --orange-light: #FFB347;
+  --charcoal: #312E2D;
+  --charcoal-dark: #1a1918;
+  --white: #FFFFFF;
+  --blue: #1863DC;
+  --green: #22c55e;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --purple: #8b5cf6;
+  --text-muted: #a8a29e;
+  --glass: rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.08);
+}
+
+/* Animated background */
+.reveal-viewport {
+  background: linear-gradient(135deg, #0f0d0c 0%, #1a1918 40%, #231f1e 60%, #0f0d0c 100%);
+  overflow: hidden;
+}
+.reveal-viewport::before, .reveal-viewport::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.12;
+  z-index: 0;
+  animation: floatOrb 20s ease-in-out infinite;
+}
+.reveal-viewport::before {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, var(--orange) 0%, transparent 70%);
+  top: -200px; right: -100px;
+}
+.reveal-viewport::after {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, var(--blue) 0%, transparent 70%);
+  bottom: -200px; left: -100px;
+  animation-delay: -10s;
+  animation-direction: reverse;
+}
+@keyframes floatOrb {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(60px, -40px) scale(1.1); }
+  66% { transform: translate(-40px, 30px) scale(0.95); }
+}
+
+.reveal {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 28px;
+  color: var(--white);
+}
+.reveal .slides { text-align: left; }
+.reveal .slides section { padding: 40px 60px; }
+
+.reveal h1, .reveal h2, .reveal h3 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: -0.03em;
+  color: var(--white);
+}
+.reveal h1 { font-size: 2.8em; line-height: 1.1; }
+.reveal h2 {
+  font-size: 1.8em; line-height: 1.2; margin-bottom: 0.5em;
+  text-shadow: 0 0 40px rgba(247,144,29,0.15);
+}
+.reveal h3 { font-size: 1.05em; font-weight: 600; color: var(--orange); margin-bottom: 0.3em; }
+.reveal p { line-height: 1.6; color: #d6d3d1; }
+
+.reveal ul { list-style: none; padding-left: 0; }
+.reveal ul li {
+  padding: 0.25em 0 0.25em 1.4em;
+  position: relative;
+  color: #d6d3d1;
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+.reveal ul li::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0.7em;
+  width: 14px; height: 3px;
+  background: linear-gradient(90deg, var(--orange), var(--orange-light));
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(247,144,29,0.4);
+}
+
+.reveal code, .reveal pre code { font-family: 'JetBrains Mono', monospace; }
+.reveal pre {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(247,144,29,0.2);
+  border-radius: 14px;
+  padding: 18px;
+  font-size: 0.55em;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0.5em 0;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.reveal pre code { background: transparent; padding: 0; max-height: 500px; }
+
+.orange-text { color: var(--orange); }
+.blue-text { color: var(--blue); }
+.muted { color: var(--text-muted); font-size: 0.85em; }
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--orange) 0%, #FFD700 40%, var(--orange-light) 70%, var(--orange) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0%, 100% { background-position: 0% center; }
+  50% { background-position: 200% center; }
+}
+
+/* Subtle grid overlay */
+.reveal .slides section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(247,144,29,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(247,144,29,0.02) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 0;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+}
+.reveal .slides section > * { position: relative; z-index: 1; }
+
+/* Glassmorphism cards */
+.card {
+  background: linear-gradient(135deg, rgba(247,144,29,0.06) 0%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  padding: 22px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.3), 0 0 20px rgba(247,144,29,0.08), inset 0 1px 0 rgba(255,255,255,0.06);
+  border-color: rgba(247,144,29,0.2);
+}
+.card h3 { margin-top: 0; }
+
+.card-grid { display: grid; gap: 16px; }
+.card-grid-2 { grid-template-columns: 1fr 1fr; }
+.card-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+.card-grid-2x3 { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: auto auto; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; align-items: start; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+
+.badge {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--orange), var(--orange-light));
+  color: var(--charcoal);
+  font-weight: 700;
+  font-size: 0.7em;
+  padding: 2px 10px;
+  border-radius: 20px;
+  margin-left: 8px;
+  vertical-align: middle;
+  box-shadow: 0 2px 8px rgba(247,144,29,0.3);
+}
+
+.icon-circle {
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1em;
+  margin-bottom: 10px;
+  background: rgba(247,144,29,0.12);
+  color: var(--orange);
+  box-shadow: 0 0 20px rgba(247,144,29,0.1);
+}
+
+.reveal table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.55em;
+  margin: 0.3em 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.reveal table th {
+  background: rgba(247,144,29,0.12);
+  color: var(--orange);
+  font-weight: 700;
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 2px solid rgba(247,144,29,0.2);
+}
+.reveal table th.highlight-col { background: rgba(247,144,29,0.2); color: var(--white); }
+.reveal table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: #d6d3d1;
+}
+.reveal table td.highlight-col { background: rgba(247,144,29,0.04); font-weight: 500; color: var(--white); }
+.reveal table tr:hover td { background: rgba(255,255,255,0.02); }
+.check { color: var(--green); }
+.cross { color: var(--red); opacity: 0.6; }
+.partial { color: var(--amber); }
+
+.bar-chart { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.bar-row { display: flex; align-items: center; gap: 10px; font-size: 0.78em; }
+.bar-label { min-width: 90px; text-align: right; font-weight: 500; color: var(--text-muted); }
+.bar-track { flex: 1; height: 28px; background: rgba(255,255,255,0.04); border-radius: 8px; overflow: hidden; }
+.bar-fill {
+  height: 100%; border-radius: 8px; display: flex; align-items: center; padding-left: 10px;
+  font-weight: 600; font-size: 0.9em; color: var(--charcoal);
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.bar-fill.orange { background: linear-gradient(90deg, var(--orange), var(--orange-light)); box-shadow: 0 0 12px rgba(247,144,29,0.3); }
+.bar-fill.blue { background: linear-gradient(90deg, var(--blue), #4d8fef); color: var(--white); box-shadow: 0 0 12px rgba(24,99,220,0.3); }
+.bar-fill.green { background: linear-gradient(90deg, var(--green), #4ade80); box-shadow: 0 0 12px rgba(34,197,94,0.3); }
+
+.dashboard-panel {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 14px;
+  backdrop-filter: blur(8px);
+}
+.dashboard-panel h4 { font-size: 0.7em; color: var(--text-muted); margin: 0 0 10px; font-weight: 500; }
+.mini-chart { height: 55px; display: flex; align-items: flex-end; gap: 4px; }
+.mini-bar { flex: 1; border-radius: 4px 4px 0 0; min-width: 8px; transition: height 0.6s ease; }
+
+.cta-btn {
+  display: inline-block;
+  padding: 16px 36px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 0.85em;
+  text-decoration: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin: 6px 8px 6px 0;
+}
+.cta-btn:hover { transform: translateY(-3px); }
+.cta-primary {
+  background: linear-gradient(135deg, var(--orange), var(--orange-light));
+  color: var(--charcoal);
+  box-shadow: 0 4px 20px rgba(247,144,29,0.35);
+}
+.cta-primary:hover { box-shadow: 0 8px 32px rgba(247,144,29,0.5); }
+.cta-secondary {
+  background: rgba(247,144,29,0.08);
+  border: 1.5px solid rgba(247,144,29,0.4);
+  color: var(--orange);
+  backdrop-filter: blur(8px);
+}
+.cta-secondary:hover { background: rgba(247,144,29,0.15); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+
+.stat {
+  font-size: 2.5em; font-weight: 900; line-height: 1;
+  text-shadow: 0 0 30px rgba(247,144,29,0.3);
+}
+.stat-label { font-size: 0.75em; color: var(--text-muted); margin-top: 4px; }
+
+.deploy-tier { text-align: center; padding: 22px 16px; }
+.deploy-tier .icon-circle { margin: 0 auto 10px; width: 52px; height: 52px; font-size: 1.3em; }
+
+.reveal .progress { color: var(--orange); height: 4px; }
+.reveal .controls .controls-arrow { color: var(--orange); }
+.reveal .slide-number { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 14px; }
+
+.svg-diagram { width: 100%; height: auto; }
+.svg-diagram text { font-family: 'Inter', sans-serif; }
+
+/* Glow highlight for important SVG nodes */
+.svg-glow { filter: drop-shadow(0 0 8px rgba(247,144,29,0.4)); }
+
+/* Animated gradient border for featured cards */
+.card-featured {
+  position: relative;
+  border: none;
+}
+.card-featured::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 19px;
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--orange), transparent 50%, var(--orange));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.5;
+}
+
+/* Animated ring for hub diagrams */
+@keyframes pulseRing {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50% { opacity: 0.25; transform: scale(1.05); }
+}
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- SLIDE 1: Title -->
+<section data-transition="fade">
+  <div style="text-align:center; padding-top:60px;">
+    <p class="muted" style="font-size:0.75em; letter-spacing:6px; text-transform:uppercase; margin-bottom:20px;">Introducing</p>
+    <h1 class="gradient-text" style="font-size:3.8em; margin-bottom:20px;">AI Control Plane</h1>
+    <p style="font-size:1.3em; color:#d6d3d1; font-weight:300; margin-bottom:60px;">Unified AI Infrastructure for the Enterprise</p>
+    <div style="display:flex; justify-content:center; gap:80px;">
+      <div style="text-align:center;">
+        <div class="stat orange-text">100+</div>
+        <div class="stat-label">Models</div>
+      </div>
+      <div style="text-align:center;">
+        <div class="stat orange-text">9</div>
+        <div class="stat-label">Providers</div>
+      </div>
+      <div style="text-align:center;">
+        <div class="stat orange-text">1</div>
+        <div class="stat-label">Endpoint</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 2: The Problem -->
+<section>
+  <h2>The AI Infrastructure Challenge</h2>
+  <div style="margin-top:16px;">
+    <svg viewBox="0 0 1760 660" class="svg-diagram" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="redGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ef4444" stop-opacity="0.12"/><stop offset="100%" stop-color="#ef4444" stop-opacity="0.03"/></linearGradient>
+        <linearGradient id="solGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F7901D" stop-opacity="0.15"/><stop offset="100%" stop-color="#FFB347" stop-opacity="0.05"/></linearGradient>
+        <filter id="glow1"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <marker id="arrowO" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#F7901D"/></marker>
+      </defs>
+      <!-- Team boxes -->
+      <rect x="40" y="40" width="380" height="110" rx="16" fill="url(#redGrad)" stroke="#ef4444" stroke-opacity="0.3"/>
+      <text x="230" y="80" text-anchor="middle" fill="#ef4444" font-size="22" font-weight="700">Team A</text>
+      <text x="230" y="108" text-anchor="middle" fill="#d6d3d1" font-size="17">OpenAI SDK + custom auth</text>
+      <text x="230" y="132" text-anchor="middle" fill="#a8a29e" font-size="14">No cost tracking</text>
+
+      <rect x="460" y="40" width="380" height="110" rx="16" fill="url(#redGrad)" stroke="#ef4444" stroke-opacity="0.3"/>
+      <text x="650" y="80" text-anchor="middle" fill="#ef4444" font-size="22" font-weight="700">Team B</text>
+      <text x="650" y="108" text-anchor="middle" fill="#d6d3d1" font-size="17">Anthropic SDK + own retry logic</text>
+      <text x="650" y="132" text-anchor="middle" fill="#a8a29e" font-size="14">No guardrails</text>
+
+      <rect x="880" y="40" width="380" height="110" rx="16" fill="url(#redGrad)" stroke="#ef4444" stroke-opacity="0.3"/>
+      <text x="1070" y="80" text-anchor="middle" fill="#ef4444" font-size="22" font-weight="700">Team C</text>
+      <text x="1070" y="108" text-anchor="middle" fill="#d6d3d1" font-size="17">Azure SDK + manual failover</text>
+      <text x="1070" y="132" text-anchor="middle" fill="#a8a29e" font-size="14">No caching</text>
+
+      <rect x="1300" y="40" width="380" height="110" rx="16" fill="url(#redGrad)" stroke="#ef4444" stroke-opacity="0.3"/>
+      <text x="1490" y="80" text-anchor="middle" fill="#ef4444" font-size="22" font-weight="700">Team D</text>
+      <text x="1490" y="108" text-anchor="middle" fill="#d6d3d1" font-size="17">Bedrock SDK + own logging</text>
+      <text x="1490" y="132" text-anchor="middle" fill="#a8a29e" font-size="14">No shared observability</text>
+
+      <!-- Pain point strip -->
+      <rect x="40" y="200" width="1640" height="70" rx="14" fill="rgba(239,68,68,0.04)" stroke="#ef4444" stroke-opacity="0.15"/>
+      <text x="160" y="243" text-anchor="middle" fill="#F7901D" font-size="18" font-weight="600">Fragmented SDKs</text>
+      <text x="460" y="243" text-anchor="middle" fill="#F7901D" font-size="18" font-weight="600">Surprise Costs</text>
+      <text x="760" y="243" text-anchor="middle" fill="#F7901D" font-size="18" font-weight="600">No Guardrails</text>
+      <text x="1070" y="243" text-anchor="middle" fill="#F7901D" font-size="18" font-weight="600">Manual Orchestration</text>
+      <text x="1400" y="243" text-anchor="middle" fill="#F7901D" font-size="18" font-weight="600">Zero Observability</text>
+
+      <!-- Arrow down -->
+      <line x1="880" y1="290" x2="880" y2="350" stroke="#F7901D" stroke-width="3" marker-end="url(#arrowO)" filter="url(#glow1)"/>
+
+      <!-- Solution box -->
+      <rect x="280" y="370" width="1200" height="120" rx="22" fill="url(#solGrad)" stroke="#F7901D" stroke-width="2"/>
+      <text x="880" y="420" text-anchor="middle" fill="#F7901D" font-size="32" font-weight="800" filter="url(#glow1)">AI Control Plane</text>
+      <text x="880" y="462" text-anchor="middle" fill="#d6d3d1" font-size="20">One endpoint &middot; Cost control &middot; Guardrails &middot; Routing &middot; Observability</text>
+
+      <!-- Provider row -->
+      <g transform="translate(100,540)">
+        <rect width="1560" height="60" rx="14" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.06)"/>
+        <text x="780" y="38" text-anchor="middle" fill="#a8a29e" font-size="17">
+          <tspan fill="#d6d3d1" font-weight="600">OpenAI</tspan> &middot;
+          <tspan fill="#d6d3d1" font-weight="600">Anthropic</tspan> &middot;
+          <tspan fill="#d6d3d1" font-weight="600">Google</tspan> &middot;
+          <tspan fill="#d6d3d1" font-weight="600">Azure</tspan> &middot;
+          <tspan fill="#d6d3d1" font-weight="600">Bedrock</tspan> &middot;
+          <tspan fill="#d6d3d1" font-weight="600">Vertex AI</tspan> &middot;
+          <tspan fill="#d6d3d1" font-weight="600">xAI</tspan> &middot;
+          <tspan fill="#d6d3d1" font-weight="600">DeepSeek</tspan> &middot;
+          <tspan fill="#d6d3d1" font-weight="600">Ollama</tspan>
+        </text>
+      </g>
+      <line x1="880" y1="490" x2="880" y2="540" stroke="#F7901D" stroke-opacity="0.3" stroke-width="1.5"/>
+    </svg>
+  </div>
+</section>
+
+<!-- SLIDE 3: Solution Overview -->
+<section>
+  <h2>One Control Plane. Every Model. Total Control.</h2>
+  <div class="card-grid card-grid-2" style="margin-top:16px;">
+    <div class="card card-featured">
+      <div class="icon-circle"><i class="fa-solid fa-plug"></i></div>
+      <h3>Single Endpoint</h3>
+      <p style="font-size:0.8em;">OpenAI-compatible API for all providers. Switch models without code changes.</p>
+    </div>
+    <div class="card card-featured">
+      <div class="icon-circle" style="background:rgba(34,197,94,0.12); color:var(--green);"><i class="fa-solid fa-coins"></i></div>
+      <h3 style="color:var(--green);">Cost Management</h3>
+      <p style="font-size:0.8em;">Real-time tracking, per-team budgets, soft/hard limits with predictive estimates.</p>
+    </div>
+    <div class="card card-featured">
+      <div class="icon-circle" style="background:rgba(239,68,68,0.12); color:var(--red);"><i class="fa-solid fa-shield-halved"></i></div>
+      <h3 style="color:var(--red);">Enterprise Guardrails</h3>
+      <p style="font-size:0.8em;">PII redaction, content filtering, prompt injection defense per team.</p>
+    </div>
+    <div class="card card-featured">
+      <div class="icon-circle" style="background:rgba(24,99,220,0.12); color:var(--blue);"><i class="fa-solid fa-route"></i></div>
+      <h3 style="color:var(--blue);">Intelligent Routing</h3>
+      <p style="font-size:0.8em;">Cedar policies, weighted scoring, failover chains, semantic caching.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 4: Architecture -->
+<section>
+  <h2>Platform Architecture</h2>
+  <svg viewBox="0 0 1760 750" class="svg-diagram" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="a1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#F7901D" fill-opacity="0.6"/></marker>
+      <linearGradient id="gCore" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#F7901D" stop-opacity="0.18"/><stop offset="100%" stop-color="#F7901D" stop-opacity="0.04"/></linearGradient>
+      <filter id="glow2"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    </defs>
+
+    <!-- Clients -->
+    <rect x="40" y="15" width="1500" height="80" rx="14" fill="var(--glass)" stroke="var(--glass-border)"/>
+    <text x="70" y="50" fill="#F7901D" font-size="18" font-weight="700">Clients</text>
+    <g font-size="16" fill="#d6d3d1">
+      <rect x="200" y="33" width="110" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="255" y="56" text-anchor="middle">REST API</text>
+      <rect x="325" y="33" width="110" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="380" y="56" text-anchor="middle">Admin UI</text>
+      <rect x="450" y="33" width="80" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="490" y="56" text-anchor="middle">SDKs</text>
+      <rect x="545" y="33" width="130" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="610" y="56" text-anchor="middle">MCP Clients</text>
+      <rect x="690" y="33" width="130" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="755" y="56" text-anchor="middle">A2A Agents</text>
+    </g>
+
+    <line x1="790" y1="95" x2="790" y2="130" stroke="#F7901D" stroke-opacity="0.4" stroke-width="2" marker-end="url(#a1)"/>
+
+    <!-- Gateway Core (highlighted) -->
+    <rect x="40" y="135" width="1500" height="90" rx="14" fill="url(#gCore)" stroke="#F7901D" stroke-width="1.5"/>
+    <text x="70" y="172" fill="#F7901D" font-size="18" font-weight="700">Gateway Core</text>
+    <g font-size="16">
+      <rect x="200" y="155" width="160" height="38" rx="10" fill="rgba(247,144,29,0.2)" stroke="#F7901D" stroke-opacity="0.4"/><text x="280" y="179" text-anchor="middle" fill="#fff" font-weight="600" filter="url(#glow2)">LiteLLM Proxy</text>
+      <rect x="375" y="155" width="140" height="38" rx="10" fill="rgba(255,255,255,0.05)"/><text x="445" y="179" text-anchor="middle" fill="#d6d3d1">Policy Router</text>
+      <rect x="530" y="155" width="155" height="38" rx="10" fill="rgba(255,255,255,0.05)"/><text x="607" y="179" text-anchor="middle" fill="#d6d3d1">Semantic Cache</text>
+      <rect x="700" y="155" width="120" height="38" rx="10" fill="rgba(255,255,255,0.05)"/><text x="760" y="179" text-anchor="middle" fill="#d6d3d1">Guardrails</text>
+      <rect x="835" y="155" width="150" height="38" rx="10" fill="rgba(255,255,255,0.05)"/><text x="910" y="179" text-anchor="middle" fill="#d6d3d1">Cost Predictor</text>
+    </g>
+
+    <line x1="790" y1="225" x2="790" y2="260" stroke="#F7901D" stroke-opacity="0.4" stroke-width="2" marker-end="url(#a1)"/>
+
+    <!-- Orchestration -->
+    <rect x="40" y="265" width="1500" height="80" rx="14" fill="var(--glass)" stroke="var(--glass-border)"/>
+    <text x="70" y="300" fill="#F7901D" font-size="18" font-weight="700">Orchestration</text>
+    <g font-size="16" fill="#d6d3d1">
+      <rect x="200" y="285" width="180" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="290" y="307" text-anchor="middle">LangGraph Workflows</text>
+      <rect x="395" y="285" width="110" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="450" y="307" text-anchor="middle">Temporal</text>
+      <rect x="520" y="285" width="130" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="585" y="307" text-anchor="middle">A2A Runtime</text>
+      <rect x="665" y="285" width="175" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="752" y="307" text-anchor="middle">Agent Gateway (Rust)</text>
+    </g>
+
+    <line x1="790" y1="345" x2="790" y2="380" stroke="#F7901D" stroke-opacity="0.4" stroke-width="2" marker-end="url(#a1)"/>
+
+    <!-- Management -->
+    <rect x="40" y="385" width="1500" height="80" rx="14" fill="var(--glass)" stroke="var(--glass-border)"/>
+    <text x="70" y="420" fill="#F7901D" font-size="18" font-weight="700">Management</text>
+    <g font-size="16" fill="#d6d3d1">
+      <rect x="200" y="405" width="120" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="260" y="427" text-anchor="middle">Admin API</text>
+      <rect x="335" y="405" width="160" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="415" y="427" text-anchor="middle">Budget Webhook</text>
+      <rect x="510" y="405" width="155" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="587" y="427" text-anchor="middle">FinOps Reporter</text>
+      <rect x="680" y="405" width="145" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="752" y="427" text-anchor="middle">Config Loader</text>
+    </g>
+
+    <line x1="790" y1="465" x2="790" y2="500" stroke="#F7901D" stroke-opacity="0.4" stroke-width="2" marker-end="url(#a1)"/>
+
+    <!-- Providers -->
+    <rect x="40" y="505" width="1500" height="80" rx="14" fill="var(--glass)" stroke="var(--glass-border)"/>
+    <text x="70" y="540" fill="#F7901D" font-size="18" font-weight="700">Providers</text>
+    <g font-size="15" fill="#d6d3d1">
+      <rect x="200" y="525" width="100" height="32" rx="8" fill="rgba(255,255,255,0.05)"/><text x="250" y="546" text-anchor="middle">OpenAI</text>
+      <rect x="315" y="525" width="110" height="32" rx="8" fill="rgba(255,255,255,0.05)"/><text x="370" y="546" text-anchor="middle">Anthropic</text>
+      <rect x="440" y="525" width="95" height="32" rx="8" fill="rgba(255,255,255,0.05)"/><text x="487" y="546" text-anchor="middle">Google</text>
+      <rect x="550" y="525" width="90" height="32" rx="8" fill="rgba(255,255,255,0.05)"/><text x="595" y="546" text-anchor="middle">Azure</text>
+      <rect x="655" y="525" width="110" height="32" rx="8" fill="rgba(255,255,255,0.05)"/><text x="710" y="546" text-anchor="middle">Bedrock</text>
+      <rect x="780" y="525" width="105" height="32" rx="8" fill="rgba(255,255,255,0.05)"/><text x="832" y="546" text-anchor="middle">Vertex AI</text>
+      <rect x="900" y="525" width="70" height="32" rx="8" fill="rgba(255,255,255,0.05)"/><text x="935" y="546" text-anchor="middle">xAI</text>
+      <rect x="985" y="525" width="105" height="32" rx="8" fill="rgba(255,255,255,0.05)"/><text x="1037" y="546" text-anchor="middle">DeepSeek</text>
+      <rect x="1105" y="525" width="90" height="32" rx="8" fill="rgba(255,255,255,0.05)"/><text x="1150" y="546" text-anchor="middle">Ollama</text>
+    </g>
+
+    <!-- Observability sidebar -->
+    <rect x="1580" y="135" width="160" height="450" rx="14" fill="rgba(24,99,220,0.05)" stroke="rgba(24,99,220,0.2)"/>
+    <text x="1660" y="178" text-anchor="middle" fill="#1863DC" font-size="17" font-weight="700">Observability</text>
+    <g font-size="14" fill="#a8a29e" text-anchor="middle">
+      <text x="1660" y="230">OpenTelemetry</text>
+      <text x="1660" y="300">Prometheus</text>
+      <text x="1660" y="370">Grafana</text>
+      <text x="1660" y="440">Jaeger</text>
+    </g>
+    <line x1="1540" y1="180" x2="1580" y2="180" stroke="rgba(24,99,220,0.15)" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <line x1="1540" y1="310" x2="1580" y2="310" stroke="rgba(24,99,220,0.15)" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <line x1="1540" y1="430" x2="1580" y2="430" stroke="rgba(24,99,220,0.15)" stroke-width="1.5" stroke-dasharray="4,3"/>
+  </svg>
+</section>
+
+<!-- SLIDE 5: Models -->
+<section>
+  <h2>100+ Models, 9 Providers</h2>
+  <div class="three-col" style="margin-top:12px;">
+    <div class="card card-featured">
+      <h3>Commercial AI <span class="badge">60+</span></h3>
+      <ul>
+        <li><strong>OpenAI</strong> &mdash; GPT-4.1, o3, o4-mini</li>
+        <li><strong>Anthropic</strong> &mdash; Opus 4, Sonnet 4.5</li>
+        <li><strong>Google</strong> &mdash; Gemini 2.5 Pro/Flash</li>
+        <li><strong>xAI</strong> &mdash; Grok 3</li>
+        <li><strong>DeepSeek</strong> &mdash; Chat, Reasoner</li>
+      </ul>
+    </div>
+    <div class="card card-featured">
+      <h3>Enterprise Cloud <span class="badge">30+</span></h3>
+      <ul>
+        <li><strong>Azure OpenAI</strong> &mdash; GPT-4.1, Embeddings</li>
+        <li><strong>AWS Bedrock</strong> &mdash; Claude, Titan</li>
+        <li><strong>Vertex AI</strong> &mdash; Gemini, PaLM</li>
+      </ul>
+      <p style="font-size:0.75em; margin-top:10px;"><i class="fa-solid fa-lock orange-text"></i> Private endpoints, data residency</p>
+    </div>
+    <div class="card card-featured">
+      <h3>Open Source <span class="badge">20+</span></h3>
+      <ul>
+        <li><strong>Ollama</strong> &mdash; Llama 3.3, Mistral, Phi-4</li>
+        <li><strong>Cohere</strong> &mdash; Command R+</li>
+      </ul>
+      <p style="font-size:0.75em; margin-top:10px;"><i class="fa-solid fa-microchip orange-text"></i> Your GPUs, zero API cost</p>
+    </div>
+  </div>
+  <div style="text-align:center; margin-top:18px;">
+    <svg viewBox="0 0 1200 55" class="svg-diagram" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="2" width="1200" height="50" rx="14" fill="rgba(247,144,29,0.06)" stroke="#F7901D" stroke-opacity="0.15"/>
+      <text x="90" y="34" fill="#a8a29e" font-size="17">Model Groups:</text>
+      <text x="260" y="34" fill="#F7901D" font-size="17" font-weight="700">fast</text><text x="298" y="34" fill="#a8a29e" font-size="15"> (GPT-4o mini)</text>
+      <text x="490" y="34" fill="#F7901D" font-size="17" font-weight="700">smart</text><text x="540" y="34" fill="#a8a29e" font-size="15"> (Claude Sonnet)</text>
+      <text x="750" y="34" fill="#F7901D" font-size="17" font-weight="700">powerful</text><text x="832" y="34" fill="#a8a29e" font-size="15"> (GPT-4.1)</text>
+      <text x="1005" y="34" fill="#a8a29e" font-size="15">with auto-failover</text>
+    </svg>
+  </div>
+</section>
+
+<!-- SLIDE 6: Routing -->
+<section>
+  <h2>Intelligent Routing</h2>
+  <div class="two-col">
+    <div>
+      <h3>Cedar Policy Engine</h3>
+      <pre><code class="language-javascript">permit(
+  principal in Team::"engineering",
+  action == Action::"route",
+  resource in ModelGroup::"powerful"
+) when {
+  context.budget_remaining > 0
+};</code></pre>
+      <h3 style="margin-top:16px;">Weighted Scoring</h3>
+      <div class="bar-chart">
+        <div class="bar-row"><span class="bar-label">Quality</span><div class="bar-track"><div class="bar-fill orange" style="width:85%;">0.85</div></div></div>
+        <div class="bar-row"><span class="bar-label">Latency</span><div class="bar-track"><div class="bar-fill blue" style="width:70%;">0.70</div></div></div>
+        <div class="bar-row"><span class="bar-label">Cost</span><div class="bar-track"><div class="bar-fill green" style="width:60%;">0.60</div></div></div>
+      </div>
+    </div>
+    <div>
+      <h3>Request Flow</h3>
+      <svg viewBox="0 0 700 520" class="svg-diagram" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="a2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#F7901D"/></marker>
+          <linearGradient id="flowGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F7901D" stop-opacity="0.15"/><stop offset="100%" stop-color="#22c55e" stop-opacity="0.1"/></linearGradient>
+        </defs>
+        <rect x="100" y="10" width="500" height="500" rx="20" fill="url(#flowGrad)" opacity="0.3"/>
+        <rect x="240" y="30" width="220" height="52" rx="12" fill="rgba(247,144,29,0.15)" stroke="#F7901D" stroke-opacity="0.4"/><text x="350" y="62" text-anchor="middle" fill="#fff" font-size="19" font-weight="600">Incoming Request</text>
+        <line x1="350" y1="82" x2="350" y2="120" stroke="#F7901D" stroke-width="2" marker-end="url(#a2)"/>
+        <rect x="210" y="125" width="280" height="52" rx="12" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.12)"/><text x="350" y="157" text-anchor="middle" fill="#d6d3d1" font-size="18">Cedar Policy Check</text>
+        <line x1="350" y1="177" x2="350" y2="215" stroke="#F7901D" stroke-width="2" marker-end="url(#a2)"/>
+        <rect x="210" y="220" width="280" height="52" rx="12" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.12)"/><text x="350" y="252" text-anchor="middle" fill="#d6d3d1" font-size="18">Score Available Models</text>
+        <line x1="350" y1="272" x2="350" y2="310" stroke="#F7901D" stroke-width="2" marker-end="url(#a2)"/>
+        <rect x="210" y="315" width="280" height="52" rx="12" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.12)"/><text x="350" y="347" text-anchor="middle" fill="#d6d3d1" font-size="18">Select Best Model</text>
+        <line x1="350" y1="367" x2="350" y2="405" stroke="#F7901D" stroke-width="2" marker-end="url(#a2)"/>
+        <rect x="220" y="410" width="260" height="52" rx="12" fill="rgba(34,197,94,0.1)" stroke="#22c55e" stroke-opacity="0.4"/><text x="350" y="442" text-anchor="middle" fill="#22c55e" font-size="19" font-weight="600">Dispatch to Provider</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 7: Semantic Cache -->
+<section>
+  <h2>Semantic Cache</h2>
+  <div class="two-col">
+    <div>
+      <svg viewBox="0 0 720 520" class="svg-diagram" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="a3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#F7901D"/></marker>
+          <marker id="a3g" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#22c55e"/></marker>
+          <marker id="a3r" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#ef4444"/></marker>
+        </defs>
+        <rect x="200" y="10" width="300" height="50" rx="12" fill="rgba(247,144,29,0.15)" stroke="#F7901D" stroke-opacity="0.4"/>
+        <text x="350" y="42" text-anchor="middle" fill="#fff" font-size="19" font-weight="600">Incoming Query</text>
+        <line x1="350" y1="60" x2="350" y2="95" stroke="#F7901D" stroke-width="2" marker-end="url(#a3)"/>
+        <rect x="160" y="100" width="380" height="50" rx="12" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)"/>
+        <text x="350" y="132" text-anchor="middle" fill="#d6d3d1" font-size="17">Embed with text-embedding-3-small</text>
+        <line x1="350" y1="150" x2="350" y2="185" stroke="#F7901D" stroke-width="2" marker-end="url(#a3)"/>
+        <rect x="170" y="190" width="360" height="65" rx="14" fill="rgba(247,144,29,0.08)" stroke="#F7901D" stroke-opacity="0.3"/>
+        <text x="350" y="220" text-anchor="middle" fill="#F7901D" font-size="19" font-weight="600">Cosine Similarity Check</text>
+        <text x="350" y="242" text-anchor="middle" fill="#a8a29e" font-size="15">threshold: 0.92</text>
+        <!-- Hit -->
+        <line x1="240" y1="255" x2="140" y2="300" stroke="#22c55e" stroke-width="2" marker-end="url(#a3g)"/>
+        <text x="155" y="290" fill="#22c55e" font-size="15" font-weight="600">&ge; 0.92</text>
+        <rect x="30" y="305" width="220" height="50" rx="12" fill="rgba(34,197,94,0.1)" stroke="#22c55e" stroke-opacity="0.4"/>
+        <text x="140" y="337" text-anchor="middle" fill="#22c55e" font-size="18" font-weight="600">Cache Hit (&lt;5ms)</text>
+        <line x1="140" y1="355" x2="140" y2="395" stroke="#22c55e" stroke-width="2" marker-end="url(#a3g)"/>
+        <rect x="30" y="400" width="220" height="44" rx="10" fill="rgba(34,197,94,0.06)" stroke="#22c55e" stroke-opacity="0.2"/>
+        <text x="140" y="428" text-anchor="middle" fill="#22c55e" font-size="16">Return cached (free)</text>
+        <!-- Miss -->
+        <line x1="460" y1="255" x2="560" y2="300" stroke="#ef4444" stroke-width="2" marker-end="url(#a3r)"/>
+        <text x="500" y="290" fill="#ef4444" font-size="15" font-weight="600">&lt; 0.92</text>
+        <rect x="450" y="305" width="220" height="50" rx="12" fill="rgba(239,68,68,0.08)" stroke="#ef4444" stroke-opacity="0.3"/>
+        <text x="560" y="337" text-anchor="middle" fill="#ef4444" font-size="18" font-weight="600">Cache Miss</text>
+        <line x1="560" y1="355" x2="560" y2="395" stroke="#F7901D" stroke-width="2" marker-end="url(#a3)"/>
+        <rect x="450" y="400" width="220" height="44" rx="10" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)"/>
+        <text x="560" y="428" text-anchor="middle" fill="#d6d3d1" font-size="16">Call LLM + cache result</text>
+      </svg>
+    </div>
+    <div>
+      <div class="card-grid" style="grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+        <div class="card" style="text-align:center; padding:22px;">
+          <div class="stat orange-text" style="font-size:2.2em;">30-60%</div>
+          <div class="stat-label">Cost Savings</div>
+        </div>
+        <div class="card" style="text-align:center; padding:22px;">
+          <div class="stat blue-text" style="font-size:2.2em;">&lt;5ms</div>
+          <div class="stat-label">Cache Response</div>
+        </div>
+      </div>
+      <div class="card" style="padding:16px; margin-top:16px;">
+        <h3 style="font-size:0.85em;"><i class="fa-solid fa-quote-left"></i> Example</h3>
+        <p style="font-size:0.78em; margin:6px 0;"><strong>Q1:</strong> "Benefits of microservices?"</p>
+        <p style="font-size:0.78em; margin:6px 0;"><strong>Q2:</strong> "Why use microservices architecture?"</p>
+        <p style="font-size:0.78em; margin:6px 0; color:var(--green);"><i class="fa-solid fa-check"></i> Similarity: 0.94 &mdash; Hit!</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 8: Guardrails -->
+<section>
+  <h2>Enterprise Guardrails</h2>
+  <div class="two-col">
+    <div>
+      <svg viewBox="0 0 720 560" class="svg-diagram" xmlns="http://www.w3.org/2000/svg">
+        <defs><marker id="a4" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#F7901D"/></marker></defs>
+        <rect x="200" y="10" width="320" height="46" rx="12" fill="rgba(247,144,29,0.15)" stroke="#F7901D" stroke-opacity="0.4"/>
+        <text x="360" y="40" text-anchor="middle" fill="#fff" font-size="18" font-weight="600">User Prompt</text>
+        <line x1="360" y1="56" x2="360" y2="82" stroke="#F7901D" stroke-width="2" marker-end="url(#a4)"/>
+        <!-- Input scanners -->
+        <rect x="100" y="87" width="520" height="170" rx="14" fill="rgba(247,144,29,0.04)" stroke="#F7901D" stroke-opacity="0.15"/>
+        <text x="130" y="115" fill="#F7901D" font-size="16" font-weight="700">INPUT SCANNERS</text>
+        <rect x="130" y="128" width="230" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="245" y="150" text-anchor="middle" fill="#d6d3d1" font-size="14">Prompt Injection Detection</text>
+        <rect x="375" y="128" width="180" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="465" y="150" text-anchor="middle" fill="#d6d3d1" font-size="14">PII Redaction</text>
+        <rect x="130" y="172" width="180" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="220" y="194" text-anchor="middle" fill="#d6d3d1" font-size="14">Toxicity Filter</text>
+        <rect x="325" y="172" width="200" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="425" y="194" text-anchor="middle" fill="#d6d3d1" font-size="14">Secrets Detection</text>
+        <text x="360" y="244" text-anchor="middle" fill="#a8a29e" font-size="13">LLM Guard + Presidio</text>
+        <line x1="360" y1="257" x2="360" y2="283" stroke="#F7901D" stroke-width="2" marker-end="url(#a4)"/>
+        <!-- LLM -->
+        <rect x="230" y="288" width="260" height="46" rx="12" fill="rgba(24,99,220,0.1)" stroke="#1863DC" stroke-opacity="0.3"/>
+        <text x="360" y="318" text-anchor="middle" fill="#1863DC" font-size="18" font-weight="600">LLM Provider</text>
+        <line x1="360" y1="334" x2="360" y2="360" stroke="#F7901D" stroke-width="2" marker-end="url(#a4)"/>
+        <!-- Output scanners -->
+        <rect x="100" y="365" width="520" height="110" rx="14" fill="rgba(247,144,29,0.04)" stroke="#F7901D" stroke-opacity="0.15"/>
+        <text x="130" y="393" fill="#F7901D" font-size="16" font-weight="700">OUTPUT SCANNERS</text>
+        <rect x="130" y="406" width="210" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="235" y="428" text-anchor="middle" fill="#d6d3d1" font-size="14">PII Re-ID Guard</text>
+        <rect x="355" y="406" width="210" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="460" y="428" text-anchor="middle" fill="#d6d3d1" font-size="14">Relevance Check</text>
+        <line x1="360" y1="475" x2="360" y2="505" stroke="#22c55e" stroke-width="2" marker-end="url(#a4)"/>
+        <rect x="210" y="510" width="300" height="40" rx="10" fill="rgba(34,197,94,0.08)" stroke="#22c55e" stroke-opacity="0.3"/>
+        <text x="360" y="536" text-anchor="middle" fill="#22c55e" font-size="17" font-weight="600">Safe Response</text>
+      </svg>
+    </div>
+    <div>
+      <h3>PII Redaction</h3>
+      <pre><code class="language-text">Input:  "Call John Smith at 555-0123"
+Output: "Call [PERSON] at [PHONE]"</code></pre>
+      <h3 style="margin-top:20px;">Per-Team Profiles</h3>
+      <div class="card" style="padding:14px; font-size:0.78em;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+          <span><i class="fa-solid fa-users orange-text"></i> <strong>Engineering</strong></span>
+          <span class="muted">Relaxed</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+          <span><i class="fa-solid fa-users orange-text"></i> <strong>Support</strong></span>
+          <span class="muted">Strict PII + Toxicity</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span><i class="fa-solid fa-users orange-text"></i> <strong>Finance</strong></span>
+          <span class="muted">Max PII + Secrets</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 9: Cost Management -->
+<section>
+  <h2>Cost Management</h2>
+  <div class="two-col">
+    <div>
+      <svg viewBox="0 0 700 460" class="svg-diagram" xmlns="http://www.w3.org/2000/svg">
+        <defs><marker id="a5" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#F7901D"/></marker></defs>
+        <rect x="180" y="10" width="340" height="50" rx="12" fill="rgba(247,144,29,0.15)" stroke="#F7901D" stroke-opacity="0.4"/>
+        <text x="350" y="42" text-anchor="middle" fill="#fff" font-size="19" font-weight="600">API Request</text>
+        <line x1="350" y1="60" x2="350" y2="92" stroke="#F7901D" stroke-width="2" marker-end="url(#a5)"/>
+        <rect x="150" y="97" width="400" height="50" rx="12" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)"/>
+        <text x="350" y="128" text-anchor="middle" fill="#d6d3d1" font-size="18">Predict cost (tiktoken + pricing)</text>
+        <line x1="350" y1="147" x2="350" y2="179" stroke="#F7901D" stroke-width="2" marker-end="url(#a5)"/>
+        <rect x="150" y="184" width="400" height="50" rx="12" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)"/>
+        <text x="350" y="215" text-anchor="middle" fill="#d6d3d1" font-size="18">Check team budget remaining</text>
+        <!-- Three outcomes -->
+        <line x1="200" y1="234" x2="110" y2="284" stroke="#22c55e" stroke-width="2" marker-end="url(#a5)"/>
+        <line x1="350" y1="234" x2="350" y2="284" stroke="#f59e0b" stroke-width="2" marker-end="url(#a5)"/>
+        <line x1="500" y1="234" x2="590" y2="284" stroke="#ef4444" stroke-width="2" marker-end="url(#a5)"/>
+        <rect x="10" y="290" width="200" height="65" rx="12" fill="rgba(34,197,94,0.08)" stroke="#22c55e" stroke-opacity="0.3"/>
+        <text x="110" y="318" text-anchor="middle" fill="#22c55e" font-size="17" font-weight="600">Under Budget</text>
+        <text x="110" y="341" text-anchor="middle" fill="#a8a29e" font-size="14">Allow request</text>
+        <rect x="250" y="290" width="200" height="65" rx="12" fill="rgba(245,158,11,0.08)" stroke="#f59e0b" stroke-opacity="0.3"/>
+        <text x="350" y="318" text-anchor="middle" fill="#f59e0b" font-size="17" font-weight="600">Soft Limit</text>
+        <text x="350" y="341" text-anchor="middle" fill="#a8a29e" font-size="14">Alert + allow</text>
+        <rect x="490" y="290" width="200" height="65" rx="12" fill="rgba(239,68,68,0.08)" stroke="#ef4444" stroke-opacity="0.3"/>
+        <text x="590" y="318" text-anchor="middle" fill="#ef4444" font-size="17" font-weight="600">Hard Limit</text>
+        <text x="590" y="341" text-anchor="middle" fill="#a8a29e" font-size="14">Block (429)</text>
+        <text x="350" y="410" text-anchor="middle" fill="#a8a29e" font-size="15">Alert channels: Slack &middot; PagerDuty &middot; Email</text>
+      </svg>
+    </div>
+    <div>
+      <h3>Spend by Team</h3>
+      <div class="bar-chart">
+        <div class="bar-row"><span class="bar-label">Engineering</span><div class="bar-track"><div class="bar-fill orange" style="width:75%;">$3,400</div></div></div>
+        <div class="bar-row"><span class="bar-label">Data Science</span><div class="bar-track"><div class="bar-fill blue" style="width:55%;">$2,200</div></div></div>
+        <div class="bar-row"><span class="bar-label">Support</span><div class="bar-track"><div class="bar-fill green" style="width:30%;">$850</div></div></div>
+      </div>
+      <h3 style="margin-top:24px;">Key Features</h3>
+      <ul>
+        <li>Pre-request cost prediction</li>
+        <li>Per-team &amp; per-key budgets</li>
+        <li>Soft + hard limit enforcement</li>
+        <li>Real-time webhook alerts</li>
+        <li>FinOps reporting (CSV/JSON)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 10: Workflows -->
+<section>
+  <h2>Workflow Orchestration</h2>
+  <div class="two-col">
+    <div>
+      <h3>LangGraph Templates</h3>
+      <svg viewBox="0 0 700 400" class="svg-diagram" xmlns="http://www.w3.org/2000/svg">
+        <defs><marker id="a6" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#F7901D" fill-opacity="0.6"/></marker></defs>
+        <!-- Research -->
+        <rect x="20" y="10" width="660" height="100" rx="14" fill="rgba(247,144,29,0.04)" stroke="#F7901D" stroke-opacity="0.15"/>
+        <text x="50" y="38" fill="#F7901D" font-size="17" font-weight="700">Research</text>
+        <g transform="translate(50,50)">
+          <rect width="110" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="55" y="22" text-anchor="middle" fill="#d6d3d1" font-size="13">Web Search</text>
+          <line x1="110" y1="17" x2="140" y2="17" stroke="#F7901D" stroke-opacity="0.4" stroke-width="1.5" marker-end="url(#a6)"/>
+          <rect x="140" width="110" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="195" y="22" text-anchor="middle" fill="#d6d3d1" font-size="13">Synthesize</text>
+          <line x1="250" y1="17" x2="280" y2="17" stroke="#F7901D" stroke-opacity="0.4" stroke-width="1.5" marker-end="url(#a6)"/>
+          <rect x="280" width="110" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="335" y="22" text-anchor="middle" fill="#d6d3d1" font-size="13">Fact-Check</text>
+          <line x1="390" y1="17" x2="420" y2="17" stroke="#F7901D" stroke-opacity="0.4" stroke-width="1.5" marker-end="url(#a6)"/>
+          <rect x="420" width="110" height="34" rx="8" fill="rgba(34,197,94,0.08)" stroke="#22c55e" stroke-opacity="0.3"/><text x="475" y="22" text-anchor="middle" fill="#22c55e" font-size="13">Summary</text>
+        </g>
+        <!-- Coding -->
+        <rect x="20" y="130" width="660" height="100" rx="14" fill="rgba(24,99,220,0.03)" stroke="#1863DC" stroke-opacity="0.15"/>
+        <text x="50" y="158" fill="#1863DC" font-size="17" font-weight="700">Coding</text>
+        <g transform="translate(50,170)">
+          <rect width="110" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="55" y="22" text-anchor="middle" fill="#d6d3d1" font-size="13">Requirements</text>
+          <line x1="110" y1="17" x2="140" y2="17" stroke="#1863DC" stroke-opacity="0.4" stroke-width="1.5"/>
+          <rect x="140" width="110" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="195" y="22" text-anchor="middle" fill="#d6d3d1" font-size="13">Generate</text>
+          <line x1="250" y1="17" x2="280" y2="17" stroke="#1863DC" stroke-opacity="0.4" stroke-width="1.5"/>
+          <rect x="280" width="100" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="330" y="22" text-anchor="middle" fill="#d6d3d1" font-size="13">Review</text>
+          <line x1="380" y1="17" x2="410" y2="17" stroke="#1863DC" stroke-opacity="0.4" stroke-width="1.5"/>
+          <rect x="410" width="120" height="34" rx="8" fill="rgba(34,197,94,0.08)" stroke="#22c55e" stroke-opacity="0.3"/><text x="470" y="22" text-anchor="middle" fill="#22c55e" font-size="13">Test + Iterate</text>
+        </g>
+        <!-- Data Analysis -->
+        <rect x="20" y="250" width="660" height="100" rx="14" fill="rgba(34,197,94,0.03)" stroke="#22c55e" stroke-opacity="0.15"/>
+        <text x="50" y="278" fill="#22c55e" font-size="17" font-weight="700">Data Analysis</text>
+        <g transform="translate(50,290)">
+          <rect width="110" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="55" y="22" text-anchor="middle" fill="#d6d3d1" font-size="13">Schema</text>
+          <line x1="110" y1="17" x2="140" y2="17" stroke="#22c55e" stroke-opacity="0.4" stroke-width="1.5"/>
+          <rect x="140" width="110" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="195" y="22" text-anchor="middle" fill="#d6d3d1" font-size="13">Query Gen</text>
+          <line x1="250" y1="17" x2="280" y2="17" stroke="#22c55e" stroke-opacity="0.4" stroke-width="1.5"/>
+          <rect x="280" width="110" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="335" y="22" text-anchor="middle" fill="#d6d3d1" font-size="13">Visualize</text>
+          <line x1="390" y1="17" x2="420" y2="17" stroke="#22c55e" stroke-opacity="0.4" stroke-width="1.5"/>
+          <rect x="420" width="110" height="34" rx="8" fill="rgba(34,197,94,0.08)" stroke="#22c55e" stroke-opacity="0.3"/><text x="475" y="22" text-anchor="middle" fill="#22c55e" font-size="13">Insights</text>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <h3>Temporal Agent Patterns</h3>
+      <svg viewBox="0 0 650 400" class="svg-diagram" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(10,5)">
+          <rect width="620" height="65" rx="12" fill="rgba(247,144,29,0.05)" stroke="#F7901D" stroke-opacity="0.15"/>
+          <text x="28" y="28" fill="#F7901D" font-size="17" font-weight="700">Sequential</text>
+          <text x="28" y="50" fill="#a8a29e" font-size="14">A &#8594; B &#8594; C &#8594; D (chain)</text>
+        </g>
+        <g transform="translate(10,82)">
+          <rect width="620" height="65" rx="12" fill="rgba(24,99,220,0.05)" stroke="#1863DC" stroke-opacity="0.15"/>
+          <text x="28" y="28" fill="#1863DC" font-size="17" font-weight="700">Parallel Fan-out</text>
+          <text x="28" y="50" fill="#a8a29e" font-size="14">Spawn N agents, aggregate results</text>
+        </g>
+        <g transform="translate(10,159)">
+          <rect width="620" height="65" rx="12" fill="rgba(139,92,246,0.05)" stroke="#8b5cf6" stroke-opacity="0.15"/>
+          <text x="28" y="28" fill="#8b5cf6" font-size="17" font-weight="700">Router</text>
+          <text x="28" y="50" fill="#a8a29e" font-size="14">LLM decides next agent dynamically</text>
+        </g>
+        <g transform="translate(10,236)">
+          <rect width="620" height="65" rx="12" fill="rgba(245,158,11,0.05)" stroke="#f59e0b" stroke-opacity="0.15"/>
+          <text x="28" y="28" fill="#f59e0b" font-size="17" font-weight="700">Hierarchical</text>
+          <text x="28" y="50" fill="#a8a29e" font-size="14">Manager delegates to specialists</text>
+        </g>
+        <g transform="translate(10,313)">
+          <rect width="620" height="65" rx="12" fill="rgba(34,197,94,0.05)" stroke="#22c55e" stroke-opacity="0.15"/>
+          <text x="28" y="28" fill="#22c55e" font-size="17" font-weight="700">Consensus</text>
+          <text x="28" y="50" fill="#a8a29e" font-size="14">Multiple agents vote on best answer</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 11: Agent Gateway -->
+<section>
+  <h2>Agent Gateway + MCP</h2>
+  <div class="two-col">
+    <div>
+      <svg viewBox="0 0 700 560" class="svg-diagram" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="hubGlow" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#F7901D" stop-opacity="0.12"/><stop offset="100%" stop-color="#F7901D" stop-opacity="0"/></radialGradient>
+        </defs>
+        <!-- Glow behind hub -->
+        <circle cx="350" cy="280" r="140" fill="url(#hubGlow)"/>
+        <!-- Hub -->
+        <circle cx="350" cy="280" r="75" fill="rgba(247,144,29,0.1)" stroke="#F7901D" stroke-width="2"/>
+        <circle cx="350" cy="280" r="90" fill="none" stroke="#F7901D" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4,4">
+          <animateTransform attributeName="transform" type="rotate" from="0 350 280" to="360 350 280" dur="30s" repeatCount="indefinite"/>
+        </circle>
+        <text x="350" y="272" text-anchor="middle" fill="#F7901D" font-size="19" font-weight="800">Agent</text>
+        <text x="350" y="296" text-anchor="middle" fill="#F7901D" font-size="19" font-weight="800">Gateway</text>
+        <text x="350" y="316" text-anchor="middle" fill="#a8a29e" font-size="12">(Rust)</text>
+        <!-- MCP (top) -->
+        <line x1="350" y1="205" x2="350" y2="100" stroke="#F7901D" stroke-opacity="0.25" stroke-width="2"/>
+        <rect x="260" y="35" width="180" height="65" rx="14" fill="rgba(247,144,29,0.06)" stroke="#F7901D" stroke-opacity="0.25"/>
+        <text x="350" y="65" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">MCP Servers</text>
+        <text x="350" y="86" text-anchor="middle" fill="#a8a29e" font-size="13">stdio + HTTP SSE</text>
+        <!-- A2A (right) -->
+        <line x1="425" y1="280" x2="530" y2="280" stroke="#1863DC" stroke-opacity="0.25" stroke-width="2"/>
+        <rect x="530" y="248" width="150" height="65" rx="14" fill="rgba(24,99,220,0.06)" stroke="#1863DC" stroke-opacity="0.25"/>
+        <text x="605" y="278" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">A2A Agents</text>
+        <text x="605" y="299" text-anchor="middle" fill="#a8a29e" font-size="13">Agent-to-agent</text>
+        <!-- LLM (bottom) -->
+        <line x1="350" y1="355" x2="350" y2="450" stroke="#22c55e" stroke-opacity="0.25" stroke-width="2"/>
+        <rect x="260" y="450" width="180" height="65" rx="14" fill="rgba(34,197,94,0.06)" stroke="#22c55e" stroke-opacity="0.25"/>
+        <text x="350" y="480" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">LLM Proxy</text>
+        <text x="350" y="501" text-anchor="middle" fill="#a8a29e" font-size="13">100+ models</text>
+        <!-- Tools (left) -->
+        <line x1="275" y1="280" x2="170" y2="280" stroke="#8b5cf6" stroke-opacity="0.25" stroke-width="2"/>
+        <rect x="20" y="248" width="150" height="65" rx="14" fill="rgba(139,92,246,0.06)" stroke="#8b5cf6" stroke-opacity="0.25"/>
+        <text x="95" y="278" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">Tool Registry</text>
+        <text x="95" y="299" text-anchor="middle" fill="#a8a29e" font-size="13">Discover + route</text>
+      </svg>
+    </div>
+    <div>
+      <h3>MCP Tools</h3>
+      <ul>
+        <li>Filesystem, Brave Search, GitHub</li>
+        <li>Fetch, Memory, custom tools</li>
+      </ul>
+      <h3 style="margin-top:16px;">Protocols</h3>
+      <ul>
+        <li>MCP (stdio + HTTP SSE)</li>
+        <li>A2A (agent-to-agent)</li>
+        <li>OpenAI-compatible API</li>
+      </ul>
+      <h3 style="margin-top:16px;">Why Rust?</h3>
+      <ul>
+        <li>Sub-millisecond overhead</li>
+        <li>High concurrency</li>
+        <li>Memory safe</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 12: Admin Console -->
+<section>
+  <h2>Admin Console</h2>
+  <div class="card-grid card-grid-2x3" style="margin-top:8px;">
+    <div class="card" style="background:linear-gradient(135deg, rgba(247,144,29,0.08) 0%, rgba(20,18,17,0.95) 100%);">
+      <div class="icon-circle"><i class="fa-solid fa-robot"></i></div>
+      <h3>Models</h3>
+      <p style="font-size:0.72em;">Browse, enable/disable, configure fallback chains</p>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg, rgba(24,99,220,0.08) 0%, rgba(20,18,17,0.95) 100%);">
+      <div class="icon-circle" style="background:rgba(24,99,220,0.12); color:var(--blue);"><i class="fa-solid fa-users"></i></div>
+      <h3 style="color:var(--blue);">Teams</h3>
+      <p style="font-size:0.72em;">Budgets, guardrail profiles, member management</p>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(20,18,17,0.95) 100%);">
+      <div class="icon-circle" style="background:rgba(34,197,94,0.12); color:var(--green);"><i class="fa-solid fa-key"></i></div>
+      <h3 style="color:var(--green);">API Keys</h3>
+      <p style="font-size:0.72em;">Generate, rotate, scope to teams and models</p>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(20,18,17,0.95) 100%);">
+      <div class="icon-circle" style="background:rgba(239,68,68,0.12); color:var(--red);"><i class="fa-solid fa-shield-halved"></i></div>
+      <h3 style="color:var(--red);">Guardrails</h3>
+      <p style="font-size:0.72em;">Scanner profiles, PII rules, toxicity thresholds</p>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(20,18,17,0.95) 100%);">
+      <div class="icon-circle" style="background:rgba(245,158,11,0.12); color:var(--amber);"><i class="fa-solid fa-scroll"></i></div>
+      <h3 style="color:var(--amber);">Policies</h3>
+      <p style="font-size:0.72em;">Cedar editor, RBAC rules, routing weights</p>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(20,18,17,0.95) 100%);">
+      <div class="icon-circle" style="background:rgba(139,92,246,0.12); color:#8b5cf6;"><i class="fa-solid fa-diagram-project"></i></div>
+      <h3 style="color:#8b5cf6;">Workflows</h3>
+      <p style="font-size:0.72em;">Launch templates, monitor Temporal runs</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 13: Observability -->
+<section>
+  <h2>Observability</h2>
+  <div class="two-col">
+    <div>
+      <svg viewBox="0 0 700 420" class="svg-diagram" xmlns="http://www.w3.org/2000/svg">
+        <defs><marker id="a8" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#F7901D" fill-opacity="0.5"/></marker></defs>
+        <rect x="20" y="20" width="190" height="48" rx="10" fill="rgba(247,144,29,0.08)" stroke="#F7901D" stroke-opacity="0.25"/>
+        <text x="115" y="50" text-anchor="middle" fill="#F7901D" font-size="16" font-weight="600">All Services</text>
+        <line x1="210" y1="44" x2="290" y2="44" stroke="#F7901D" stroke-opacity="0.3" stroke-width="2" marker-end="url(#a8)"/>
+        <rect x="290" y="10" width="200" height="68" rx="10" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)"/>
+        <text x="390" y="40" text-anchor="middle" fill="#fff" font-size="16" font-weight="600">OTEL Collector</text>
+        <text x="390" y="60" text-anchor="middle" fill="#a8a29e" font-size="13">gRPC + HTTP</text>
+        <!-- Fan out -->
+        <line x1="390" y1="78" x2="140" y2="140" stroke="#F7901D" stroke-opacity="0.25" stroke-width="1.5"/>
+        <line x1="390" y1="78" x2="390" y2="140" stroke="#1863DC" stroke-opacity="0.25" stroke-width="1.5"/>
+        <line x1="390" y1="78" x2="580" y2="140" stroke="#22c55e" stroke-opacity="0.25" stroke-width="1.5"/>
+        <rect x="40" y="145" width="200" height="55" rx="10" fill="rgba(247,144,29,0.05)" stroke="#F7901D" stroke-opacity="0.15"/>
+        <text x="140" y="179" text-anchor="middle" fill="#F7901D" font-size="16" font-weight="600">Prometheus</text>
+        <line x1="140" y1="200" x2="140" y2="240" stroke="#F7901D" stroke-opacity="0.2" stroke-width="1.5"/>
+        <rect x="40" y="245" width="200" height="70" rx="10" fill="rgba(247,144,29,0.06)" stroke="#F7901D" stroke-opacity="0.2"/>
+        <text x="140" y="275" text-anchor="middle" fill="#F7901D" font-size="16" font-weight="700">Grafana</text>
+        <text x="140" y="297" text-anchor="middle" fill="#a8a29e" font-size="13">2 pre-built dashboards</text>
+        <rect x="290" y="145" width="200" height="55" rx="10" fill="rgba(24,99,220,0.05)" stroke="#1863DC" stroke-opacity="0.15"/>
+        <text x="390" y="179" text-anchor="middle" fill="#1863DC" font-size="16" font-weight="600">Jaeger</text>
+        <text x="390" y="218" text-anchor="middle" fill="#a8a29e" font-size="13">Distributed tracing</text>
+        <rect x="480" y="145" width="190" height="55" rx="10" fill="rgba(34,197,94,0.05)" stroke="#22c55e" stroke-opacity="0.15"/>
+        <text x="575" y="179" text-anchor="middle" fill="#22c55e" font-size="16" font-weight="600">Metrics Export</text>
+        <text x="575" y="218" text-anchor="middle" fill="#a8a29e" font-size="13">JSON, CSV, Prometheus</text>
+      </svg>
+    </div>
+    <div>
+      <h3>Dashboard Preview</h3>
+      <div class="card-grid" style="grid-template-columns:1fr 1fr; gap:10px;">
+        <div class="dashboard-panel">
+          <h4>Requests / min</h4>
+          <div class="mini-chart">
+            <div class="mini-bar" style="height:40%;background:var(--orange);"></div><div class="mini-bar" style="height:55%;background:var(--orange);"></div><div class="mini-bar" style="height:70%;background:var(--orange);"></div><div class="mini-bar" style="height:45%;background:var(--orange);"></div><div class="mini-bar" style="height:80%;background:var(--orange);"></div><div class="mini-bar" style="height:65%;background:var(--orange);"></div><div class="mini-bar" style="height:90%;background:var(--orange);"></div><div class="mini-bar" style="height:75%;background:var(--orange);"></div><div class="mini-bar" style="height:60%;background:var(--orange);"></div><div class="mini-bar" style="height:85%;background:var(--orange);"></div>
+          </div>
+        </div>
+        <div class="dashboard-panel">
+          <h4>Latency P95 (ms)</h4>
+          <div class="mini-chart">
+            <div class="mini-bar" style="height:60%;background:var(--blue);"></div><div class="mini-bar" style="height:55%;background:var(--blue);"></div><div class="mini-bar" style="height:75%;background:var(--blue);"></div><div class="mini-bar" style="height:50%;background:var(--blue);"></div><div class="mini-bar" style="height:65%;background:var(--blue);"></div><div class="mini-bar" style="height:45%;background:var(--blue);"></div><div class="mini-bar" style="height:70%;background:var(--blue);"></div><div class="mini-bar" style="height:55%;background:var(--blue);"></div><div class="mini-bar" style="height:40%;background:var(--blue);"></div><div class="mini-bar" style="height:50%;background:var(--blue);"></div>
+          </div>
+        </div>
+        <div class="dashboard-panel">
+          <h4>Cost / hour ($)</h4>
+          <div class="mini-chart">
+            <div class="mini-bar" style="height:30%;background:var(--green);"></div><div class="mini-bar" style="height:45%;background:var(--green);"></div><div class="mini-bar" style="height:50%;background:var(--green);"></div><div class="mini-bar" style="height:40%;background:var(--green);"></div><div class="mini-bar" style="height:65%;background:var(--green);"></div><div class="mini-bar" style="height:55%;background:var(--green);"></div><div class="mini-bar" style="height:70%;background:var(--green);"></div><div class="mini-bar" style="height:50%;background:var(--green);"></div><div class="mini-bar" style="height:45%;background:var(--green);"></div><div class="mini-bar" style="height:60%;background:var(--green);"></div>
+          </div>
+        </div>
+        <div class="dashboard-panel">
+          <h4>Cache Hit Rate</h4>
+          <div style="text-align:center; padding:6px 0;">
+            <div class="stat orange-text" style="font-size:1.8em;">42%</div>
+            <div class="stat-label">avg. hit rate</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 14: Deploy -->
+<section>
+  <h2>Deploy Anywhere</h2>
+  <div class="three-col" style="margin-top:16px;">
+    <div class="card deploy-tier">
+      <div class="icon-circle" style="background:rgba(34,197,94,0.12); color:var(--green);"><i class="fa-solid fa-laptop-code"></i></div>
+      <h3>Docker Compose</h3>
+      <p style="font-size:0.75em;">Single command, any machine</p>
+      <pre style="font-size:0.85em; text-align:left;"><code>make up</code></pre>
+    </div>
+    <div class="card card-featured deploy-tier">
+      <div class="icon-circle"><i class="fa-solid fa-dharmachakra"></i></div>
+      <h3>Kubernetes</h3>
+      <p style="font-size:0.75em;">Kustomize overlays, HPA, rolling updates</p>
+      <pre style="font-size:0.85em; text-align:left;"><code>kubectl apply -k overlays/prod</code></pre>
+    </div>
+    <div class="card deploy-tier">
+      <div class="icon-circle" style="background:rgba(24,99,220,0.12); color:var(--blue);"><i class="fa-solid fa-cloud"></i></div>
+      <h3>GCP GKE + Terraform</h3>
+      <p style="font-size:0.75em;">Full IaC, DNS, TLS, budget alerts</p>
+      <pre style="font-size:0.85em; text-align:left;"><code>make prod</code></pre>
+    </div>
+  </div>
+  <div style="margin-top:24px;">
+    <svg viewBox="0 0 1600 100" class="svg-diagram" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="a9" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#F7901D"/></marker></defs>
+      <rect x="20" y="20" width="190" height="50" rx="10" fill="rgba(247,144,29,0.08)" stroke="#F7901D" stroke-opacity="0.2"/><text x="115" y="52" text-anchor="middle" fill="#d6d3d1" font-size="15">terraform apply</text>
+      <line x1="210" y1="45" x2="260" y2="45" stroke="#F7901D" stroke-width="2" marker-end="url(#a9)"/>
+      <rect x="260" y="20" width="210" height="50" rx="10" fill="rgba(255,255,255,0.03)" stroke="var(--glass-border)"/><text x="365" y="52" text-anchor="middle" fill="#d6d3d1" font-size="15">docker build + push</text>
+      <line x1="470" y1="45" x2="520" y2="45" stroke="#F7901D" stroke-width="2" marker-end="url(#a9)"/>
+      <rect x="520" y="20" width="190" height="50" rx="10" fill="rgba(255,255,255,0.03)" stroke="var(--glass-border)"/><text x="615" y="52" text-anchor="middle" fill="#d6d3d1" font-size="15">kubectl apply -k</text>
+      <line x1="710" y1="45" x2="760" y2="45" stroke="#F7901D" stroke-width="2" marker-end="url(#a9)"/>
+      <rect x="760" y="20" width="190" height="50" rx="10" fill="rgba(255,255,255,0.03)" stroke="var(--glass-border)"/><text x="855" y="52" text-anchor="middle" fill="#d6d3d1" font-size="15">cert-manager TLS</text>
+      <line x1="950" y1="45" x2="1000" y2="45" stroke="#F7901D" stroke-width="2" marker-end="url(#a9)"/>
+      <rect x="1000" y="20" width="160" height="50" rx="10" fill="rgba(255,255,255,0.03)" stroke="var(--glass-border)"/><text x="1080" y="52" text-anchor="middle" fill="#d6d3d1" font-size="15">seed data</text>
+      <line x1="1160" y1="45" x2="1210" y2="45" stroke="#22c55e" stroke-width="2" marker-end="url(#a9)"/>
+      <rect x="1210" y="15" width="200" height="60" rx="12" fill="rgba(34,197,94,0.08)" stroke="#22c55e" stroke-opacity="0.3"/><text x="1310" y="52" text-anchor="middle" fill="#22c55e" font-size="18" font-weight="700">Live!</text>
+    </svg>
+  </div>
+</section>
+
+<!-- SLIDE 15: Security -->
+<section>
+  <h2>Enterprise Security</h2>
+  <div class="two-col">
+    <div>
+      <svg viewBox="0 0 700 520" class="svg-diagram" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="shieldGrad" x1="0.5" y1="0" x2="0.5" y2="1"><stop offset="0%" stop-color="#F7901D" stop-opacity="0.1"/><stop offset="100%" stop-color="#F7901D" stop-opacity="0.02"/></linearGradient>
+        </defs>
+        <path d="M350,30 L570,105 L570,290 Q570,440 350,500 Q130,440 130,290 L130,105 Z" fill="url(#shieldGrad)" stroke="#F7901D" stroke-width="1.5" stroke-opacity="0.3"/>
+        <rect x="320" y="65" width="60" height="42" rx="6" fill="none" stroke="#F7901D" stroke-width="2.5"/>
+        <path d="M330,65 L330,48 Q330,30 350,30 Q370,30 370,48 L370,65" fill="none" stroke="#F7901D" stroke-width="2.5"/>
+        <g font-size="17">
+          <rect x="205" y="135" width="290" height="45" rx="10" fill="rgba(247,144,29,0.08)" stroke="#F7901D" stroke-opacity="0.25"/>
+          <text x="350" y="163" text-anchor="middle" fill="#F7901D" font-weight="600">JWT + API Key Auth</text>
+          <rect x="205" y="195" width="290" height="45" rx="10" fill="rgba(24,99,220,0.08)" stroke="#1863DC" stroke-opacity="0.25"/>
+          <text x="350" y="223" text-anchor="middle" fill="#1863DC" font-weight="600">Cedar RBAC Policies</text>
+          <rect x="205" y="255" width="290" height="45" rx="10" fill="rgba(34,197,94,0.08)" stroke="#22c55e" stroke-opacity="0.25"/>
+          <text x="350" y="283" text-anchor="middle" fill="#22c55e" font-weight="600">Network Policies</text>
+          <rect x="205" y="315" width="290" height="45" rx="10" fill="rgba(139,92,246,0.08)" stroke="#8b5cf6" stroke-opacity="0.25"/>
+          <text x="350" y="343" text-anchor="middle" fill="#8b5cf6" font-weight="600">HashiCorp Vault</text>
+          <rect x="205" y="375" width="290" height="45" rx="10" fill="rgba(245,158,11,0.08)" stroke="#f59e0b" stroke-opacity="0.25"/>
+          <text x="350" y="403" text-anchor="middle" fill="#f59e0b" font-weight="600">TLS Everywhere</text>
+        </g>
+        <text x="350" y="460" text-anchor="middle" fill="#a8a29e" font-size="14">Defense in depth</text>
+      </svg>
+    </div>
+    <div>
+      <h3>Authentication</h3>
+      <ul>
+        <li>JWT (RS256) + scoped API keys</li>
+        <li>Per-team, per-model access control</li>
+        <li>Key rotation with expiry</li>
+      </ul>
+      <h3 style="margin-top:16px;">Authorization</h3>
+      <ul>
+        <li>Cedar policy engine (AWS standard)</li>
+        <li>RBAC with team isolation</li>
+        <li>Budget-aware routing rules</li>
+      </ul>
+      <h3 style="margin-top:16px;">Infrastructure</h3>
+      <ul>
+        <li>K8s network policies</li>
+        <li>Vault secrets management</li>
+        <li>cert-manager + Let's Encrypt</li>
+        <li>GKE master authorized networks</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 16: Comparison -->
+<section>
+  <h2>Why AI Control Plane?</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th class="highlight-col">AI Control Plane</th>
+        <th>Solo.io</th>
+        <th>Kong AI</th>
+        <th>Portkey</th>
+        <th>LiteLLM</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Multi-provider routing</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> 9 providers</td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="check"><i class="fa-solid fa-check"></i></span></td><td><span class="check"><i class="fa-solid fa-check"></i></span></td></tr>
+      <tr><td>Automatic failover</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> Built-in</td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="check"><i class="fa-solid fa-check"></i></span></td><td><span class="check"><i class="fa-solid fa-check"></i></span></td></tr>
+      <tr><td>Budget enforcement</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> Soft + hard</td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td></tr>
+      <tr><td>Semantic caching</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> Embedding</td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td></tr>
+      <tr><td>MCP integration</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> Full</td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td></tr>
+      <tr><td>Workflow orchestration</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> LangGraph</td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td></tr>
+      <tr><td>Policy engine</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> Cedar</td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td></tr>
+      <tr><td>Admin UI</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> React</td><td><span class="check"><i class="fa-solid fa-check"></i></span></td><td><span class="check"><i class="fa-solid fa-check"></i></span></td><td><span class="check"><i class="fa-solid fa-check"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td></tr>
+      <tr><td>Self-hosted + open source</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> Fully</td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="check"><i class="fa-solid fa-check"></i></span></td></tr>
+      <tr><td>A2A protocol</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- SLIDE 17: CTA -->
+<section data-transition="fade">
+  <div style="text-align:center; padding-top:60px;">
+    <h1 class="gradient-text" style="font-size:3em; margin-bottom:20px;">See It Live</h1>
+    <p style="font-size:1.1em; color:#d6d3d1; margin-bottom:44px;"><strong class="orange-text">api.aicontrolplane.dev</strong></p>
+    <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap; margin-bottom:60px;">
+      <a href="https://api.aicontrolplane.dev" class="cta-btn cta-primary" target="_blank"><i class="fa-solid fa-globe"></i>&ensp;Landing</a>
+      <a href="https://api.aicontrolplane.dev/playground" class="cta-btn cta-secondary" target="_blank"><i class="fa-solid fa-flask"></i>&ensp;Playground</a>
+      <a href="https://api.aicontrolplane.dev/admin" class="cta-btn cta-secondary" target="_blank"><i class="fa-solid fa-gauge-high"></i>&ensp;Admin</a>
+      <a href="https://docs.aicontrolplane.dev" class="cta-btn cta-secondary" target="_blank"><i class="fa-solid fa-book"></i>&ensp;Docs</a>
+      <a href="https://api.aicontrolplane.dev/grafana" class="cta-btn cta-secondary" target="_blank"><i class="fa-solid fa-chart-line"></i>&ensp;Grafana</a>
+    </div>
+    <div style="display:flex; justify-content:center; gap:72px;">
+      <div style="text-align:center;"><span class="stat orange-text">100+</span><div class="stat-label">Models</div></div>
+      <div style="text-align:center;"><span class="stat orange-text">9</span><div class="stat-label">Providers</div></div>
+      <div style="text-align:center;"><span class="stat orange-text">15</span><div class="stat-label">Services</div></div>
+      <div style="text-align:center;"><span class="stat orange-text">1</span><div class="stat-label">Command Deploy</div></div>
+    </div>
+  </div>
+</section>
+
+</div>
+</div>
+
+<script src="https://unpkg.com/reveal.js@5.2.1/dist/reveal.js"></script>
+<script src="https://unpkg.com/reveal.js@5.2.1/plugin/highlight/highlight.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  transition: 'slide',
+  transitionSpeed: 'default',
+  width: 1920,
+  height: 1080,
+  margin: 0.04,
+  plugins: [RevealHighlight],
+  controls: true,
+  progress: true,
+  center: true
+});
+</script>
+</body>
+</html>
