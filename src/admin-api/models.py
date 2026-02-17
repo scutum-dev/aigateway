@@ -2,15 +2,16 @@
 Pydantic models for Admin API.
 """
 
-from typing import Optional, List, Dict, Any
 from datetime import datetime
-from decimal import Decimal
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
 # Model Configuration
 class ModelConfig(BaseModel):
     """Model configuration for routing."""
+
     model_id: str
     provider: str
     tier: str = "standard"
@@ -25,6 +26,7 @@ class ModelConfig(BaseModel):
 
 class ModelConfigUpdate(BaseModel):
     """Update model configuration."""
+
     tier: Optional[str] = None
     cost_per_1k_input: Optional[float] = None
     cost_per_1k_output: Optional[float] = None
@@ -38,6 +40,7 @@ class ModelConfigUpdate(BaseModel):
 # Routing Policies
 class RoutingPolicy(BaseModel):
     """Routing policy definition."""
+
     id: Optional[str] = None
     name: str
     description: Optional[str] = None
@@ -50,6 +53,7 @@ class RoutingPolicy(BaseModel):
 
 class RoutingPolicyCreate(BaseModel):
     """Create routing policy."""
+
     name: str
     description: Optional[str] = None
     priority: int = 0
@@ -61,6 +65,7 @@ class RoutingPolicyCreate(BaseModel):
 # Budgets
 class Budget(BaseModel):
     """Budget configuration."""
+
     id: Optional[str] = None
     name: str
     entity_type: str  # user, team, global
@@ -77,6 +82,7 @@ class Budget(BaseModel):
 
 class BudgetCreate(BaseModel):
     """Create budget."""
+
     name: str
     entity_type: str
     entity_id: Optional[str] = None
@@ -88,6 +94,7 @@ class BudgetCreate(BaseModel):
 
 class BudgetUpdate(BaseModel):
     """Update budget."""
+
     name: Optional[str] = None
     monthly_limit: Optional[float] = None
     soft_limit_percent: Optional[float] = None
@@ -99,6 +106,7 @@ class BudgetUpdate(BaseModel):
 # Teams
 class Team(BaseModel):
     """Team configuration."""
+
     id: Optional[str] = None
     name: str
     description: Optional[str] = None
@@ -112,6 +120,7 @@ class Team(BaseModel):
 
 class TeamCreate(BaseModel):
     """Create team."""
+
     name: str
     description: Optional[str] = None
     monthly_budget: Optional[float] = None
@@ -120,6 +129,7 @@ class TeamCreate(BaseModel):
 
 class TeamUpdate(BaseModel):
     """Update team."""
+
     name: Optional[str] = None
     description: Optional[str] = None
     monthly_budget: Optional[float] = None
@@ -129,6 +139,7 @@ class TeamUpdate(BaseModel):
 
 class TeamMember(BaseModel):
     """Team member."""
+
     user_id: str
     role: str = "member"  # member, admin
 
@@ -136,6 +147,7 @@ class TeamMember(BaseModel):
 # MCP Servers
 class MCPServerConfig(BaseModel):
     """MCP server configuration."""
+
     id: Optional[str] = None
     name: str
     server_type: str  # stdio, http
@@ -149,6 +161,7 @@ class MCPServerConfig(BaseModel):
 
 class MCPServerCreate(BaseModel):
     """Create MCP server configuration."""
+
     name: str
     server_type: str
     command: Optional[str] = None
@@ -159,6 +172,7 @@ class MCPServerCreate(BaseModel):
 
 class MCPServerUpdate(BaseModel):
     """Update MCP server configuration."""
+
     name: Optional[str] = None
     server_type: Optional[str] = None
     command: Optional[str] = None
@@ -171,6 +185,7 @@ class MCPServerUpdate(BaseModel):
 # API Keys (proxy to LiteLLM)
 class KeyGenerateRequest(BaseModel):
     """Request to generate a new API key."""
+
     key_alias: Optional[str] = None
     max_budget: Optional[float] = None
     models: Optional[List[str]] = None
@@ -181,6 +196,7 @@ class KeyGenerateRequest(BaseModel):
 
 class KeyUpdateRequest(BaseModel):
     """Request to update an API key."""
+
     key: str
     key_alias: Optional[str] = None
     max_budget: Optional[float] = None
@@ -190,11 +206,13 @@ class KeyUpdateRequest(BaseModel):
 
 class KeyDeleteRequest(BaseModel):
     """Request to delete API keys."""
+
     keys: List[str]
 
 
 class APIKeyInfo(BaseModel):
     """API key information."""
+
     token: Optional[str] = None
     key_alias: Optional[str] = None
     key_name: Optional[str] = None
@@ -209,6 +227,7 @@ class APIKeyInfo(BaseModel):
 # Workflows
 class WorkflowSummary(BaseModel):
     """Workflow summary for listing."""
+
     id: str
     name: str
     template_type: Optional[str]
@@ -219,6 +238,7 @@ class WorkflowSummary(BaseModel):
 
 class WorkflowExecuteRequest(BaseModel):
     """Request to execute a workflow."""
+
     workflow_name: Optional[str] = None
     template_type: str
     input_text: str
@@ -229,6 +249,7 @@ class WorkflowExecuteRequest(BaseModel):
 
 class WorkflowExecutionSummary(BaseModel):
     """Workflow execution summary."""
+
     id: str
     workflow_name: Optional[str] = None
     status: str
@@ -239,6 +260,7 @@ class WorkflowExecutionSummary(BaseModel):
 
 class WorkflowCreate(BaseModel):
     """Create a new workflow definition."""
+
     name: str
     template_type: str
     description: Optional[str] = None
@@ -248,6 +270,7 @@ class WorkflowCreate(BaseModel):
 # Metrics
 class RealtimeMetrics(BaseModel):
     """Real-time platform metrics."""
+
     timestamp: datetime
     requests_per_minute: int
     active_users: int
@@ -262,6 +285,7 @@ class RealtimeMetrics(BaseModel):
 # Settings
 class PlatformSettings(BaseModel):
     """Platform settings."""
+
     default_model: str = "gpt-4o-mini"
     global_rate_limit: int = 1000
     enable_caching: bool = True

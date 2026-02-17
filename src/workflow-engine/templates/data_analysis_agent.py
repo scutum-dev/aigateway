@@ -12,15 +12,14 @@ Flow:
     parse_question → query_data → analyze → visualize → summarize
 """
 
-import logging
 import json
+import logging
 import re
-from typing import Dict, Any, Optional, Tuple
-
-from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from typing import Any, Dict, Optional, Tuple
 
 from graphs.base import BaseWorkflow
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.graph import END, StateGraph
 from models.state import WorkflowState
 
 logger = logging.getLogger(__name__)
@@ -32,18 +31,32 @@ logger = logging.getLogger(__name__)
 
 # Dangerous SQL keywords that should never appear in analysis queries
 DANGEROUS_SQL_KEYWORDS = {
-    'DROP', 'DELETE', 'INSERT', 'UPDATE', 'TRUNCATE', 'ALTER', 'CREATE',
-    'GRANT', 'REVOKE', 'EXEC', 'EXECUTE', 'CALL', 'INTO OUTFILE',
-    'LOAD_FILE', 'COPY', 'pg_read_file', 'pg_write_file',
+    "DROP",
+    "DELETE",
+    "INSERT",
+    "UPDATE",
+    "TRUNCATE",
+    "ALTER",
+    "CREATE",
+    "GRANT",
+    "REVOKE",
+    "EXEC",
+    "EXECUTE",
+    "CALL",
+    "INTO OUTFILE",
+    "LOAD_FILE",
+    "COPY",
+    "pg_read_file",
+    "pg_write_file",
 }
 
 # Allowed tables for querying (whitelist)
 ALLOWED_TABLES = {
-    'cost_tracking_daily',
-    'budget_alerts',
-    'routing_decisions',
-    'workflow_executions',
-    'workflow_steps',
+    "cost_tracking_daily",
+    "budget_alerts",
+    "routing_decisions",
+    "workflow_executions",
+    "workflow_steps",
 }
 
 # Maximum result limit
@@ -62,38 +75,38 @@ def validate_sql_query(sql: str) -> Tuple[bool, str]:
 
     # Normalize query for checking
     sql_upper = sql.upper().strip()
-    sql_normalized = ' '.join(sql_upper.split())  # Normalize whitespace
+    sql_normalized = " ".join(sql_upper.split())  # Normalize whitespace
 
     # 1. Must be a SELECT query
-    if not sql_normalized.startswith('SELECT'):
+    if not sql_normalized.startswith("SELECT"):
         return False, "Only SELECT queries are allowed for data analysis"
 
     # 2. Check for dangerous keywords
     for keyword in DANGEROUS_SQL_KEYWORDS:
         # Use word boundary matching to avoid false positives
-        pattern = r'\b' + keyword + r'\b'
+        pattern = r"\b" + keyword + r"\b"
         if re.search(pattern, sql_upper):
             return False, f"Dangerous SQL keyword detected: {keyword}"
 
     # 3. Check for SQL injection patterns
     injection_patterns = [
-        r';\s*(SELECT|DROP|DELETE|INSERT|UPDATE)',  # Multiple statements
-        r'--',              # SQL comments that could hide malicious code
-        r'/\*.*\*/',        # Block comments
+        r";\s*(SELECT|DROP|DELETE|INSERT|UPDATE)",  # Multiple statements
+        r"--",  # SQL comments that could hide malicious code
+        r"/\*.*\*/",  # Block comments
         r"'\s*OR\s+'\d+'\s*=\s*'\d+",  # OR '1'='1' pattern
-        r'UNION\s+ALL\s+SELECT',       # UNION injection
-        r'INTO\s+OUTFILE',             # File write
-        r'LOAD_FILE\s*\(',             # File read
+        r"UNION\s+ALL\s+SELECT",  # UNION injection
+        r"INTO\s+OUTFILE",  # File write
+        r"LOAD_FILE\s*\(",  # File read
     ]
 
     for pattern in injection_patterns:
         if re.search(pattern, sql_upper):
-            return False, f"Potential SQL injection pattern detected"
+            return False, "Potential SQL injection pattern detected"
 
     # 4. Validate table references against whitelist
     # Extract table names from FROM and JOIN clauses
-    from_pattern = r'FROM\s+([a-zA-Z_][a-zA-Z0-9_]*)'
-    join_pattern = r'JOIN\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+    from_pattern = r"FROM\s+([a-zA-Z_][a-zA-Z0-9_]*)"
+    join_pattern = r"JOIN\s+([a-zA-Z_][a-zA-Z0-9_]*)"
 
     tables_used = set()
     for match in re.finditer(from_pattern, sql_upper):
@@ -107,7 +120,7 @@ def validate_sql_query(sql: str) -> Tuple[bool, str]:
             return False, f"Table '{table}' is not in the allowed list: {ALLOWED_TABLES}"
 
     # 5. Ensure LIMIT is present and reasonable
-    limit_match = re.search(r'LIMIT\s+(\d+)', sql_upper)
+    limit_match = re.search(r"LIMIT\s+(\d+)", sql_upper)
     if not limit_match:
         return False, f"Query must include a LIMIT clause (max {MAX_QUERY_LIMIT})"
 
@@ -125,11 +138,11 @@ def sanitize_sql_query(sql: str) -> str:
     sql = sql.strip()
 
     # Remove any trailing semicolons to prevent multi-statement
-    sql = sql.rstrip(';')
+    sql = sql.rstrip(";")
 
     # Ensure LIMIT exists
     sql_upper = sql.upper()
-    if 'LIMIT' not in sql_upper:
+    if "LIMIT" not in sql_upper:
         sql = f"{sql} LIMIT {MAX_QUERY_LIMIT}"
 
     return sql
@@ -213,12 +226,9 @@ Important:
                 "/v1/chat/completions",
                 json={
                     "model": "gpt-4o",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": question}
-                    ],
+                    "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": question}],
                     "temperature": 0.2,
-                }
+                },
             )
 
             data = response.json()
@@ -267,11 +277,7 @@ Important:
 
         try:
             response = await self.mcp_client.post(
-                "/mcp/tools/call",
-                json={
-                    "name": "postgres_query",
-                    "arguments": {"query": sql_query}
-                }
+                "/mcp/tools/call", json={"name": "postgres_query", "arguments": {"query": sql_query}}
             )
 
             results = []
@@ -327,10 +333,13 @@ Be specific with numbers and percentages."""
                     "model": "gpt-4o",
                     "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Question: {question}\n\nData:\n{json.dumps(results[:100], indent=2)}"}
+                        {
+                            "role": "user",
+                            "content": f"Question: {question}\n\nData:\n{json.dumps(results[:100], indent=2)}",
+                        },
                     ],
                     "temperature": 0.5,
-                }
+                },
             )
 
             data = response.json()
@@ -383,10 +392,13 @@ Respond in JSON format:
                     "model": "gpt-4o-mini",
                     "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Analysis:\n{analysis}\n\nSample data columns: {list(results[0].keys()) if results else []}"}
+                        {
+                            "role": "user",
+                            "content": f"Analysis:\n{analysis}\n\nSample data columns: {list(results[0].keys()) if results else []}",
+                        },
                     ],
                     "temperature": 0.3,
-                }
+                },
             )
 
             data = response.json()
@@ -431,10 +443,13 @@ Keep it concise but comprehensive. Use markdown formatting."""
                     "model": "gpt-4o",
                     "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Question: {question}\n\nAnalysis:\n{analysis}\n\nRow count: {len(results)}"}
+                        {
+                            "role": "user",
+                            "content": f"Question: {question}\n\nAnalysis:\n{analysis}\n\nRow count: {len(results)}",
+                        },
                     ],
                     "temperature": 0.7,
-                }
+                },
             )
 
             data = response.json()

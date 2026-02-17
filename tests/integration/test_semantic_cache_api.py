@@ -3,14 +3,14 @@
 Tests HTTP endpoints and ServiceAuthMiddleware via ASGI test client.
 """
 
-import os
-import json
 import importlib.util
-from unittest.mock import AsyncMock, MagicMock, patch
+import json
+import os
 from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 import httpx
+import pytest
 
 # Load the semantic-cache module
 _service_path = os.path.join(os.path.dirname(__file__), "../../src/semantic-cache/main.py")
@@ -97,10 +97,7 @@ class TestServiceAuthMiddleware:
     @pytest.mark.asyncio
     async def test_accept_correct_key(self, authed_client, mock_redis):
         """Protected endpoint should work with correct key."""
-        resp = await authed_client.get(
-            "/stats",
-            headers={"X-Service-Key": SERVICE_KEY}
-        )
+        resp = await authed_client.get("/stats", headers={"X-Service-Key": SERVICE_KEY})
         assert resp.status_code == 200
 
     @pytest.mark.asyncio
@@ -148,15 +145,16 @@ class TestLookupEndpoint:
         # Mock get_embedding to return a vector
         mock_resp = MagicMock()
         mock_resp.status_code = 200
-        mock_resp.json.return_value = {
-            "data": [{"embedding": [0.1, 0.2, 0.3]}]
-        }
+        mock_resp.json.return_value = {"data": [{"embedding": [0.1, 0.2, 0.3]}]}
         _mod.http_client.post.return_value = mock_resp
 
-        resp = await client.post("/lookup", json={
-            "messages": [{"role": "user", "content": "Hello"}],
-            "model": "gpt-4o",
-        })
+        resp = await client.post(
+            "/lookup",
+            json={
+                "messages": [{"role": "user", "content": "Hello"}],
+                "model": "gpt-4o",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["hit"] is False
@@ -167,9 +165,7 @@ class TestLookupEndpoint:
         # Mock get_embedding
         mock_resp = MagicMock()
         mock_resp.status_code = 200
-        mock_resp.json.return_value = {
-            "data": [{"embedding": [1.0, 0.0, 0.0]}]
-        }
+        mock_resp.json.return_value = {"data": [{"embedding": [1.0, 0.0, 0.0]}]}
         _mod.http_client.post.return_value = mock_resp
 
         # Set up a cached entry that will match
@@ -195,10 +191,13 @@ class TestLookupEndpoint:
         mock_redis.scan_iter = mock_scan
         mock_redis.get.return_value = json.dumps(entry.model_dump()).encode()
 
-        resp = await client.post("/lookup", json={
-            "messages": [{"role": "user", "content": "Hello"}],
-            "model": "gpt-4o",
-        })
+        resp = await client.post(
+            "/lookup",
+            json={
+                "messages": [{"role": "user", "content": "Hello"}],
+                "model": "gpt-4o",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["hit"] is True
@@ -217,18 +216,19 @@ class TestStoreEndpoint:
         """Should store a cache entry."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
-        mock_resp.json.return_value = {
-            "data": [{"embedding": [0.5, 0.5, 0.5]}]
-        }
+        mock_resp.json.return_value = {"data": [{"embedding": [0.5, 0.5, 0.5]}]}
         _mod.http_client.post.return_value = mock_resp
 
-        resp = await client.post("/store", json={
-            "messages": [{"role": "user", "content": "Hello"}],
-            "model": "gpt-4o",
-            "response": {"choices": [{"text": "Hi!"}]},
-            "input_tokens": 10,
-            "output_tokens": 5,
-        })
+        resp = await client.post(
+            "/store",
+            json={
+                "messages": [{"role": "user", "content": "Hello"}],
+                "model": "gpt-4o",
+                "response": {"choices": [{"text": "Hi!"}]},
+                "input_tokens": 10,
+                "output_tokens": 5,
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "stored"
@@ -257,6 +257,7 @@ class TestInvalidateEndpoints:
     @pytest.mark.asyncio
     async def test_invalidate_model(self, client, mock_redis):
         """Should invalidate all entries for a model."""
+
         async def mock_scan(*args, **kwargs):
             yield b"semantic_cache:gpt-4o:key1"
             yield b"semantic_cache:gpt-4o:key2"

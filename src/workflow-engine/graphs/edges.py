@@ -3,6 +3,7 @@ Conditional edge functions for LangGraph workflows.
 """
 
 from typing import Literal
+
 from models.state import WorkflowState
 
 
@@ -23,10 +24,7 @@ def should_continue(state: WorkflowState) -> Literal["continue", "end"]:
     return "continue"
 
 
-def check_iteration_limit(
-    state: WorkflowState,
-    max_iterations: int = 5
-) -> Literal["continue", "end"]:
+def check_iteration_limit(state: WorkflowState, max_iterations: int = 5) -> Literal["continue", "end"]:
     """
     Check if iteration limit has been reached.
 

@@ -18,12 +18,11 @@ Flow:
 """
 
 import logging
-from typing import Dict, Any, Optional, Literal
-
-from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from typing import Any, Dict, Literal, Optional
 
 from graphs.base import BaseWorkflow
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.graph import END, StateGraph
 from models.state import WorkflowState
 
 logger = logging.getLogger(__name__)
@@ -79,7 +78,7 @@ class CodingAgentWorkflow(BaseWorkflow):
             {
                 "iterate": "generate_code",
                 "finalize": "finalize_code",
-            }
+            },
         )
 
         graph.add_edge("finalize_code", END)
@@ -130,12 +129,9 @@ Respond in JSON format:
                 "/v1/chat/completions",
                 json={
                     "model": "gpt-4o",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": task}
-                    ],
+                    "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": task}],
                     "temperature": 0.3,
-                }
+                },
             )
 
             data = response.json()
@@ -158,7 +154,7 @@ Respond in JSON format:
 
         if not files_to_read:
             # Try to extract from task analysis
-            analysis = state.intermediate_results.get("task_analysis", "")
+            _analysis = state.intermediate_results.get("task_analysis", "")
             # Simple extraction - in production, parse JSON properly
             state.update_node_state("read_code", "completed")
             return {"current_node": "read_code"}
@@ -168,11 +164,7 @@ Respond in JSON format:
         for file_path in files_to_read[:5]:  # Limit files
             try:
                 response = await self.mcp_client.post(
-                    "/mcp/tools/call",
-                    json={
-                        "name": "read_file",
-                        "arguments": {"path": file_path}
-                    }
+                    "/mcp/tools/call", json={"name": "read_file", "arguments": {"path": file_path}}
                 )
 
                 if response.status_code == 200:
@@ -220,11 +212,11 @@ Follow these guidelines:
                     "model": "gpt-4o",
                     "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_message}
+                        {"role": "user", "content": user_message},
                     ],
                     "temperature": 0.2,
                     "max_tokens": 4000,
-                }
+                },
             )
 
             data = response.json()
@@ -268,10 +260,10 @@ If issues exist, list them clearly for the developer to fix."""
                     "model": "gpt-4o",
                     "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Review this code:\n\n{code}"}
+                        {"role": "user", "content": f"Review this code:\n\n{code}"},
                     ],
                     "temperature": 0.3,
-                }
+                },
             )
 
             data = response.json()

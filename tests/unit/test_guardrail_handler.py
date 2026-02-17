@@ -1,9 +1,8 @@
 """Unit tests for the LiteLLM guardrail handler module."""
 
-import sys
-import os
-import json
 import importlib.util
+import os
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -32,11 +31,14 @@ def handler():
     spec = importlib.util.spec_from_file_location("guardrail_handler", _handler_path)
     mod = importlib.util.module_from_spec(spec)
     # Patch env before exec
-    with patch.dict(os.environ, {
-        "ENABLE_GUARDRAILS": "true",
-        "DATABASE_URL": "postgresql://test:test@localhost/test",
-        "REDIS_URL": "redis://localhost:6379",
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "ENABLE_GUARDRAILS": "true",
+            "DATABASE_URL": "postgresql://test:test@localhost/test",
+            "REDIS_URL": "redis://localhost:6379",
+        },
+    ):
         spec.loader.exec_module(mod)
     return mod
 
@@ -202,7 +204,9 @@ class TestGatewayGuardrailPreCall:
     async def test_empty_messages_skip(self, handler):
         """Should skip scanning when no messages."""
         handler.ENABLE_GUARDRAILS = True
-        with patch.object(handler, "_get_config", new_callable=AsyncMock, return_value={"id": "test", "on_fail": "block"}):
+        with patch.object(
+            handler, "_get_config", new_callable=AsyncMock, return_value={"id": "test", "on_fail": "block"}
+        ):
             guardrail = handler.GatewayGuardrail()
             result = await guardrail.async_pre_call_hook(
                 user_api_key_dict={},
@@ -250,10 +254,11 @@ class TestGatewayGuardrailPreCall:
             "enable_sensitive_output": False,
         }
 
-        with patch.object(handler, "_get_config", new_callable=AsyncMock, return_value=config), \
-             patch.object(handler, "_get_scanners", return_value=([mock_scanner], [])), \
-             patch.object(handler, "_log_event", new_callable=AsyncMock):
-
+        with (
+            patch.object(handler, "_get_config", new_callable=AsyncMock, return_value=config),
+            patch.object(handler, "_get_scanners", return_value=([mock_scanner], [])),
+            patch.object(handler, "_log_event", new_callable=AsyncMock),
+        ):
             guardrail = handler.GatewayGuardrail()
             with pytest.raises(ValueError, match="blocked by guardrail"):
                 await guardrail.async_pre_call_hook(
@@ -300,10 +305,11 @@ class TestGatewayGuardrailPostCall:
         mock_response = MagicMock()
         mock_response.choices = [mock_choice]
 
-        with patch.object(handler, "_get_config", new_callable=AsyncMock, return_value=config), \
-             patch.object(handler, "_get_scanners", return_value=([], [mock_scanner])), \
-             patch.object(handler, "_log_event", new_callable=AsyncMock):
-
+        with (
+            patch.object(handler, "_get_config", new_callable=AsyncMock, return_value=config),
+            patch.object(handler, "_get_scanners", return_value=([], [mock_scanner])),
+            patch.object(handler, "_log_event", new_callable=AsyncMock),
+        ):
             guardrail = handler.GatewayGuardrail()
             with pytest.raises(ValueError, match="Response blocked"):
                 await guardrail.async_post_call_success_hook(

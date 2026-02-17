@@ -4,10 +4,10 @@ Tests pure functions (messages_to_text, compute_cache_key, cosine_similarity)
 and mock-based tests for find_similar_cached.
 """
 
-import os
-import json
 import importlib.util
-from unittest.mock import AsyncMock, MagicMock, patch
+import json
+import os
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -209,9 +209,7 @@ class TestFindSimilarCached:
         mock_redis.get.return_value = json.dumps(entry.model_dump()).encode()
         _mod.redis_client = mock_redis
 
-        result = await find_similar_cached(
-            [1.0, 0.0], "gpt-4o", user_id="user-b", threshold=0.5
-        )
+        result = await find_similar_cached([1.0, 0.0], "gpt-4o", user_id="user-b", threshold=0.5)
         assert result is None
 
     @staticmethod
@@ -224,4 +222,5 @@ class TestFindSimilarCached:
         async def _iter(*args, **kwargs):
             for item in items:
                 yield item
+
         return _iter

@@ -19,9 +19,7 @@ _REPO_ROOT = os.path.join(os.path.dirname(__file__), "../..")
 
 OTEL_CONFIG = os.path.join(_REPO_ROOT, "config/otel/otel-collector-config.yaml")
 PROMETHEUS_CONFIG = os.path.join(_REPO_ROOT, "config/prometheus.yml")
-ALERTING_RULES = os.path.join(
-    _REPO_ROOT, "kubernetes/base/observability/prometheus/alerting-rules.yaml"
-)
+ALERTING_RULES = os.path.join(_REPO_ROOT, "kubernetes/base/observability/prometheus/alerting-rules.yaml")
 GRAFANA_DASHBOARDS = [
     os.path.join(
         _REPO_ROOT,
@@ -109,17 +107,11 @@ class TestPrometheusConfig:
 
             # targets live inside static_configs
             static_configs = sc.get("static_configs", [])
-            assert static_configs, (
-                f"scrape_configs[{idx}] (job={sc['job_name']}) missing static_configs"
-            )
+            assert static_configs, f"scrape_configs[{idx}] (job={sc['job_name']}) missing static_configs"
             for sc_idx, static in enumerate(static_configs):
-                assert "targets" in static, (
-                    f"scrape_configs[{idx}].static_configs[{sc_idx}] missing targets"
-                )
+                assert "targets" in static, f"scrape_configs[{idx}].static_configs[{sc_idx}] missing targets"
 
-        assert len(job_names) == len(set(job_names)), (
-            f"Duplicate job_names found: {job_names}"
-        )
+        assert len(job_names) == len(set(job_names)), f"Duplicate job_names found: {job_names}"
 
 
 # ============================================================================
@@ -149,9 +141,7 @@ class TestAlertingRules:
 
             for idx, rule in enumerate(rules):
                 for field in ("alert", "expr", "labels", "annotations"):
-                    assert field in rule, (
-                        f"Group '{group_name}' rule[{idx}] missing '{field}'"
-                    )
+                    assert field in rule, f"Group '{group_name}' rule[{idx}] missing '{field}'"
 
     def test_no_duplicate_alert_names(self):
         """Alert names should be unique across all groups."""
@@ -165,8 +155,7 @@ class TestAlertingRules:
                 alert_names.append(rule["alert"])
 
         assert len(alert_names) == len(set(alert_names)), (
-            f"Duplicate alert names: "
-            f"{[n for n in alert_names if alert_names.count(n) > 1]}"
+            f"Duplicate alert names: {[n for n in alert_names if alert_names.count(n) > 1]}"
         )
 
 
@@ -194,12 +183,8 @@ class TestGrafanaDashboards:
             assert panels, f"{dashboard_name} has no panels"
 
             for idx, panel in enumerate(panels):
-                assert "type" in panel, (
-                    f"{dashboard_name} panel[{idx}] missing 'type'"
-                )
-                assert "title" in panel, (
-                    f"{dashboard_name} panel[{idx}] missing 'title'"
-                )
+                assert "type" in panel, f"{dashboard_name} panel[{idx}] missing 'type'"
+                assert "title" in panel, f"{dashboard_name} panel[{idx}] missing 'title'"
 
 
 if __name__ == "__main__":

@@ -13,51 +13,42 @@ Features:
 - Real-time metrics
 """
 
-import os
-import logging
-import json
-import signal
 import asyncio
+import json
+import logging
+import os
 import time
-import hmac
-from typing import Optional, List
-from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Optional
 
+import asyncpg
+import deps
+import httpx
 import redis.asyncio as aioredis
-
-from fastapi import FastAPI, HTTPException, Depends, Query, Request
+from alembic import command
+from alembic.config import Config
+from auth import LoginRequest, TokenResponse, UserInfo, get_current_user, login
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
 from opentelemetry import trace
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.resources import Resource
-import httpx
-import asyncpg
-from alembic.config import Config
-from alembic import command
-
-from auth import (
-    login, LoginRequest, TokenResponse,
-    get_current_user, require_admin, UserInfo
-)
-
-import deps
+from routers import budgets as budgets_router
+from routers import guardrails as guardrails_router
+from routers import keys as keys_router
+from routers import mcp_servers as mcp_servers_router
+from routers import metrics as metrics_router
 from routers import models as models_router
 from routers import policies as policies_router
-from routers import budgets as budgets_router
-from routers import teams as teams_router
-from routers import mcp_servers as mcp_servers_router
-from routers import keys as keys_router
-from routers import workflows as workflows_router
-from routers import metrics as metrics_router
 from routers import settings as settings_router
-from routers import guardrails as guardrails_router
+from routers import teams as teams_router
+from routers import workflows as workflows_router
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -83,9 +74,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         if content_length:
             if int(content_length) > MAX_REQUEST_SIZE:
                 return Response(
-                    content='{"detail": "Request body too large"}',
-                    status_code=413,
-                    media_type="application/json"
+                    content='{"detail": "Request body too large"}', status_code=413, media_type="application/json"
                 )
         return await call_next(request)
 
@@ -100,9 +89,7 @@ class GracefulShutdownMiddleware(BaseHTTPMiddleware):
         if shutdown_event and shutdown_event.is_set():
             if request.url.path not in ["/health", "/healthz", "/ready"]:
                 return Response(
-                    content='{"detail": "Service is shutting down"}',
-                    status_code=503,
-                    media_type="application/json"
+                    content='{"detail": "Service is shutting down"}', status_code=503, media_type="application/json"
                 )
 
         # Track active requests
@@ -131,9 +118,7 @@ async def _get_global_rate_limit() -> Optional[int]:
 
     try:
         async with deps.db_pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT value FROM platform_settings WHERE key = 'global_rate_limit'"
-            )
+            row = await conn.fetchrow("SELECT value FROM platform_settings WHERE key = 'global_rate_limit'")
             if row:
                 val = json.loads(row["value"])
                 limit = int(val) if val else None
@@ -220,7 +205,7 @@ class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
         return response
 
 
-from shared.cors import get_cors_origins
+from shared.cors import get_cors_origins  # noqa: E402
 
 # Graceful shutdown state
 shutdown_event: Optional[asyncio.Event] = None
@@ -354,6 +339,7 @@ FastAPIInstrumentor.instrument_app(app)
 # Health & Auth Endpoints
 # =============================================================================
 
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
@@ -390,4 +376,5 @@ app.include_router(guardrails_router.router, prefix="/api/v1", tags=["Guardrails
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8086)

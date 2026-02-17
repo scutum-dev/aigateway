@@ -11,26 +11,27 @@ Features:
 - Integration with LiteLLM for pricing data
 """
 
-import os
 import logging
-from typing import Optional
-from decimal import Decimal
-from dataclasses import dataclass
+import os
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from decimal import Decimal
+from typing import Optional
 
+import httpx
 import tiktoken
-from fastapi import FastAPI, HTTPException, Depends, Header, Request
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 from opentelemetry import trace
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.resources import Resource
-import httpx
+from pydantic import BaseModel, Field
+
 from shared.cors import get_cors_origins
-from shared.middleware import ServiceAuthMiddleware, RequestSizeLimitMiddleware
+from shared.middleware import RequestSizeLimitMiddleware, ServiceAuthMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -117,6 +118,7 @@ def count_message_tokens(messages: list[dict], model: str) -> int:
 @dataclass
 class CostEstimate:
     """Cost estimation result."""
+
     model: str
     input_tokens: int
     estimated_output_tokens: int
@@ -128,6 +130,7 @@ class CostEstimate:
 
 class PredictRequest(BaseModel):
     """Request body for cost prediction."""
+
     model: str = Field(..., description="Model name")
     messages: list[dict] = Field(default=[], description="Chat messages")
     prompt: Optional[str] = Field(default=None, description="Text prompt (for completions)")
@@ -139,15 +142,16 @@ class PredictRequest(BaseModel):
                 "model": "gpt-4o",
                 "messages": [
                     {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": "Hello, how are you?"}
+                    {"role": "user", "content": "Hello, how are you?"},
                 ],
-                "max_tokens": 500
+                "max_tokens": 500,
             }
         }
 
 
 class PredictResponse(BaseModel):
     """Response body for cost prediction."""
+
     model: str
     input_tokens: int
     estimated_output_tokens: int
@@ -161,12 +165,14 @@ class PredictResponse(BaseModel):
 
 class BudgetCheckRequest(BaseModel):
     """Request for budget validation."""
+
     api_key: str = Field(..., description="API key to check budget for")
     estimated_cost: float = Field(..., description="Estimated cost of the request")
 
 
 class BudgetCheckResponse(BaseModel):
     """Response for budget validation."""
+
     allowed: bool
     budget_limit: Optional[float] = None
     current_spend: Optional[float] = None
@@ -276,23 +282,23 @@ def estimate_output_tokens(input_tokens: int, max_tokens: Optional[int], model: 
     # and verbosity multipliers (output/input ratio when max_tokens not set)
     profiles = {
         # Reasoning models: heavy chain-of-thought, use most of budget
-        "o3":           {"utilization": 0.85, "multiplier": 4.0},
-        "o3-pro":       {"utilization": 0.90, "multiplier": 5.0},
-        "o4-mini":      {"utilization": 0.75, "multiplier": 3.5},
+        "o3": {"utilization": 0.85, "multiplier": 4.0},
+        "o3-pro": {"utilization": 0.90, "multiplier": 5.0},
+        "o4-mini": {"utilization": 0.75, "multiplier": 3.5},
         # Powerful/verbose models
-        "opus":         {"utilization": 0.70, "multiplier": 3.0},
-        "gpt-5.2":      {"utilization": 0.65, "multiplier": 2.5},
+        "opus": {"utilization": 0.70, "multiplier": 3.0},
+        "gpt-5.2": {"utilization": 0.65, "multiplier": 2.5},
         "grok-4-heavy": {"utilization": 0.65, "multiplier": 2.5},
         # Standard models
-        "gpt-5":        {"utilization": 0.55, "multiplier": 2.0},
-        "gpt-4o":       {"utilization": 0.55, "multiplier": 2.0},
-        "sonnet":       {"utilization": 0.55, "multiplier": 2.0},
-        "grok-4":       {"utilization": 0.55, "multiplier": 2.0},
-        "grok-3":       {"utilization": 0.50, "multiplier": 1.8},
+        "gpt-5": {"utilization": 0.55, "multiplier": 2.0},
+        "gpt-4o": {"utilization": 0.55, "multiplier": 2.0},
+        "sonnet": {"utilization": 0.55, "multiplier": 2.0},
+        "grok-4": {"utilization": 0.55, "multiplier": 2.0},
+        "grok-3": {"utilization": 0.50, "multiplier": 1.8},
         # Fast/concise models
-        "mini":         {"utilization": 0.40, "multiplier": 1.5},
-        "haiku":        {"utilization": 0.35, "multiplier": 1.2},
-        "grok-3-mini":  {"utilization": 0.40, "multiplier": 1.5},
+        "mini": {"utilization": 0.40, "multiplier": 1.5},
+        "haiku": {"utilization": 0.35, "multiplier": 1.2},
+        "grok-3-mini": {"utilization": 0.40, "multiplier": 1.5},
     }
 
     # Find matching profile (check specific names first, then partial match)
@@ -341,10 +347,7 @@ async def predict_cost(
         elif request.prompt:
             input_tokens = count_tokens(request.prompt, request.model)
         else:
-            raise HTTPException(
-                status_code=400,
-                detail="Either 'messages' or 'prompt' must be provided"
-            )
+            raise HTTPException(status_code=400, detail="Either 'messages' or 'prompt' must be provided")
 
         span.set_attribute("input_tokens", input_tokens)
 
@@ -401,15 +404,12 @@ async def check_budget_internal(api_key: str, estimated_cost: float) -> BudgetCh
 
         try:
             # Get key info from LiteLLM
-            response = await http_client.get(
-                f"{litellm_url}/key/info",
-                headers={"Authorization": f"Bearer {api_key}"}
-            )
+            response = await http_client.get(f"{litellm_url}/key/info", headers={"Authorization": f"Bearer {api_key}"})
 
             if response.status_code != 200:
                 return BudgetCheckResponse(
                     allowed=True,  # Allow if we can't check
-                    message="Could not verify budget"
+                    message="Could not verify budget",
                 )
 
             key_info = response.json()
@@ -418,11 +418,7 @@ async def check_budget_internal(api_key: str, estimated_cost: float) -> BudgetCh
             current_spend = key_info.get("spend", 0)
 
             if max_budget is None:
-                return BudgetCheckResponse(
-                    allowed=True,
-                    current_spend=current_spend,
-                    message="No budget limit set"
-                )
+                return BudgetCheckResponse(allowed=True, current_spend=current_spend, message="No budget limit set")
 
             remaining = max_budget - current_spend
             allowed = remaining >= estimated_cost
@@ -437,15 +433,12 @@ async def check_budget_internal(api_key: str, estimated_cost: float) -> BudgetCh
                 budget_limit=max_budget,
                 current_spend=current_spend,
                 remaining=remaining,
-                message=None if allowed else f"Insufficient budget: need ${estimated_cost:.4f}, have ${remaining:.4f}"
+                message=None if allowed else f"Insufficient budget: need ${estimated_cost:.4f}, have ${remaining:.4f}",
             )
 
         except httpx.RequestError as e:
             logger.error(f"Error checking budget: {e}")
-            return BudgetCheckResponse(
-                allowed=True,
-                message=f"Budget check failed: {str(e)}"
-            )
+            return BudgetCheckResponse(allowed=True, message=f"Budget check failed: {str(e)}")
 
 
 @app.get("/pricing")
@@ -472,4 +465,5 @@ async def update_pricing(model: str, input_cost: float, output_cost: float):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8080)

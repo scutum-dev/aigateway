@@ -5,15 +5,16 @@ Validates API keys against LiteLLM and issues JWT tokens
 for subsequent admin requests.
 """
 
-import os
+import hmac
 import logging
-from typing import Optional
+import os
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
-import jwt
 import httpx
-from fastapi import HTTPException, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import jwt
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -41,11 +42,13 @@ LITELLM_MASTER_KEY = os.getenv("LITELLM_MASTER_KEY", "$LITELLM_KEY")
 
 class LoginRequest(BaseModel):
     """Login request with API key."""
+
     api_key: str
 
 
 class TokenResponse(BaseModel):
     """JWT token response."""
+
     access_token: str
     token_type: str = "bearer"
     expires_in: int
@@ -54,6 +57,7 @@ class TokenResponse(BaseModel):
 
 class UserInfo(BaseModel):
     """Authenticated user information."""
+
     user_id: str
     role: str
     team_id: Optional[str] = None
@@ -71,7 +75,7 @@ async def validate_api_key(api_key: str) -> Optional[dict]:
         Key info dict if valid, None otherwise
     """
     # Check if it's the master key
-    if api_key == LITELLM_MASTER_KEY:
+    if hmac.compare_digest(api_key, LITELLM_MASTER_KEY):
         return {
             "user_id": "admin",
             "role": "admin",
@@ -85,7 +89,7 @@ async def validate_api_key(api_key: str) -> Optional[dict]:
             response = await client.get(
                 f"{LITELLM_URL}/key/info",
                 params={"key": api_key},
-                headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"}
+                headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"},
             )
 
             if response.status_code == 200:
@@ -158,9 +162,7 @@ def decode_token(token: str) -> dict:
         )
 
 
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-) -> UserInfo:
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> UserInfo:
     """
     Get current authenticated user from JWT token.
 
@@ -180,9 +182,7 @@ async def get_current_user(
     )
 
 
-async def require_admin(
-    user: UserInfo = Depends(get_current_user)
-) -> UserInfo:
+async def require_admin(user: UserInfo = Depends(get_current_user)) -> UserInfo:
     """
     Require admin role for endpoint.
 

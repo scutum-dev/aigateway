@@ -3,14 +3,14 @@
 Tests CRUD operations for teams including update and delete.
 """
 
-import sys
 import os
-from unittest.mock import AsyncMock, MagicMock
+import sys
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-import pytest
 import httpx
+import pytest
 
 # Load the admin-api module
 _service_dir = os.path.join(os.path.dirname(__file__), "../../src/admin-api")
@@ -18,23 +18,27 @@ sys.path.insert(0, _service_dir)
 
 # Mock heavy dependencies before importing
 for mod_name in [
-    "redis.asyncio", "jwt",
-    "opentelemetry", "opentelemetry.trace",
+    "redis.asyncio",
+    "jwt",
+    "opentelemetry",
+    "opentelemetry.trace",
     "opentelemetry.instrumentation.fastapi",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk.trace", "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
     "opentelemetry.sdk.resources",
-    "alembic", "alembic.config", "alembic.command",
-    "passlib", "passlib.context",
+    "alembic",
+    "alembic.config",
+    "alembic.command",
+    "passlib",
+    "passlib.context",
 ]:
     sys.modules.setdefault(mod_name, MagicMock())
 
-import deps
-from auth import get_current_user, require_admin
-from routers.teams import router
-
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
+import deps  # noqa: E402
+from auth import get_current_user, require_admin  # noqa: E402
+from fastapi import FastAPI  # noqa: E402
+from routers.teams import router  # noqa: E402
 
 _fake_user = MagicMock(user_id="admin", role="admin")
 
@@ -82,9 +86,12 @@ class TestUpdateTeam:
         _, conn = mock_pool
         conn.fetchrow.return_value = SAMPLE_TEAM_ROW
         conn.fetch.return_value = []  # no members
-        resp = await client.put(f"/api/v1/teams/{SAMPLE_TEAM_ROW['id']}", json={
-            "name": "eng-updated",
-        })
+        resp = await client.put(
+            f"/api/v1/teams/{SAMPLE_TEAM_ROW['id']}",
+            json={
+                "name": "eng-updated",
+            },
+        )
         assert resp.status_code == 200
         assert resp.json()["name"] == "engineering"  # from mock row
 

@@ -2,11 +2,10 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter
 import httpx
-
 import state
 from a2a_models import Agent, AgentMessage
+from fastapi import APIRouter
 
 router = APIRouter(tags=["Messages"])
 

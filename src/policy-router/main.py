@@ -13,37 +13,40 @@ Features:
 - Latency SLA enforcement
 """
 
-import os
-import logging
 import json
-from typing import Optional, List, Dict, Any
-from datetime import datetime, timezone
+import logging
+import os
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Query, Request
+import asyncpg
+import httpx
+import redis.asyncio as redis
+from cedar_engine import CedarEngine
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from metrics_collector import MetricsCollector
+from models import (
+    ModelInfo,
+    ModelTier,
+    PolicyEvaluationRequest,
+    PolicyEvaluationResponse,
+    RoutingDecision,
+    RoutingDecisionRecord,
+    RoutingRequest,
+)
 from opentelemetry import trace
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.resources import Resource
-import httpx
-import asyncpg
-import redis.asyncio as redis
-
-from models import (
-    RoutingRequest, RoutingDecision, ModelInfo, ModelTier,
-    PolicyEvaluationRequest, PolicyEvaluationResponse,
-    RoutingDecisionRecord, ModelRoutingConfig
-)
-from cedar_engine import CedarEngine
-from metrics_collector import MetricsCollector
 from routing_strategy import RoutingStrategy
+
 from shared.cors import get_cors_origins
-from shared.middleware import ServiceAuthMiddleware, RequestSizeLimitMiddleware
+from shared.middleware import RequestSizeLimitMiddleware, ServiceAuthMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -69,7 +72,7 @@ DEFAULT_MODELS: List[Dict[str, Any]] = [
         "supports_streaming": True,
         "supports_function_calling": True,
         "supports_vision": True,
-        "default_latency_sla_ms": 5000
+        "default_latency_sla_ms": 5000,
     },
     {
         "model_id": "gpt-4o-mini",
@@ -80,7 +83,7 @@ DEFAULT_MODELS: List[Dict[str, Any]] = [
         "supports_streaming": True,
         "supports_function_calling": True,
         "supports_vision": True,
-        "default_latency_sla_ms": 3000
+        "default_latency_sla_ms": 3000,
     },
     {
         "model_id": "claude-3-5-sonnet",
@@ -91,7 +94,7 @@ DEFAULT_MODELS: List[Dict[str, Any]] = [
         "supports_streaming": True,
         "supports_function_calling": True,
         "supports_vision": True,
-        "default_latency_sla_ms": 5000
+        "default_latency_sla_ms": 5000,
     },
     {
         "model_id": "claude-3-haiku",
@@ -102,7 +105,7 @@ DEFAULT_MODELS: List[Dict[str, Any]] = [
         "supports_streaming": True,
         "supports_function_calling": True,
         "supports_vision": True,
-        "default_latency_sla_ms": 2000
+        "default_latency_sla_ms": 2000,
     },
     {
         "model_id": "grok-3",
@@ -113,7 +116,7 @@ DEFAULT_MODELS: List[Dict[str, Any]] = [
         "supports_streaming": True,
         "supports_function_calling": True,
         "supports_vision": False,
-        "default_latency_sla_ms": 4000
+        "default_latency_sla_ms": 4000,
     },
     {
         "model_id": "llama-3.1-70b",
@@ -124,7 +127,7 @@ DEFAULT_MODELS: List[Dict[str, Any]] = [
         "supports_streaming": True,
         "supports_function_calling": False,
         "supports_vision": False,
-        "default_latency_sla_ms": 8000
+        "default_latency_sla_ms": 8000,
     },
 ]
 
@@ -294,33 +297,37 @@ async def _get_available_models() -> List[ModelInfo]:
                 rows = await conn.fetch("SELECT * FROM model_routing_config")
                 if rows:
                     for row in rows:
-                        models.append(ModelInfo(
-                            model_id=row["model_id"],
-                            provider=row["provider"],
-                            tier=ModelTier(row["tier"]),
-                            cost_per_1k_input=row["cost_per_1k_input"],
-                            cost_per_1k_output=row["cost_per_1k_output"],
-                            supports_streaming=row["supports_streaming"],
-                            supports_function_calling=row["supports_function_calling"],
-                            default_latency_sla_ms=row["default_latency_sla_ms"],
-                        ))
+                        models.append(
+                            ModelInfo(
+                                model_id=row["model_id"],
+                                provider=row["provider"],
+                                tier=ModelTier(row["tier"]),
+                                cost_per_1k_input=row["cost_per_1k_input"],
+                                cost_per_1k_output=row["cost_per_1k_output"],
+                                supports_streaming=row["supports_streaming"],
+                                supports_function_calling=row["supports_function_calling"],
+                                default_latency_sla_ms=row["default_latency_sla_ms"],
+                            )
+                        )
         except Exception as e:
             logger.warning(f"Could not load models from database: {e}")
 
     # Fall back to default models if none loaded
     if not models:
         for m in DEFAULT_MODELS:
-            models.append(ModelInfo(
-                model_id=m["model_id"],
-                provider=m["provider"],
-                tier=ModelTier(m["tier"]),
-                cost_per_1k_input=m["cost_per_1k_input"],
-                cost_per_1k_output=m["cost_per_1k_output"],
-                supports_streaming=m["supports_streaming"],
-                supports_function_calling=m["supports_function_calling"],
-                supports_vision=m.get("supports_vision", False),
-                default_latency_sla_ms=m["default_latency_sla_ms"],
-            ))
+            models.append(
+                ModelInfo(
+                    model_id=m["model_id"],
+                    provider=m["provider"],
+                    tier=ModelTier(m["tier"]),
+                    cost_per_1k_input=m["cost_per_1k_input"],
+                    cost_per_1k_output=m["cost_per_1k_output"],
+                    supports_streaming=m["supports_streaming"],
+                    supports_function_calling=m["supports_function_calling"],
+                    supports_vision=m.get("supports_vision", False),
+                    default_latency_sla_ms=m["default_latency_sla_ms"],
+                )
+            )
 
     # Fetch current metrics
     if metrics_collector:
@@ -345,7 +352,8 @@ async def _record_decision(decision: RoutingDecisionRecord):
 
     try:
         async with db_pool.acquire() as conn:
-            await conn.execute("""
+            await conn.execute(
+                """
                 INSERT INTO routing_decisions
                 (user_id, team_id, requested_model, selected_model, fallback_models, decision_reason, context_snapshot)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -356,7 +364,7 @@ async def _record_decision(decision: RoutingDecisionRecord):
                 decision.selected_model,
                 decision.fallback_models,
                 decision.decision_reason,
-                json.dumps(decision.context_snapshot)
+                json.dumps(decision.context_snapshot),
             )
     except Exception as e:
         logger.error(f"Failed to record routing decision: {e}")
@@ -413,7 +421,7 @@ async def route_request(request: RoutingRequest):
                     team_id=request.team_id,
                     model_id=model.model_id,
                     model_attrs=model_attrs,
-                    request_context=context
+                    request_context=context,
                 )
                 policy_results[model.model_id] = (allowed, reasons)
 
@@ -427,16 +435,11 @@ async def route_request(request: RoutingRequest):
 
         # Select model with routing strategy
         selected, fallbacks, reason = routing_strategy.select_with_fallbacks(
-            models=models,
-            request=request,
-            policy_results=policy_results
+            models=models, request=request, policy_results=policy_results
         )
 
         if not selected:
-            raise HTTPException(
-                status_code=503,
-                detail="No suitable models available for the given constraints"
-            )
+            raise HTTPException(status_code=503, detail="No suitable models available for the given constraints")
 
         # Estimate cost if messages provided
         estimated_cost = None
@@ -455,7 +458,7 @@ async def route_request(request: RoutingRequest):
             selected_model=selected.model_id,
             fallback_models=[m.model_id for m in fallbacks],
             decision_reason=reason,
-            context_snapshot=context
+            context_snapshot=context,
         )
         await _record_decision(record)
 
@@ -467,7 +470,7 @@ async def route_request(request: RoutingRequest):
             fallback_models=[m.model_id for m in fallbacks],
             decision_reason=reason,
             estimated_cost=estimated_cost,
-            estimated_latency_ms=int(selected.current_latency_ms) if selected.current_latency_ms else None
+            estimated_latency_ms=int(selected.current_latency_ms) if selected.current_latency_ms else None,
         )
 
 
@@ -483,10 +486,7 @@ async def evaluate_policy(request: PolicyEvaluationRequest):
         raise HTTPException(status_code=503, detail="Cedar engine not available")
 
     return cedar_engine.evaluate(
-        principal=request.principal,
-        action=request.action,
-        resource=request.resource,
-        context=request.context
+        principal=request.principal, action=request.action, resource=request.resource, context=request.context
     )
 
 
@@ -595,4 +595,5 @@ async def get_recent_decisions(
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8084)

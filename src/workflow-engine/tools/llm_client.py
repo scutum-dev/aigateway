@@ -3,7 +3,8 @@ LLM client wrapper for LiteLLM integration.
 """
 
 import logging
-from typing import Optional, Dict, Any, List, AsyncIterator
+from typing import Any, AsyncIterator, Dict, List, Optional
+
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -99,7 +100,7 @@ class LLMClient:
                 "temperature": temperature,
                 "max_tokens": max_tokens,
                 **kwargs,
-            }
+            },
         )
 
         if response.status_code != 200:
@@ -140,7 +141,7 @@ class LLMClient:
                 "max_tokens": max_tokens,
                 "stream": True,
                 **kwargs,
-            }
+            },
         ) as response:
             async for line in response.aiter_lines():
                 if line.startswith("data: "):
@@ -149,6 +150,7 @@ class LLMClient:
                         break
                     try:
                         import json
+
                         yield json.loads(data)
                     except Exception:
                         continue

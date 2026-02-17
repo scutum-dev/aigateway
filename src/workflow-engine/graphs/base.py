@@ -4,14 +4,12 @@ Base LangGraph workflow class.
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, AsyncIterator
 from datetime import datetime
+from typing import Any, AsyncIterator, Dict, Optional
 
-from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-
+from langgraph.graph import StateGraph
 from models.state import WorkflowState
-from models.execution import WorkflowExecution, ExecutionStatus
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +65,7 @@ class BaseWorkflow(ABC):
         """Compile the workflow graph."""
         if self._compiled is None:
             self._graph = self.build_graph()
-            self._compiled = self._graph.compile(
-                checkpointer=self.checkpointer
-            )
+            self._compiled = self._graph.compile(checkpointer=self.checkpointer)
         return self._compiled
 
     async def run(

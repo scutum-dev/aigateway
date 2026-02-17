@@ -4,14 +4,16 @@ Azure OpenAI Gateway Adapter.
 Provides integration with Azure OpenAI Service with support for
 deployments, API versions, and Azure-specific authentication.
 """
-import os
-import json
-import httpx
-from typing import AsyncIterator, Dict, List, Optional, Set, Any
-from datetime import datetime
 
-from ..core.interface import AbstractGateway, GatewayCapability
+import json
+import os
+from datetime import datetime
+from typing import Any, AsyncIterator, Dict, List, Optional, Set
+
+import httpx
+
 from ..core.errors import GatewayConnectionError, GatewayRequestError
+from ..core.interface import AbstractGateway, GatewayCapability
 from ..models.request import ChatRequest
 from ..models.response import ChatResponse, Usage
 
@@ -112,10 +114,7 @@ class AzureOpenAIAdapter(AbstractGateway):
 
     def _build_url(self, deployment: str, endpoint_type: str = "chat/completions") -> str:
         """Build Azure OpenAI API URL."""
-        return (
-            f"{self._endpoint}/openai/deployments/{deployment}/"
-            f"{endpoint_type}?api-version={self._api_version}"
-        )
+        return f"{self._endpoint}/openai/deployments/{deployment}/{endpoint_type}?api-version={self._api_version}"
 
     async def connect(self) -> None:
         """Establish connection to Azure OpenAI."""
@@ -147,9 +146,7 @@ class AzureOpenAIAdapter(AbstractGateway):
 
             if response.status_code == 200:
                 data = response.json()
-                self._available_deployments = [
-                    d.get("id") for d in data.get("data", [])
-                ]
+                self._available_deployments = [d.get("id") for d in data.get("data", [])]
                 return {
                     "status": "healthy",
                     "gateway": self._name,
@@ -208,28 +205,17 @@ class AzureOpenAIAdapter(AbstractGateway):
 
             if response.status_code != 200:
                 error_body = response.text
-                raise GatewayRequestError(
-                    self._name,
-                    f"Azure OpenAI error: {response.status_code} - {error_body}"
-                )
+                raise GatewayRequestError(self._name, f"Azure OpenAI error: {response.status_code} - {error_body}")
 
             data = response.json()
             return self._parse_response(data, request.model)
 
         except httpx.TimeoutException:
-            raise GatewayConnectionError(
-                self._endpoint,
-                "Request timed out"
-            )
+            raise GatewayConnectionError(self._endpoint, "Request timed out")
         except httpx.RequestError as e:
-            raise GatewayConnectionError(
-                self._endpoint,
-                str(e)
-            )
+            raise GatewayConnectionError(self._endpoint, str(e))
 
-    async def chat_completion_stream(
-        self, request: ChatRequest
-    ) -> AsyncIterator[ChatResponse]:
+    async def chat_completion_stream(self, request: ChatRequest) -> AsyncIterator[ChatResponse]:
         """Execute streaming chat completion request."""
         if not self._client:
             await self.connect()
@@ -261,8 +247,7 @@ class AzureOpenAIAdapter(AbstractGateway):
                 if response.status_code != 200:
                     error_body = await response.aread()
                     raise GatewayRequestError(
-                        self._name,
-                        f"Azure OpenAI error: {response.status_code} - {error_body.decode()}"
+                        self._name, f"Azure OpenAI error: {response.status_code} - {error_body.decode()}"
                     )
 
                 async for line in response.aiter_lines():
@@ -277,10 +262,7 @@ class AzureOpenAIAdapter(AbstractGateway):
                             continue
 
         except httpx.TimeoutException:
-            raise GatewayConnectionError(
-                self._endpoint,
-                "Stream request timed out"
-            )
+            raise GatewayConnectionError(self._endpoint, "Stream request timed out")
 
     async def list_models(self) -> List[Dict[str, Any]]:
         """List available Azure OpenAI deployments."""

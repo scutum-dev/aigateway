@@ -3,15 +3,14 @@
 Tests CRUD, team assignment, events, and scan endpoints.
 """
 
-import sys
 import os
-import importlib.util
-from unittest.mock import AsyncMock, MagicMock, patch
+import sys
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-import pytest
 import httpx
+import pytest
 
 # Load the admin-api module
 _service_dir = os.path.join(os.path.dirname(__file__), "../../src/admin-api")
@@ -19,23 +18,27 @@ sys.path.insert(0, _service_dir)
 
 # We need to mock out heavy dependencies before importing
 for mod_name in [
-    "redis.asyncio", "jwt",
-    "opentelemetry", "opentelemetry.trace",
+    "redis.asyncio",
+    "jwt",
+    "opentelemetry",
+    "opentelemetry.trace",
     "opentelemetry.instrumentation.fastapi",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk.trace", "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
     "opentelemetry.sdk.resources",
-    "alembic", "alembic.config", "alembic.command",
-    "passlib", "passlib.context",
+    "alembic",
+    "alembic.config",
+    "alembic.command",
+    "passlib",
+    "passlib.context",
 ]:
     sys.modules.setdefault(mod_name, MagicMock())
 
-import deps
-from auth import get_current_user, require_admin
-from routers.guardrails import router, GuardrailConfig
-
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
+import deps  # noqa: E402
+from auth import get_current_user, require_admin  # noqa: E402
+from fastapi import FastAPI  # noqa: E402
+from routers.guardrails import router  # noqa: E402
 
 # Fake user for auth overrides
 _fake_user = MagicMock(user_id="admin", role="admin")
@@ -148,10 +151,13 @@ class TestCreateGuardrail:
     async def test_create_success(self, client, mock_pool):
         _, conn = mock_pool
         conn.fetchrow.return_value = SAMPLE_CONFIG_ROW
-        resp = await client.post("/api/v1/guardrails", json={
-            "name": "test-profile",
-            "description": "Test guardrail",
-        })
+        resp = await client.post(
+            "/api/v1/guardrails",
+            json={
+                "name": "test-profile",
+                "description": "Test guardrail",
+            },
+        )
         assert resp.status_code == 200
         assert resp.json()["name"] == "test-profile"
 
@@ -187,9 +193,12 @@ class TestUpdateGuardrail:
     async def test_update_success(self, client, mock_pool):
         _, conn = mock_pool
         conn.fetchrow.return_value = SAMPLE_CONFIG_ROW
-        resp = await client.put(f"/api/v1/guardrails/{SAMPLE_CONFIG_ROW['id']}", json={
-            "enable_toxicity": False,
-        })
+        resp = await client.put(
+            f"/api/v1/guardrails/{SAMPLE_CONFIG_ROW['id']}",
+            json={
+                "enable_toxicity": False,
+            },
+        )
         assert resp.status_code == 200
 
     @pytest.mark.asyncio
@@ -305,10 +314,11 @@ class TestGuardrailEvents:
     async def test_list_events_with_filters(self, client, mock_pool):
         _, conn = mock_pool
         conn.fetch.return_value = []
-        resp = await client.get("/api/v1/guardrail-events", params={
-            "team_id": "team-1",
-            "event_type": "pii_detected",
-        })
+        resp = await client.get(
+            "/api/v1/guardrail-events",
+            params={
+                "team_id": "team-1",
+                "event_type": "pii_detected",
+            },
+        )
         assert resp.status_code == 200
-
-

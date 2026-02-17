@@ -4,13 +4,13 @@ Cedar Policy Engine wrapper for model routing decisions.
 Uses cedarpy to evaluate Cedar policies for intelligent model selection.
 """
 
-import os
 import logging
-from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 try:
     import cedarpy
+
     CEDAR_AVAILABLE = True
 except ImportError:
     CEDAR_AVAILABLE = False
@@ -77,13 +77,7 @@ class CedarEngine:
         self._load_policies()
         return len(self.policies)
 
-    def evaluate(
-        self,
-        principal: str,
-        action: str,
-        resource: str,
-        context: Dict[str, Any]
-    ) -> PolicyEvaluationResponse:
+    def evaluate(self, principal: str, action: str, resource: str, context: Dict[str, Any]) -> PolicyEvaluationResponse:
         """
         Evaluate Cedar policies for a given request.
 
@@ -98,26 +92,17 @@ class CedarEngine:
         """
         if not CEDAR_AVAILABLE:
             return PolicyEvaluationResponse(
-                decision="allow",
-                reasons=["cedarpy not available, defaulting to allow"],
-                errors=[]
+                decision="allow", reasons=["cedarpy not available, defaulting to allow"], errors=[]
             )
 
         if not self.policies:
             return PolicyEvaluationResponse(
-                decision="allow",
-                reasons=["no policies loaded, defaulting to allow"],
-                errors=[]
+                decision="allow", reasons=["no policies loaded, defaulting to allow"], errors=[]
             )
 
         try:
             # Build the authorization request
-            request = {
-                "principal": principal,
-                "action": action,
-                "resource": resource,
-                "context": context
-            }
+            request = {"principal": principal, "action": action, "resource": resource, "context": context}
 
             # Combine all policies
             combined_policies = "\n\n".join(self.policies)
@@ -127,47 +112,33 @@ class CedarEngine:
 
             # Evaluate using cedarpy
             result = cedarpy.is_authorized(
-                request=request,
-                policies=combined_policies,
-                entities=entities,
-                schema=self.schema
+                request=request, policies=combined_policies, entities=entities, schema=self.schema
             )
 
             decision = "allow" if result.is_allowed else "deny"
-            reasons = [str(r) for r in result.reasons] if hasattr(result, 'reasons') else []
-            errors = [str(e) for e in result.errors] if hasattr(result, 'errors') else []
+            reasons = [str(r) for r in result.reasons] if hasattr(result, "reasons") else []
+            errors = [str(e) for e in result.errors] if hasattr(result, "errors") else []
 
-            return PolicyEvaluationResponse(
-                decision=decision,
-                reasons=reasons,
-                errors=errors
-            )
+            return PolicyEvaluationResponse(decision=decision, reasons=reasons, errors=errors)
 
         except Exception as e:
             logger.error(f"Cedar evaluation error: {e}")
-            return PolicyEvaluationResponse(
-                decision="allow",
-                reasons=[],
-                errors=[f"Evaluation error: {str(e)}"]
-            )
+            return PolicyEvaluationResponse(decision="allow", reasons=[], errors=[f"Evaluation error: {str(e)}"])
 
-    def _build_entities(
-        self,
-        principal: str,
-        resource: str,
-        context: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+    def _build_entities(self, principal: str, resource: str, context: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Build Cedar entities for evaluation."""
         entities = []
 
         # Parse principal (e.g., "user::user-123")
         if "::" in principal:
             principal_type, principal_id = principal.split("::", 1)
-            entities.append({
-                "uid": {"type": principal_type, "id": principal_id},
-                "attrs": context.get("principal_attrs", {}),
-                "parents": []
-            })
+            entities.append(
+                {
+                    "uid": {"type": principal_type, "id": principal_id},
+                    "attrs": context.get("principal_attrs", {}),
+                    "parents": [],
+                }
+            )
 
         # Parse resource (e.g., "model::gpt-4o")
         if "::" in resource:
@@ -175,18 +146,16 @@ class CedarEngine:
             resource_attrs = context.get("resource_attrs", {})
 
             # Add model-specific attributes
-            resource_attrs.update({
-                "provider": context.get("provider", "unknown"),
-                "average_latency_ms": context.get("current_latency_ms", 1000),
-                "current_error_rate": context.get("current_error_rate", 0.0),
-                "tier": context.get("tier", "standard")
-            })
+            resource_attrs.update(
+                {
+                    "provider": context.get("provider", "unknown"),
+                    "average_latency_ms": context.get("current_latency_ms", 1000),
+                    "current_error_rate": context.get("current_error_rate", 0.0),
+                    "tier": context.get("tier", "standard"),
+                }
+            )
 
-            entities.append({
-                "uid": {"type": resource_type, "id": resource_id},
-                "attrs": resource_attrs,
-                "parents": []
-            })
+            entities.append({"uid": {"type": resource_type, "id": resource_id}, "attrs": resource_attrs, "parents": []})
 
         return entities
 
@@ -196,7 +165,7 @@ class CedarEngine:
         team_id: Optional[str],
         model_id: str,
         model_attrs: Dict[str, Any],
-        request_context: Dict[str, Any]
+        request_context: Dict[str, Any],
     ) -> Tuple[bool, List[str]]:
         """
         Evaluate if a specific model can be selected for a request.
@@ -231,10 +200,7 @@ class CedarEngine:
 
         # Evaluate
         result = self.evaluate(
-            principal=principal,
-            action="routing:select_model",
-            resource=f"model::{model_id}",
-            context=context
+            principal=principal, action="routing:select_model", resource=f"model::{model_id}", context=context
         )
 
         return result.decision == "allow", result.reasons

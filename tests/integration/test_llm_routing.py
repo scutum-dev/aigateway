@@ -9,9 +9,9 @@ Tests:
 """
 
 import os
-import pytest
+
 import httpx
-from typing import Optional
+import pytest
 
 # Configuration from environment
 LITELLM_URL = os.getenv("LITELLM_URL", "http://localhost:4000")
@@ -28,10 +28,7 @@ def http_client():
 @pytest.fixture
 def api_headers():
     """Common API headers."""
-    return {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
+    return {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
 
 class TestLLMRouting:
@@ -44,11 +41,9 @@ class TestLLMRouting:
             headers=api_headers,
             json={
                 "model": "gpt-4o-mini",
-                "messages": [
-                    {"role": "user", "content": "Say 'test' and nothing else."}
-                ],
-                "max_tokens": 10
-            }
+                "messages": [{"role": "user", "content": "Say 'test' and nothing else."}],
+                "max_tokens": 10,
+            },
         )
 
         assert response.status_code == 200
@@ -64,11 +59,9 @@ class TestLLMRouting:
             headers=api_headers,
             json={
                 "model": "claude-3-haiku",
-                "messages": [
-                    {"role": "user", "content": "Say 'test' and nothing else."}
-                ],
-                "max_tokens": 10
-            }
+                "messages": [{"role": "user", "content": "Say 'test' and nothing else."}],
+                "max_tokens": 10,
+            },
         )
 
         assert response.status_code == 200
@@ -82,11 +75,9 @@ class TestLLMRouting:
             headers=api_headers,
             json={
                 "model": "llama-3.1-8b",
-                "messages": [
-                    {"role": "user", "content": "Say 'test' and nothing else."}
-                ],
-                "max_tokens": 10
-            }
+                "messages": [{"role": "user", "content": "Say 'test' and nothing else."}],
+                "max_tokens": 10,
+            },
         )
 
         # May fail if vLLM is not running, which is expected in some test environments
@@ -104,11 +95,9 @@ class TestLLMRouting:
             headers=api_headers,
             json={
                 "model": "fast",
-                "messages": [
-                    {"role": "user", "content": "Say 'test' and nothing else."}
-                ],
-                "max_tokens": 10
-            }
+                "messages": [{"role": "user", "content": "Say 'test' and nothing else."}],
+                "max_tokens": 10,
+            },
         )
 
         assert response.status_code == 200
@@ -123,11 +112,9 @@ class TestLLMRouting:
             headers=api_headers,
             json={
                 "model": "smart",
-                "messages": [
-                    {"role": "user", "content": "What is 2+2? Answer with just the number."}
-                ],
-                "max_tokens": 10
-            }
+                "messages": [{"role": "user", "content": "What is 2+2? Answer with just the number."}],
+                "max_tokens": 10,
+            },
         )
 
         assert response.status_code == 200
@@ -143,13 +130,7 @@ class TestFallbackBehavior:
         response = http_client.post(
             f"{LITELLM_URL}/v1/chat/completions",
             headers=api_headers,
-            json={
-                "model": "gpt-4o",
-                "messages": [
-                    {"role": "user", "content": "Say 'test'"}
-                ],
-                "max_tokens": 10
-            }
+            json={"model": "gpt-4o", "messages": [{"role": "user", "content": "Say 'test'"}], "max_tokens": 10},
         )
 
         # Should succeed (either directly or via fallback)
@@ -163,12 +144,10 @@ class TestFallbackBehavior:
             headers=api_headers,
             json={
                 "model": "gpt-4o-mini",
-                "messages": [
-                    {"role": "user", "content": "Count from 1 to 5."}
-                ],
+                "messages": [{"role": "user", "content": "Count from 1 to 5."}],
                 "max_tokens": 50,
-                "stream": True
-            }
+                "stream": True,
+            },
         ) as response:
             assert response.status_code == 200
 
@@ -188,13 +167,7 @@ class TestBudgetEnforcement:
         response = http_client.post(
             f"{LITELLM_URL}/v1/chat/completions",
             headers=api_headers,
-            json={
-                "model": "gpt-4o-mini",
-                "messages": [
-                    {"role": "user", "content": "Hi"}
-                ],
-                "max_tokens": 5
-            }
+            json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hi"}], "max_tokens": 5},
         )
 
         # Should succeed if within budget
@@ -202,10 +175,7 @@ class TestBudgetEnforcement:
 
     def test_get_key_info(self, http_client, api_headers):
         """Test getting API key budget info."""
-        response = http_client.get(
-            f"{LITELLM_URL}/key/info",
-            headers=api_headers
-        )
+        response = http_client.get(f"{LITELLM_URL}/key/info", headers=api_headers)
 
         if response.status_code == 200:
             data = response.json()
@@ -221,13 +191,7 @@ class TestCostTracking:
         response = http_client.post(
             f"{LITELLM_URL}/v1/chat/completions",
             headers=api_headers,
-            json={
-                "model": "gpt-4o-mini",
-                "messages": [
-                    {"role": "user", "content": "Say 'test'"}
-                ],
-                "max_tokens": 10
-            }
+            json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Say 'test'"}], "max_tokens": 10},
         )
 
         assert response.status_code == 200
@@ -241,10 +205,7 @@ class TestCostTracking:
 
     def test_spend_endpoint(self, http_client, api_headers):
         """Test spend tracking endpoint."""
-        response = http_client.get(
-            f"{LITELLM_URL}/spend/logs",
-            headers=api_headers
-        )
+        response = http_client.get(f"{LITELLM_URL}/spend/logs", headers=api_headers)
 
         # Should return spend logs or 404 if not configured
         assert response.status_code in [200, 404]
@@ -275,10 +236,7 @@ class TestModelList:
 
     def test_list_models(self, http_client, api_headers):
         """Test listing available models."""
-        response = http_client.get(
-            f"{LITELLM_URL}/v1/models",
-            headers=api_headers
-        )
+        response = http_client.get(f"{LITELLM_URL}/v1/models", headers=api_headers)
 
         assert response.status_code == 200
         data = response.json()

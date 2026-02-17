@@ -156,8 +156,9 @@ export default function APIKeys() {
           <form onSubmit={handleGenerate} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="label">Key Alias</label>
+                <label htmlFor="key-alias" className="label">Key Alias</label>
                 <input
+                  id="key-alias"
                   type="text"
                   value={form.key_alias}
                   onChange={(e) => setForm({ ...form, key_alias: e.target.value })}
@@ -166,10 +167,12 @@ export default function APIKeys() {
                 />
               </div>
               <div>
-                <label className="label">Max Budget ($)</label>
+                <label htmlFor="key-max-budget" className="label">Max Budget ($)</label>
                 <input
+                  id="key-max-budget"
                   type="number"
                   step="0.01"
+                  min="0"
                   value={form.max_budget}
                   onChange={(e) => setForm({ ...form, max_budget: e.target.value })}
                   className="input"
@@ -177,8 +180,9 @@ export default function APIKeys() {
                 />
               </div>
               <div>
-                <label className="label">Models (comma-separated)</label>
+                <label htmlFor="key-models" className="label">Models (comma-separated)</label>
                 <input
+                  id="key-models"
                   type="text"
                   value={form.models}
                   onChange={(e) => setForm({ ...form, models: e.target.value })}
@@ -187,8 +191,9 @@ export default function APIKeys() {
                 />
               </div>
               <div>
-                <label className="label">Team ID</label>
+                <label htmlFor="key-team-id" className="label">Team ID</label>
                 <input
+                  id="key-team-id"
                   type="text"
                   value={form.team_id}
                   onChange={(e) => setForm({ ...form, team_id: e.target.value })}
@@ -197,8 +202,9 @@ export default function APIKeys() {
                 />
               </div>
               <div className="col-span-2">
-                <label className="label">Duration</label>
+                <label htmlFor="key-duration" className="label">Duration</label>
                 <input
+                  id="key-duration"
                   type="text"
                   value={form.duration}
                   onChange={(e) => setForm({ ...form, duration: e.target.value })}
@@ -308,7 +314,7 @@ export default function APIKeys() {
                     <button
                       onClick={() => setConfirmRevoke(key.token)}
                       className="text-red-600 hover:text-red-800 p-1"
-                      title="Revoke key"
+                      aria-label={`Revoke key ${key.key_alias || key.key_name || ''}`}
                     >
                       <TrashIcon className="w-4 h-4" />
                     </button>

@@ -43,11 +43,14 @@ function Toggle({ enabled, onChange, label, description }: {
   return (
     <div className="flex items-center justify-between py-2">
       <div>
-        <span className="font-medium text-sm">{label}</span>
+        <span className="font-medium text-sm" id={`toggle-${label.replace(/\s+/g, '-').toLowerCase()}`}>{label}</span>
         {description && <p className="text-xs text-gray-500">{description}</p>}
       </div>
       <button
         type="button"
+        role="switch"
+        aria-checked={enabled}
+        aria-labelledby={`toggle-${label.replace(/\s+/g, '-').toLowerCase()}`}
         onClick={() => onChange(!enabled)}
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
           enabled ? 'bg-primary-600' : 'bg-gray-300'
@@ -225,16 +228,19 @@ export default function Guardrails() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Name</label>
+                  <label htmlFor="guardrail-name" className="label">Name</label>
                   <input
+                    id="guardrail-name"
                     className="input"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    required
                   />
                 </div>
                 <div>
-                  <label className="label">Description</label>
+                  <label htmlFor="guardrail-description" className="label">Description</label>
                   <input
+                    id="guardrail-description"
                     className="input"
                     value={form.description || ''}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}

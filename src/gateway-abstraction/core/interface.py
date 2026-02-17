@@ -5,8 +5,8 @@ Defines the contract that all gateway adapters must implement.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, AsyncIterator, Optional, Set
 from enum import Enum
+from typing import Any, AsyncIterator, Dict, List, Set
 
 from ..models.request import ChatRequest
 from ..models.response import ChatResponse
@@ -14,6 +14,7 @@ from ..models.response import ChatResponse
 
 class GatewayCapability(str, Enum):
     """Capabilities that a gateway may support."""
+
     CHAT_COMPLETION = "chat_completion"
     STREAMING = "streaming"
     FUNCTION_CALLING = "function_calling"
@@ -108,10 +109,7 @@ class AbstractGateway(ABC):
         pass
 
     @abstractmethod
-    async def chat_completion_stream(
-        self,
-        request: ChatRequest
-    ) -> AsyncIterator[ChatResponse]:
+    async def chat_completion_stream(self, request: ChatRequest) -> AsyncIterator[ChatResponse]:
         """
         Create a streaming chat completion.
 

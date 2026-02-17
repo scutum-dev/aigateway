@@ -4,22 +4,24 @@ Integration tests for Gateway Abstraction Layer.
 Tests gateway adapters, plugin registry, routing,
 and unified request/response handling.
 """
-import pytest
-import sys
+
 import os
+import sys
+
+import pytest
 
 # Add the gateway-abstraction module to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src/gateway-abstraction"))
 
-from core.interface import AbstractGateway, GatewayCapability
-from core.registry import GatewayRegistry
-from core.config import GatewayConfig, load_gateway_config
-from core.errors import GatewayError, GatewayNotFoundError, GatewayConnectionError
-from models.request import ChatRequest, Message
-from models.response import ChatResponse, Usage
+from adapters.anthropic_adapter import AnthropicAdapter
 from adapters.litellm_adapter import LiteLLMAdapter
 from adapters.openai_adapter import OpenAIAdapter
-from adapters.anthropic_adapter import AnthropicAdapter
+from core.config import GatewayConfig
+from core.errors import GatewayConnectionError, GatewayError, GatewayNotFoundError
+from core.interface import GatewayCapability
+from core.registry import GatewayRegistry
+from models.request import ChatRequest, Message
+from models.response import ChatResponse, Usage
 
 
 class TestGatewayRegistry:
@@ -438,15 +440,19 @@ class TestModelRouting:
     def test_route_by_model_pattern(self):
         """Test routing based on model pattern."""
         registry = GatewayRegistry()
-        registry.register(LiteLLMAdapter(
-            name="litellm",
-            base_url="http://localhost:4000",
-            api_key="test-key",
-        ))
-        registry.register(OpenAIAdapter(
-            name="openai",
-            api_key="test-key",
-        ))
+        registry.register(
+            LiteLLMAdapter(
+                name="litellm",
+                base_url="http://localhost:4000",
+                api_key="test-key",
+            )
+        )
+        registry.register(
+            OpenAIAdapter(
+                name="openai",
+                api_key="test-key",
+            )
+        )
 
         # Configure routing rules
         routing_rules = {
@@ -457,6 +463,7 @@ class TestModelRouting:
 
         # Test pattern matching (implementation dependent)
         import fnmatch
+
         model = "gpt-4o-mini"
         for pattern, gateways in routing_rules.items():
             if fnmatch.fnmatch(model, pattern):

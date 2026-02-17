@@ -12,19 +12,20 @@ Install Ollama: https://ollama.com/download
 Then run: ollama serve && ollama pull llama3.1:8b
 """
 
+import os
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-import os
 
 app = FastAPI(title="GPU Stub Service")
 
 GPU_ERROR = {
     "error": {
         "message": "Ollama not running. Local models require Ollama. "
-                   "Install: https://ollama.com/download then run 'ollama serve'. "
-                   "Or use cloud models (gpt-4o, claude-3-5-sonnet, grok-3) instead.",
+        "Install: https://ollama.com/download then run 'ollama serve'. "
+        "Or use cloud models (gpt-4o, claude-3-5-sonnet, grok-3) instead.",
         "type": "ollama_not_running",
-        "code": "ollama_required"
+        "code": "ollama_required",
     }
 }
 
@@ -35,7 +36,7 @@ async def health():
     return {
         "status": "stub",
         "message": "Ollama not running. Install from https://ollama.com/download",
-        "ollama_running": False
+        "ollama_running": False,
     }
 
 
@@ -49,9 +50,9 @@ async def list_models():
                 "object": "model",
                 "created": 0,
                 "owned_by": "local",
-                "description": "Ollama not running. Install from https://ollama.com/download"
+                "description": "Ollama not running. Install from https://ollama.com/download",
             }
-        ]
+        ],
     }
 
 
@@ -64,13 +65,13 @@ async def chat_completions(request: Request):
         content={
             "error": {
                 "message": f"Model '{model}' requires Ollama. Install from https://ollama.com/download, "
-                           f"then run 'ollama serve' and 'ollama pull llama3.1:8b'. "
-                           f"Or use cloud models (gpt-4o, claude-3-5-sonnet, grok-3).",
+                f"then run 'ollama serve' and 'ollama pull llama3.1:8b'. "
+                f"Or use cloud models (gpt-4o, claude-3-5-sonnet, grok-3).",
                 "type": "ollama_not_running",
                 "code": "ollama_required",
-                "param": "model"
+                "param": "model",
             }
-        }
+        },
     )
 
 
@@ -87,22 +88,20 @@ async def embeddings(request: Request):
             "error": {
                 "message": "Local embeddings require Ollama. Install from https://ollama.com/download",
                 "type": "ollama_not_running",
-                "code": "ollama_required"
+                "code": "ollama_required",
             }
-        }
+        },
     )
 
 
 # Catch-all for any other endpoints
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def catch_all(path: str):
-    return JSONResponse(
-        status_code=503,
-        content=GPU_ERROR
-    )
+    return JSONResponse(status_code=503, content=GPU_ERROR)
 
 
 if __name__ == "__main__":
     import uvicorn
+
     port = int(os.getenv("PORT", "8000"))
     uvicorn.run(app, host="0.0.0.0", port=port)

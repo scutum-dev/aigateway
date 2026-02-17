@@ -204,8 +204,9 @@ export default function Teams() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="label">Name</label>
+                <label htmlFor="team-name" className="label">Name</label>
                 <input
+                  id="team-name"
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -214,9 +215,11 @@ export default function Teams() {
                 />
               </div>
               <div>
-                <label className="label">Monthly Budget ($)</label>
+                <label htmlFor="team-budget" className="label">Monthly Budget ($)</label>
                 <input
+                  id="team-budget"
                   type="number"
+                  min="0"
                   value={form.monthly_budget}
                   onChange={(e) =>
                     setForm({ ...form, monthly_budget: e.target.value })
@@ -226,8 +229,9 @@ export default function Teams() {
                 />
               </div>
               <div className="col-span-2">
-                <label className="label">Description</label>
+                <label htmlFor="team-description" className="label">Description</label>
                 <textarea
+                  id="team-description"
                   value={form.description}
                   onChange={(e) =>
                     setForm({ ...form, description: e.target.value })
@@ -237,8 +241,9 @@ export default function Teams() {
                 />
               </div>
               <div>
-                <label className="label">Default Model</label>
+                <label htmlFor="team-default-model" className="label">Default Model</label>
                 <input
+                  id="team-default-model"
                   type="text"
                   value={form.default_model}
                   onChange={(e) =>
@@ -249,8 +254,9 @@ export default function Teams() {
                 />
               </div>
               <div>
-                <label className="label">Guardrail Profile</label>
+                <label htmlFor="team-guardrail" className="label">Guardrail Profile</label>
                 <select
+                  id="team-guardrail"
                   value={form.guardrail_config_id}
                   onChange={(e) =>
                     setForm({ ...form, guardrail_config_id: e.target.value })
@@ -292,8 +298,9 @@ export default function Teams() {
           <form onSubmit={handleAddMember} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="label">User ID</label>
+                <label htmlFor="member-user-id" className="label">User ID</label>
                 <input
+                  id="member-user-id"
                   type="text"
                   value={memberForm.user_id}
                   onChange={(e) =>
@@ -304,8 +311,9 @@ export default function Teams() {
                 />
               </div>
               <div>
-                <label className="label">Role</label>
+                <label htmlFor="member-role" className="label">Role</label>
                 <select
+                  id="member-role"
                   value={memberForm.role}
                   onChange={(e) =>
                     setMemberForm({ ...memberForm, role: e.target.value as 'member' | 'admin' })
@@ -431,6 +439,7 @@ export default function Teams() {
                   <button
                     onClick={() => setDeleteId(team.id)}
                     className="btn bg-red-50 text-red-600 hover:bg-red-100 text-sm px-3"
+                    aria-label={`Delete team ${team.name}`}
                   >
                     <TrashIcon className="w-4 h-4" />
                   </button>

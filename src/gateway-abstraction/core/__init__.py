@@ -2,16 +2,16 @@
 Core gateway abstraction components.
 """
 
-from .interface import AbstractGateway, GatewayCapability
-from .registry import GatewayRegistry
 from .config import GatewayConfig, load_config
 from .errors import (
+    GatewayAuthenticationError,
+    GatewayConnectionError,
     GatewayError,
     GatewayNotFoundError,
-    GatewayConnectionError,
-    GatewayAuthenticationError,
     GatewayRateLimitError,
 )
+from .interface import AbstractGateway, GatewayCapability
+from .registry import GatewayRegistry
 
 __all__ = [
     "AbstractGateway",

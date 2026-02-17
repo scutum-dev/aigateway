@@ -2,10 +2,9 @@ import json
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
-
 import state
 from a2a_models import Agent, AgentStatus
+from fastapi import APIRouter, HTTPException
 
 router = APIRouter(tags=["Agents"])
 

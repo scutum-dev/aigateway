@@ -2,18 +2,18 @@ import json
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException
-
 import state
-from config import TEMPORAL_TASK_QUEUE
 from a2a_models import A2AWorkflowRequest, A2AWorkflowResponse, WorkflowStatus
+from fastapi import APIRouter, HTTPException
 from workflows import (
-    SingleAgentWorkflow,
-    SequentialAgentWorkflow,
-    ParallelAgentWorkflow,
-    SupervisorAgentWorkflow,
     HumanInLoopWorkflow,
+    ParallelAgentWorkflow,
+    SequentialAgentWorkflow,
+    SingleAgentWorkflow,
+    SupervisorAgentWorkflow,
 )
+
+from config import TEMPORAL_TASK_QUEUE
 
 router = APIRouter(tags=["Workflows"])
 
@@ -28,7 +28,7 @@ async def start_workflow(request: A2AWorkflowRequest):
 
     try:
         if request.workflow_type == "single_agent":
-            handle = await state.temporal_client.start_workflow(
+            _handle = await state.temporal_client.start_workflow(
                 SingleAgentWorkflow.run,
                 args=[
                     request.agents[0],
@@ -42,10 +42,9 @@ async def start_workflow(request: A2AWorkflowRequest):
 
         elif request.workflow_type == "sequential":
             agents_config = [
-                {"agent_id": a, "capability": request.input.get("capability", "execute")}
-                for a in request.agents
+                {"agent_id": a, "capability": request.input.get("capability", "execute")} for a in request.agents
             ]
-            handle = await state.temporal_client.start_workflow(
+            _handle = await state.temporal_client.start_workflow(
                 SequentialAgentWorkflow.run,
                 args=[agents_config, request.input],
                 id=workflow_id,
@@ -55,10 +54,9 @@ async def start_workflow(request: A2AWorkflowRequest):
 
         elif request.workflow_type == "parallel":
             agents_config = [
-                {"agent_id": a, "capability": request.input.get("capability", "execute")}
-                for a in request.agents
+                {"agent_id": a, "capability": request.input.get("capability", "execute")} for a in request.agents
             ]
-            handle = await state.temporal_client.start_workflow(
+            _handle = await state.temporal_client.start_workflow(
                 ParallelAgentWorkflow.run,
                 args=[agents_config, request.input],
                 id=workflow_id,
@@ -69,7 +67,7 @@ async def start_workflow(request: A2AWorkflowRequest):
         elif request.workflow_type == "supervisor":
             supervisor = request.agents[0]
             workers = request.agents[1:]
-            handle = await state.temporal_client.start_workflow(
+            _handle = await state.temporal_client.start_workflow(
                 SupervisorAgentWorkflow.run,
                 args=[supervisor, workers, request.input, request.options.get("max_iterations", 10)],
                 id=workflow_id,
@@ -78,7 +76,7 @@ async def start_workflow(request: A2AWorkflowRequest):
             )
 
         elif request.workflow_type == "human_in_loop":
-            handle = await state.temporal_client.start_workflow(
+            _handle = await state.temporal_client.start_workflow(
                 HumanInLoopWorkflow.run,
                 args=[
                     request.agents[0],

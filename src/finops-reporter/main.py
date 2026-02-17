@@ -12,37 +12,39 @@ Features:
 - CSV/JSON export
 """
 
-import os
-import logging
-from typing import Optional
-from datetime import datetime, date, timedelta, timezone
-from contextlib import asynccontextmanager
-from decimal import Decimal
-from enum import Enum
-
-from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
-from opentelemetry import trace
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.resources import Resource
-import asyncpg
 import csv
 import io
 import json
+import logging
+import os
+from contextlib import asynccontextmanager
+from datetime import date, datetime, timedelta, timezone
+from enum import Enum
+from typing import Optional
+
+import asyncpg
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from pydantic import BaseModel
+
 from shared.cors import get_cors_origins
-from shared.middleware import ServiceAuthMiddleware, RequestSizeLimitMiddleware
+from shared.middleware import RequestSizeLimitMiddleware, ServiceAuthMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class ReportPeriod(str, Enum):
     """Report time periods."""
+
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
@@ -51,6 +53,7 @@ class ReportPeriod(str, Enum):
 
 class CostBreakdown(BaseModel):
     """Cost breakdown by dimension."""
+
     dimension: str
     value: str
     request_count: int
@@ -61,6 +64,7 @@ class CostBreakdown(BaseModel):
 
 class CostReport(BaseModel):
     """Cost report model."""
+
     period: str
     start_date: date
     end_date: date
@@ -76,6 +80,7 @@ class CostReport(BaseModel):
 
 class BudgetUtilization(BaseModel):
     """Budget utilization report."""
+
     user_id: Optional[str]
     team_id: Optional[str]
     budget_limit: float
@@ -88,6 +93,7 @@ class BudgetUtilization(BaseModel):
 
 class TrendDataPoint(BaseModel):
     """Single data point in trend analysis."""
+
     date: date
     cost: float
     requests: int
@@ -96,6 +102,7 @@ class TrendDataPoint(BaseModel):
 
 class CostTrend(BaseModel):
     """Cost trend analysis."""
+
     period: str
     data_points: list[TrendDataPoint]
     average_daily_cost: float
@@ -244,7 +251,8 @@ async def get_cost_report(
             where_clause = " AND ".join(conditions)
 
             # Get totals
-            totals = await conn.fetchrow(f"""
+            totals = await conn.fetchrow(
+                f"""
                 SELECT
                     COALESCE(SUM(request_count), 0) as total_requests,
                     COALESCE(SUM(input_tokens), 0) as total_input_tokens,
@@ -252,10 +260,13 @@ async def get_cost_report(
                     COALESCE(SUM(total_cost), 0) as total_cost
                 FROM cost_tracking_daily
                 WHERE {where_clause}
-            """, *params)
+            """,
+                *params,
+            )
 
             # Breakdown by model
-            model_breakdown = await conn.fetch(f"""
+            model_breakdown = await conn.fetch(
+                f"""
                 SELECT
                     model,
                     SUM(request_count) as request_count,
@@ -266,10 +277,13 @@ async def get_cost_report(
                 WHERE {where_clause}
                 GROUP BY model
                 ORDER BY total_cost DESC
-            """, *params)
+            """,
+                *params,
+            )
 
             # Breakdown by user
-            user_breakdown = await conn.fetch(f"""
+            user_breakdown = await conn.fetch(
+                f"""
                 SELECT
                     COALESCE(user_id, 'unknown') as user_id,
                     SUM(request_count) as request_count,
@@ -281,10 +295,13 @@ async def get_cost_report(
                 GROUP BY user_id
                 ORDER BY total_cost DESC
                 LIMIT 20
-            """, *params)
+            """,
+                *params,
+            )
 
             # Breakdown by team
-            team_breakdown = await conn.fetch(f"""
+            team_breakdown = await conn.fetch(
+                f"""
                 SELECT
                     COALESCE(team_id, 'unknown') as team_id,
                     SUM(request_count) as request_count,
@@ -295,7 +312,9 @@ async def get_cost_report(
                 WHERE {where_clause}
                 GROUP BY team_id
                 ORDER BY total_cost DESC
-            """, *params)
+            """,
+                *params,
+            )
 
             return CostReport(
                 period=period.value,
@@ -312,8 +331,9 @@ async def get_cost_report(
                         request_count=row["request_count"],
                         input_tokens=row["input_tokens"],
                         output_tokens=row["output_tokens"],
-                        total_cost=float(row["total_cost"])
-                    ) for row in model_breakdown
+                        total_cost=float(row["total_cost"]),
+                    )
+                    for row in model_breakdown
                 ],
                 breakdown_by_user=[
                     CostBreakdown(
@@ -322,8 +342,9 @@ async def get_cost_report(
                         request_count=row["request_count"],
                         input_tokens=row["input_tokens"],
                         output_tokens=row["output_tokens"],
-                        total_cost=float(row["total_cost"])
-                    ) for row in user_breakdown
+                        total_cost=float(row["total_cost"]),
+                    )
+                    for row in user_breakdown
                 ],
                 breakdown_by_team=[
                     CostBreakdown(
@@ -332,10 +353,11 @@ async def get_cost_report(
                         request_count=row["request_count"],
                         input_tokens=row["input_tokens"],
                         output_tokens=row["output_tokens"],
-                        total_cost=float(row["total_cost"])
-                    ) for row in team_breakdown
+                        total_cost=float(row["total_cost"]),
+                    )
+                    for row in team_breakdown
                 ],
-                generated_at=datetime.now(timezone.utc)
+                generated_at=datetime.now(timezone.utc),
             )
 
 
@@ -380,7 +402,8 @@ async def get_cost_trend(
 
             where_clause = " AND ".join(conditions)
 
-            rows = await conn.fetch(f"""
+            rows = await conn.fetch(
+                f"""
                 SELECT
                     date,
                     SUM(total_cost) as cost,
@@ -390,15 +413,15 @@ async def get_cost_trend(
                 WHERE {where_clause}
                 GROUP BY date
                 ORDER BY date
-            """, *params)
+            """,
+                *params,
+            )
 
             data_points = [
                 TrendDataPoint(
-                    date=row["date"],
-                    cost=float(row["cost"]),
-                    requests=row["requests"],
-                    tokens=row["tokens"]
-                ) for row in rows
+                    date=row["date"], cost=float(row["cost"]), requests=row["requests"], tokens=row["tokens"]
+                )
+                for row in rows
             ]
 
             # Calculate trend
@@ -432,7 +455,7 @@ async def get_cost_trend(
                 data_points=data_points,
                 average_daily_cost=avg_cost,
                 trend_direction=trend_direction,
-                percent_change=percent_change
+                percent_change=percent_change,
             )
 
 
@@ -447,10 +470,7 @@ async def get_budget_utilization(
     """
     # This would integrate with LiteLLM to get actual budget data
     # For now, return mock data structure
-    return {
-        "utilization": [],
-        "message": "Budget data should be fetched from LiteLLM API"
-    }
+    return {"utilization": [], "message": "Budget data should be fetched from LiteLLM API"}
 
 
 @app.get("/reports/export")
@@ -469,7 +489,8 @@ async def export_report(
     start, end = get_date_range(period, start_date, end_date)
 
     async with db_pool.acquire() as conn:
-        rows = await conn.fetch("""
+        rows = await conn.fetch(
+            """
             SELECT
                 date,
                 user_id,
@@ -482,32 +503,36 @@ async def export_report(
             FROM cost_tracking_daily
             WHERE date >= $1 AND date <= $2
             ORDER BY date, model
-        """, start, end)
+        """,
+            start,
+            end,
+        )
 
         if format == "csv":
             output = io.StringIO()
             writer = csv.writer(output)
-            writer.writerow([
-                "date", "user_id", "team_id", "model",
-                "request_count", "input_tokens", "output_tokens", "total_cost"
-            ])
+            writer.writerow(
+                ["date", "user_id", "team_id", "model", "request_count", "input_tokens", "output_tokens", "total_cost"]
+            )
             for row in rows:
-                writer.writerow([
-                    row["date"],
-                    row["user_id"],
-                    row["team_id"],
-                    row["model"],
-                    row["request_count"],
-                    row["input_tokens"],
-                    row["output_tokens"],
-                    float(row["total_cost"])
-                ])
+                writer.writerow(
+                    [
+                        row["date"],
+                        row["user_id"],
+                        row["team_id"],
+                        row["model"],
+                        row["request_count"],
+                        row["input_tokens"],
+                        row["output_tokens"],
+                        float(row["total_cost"]),
+                    ]
+                )
 
             output.seek(0)
             return StreamingResponse(
                 iter([output.getvalue()]),
                 media_type="text/csv",
-                headers={"Content-Disposition": f"attachment; filename=cost_report_{start}_{end}.csv"}
+                headers={"Content-Disposition": f"attachment; filename=cost_report_{start}_{end}.csv"},
             )
         else:
             data = [dict(row) for row in rows]
@@ -519,7 +544,7 @@ async def export_report(
             return StreamingResponse(
                 iter([json.dumps(data, indent=2)]),
                 media_type="application/json",
-                headers={"Content-Disposition": f"attachment; filename=cost_report_{start}_{end}.json"}
+                headers={"Content-Disposition": f"attachment; filename=cost_report_{start}_{end}.json"},
             )
 
 
@@ -570,25 +595,14 @@ async def get_summary_stats():
         """)
 
         return {
-            "today": {
-                "cost": float(today_stats["cost"]),
-                "requests": today_stats["requests"]
-            },
-            "this_week": {
-                "cost": float(week_stats["cost"]),
-                "requests": week_stats["requests"]
-            },
-            "this_month": {
-                "cost": float(month_stats["cost"]),
-                "requests": month_stats["requests"]
-            },
-            "top_models": [
-                {"model": row["model"], "cost": float(row["cost"])}
-                for row in top_models
-            ]
+            "today": {"cost": float(today_stats["cost"]), "requests": today_stats["requests"]},
+            "this_week": {"cost": float(week_stats["cost"]), "requests": week_stats["requests"]},
+            "this_month": {"cost": float(month_stats["cost"]), "requests": month_stats["requests"]},
+            "top_models": [{"model": row["model"], "cost": float(row["cost"])} for row in top_models],
         }
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8082)

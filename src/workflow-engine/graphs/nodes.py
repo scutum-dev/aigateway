@@ -3,8 +3,8 @@ Reusable LangGraph nodes for workflow construction.
 """
 
 import logging
-from typing import Dict, Any, Optional, Callable
 from datetime import datetime
+from typing import Any, Callable, Dict, Optional
 
 from models.state import WorkflowState
 
@@ -58,7 +58,7 @@ async def llm_node(
                 "messages": messages,
                 "temperature": temperature,
                 "max_tokens": max_tokens,
-            }
+            },
         )
 
         if response.status_code != 200:
@@ -73,7 +73,7 @@ async def llm_node(
         output_tokens = usage.get("completion_tokens", 0)
         cost = (input_tokens * 0.00015 + output_tokens * 0.0006) / 1000  # GPT-4o-mini pricing
 
-        duration = (datetime.utcnow() - start_time).total_seconds() * 1000
+        _duration = (datetime.utcnow() - start_time).total_seconds() * 1000
 
         # Update state
         state.update_node_state(
@@ -81,7 +81,7 @@ async def llm_node(
             status="completed",
             tokens=input_tokens + output_tokens,
             cost=cost,
-            output={"content": content}
+            output={"content": content},
         )
 
         return {
@@ -91,11 +91,7 @@ async def llm_node(
 
     except Exception as e:
         logger.error(f"LLM node error: {e}")
-        state.update_node_state(
-            node_name=node_name,
-            status="failed",
-            error=str(e)
-        )
+        state.update_node_state(node_name=node_name, status="failed", error=str(e))
         return {
             "error": str(e),
             "should_continue": False,
@@ -131,7 +127,7 @@ async def tool_node(
             json={
                 "name": tool_name,
                 "arguments": tool_args,
-            }
+            },
         )
 
         if response.status_code != 200:
@@ -139,31 +135,25 @@ async def tool_node(
 
         result = response.json()
 
-        duration = (datetime.utcnow() - start_time).total_seconds() * 1000
+        _duration = (datetime.utcnow() - start_time).total_seconds() * 1000
 
-        state.update_node_state(
-            node_name=node_name,
-            status="completed",
-            output={"tool_result": result}
-        )
+        state.update_node_state(node_name=node_name, status="completed", output={"tool_result": result})
 
         return {
-            "messages": [{
-                "role": "tool",
-                "content": str(result),
-                "name": tool_name,
-            }],
+            "messages": [
+                {
+                    "role": "tool",
+                    "content": str(result),
+                    "name": tool_name,
+                }
+            ],
             "intermediate_results": {tool_name: result},
             "current_node": node_name,
         }
 
     except Exception as e:
         logger.error(f"Tool node error: {e}")
-        state.update_node_state(
-            node_name=node_name,
-            status="failed",
-            error=str(e)
-        )
+        state.update_node_state(node_name=node_name, status="failed", error=str(e))
         return {
             "error": str(e),
             "should_continue": False,
@@ -216,6 +206,7 @@ def create_llm_node(
     Returns:
         Async function suitable for LangGraph
     """
+
     async def node(state: WorkflowState) -> Dict[str, Any]:
         return await llm_node(
             state=state,
@@ -246,6 +237,7 @@ def create_tool_node(
     Returns:
         Async function suitable for LangGraph
     """
+
     async def node(state: WorkflowState) -> Dict[str, Any]:
         args = args_extractor(state)
         return await tool_node(

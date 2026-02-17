@@ -1,13 +1,12 @@
 import json
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Depends
-import httpx
-
 import deps
-from auth import get_current_user, require_admin, UserInfo
+import httpx
+from auth import UserInfo, get_current_user, require_admin
+from fastapi import APIRouter, Depends, HTTPException
+from gateway_sync import build_gateway_config, restart_gateway, sync_configmap
 from models import MCPServerConfig, MCPServerCreate, MCPServerUpdate
-from gateway_sync import build_gateway_config, sync_configmap, restart_gateway
 
 router = APIRouter()
 
@@ -51,21 +50,25 @@ async def list_mcp_servers(user: UserInfo = Depends(get_current_user)):
 
 
 @router.post("/mcp-servers", response_model=MCPServerConfig)
-async def create_mcp_server(
-    server: MCPServerCreate,
-    user: UserInfo = Depends(require_admin)
-):
+async def create_mcp_server(server: MCPServerCreate, user: UserInfo = Depends(require_admin)):
     """Create a new MCP server configuration."""
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        row = await conn.fetchrow("""
+        row = await conn.fetchrow(
+            """
             INSERT INTO mcp_servers (name, server_type, command, url, args, env)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-        """, server.name, server.server_type, server.command, server.url,
-            server.args, json.dumps(server.env))
+        """,
+            server.name,
+            server.server_type,
+            server.command,
+            server.url,
+            server.args,
+            json.dumps(server.env),
+        )
 
         return _row_to_mcp(row)
 
@@ -137,11 +140,7 @@ async def sync_mcp_to_gateway(user: UserInfo = Depends(require_admin)):
 
 
 @router.put("/mcp-servers/{server_id}", response_model=MCPServerConfig)
-async def update_mcp_server(
-    server_id: str,
-    update: MCPServerUpdate,
-    user: UserInfo = Depends(require_admin)
-):
+async def update_mcp_server(server_id: str, update: MCPServerUpdate, user: UserInfo = Depends(require_admin)):
     """Update an MCP server configuration."""
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -176,10 +175,7 @@ async def update_mcp_server(
 
 
 @router.delete("/mcp-servers/{server_id}")
-async def delete_mcp_server(
-    server_id: str,
-    user: UserInfo = Depends(require_admin)
-):
+async def delete_mcp_server(server_id: str, user: UserInfo = Depends(require_admin)):
     """Delete an MCP server configuration."""
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -193,10 +189,7 @@ async def delete_mcp_server(
 
 
 @router.post("/mcp-servers/{server_id}/test")
-async def test_mcp_server(
-    server_id: str,
-    user: UserInfo = Depends(get_current_user)
-):
+async def test_mcp_server(server_id: str, user: UserInfo = Depends(get_current_user)):
     """Test connectivity to an MCP server."""
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -227,6 +220,5 @@ async def test_mcp_server(
         if not command:
             return {"status": "error", "message": "No command configured"}
         args = row["args"] or []
-        env = _parse_env(row["env"])
         parts = [command] + list(args)
         return {"status": "ok", "message": f"Config valid: {' '.join(parts)}"}

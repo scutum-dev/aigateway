@@ -2,14 +2,14 @@
 Repository for workflow CRUD operations.
 """
 
-import logging
 import json
-from typing import Optional, List, Dict, Any
+import logging
 from datetime import datetime, timezone
-import asyncpg
+from typing import Any, Dict, List, Optional
 
-from models.workflow import WorkflowDefinition, WorkflowTemplate
-from models.execution import WorkflowExecution, ExecutionStatus, WorkflowStep, ExecutionSummary
+import asyncpg
+from models.execution import ExecutionStatus, ExecutionSummary, WorkflowExecution, WorkflowStep
+from models.workflow import WorkflowDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,8 @@ class WorkflowRepository:
     async def create_workflow(self, workflow: WorkflowDefinition) -> str:
         """Create a new workflow definition."""
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
+            row = await conn.fetchrow(
+                """
                 INSERT INTO workflow_definitions
                 (name, version, template_type, description, graph_definition, input_schema, output_schema, is_active)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -129,10 +130,7 @@ class WorkflowRepository:
     async def get_workflow(self, workflow_id: str) -> Optional[WorkflowDefinition]:
         """Get a workflow by ID."""
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM workflow_definitions WHERE id = $1",
-                workflow_id
-            )
+            row = await conn.fetchrow("SELECT * FROM workflow_definitions WHERE id = $1", workflow_id)
             if row:
                 return self._row_to_workflow(row)
             return None
@@ -140,10 +138,7 @@ class WorkflowRepository:
     async def get_workflow_by_name(self, name: str) -> Optional[WorkflowDefinition]:
         """Get a workflow by name."""
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM workflow_definitions WHERE name = $1 AND is_active = TRUE",
-                name
-            )
+            row = await conn.fetchrow("SELECT * FROM workflow_definitions WHERE name = $1 AND is_active = TRUE", name)
             if row:
                 return self._row_to_workflow(row)
             return None
@@ -186,7 +181,8 @@ class WorkflowRepository:
     async def create_execution(self, execution: WorkflowExecution) -> str:
         """Create a new execution record."""
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
+            row = await conn.fetchrow(
+                """
                 INSERT INTO workflow_executions
                 (workflow_id, workflow_name, template_type, user_id, team_id, status, input)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -205,10 +201,7 @@ class WorkflowRepository:
     async def get_execution(self, execution_id: str) -> Optional[WorkflowExecution]:
         """Get an execution by ID."""
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM workflow_executions WHERE id = $1",
-                execution_id
-            )
+            row = await conn.fetchrow("SELECT * FROM workflow_executions WHERE id = $1", execution_id)
             if row:
                 return self._row_to_execution(row)
             return None
@@ -352,7 +345,8 @@ class WorkflowRepository:
     async def add_step(self, step: WorkflowStep) -> str:
         """Add a workflow step."""
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
+            row = await conn.fetchrow(
+                """
                 INSERT INTO workflow_steps
                 (execution_id, node_name, step_order, status, input_data, started_at)
                 VALUES ($1, $2, $3, $4, $5, $6)
@@ -380,7 +374,8 @@ class WorkflowRepository:
     ):
         """Update a workflow step."""
         async with self.pool.acquire() as conn:
-            await conn.execute("""
+            await conn.execute(
+                """
                 UPDATE workflow_steps
                 SET status = $1, output_data = $2, input_tokens = $3, output_tokens = $4,
                     cost = $5, duration_ms = $6, error = $7, completed_at = $8
@@ -401,8 +396,7 @@ class WorkflowRepository:
         """Get all steps for an execution."""
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT * FROM workflow_steps WHERE execution_id = $1 ORDER BY step_order",
-                execution_id
+                "SELECT * FROM workflow_steps WHERE execution_id = $1 ORDER BY step_order", execution_id
             )
             return [
                 WorkflowStep(

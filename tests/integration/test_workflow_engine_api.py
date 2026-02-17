@@ -4,13 +4,13 @@ Tests HTTP endpoints, ServiceAuthMiddleware, template listing,
 execution management, and dependency injection.
 """
 
-import sys
-import os
 import importlib.util
+import os
+import sys
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 import httpx
+import pytest
 
 # Load the workflow-engine module
 _service_dir = os.path.join(os.path.dirname(__file__), "../../src/workflow-engine")
@@ -24,8 +24,8 @@ _spec.loader.exec_module(_mod)
 app = _mod.app
 
 # Import routes module (already loaded by main.py) to access set_dependencies
-from api.routes import set_dependencies as _set_dependencies
-import api.routes as _routes_mod
+import api.routes as _routes_mod  # noqa: E402
+from api.routes import set_dependencies as _set_dependencies  # noqa: E402
 
 SERVICE_KEY = "test-integration-key"
 
@@ -95,10 +95,7 @@ class TestServiceAuthMiddleware:
     @pytest.mark.asyncio
     async def test_templates_with_correct_key(self, authed_client):
         """Templates endpoint should work with correct key."""
-        resp = await authed_client.get(
-            "/api/v1/templates",
-            headers={"X-Service-Key": SERVICE_KEY}
-        )
+        resp = await authed_client.get("/api/v1/templates", headers={"X-Service-Key": SERVICE_KEY})
         assert resp.status_code != 401
 
 
@@ -167,21 +164,26 @@ class TestExecutionsEndpoint:
         mock_output.total_tokens = 500
         mock_output.duration_ms = 1234
         # Make model_dump return all fields for Pydantic serialization
-        mock_output.model_dump = MagicMock(return_value={
-            "execution_id": "exec-123",
-            "status": "completed",
-            "output": {"result": "done"},
-            "error": None,
-            "total_cost": 0.01,
-            "total_tokens": 500,
-            "duration_ms": 1234,
-        })
+        mock_output.model_dump = MagicMock(
+            return_value={
+                "execution_id": "exec-123",
+                "status": "completed",
+                "output": {"result": "done"},
+                "error": None,
+                "total_cost": 0.01,
+                "total_tokens": 500,
+                "duration_ms": 1234,
+            }
+        )
         _routes_mod._workflow_manager.start_execution.return_value = mock_output
 
-        resp = await client.post("/api/v1/executions", json={
-            "template": "research",
-            "input": {"query": "test query"},
-        })
+        resp = await client.post(
+            "/api/v1/executions",
+            json={
+                "template": "research",
+                "input": {"query": "test query"},
+            },
+        )
         assert resp.status_code == 200
         _routes_mod._workflow_manager.start_execution.assert_called_once()
 
@@ -197,10 +199,12 @@ class TestExecutionsEndpoint:
     async def test_get_execution(self, client):
         """Get execution by ID should call repository."""
         mock_exec = MagicMock()
-        mock_exec.model_dump = MagicMock(return_value={
-            "id": "exec-123",
-            "status": "completed",
-        })
+        mock_exec.model_dump = MagicMock(
+            return_value={
+                "id": "exec-123",
+                "status": "completed",
+            }
+        )
         _routes_mod._repository.get_execution.return_value = mock_exec
         resp = await client.get("/api/v1/executions/exec-123")
         assert resp.status_code == 200
@@ -223,9 +227,7 @@ class TestExecutionsEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "cancelled"
-        _routes_mod._repository.update_execution.assert_called_once_with(
-            "exec-123", status="cancelled"
-        )
+        _routes_mod._repository.update_execution.assert_called_once_with("exec-123", status="cancelled")
 
 
 # ============================================================================
@@ -237,10 +239,13 @@ class TestServiceNotReady:
     @pytest.mark.asyncio
     async def test_start_execution_no_manager(self, no_deps_client):
         """Start execution should return 503 when manager is not available."""
-        resp = await no_deps_client.post("/api/v1/executions", json={
-            "template": "research",
-            "input": {"query": "test"},
-        })
+        resp = await no_deps_client.post(
+            "/api/v1/executions",
+            json={
+                "template": "research",
+                "input": {"query": "test"},
+            },
+        )
         assert resp.status_code == 503
 
     @pytest.mark.asyncio

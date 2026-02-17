@@ -3,14 +3,14 @@
 Tests HTTP endpoints and ServiceAuthMiddleware via ASGI test client.
 """
 
-import os
 import importlib.util
-from unittest.mock import AsyncMock, MagicMock
+import os
 from datetime import date
 from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 import httpx
+import pytest
 
 # Load the finops-reporter module
 _service_path = os.path.join(os.path.dirname(__file__), "../../src/finops-reporter/main.py")
@@ -82,10 +82,7 @@ class TestServiceAuthMiddleware:
     @pytest.mark.asyncio
     async def test_accept_correct_key(self, authed_client):
         """Protected endpoint should work with correct key."""
-        resp = await authed_client.get(
-            "/reports/budget-utilization",
-            headers={"X-Service-Key": SERVICE_KEY}
-        )
+        resp = await authed_client.get("/reports/budget-utilization", headers={"X-Service-Key": SERVICE_KEY})
         assert resp.status_code == 200
 
 
@@ -129,7 +126,7 @@ class TestCostReportEndpoint:
     async def test_daily_report(self, client):
         """Should return daily cost report."""
         conn = AsyncMock()
-        today = date.today()
+        _today = date.today()
 
         # Mock totals
         conn.fetchrow.return_value = {
@@ -266,6 +263,7 @@ class TestExportEndpoint:
 
         def dict_from_row(r=row):
             return dict(row_data)
+
         # asyncpg records support dict()
         conn.fetch.return_value = [MagicMock(__iter__=lambda s: iter(row_data.items()), keys=lambda: row_data.keys())]
 
@@ -273,12 +271,16 @@ class TestExportEndpoint:
         class FakeRow:
             def __getitem__(self, key):
                 return row_data[key]
+
             def keys(self):
                 return row_data.keys()
+
             def values(self):
                 return row_data.values()
+
             def items(self):
                 return row_data.items()
+
             def __iter__(self):
                 return iter(row_data)
 

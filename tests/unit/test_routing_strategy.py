@@ -5,9 +5,9 @@ budget adjustment), model ranking, fallback selection, cost estimation,
 and alias resolution.
 """
 
-import sys
-import os
 import importlib.util
+import os
+import sys
 from decimal import Decimal
 
 import pytest

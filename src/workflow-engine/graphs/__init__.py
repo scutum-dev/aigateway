@@ -5,8 +5,8 @@ LangGraph workflow graphs.
 from .base import BaseWorkflow
 from .nodes import (
     llm_node,
-    tool_node,
     router_node,
+    tool_node,
 )
 
 __all__ = [

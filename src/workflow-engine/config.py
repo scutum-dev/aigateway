@@ -4,7 +4,6 @@ Configuration for Workflow Engine service.
 
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -12,10 +11,7 @@ class Config:
     """Application configuration."""
 
     # Database
-    database_url: str = os.getenv(
-        "DATABASE_URL",
-        "postgresql://litellm:litellm@localhost:5432/litellm"
-    )
+    database_url: str = os.getenv("DATABASE_URL", "postgresql://litellm:litellm@localhost:5432/litellm")
 
     # LiteLLM
     litellm_url: str = os.getenv("LITELLM_URL", "http://localhost:4000")

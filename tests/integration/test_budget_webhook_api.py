@@ -3,14 +3,13 @@
 Tests HTTP endpoints, ServiceAuthMiddleware, and pre/post request logic.
 """
 
-import sys
-import os
 import importlib.util
+import os
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
-from decimal import Decimal
 
-import pytest
 import httpx
+import pytest
 
 # Load the budget-webhook module
 _service_dir = os.path.join(os.path.dirname(__file__), "../../src/budget-webhook")
@@ -80,18 +79,16 @@ class TestServiceAuthMiddleware:
         _mod.http_client.get.return_value = mock_resp
         _mod.http_client.post.return_value = MagicMock(status_code=500)
 
-        resp = await authed_client.post("/webhook/pre-request", json={
-            "data": {"model": "gpt-4o", "api_key": "sk-test"}
-        })
+        resp = await authed_client.post(
+            "/webhook/pre-request", json={"data": {"model": "gpt-4o", "api_key": "sk-test"}}
+        )
         # Should not be 401 — endpoint is exempt from service auth
         assert resp.status_code != 401
 
     @pytest.mark.asyncio
     async def test_webhook_post_request_exempt(self, authed_client):
         """Post-request webhook should bypass auth."""
-        resp = await authed_client.post("/webhook/post-request", json={
-            "data": {"model": "gpt-4o", "cost": 0.001}
-        })
+        resp = await authed_client.post("/webhook/post-request", json={"data": {"model": "gpt-4o", "cost": 0.001}})
         assert resp.status_code != 401
 
     @pytest.mark.asyncio
@@ -103,10 +100,7 @@ class TestServiceAuthMiddleware:
     @pytest.mark.asyncio
     async def test_alerts_with_correct_key(self, authed_client):
         """Alerts endpoint should work with correct key."""
-        resp = await authed_client.get(
-            "/alerts",
-            headers={"X-Service-Key": SERVICE_KEY}
-        )
+        resp = await authed_client.get("/alerts", headers={"X-Service-Key": SERVICE_KEY})
         # Should not be 401 (might be 200 or 503 depending on DB)
         assert resp.status_code != 401
 
@@ -137,9 +131,9 @@ class TestPreRequestWebhook:
         mock_resp.status_code = 404
         _mod.http_client.get.return_value = mock_resp
 
-        resp = await client.post("/webhook/pre-request", json={
-            "data": {"model": "gpt-4o", "api_key": "sk-test", "messages": []}
-        })
+        resp = await client.post(
+            "/webhook/pre-request", json={"data": {"model": "gpt-4o", "api_key": "sk-test", "messages": []}}
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["allow"] is True
@@ -152,9 +146,9 @@ class TestPreRequestWebhook:
         mock_resp.json.return_value = {"max_budget": None, "spend": 10.0}
         _mod.http_client.get.return_value = mock_resp
 
-        resp = await client.post("/webhook/pre-request", json={
-            "data": {"model": "gpt-4o", "api_key": "sk-test", "messages": []}
-        })
+        resp = await client.post(
+            "/webhook/pre-request", json={"data": {"model": "gpt-4o", "api_key": "sk-test", "messages": []}}
+        )
         assert resp.status_code == 200
         assert resp.json()["allow"] is True
 
@@ -172,9 +166,9 @@ class TestPreRequestWebhook:
         _mod.http_client.post.return_value = mock_cost
 
         with patch.object(_mod, "send_notification", new_callable=AsyncMock):
-            resp = await client.post("/webhook/pre-request", json={
-                "data": {"model": "gpt-4o", "api_key": "sk-test", "messages": []}
-            })
+            resp = await client.post(
+                "/webhook/pre-request", json={"data": {"model": "gpt-4o", "api_key": "sk-test", "messages": []}}
+            )
         assert resp.status_code == 200
         data = resp.json()
         assert data["allow"] is False
@@ -194,9 +188,9 @@ class TestPreRequestWebhook:
         _mod.http_client.post.return_value = mock_cost
 
         with patch.object(_mod, "send_notification", new_callable=AsyncMock):
-            resp = await client.post("/webhook/pre-request", json={
-                "data": {"model": "gpt-4o", "api_key": "sk-test", "messages": []}
-            })
+            resp = await client.post(
+                "/webhook/pre-request", json={"data": {"model": "gpt-4o", "api_key": "sk-test", "messages": []}}
+            )
         assert resp.status_code == 200
         data = resp.json()
         assert data["allow"] is True
@@ -215,9 +209,9 @@ class TestPreRequestWebhook:
         mock_cost.json.return_value = {"total_estimated_cost_usd": 0.001}
         _mod.http_client.post.return_value = mock_cost
 
-        resp = await client.post("/webhook/pre-request", json={
-            "data": {"model": "gpt-4o", "api_key": "sk-test", "messages": []}
-        })
+        resp = await client.post(
+            "/webhook/pre-request", json={"data": {"model": "gpt-4o", "api_key": "sk-test", "messages": []}}
+        )
         assert resp.status_code == 200
         assert resp.json()["allow"] is True
 
@@ -232,14 +226,17 @@ class TestPostRequestWebhook:
     async def test_record_without_db(self, client):
         """Should succeed even without database."""
         _mod.db_pool = None
-        resp = await client.post("/webhook/post-request", json={
-            "data": {
-                "model": "gpt-4o",
-                "user": "user-1",
-                "usage": {"prompt_tokens": 100, "completion_tokens": 50},
-                "cost": 0.005,
-            }
-        })
+        resp = await client.post(
+            "/webhook/post-request",
+            json={
+                "data": {
+                    "model": "gpt-4o",
+                    "user": "user-1",
+                    "usage": {"prompt_tokens": 100, "completion_tokens": 50},
+                    "cost": 0.005,
+                }
+            },
+        )
         assert resp.status_code == 200
         assert resp.json()["status"] == "recorded"
 
@@ -254,14 +251,17 @@ class TestPostRequestWebhook:
         pool.acquire.return_value = ctx
         _mod.db_pool = pool
 
-        resp = await client.post("/webhook/post-request", json={
-            "data": {
-                "model": "gpt-4o",
-                "user": "user-1",
-                "usage": {"prompt_tokens": 100, "completion_tokens": 50},
-                "cost": 0.005,
-            }
-        })
+        resp = await client.post(
+            "/webhook/post-request",
+            json={
+                "data": {
+                    "model": "gpt-4o",
+                    "user": "user-1",
+                    "usage": {"prompt_tokens": 100, "completion_tokens": 50},
+                    "cost": 0.005,
+                }
+            },
+        )
         assert resp.status_code == 200
         conn.execute.assert_called_once()
 

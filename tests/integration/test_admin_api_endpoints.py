@@ -4,24 +4,22 @@ Tests HTTP endpoints, JWT auth, middleware stack, and CRUD operations
 with mocked database and HTTP clients.
 """
 
-import sys
-import os
 import importlib.util
-import time
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
-from decimal import Decimal
+import os
+import sys
+import time
 from datetime import datetime, timezone
+from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 import httpx
+import pytest
 
 # Load the admin-api module
 _service_dir = os.path.join(os.path.dirname(__file__), "../../src/admin-api")
 sys.path.insert(0, _service_dir)
-_spec = importlib.util.spec_from_file_location(
-    "admin_api_integ", os.path.join(_service_dir, "main.py")
-)
+_spec = importlib.util.spec_from_file_location("admin_api_integ", os.path.join(_service_dir, "main.py"))
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["admin_api_integ"] = _mod
 _spec.loader.exec_module(_mod)
@@ -29,26 +27,20 @@ _spec.loader.exec_module(_mod)
 app = _mod.app
 
 # Load auth module for token creation
-_auth_spec = importlib.util.spec_from_file_location(
-    "admin_api_auth", os.path.join(_service_dir, "auth.py")
-)
+_auth_spec = importlib.util.spec_from_file_location("admin_api_auth", os.path.join(_service_dir, "auth.py"))
 _auth_mod = importlib.util.module_from_spec(_auth_spec)
 _auth_spec.loader.exec_module(_auth_mod)
 
 
 def _auth_headers():
     """Create JWT auth headers for an admin user."""
-    token, _ = _auth_mod.create_access_token(
-        {"user_id": "admin", "role": "admin", "is_admin": True}
-    )
+    token, _ = _auth_mod.create_access_token({"user_id": "admin", "role": "admin", "is_admin": True})
     return {"Authorization": f"Bearer {token}"}
 
 
 def _user_headers():
     """Create JWT auth headers for a non-admin user."""
-    token, _ = _auth_mod.create_access_token(
-        {"user_id": "user-1", "role": "user", "is_admin": False}
-    )
+    token, _ = _auth_mod.create_access_token({"user_id": "user-1", "role": "user", "is_admin": False})
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -165,8 +157,8 @@ class TestRateLimitMiddleware:
 
         headers = _auth_headers()
         # First two requests should pass (count 1 and 2 are within limit)
-        resp1 = await client.get("/api/v1/settings", headers=headers)
-        resp2 = await client.get("/api/v1/settings", headers=headers)
+        _resp1 = await client.get("/api/v1/settings", headers=headers)
+        _resp2 = await client.get("/api/v1/settings", headers=headers)
         # Third request exceeds the limit (count > 2)
         resp3 = await client.get("/api/v1/settings", headers=headers)
         assert resp3.status_code == 429
@@ -532,9 +524,7 @@ class TestMCPServerEndpoints:
         pool, conn = _mock_db_pool()
         conn.fetch.return_value = [self._mcp_row()]
         _mod.db_pool = pool
-        resp = await client.get(
-            "/api/v1/mcp-servers/sync/preview", headers=_auth_headers()
-        )
+        resp = await client.get("/api/v1/mcp-servers/sync/preview", headers=_auth_headers())
         assert resp.status_code == 200
         data = resp.json()
         assert "config_yaml" in data
@@ -546,9 +536,7 @@ class TestMCPServerEndpoints:
         pool, conn = _mock_db_pool()
         conn.execute.return_value = "DELETE 0"
         _mod.db_pool = pool
-        resp = await client.delete(
-            "/api/v1/mcp-servers/nonexistent", headers=_auth_headers()
-        )
+        resp = await client.delete("/api/v1/mcp-servers/nonexistent", headers=_auth_headers())
         assert resp.status_code == 404
 
 
@@ -587,9 +575,7 @@ class TestWorkflowEndpoints:
         mock_resp.raise_for_status = MagicMock()
         _mod.http_client.get.return_value = mock_resp
 
-        resp = await client.get(
-            "/api/v1/workflow-executions", headers=_auth_headers()
-        )
+        resp = await client.get("/api/v1/workflow-executions", headers=_auth_headers())
         assert resp.status_code == 200
 
     @pytest.mark.asyncio
@@ -601,9 +587,7 @@ class TestWorkflowEndpoints:
         mock_resp.raise_for_status = MagicMock()
         _mod.http_client.get.return_value = mock_resp
 
-        resp = await client.get(
-            "/api/v1/workflow-templates", headers=_auth_headers()
-        )
+        resp = await client.get("/api/v1/workflow-templates", headers=_auth_headers())
         assert resp.status_code == 200
         assert len(resp.json()) == 1
 

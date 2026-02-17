@@ -5,10 +5,10 @@ Fetches real-time latency, error rates, and availability metrics
 to inform routing decisions.
 """
 
-import os
 import logging
-from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class MetricsCollector:
             prometheus_url: Prometheus server URL
             cache_ttl_seconds: How long to cache metrics
         """
-        self.prometheus_url = prometheus_url.rstrip('/')
+        self.prometheus_url = prometheus_url.rstrip("/")
         self.cache_ttl = timedelta(seconds=cache_ttl_seconds)
         self._cache: Dict[str, Any] = {}
         self._cache_timestamp: Optional[datetime] = None
@@ -55,10 +55,7 @@ class MetricsCollector:
         """Execute a PromQL query."""
         try:
             client = await self._get_client()
-            response = await client.get(
-                f"{self.prometheus_url}/api/v1/query",
-                params={"query": query}
-            )
+            response = await client.get(f"{self.prometheus_url}/api/v1/query", params={"query": query})
 
             if response.status_code == 200:
                 data = response.json()
@@ -207,7 +204,7 @@ class MetricsCollector:
                 "error_rate": await self.get_model_error_rate(model),
                 "rpm": await self.get_model_rpm(model),
                 "is_available": await self.is_model_available(model),
-                "collected_at": now.isoformat()
+                "collected_at": now.isoformat(),
             }
             metrics[model] = model_metrics
 

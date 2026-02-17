@@ -3,12 +3,12 @@
 Tests HTTP endpoints and ServiceAuthMiddleware via ASGI test client.
 """
 
-import os
 import importlib.util
-from unittest.mock import AsyncMock, MagicMock, patch
+import os
+from unittest.mock import AsyncMock
 
-import pytest
 import httpx
+import pytest
 
 # Load the cost-predictor module
 _service_path = os.path.join(os.path.dirname(__file__), "../../src/cost-predictor/main.py")
@@ -112,14 +112,17 @@ class TestPredictEndpoint:
     @pytest.mark.asyncio
     async def test_predict_messages(self, client):
         """Should return cost prediction for messages."""
-        resp = await client.post("/predict", json={
-            "model": "gpt-4o",
-            "messages": [
-                {"role": "system", "content": "You are helpful."},
-                {"role": "user", "content": "Hello, how are you?"},
-            ],
-            "max_tokens": 500,
-        })
+        resp = await client.post(
+            "/predict",
+            json={
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": "You are helpful."},
+                    {"role": "user", "content": "Hello, how are you?"},
+                ],
+                "max_tokens": 500,
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["model"] == "gpt-4o"
@@ -131,10 +134,13 @@ class TestPredictEndpoint:
     @pytest.mark.asyncio
     async def test_predict_prompt(self, client):
         """Should accept a plain text prompt."""
-        resp = await client.post("/predict", json={
-            "model": "gpt-4o",
-            "prompt": "What is the meaning of life?",
-        })
+        resp = await client.post(
+            "/predict",
+            json={
+                "model": "gpt-4o",
+                "prompt": "What is the meaning of life?",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["input_tokens"] > 0
@@ -142,19 +148,25 @@ class TestPredictEndpoint:
     @pytest.mark.asyncio
     async def test_predict_no_input(self, client):
         """Should return 400 when no messages or prompt."""
-        resp = await client.post("/predict", json={
-            "model": "gpt-4o",
-        })
+        resp = await client.post(
+            "/predict",
+            json={
+                "model": "gpt-4o",
+            },
+        )
         assert resp.status_code == 400
 
     @pytest.mark.asyncio
     async def test_predict_unknown_model(self, client):
         """Should use default pricing for unknown models."""
-        resp = await client.post("/predict", json={
-            "model": "totally-unknown-model",
-            "prompt": "Hello",
-            "max_tokens": 100,
-        })
+        resp = await client.post(
+            "/predict",
+            json={
+                "model": "totally-unknown-model",
+                "prompt": "Hello",
+                "max_tokens": 100,
+            },
+        )
         assert resp.status_code == 200
         assert resp.json()["total_estimated_cost_usd"] > 0
 
@@ -179,8 +191,7 @@ class TestPricingEndpoint:
     async def test_update_pricing(self, client):
         """Should update pricing for a model."""
         resp = await client.post(
-            "/pricing/update",
-            params={"model": "test-model", "input_cost": 1.5, "output_cost": 3.0}
+            "/pricing/update", params={"model": "test-model", "input_cost": 1.5, "output_cost": 3.0}
         )
         assert resp.status_code == 200
         assert resp.json()["status"] == "updated"
@@ -202,10 +213,13 @@ class TestBudgetCheckEndpoint:
         _mod.http_client = AsyncMock()
         _mod.http_client.get.side_effect = httpx.ConnectError("Connection refused")
 
-        resp = await client.post("/budget/check", json={
-            "api_key": "sk-test",
-            "estimated_cost": 0.01,
-        })
+        resp = await client.post(
+            "/budget/check",
+            json={
+                "api_key": "sk-test",
+                "estimated_cost": 0.01,
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["allowed"] is True  # fails open

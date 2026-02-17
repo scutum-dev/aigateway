@@ -2,9 +2,10 @@
 Vault client for secrets management.
 """
 
-import os
 import logging
+import os
 from typing import Optional
+
 import httpx
 
 logger = logging.getLogger(__name__)

@@ -5,8 +5,8 @@ Syncs MCP server configurations from the admin database to the
 Agent Gateway's Kubernetes ConfigMap, then triggers a rolling restart.
 """
 
-import os
 import logging
+import os
 from datetime import datetime, timezone
 
 import httpx
@@ -29,6 +29,8 @@ def _k8s_namespace() -> str:
             return f.read().strip()
     except FileNotFoundError:
         return "default"
+
+
 CONFIGMAP_NAME = os.getenv("GATEWAY_CONFIGMAP_NAME", "agentgateway-config")
 DEPLOYMENT_NAME = os.getenv("GATEWAY_DEPLOYMENT_NAME", "agentgateway")
 SA_TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
@@ -75,28 +77,32 @@ def build_gateway_config(servers: list[dict]) -> str:
             targets.append({"name": s["name"], "sse": {"url": s.get("url") or ""}})
 
     config = {
-        "binds": [{
-            "port": 3000,
-            "listeners": [{
-                "routes": [{
-                    "policies": {
-                        "cors": {
-                            "allowOrigins": ["*"],
-                            "allowHeaders": [
-                                "mcp-protocol-version",
-                                "content-type",
-                                "authorization",
-                                "accept",
-                            ],
-                            "exposeHeaders": ["Mcp-Session-Id"],
-                        }
-                    },
-                    "backends": [{
-                        "mcp": {"targets": targets}
-                    }],
-                }]
-            }]
-        }]
+        "binds": [
+            {
+                "port": 3000,
+                "listeners": [
+                    {
+                        "routes": [
+                            {
+                                "policies": {
+                                    "cors": {
+                                        "allowOrigins": ["*"],
+                                        "allowHeaders": [
+                                            "mcp-protocol-version",
+                                            "content-type",
+                                            "authorization",
+                                            "accept",
+                                        ],
+                                        "exposeHeaders": ["Mcp-Session-Id"],
+                                    }
+                                },
+                                "backends": [{"mcp": {"targets": targets}}],
+                            }
+                        ]
+                    }
+                ],
+            }
+        ]
     }
 
     return yaml.dump(config, default_flow_style=False, sort_keys=False)
@@ -154,10 +160,7 @@ async def restart_gateway() -> dict:
     }
 
     ns = _k8s_namespace()
-    url = (
-        f"{K8S_API}/apis/apps/v1/namespaces/{ns}"
-        f"/deployments/{DEPLOYMENT_NAME}"
-    )
+    url = f"{K8S_API}/apis/apps/v1/namespaces/{ns}/deployments/{DEPLOYMENT_NAME}"
     headers = _k8s_headers()
     headers["Content-Type"] = "application/strategic-merge-patch+json"
 

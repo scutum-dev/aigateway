@@ -3,17 +3,19 @@ Configuration Loader with environment detection and Vault integration.
 """
 
 import os
-import yaml
 from enum import Enum
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
-from functools import lru_cache
+
+import yaml
 
 from .vault_client import VaultClient
 
 
 class Environment(Enum):
     """Supported deployment environments."""
+
     DEVELOPMENT = "development"
     STAGING = "staging"
     PRODUCTION = "production"

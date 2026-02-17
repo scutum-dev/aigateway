@@ -2,14 +2,16 @@
 Workflow execution tracking models.
 """
 
-from typing import Optional, List, Dict, Any
-from enum import Enum
 from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
 class ExecutionStatus(str, Enum):
     """Workflow execution status."""
+
     PENDING = "pending"
     RUNNING = "running"
     PAUSED = "paused"
@@ -20,6 +22,7 @@ class ExecutionStatus(str, Enum):
 
 class WorkflowStep(BaseModel):
     """A single step in workflow execution."""
+
     id: Optional[str] = None
     execution_id: str
     node_name: str
@@ -38,6 +41,7 @@ class WorkflowStep(BaseModel):
 
 class WorkflowExecution(BaseModel):
     """Complete workflow execution record."""
+
     id: Optional[str] = None
     workflow_id: Optional[str] = None
     workflow_name: Optional[str] = None
@@ -63,6 +67,7 @@ class WorkflowExecution(BaseModel):
 
 class ExecutionSummary(BaseModel):
     """Summary of an execution for list views."""
+
     id: str
     workflow_name: Optional[str]
     template_type: Optional[str]
@@ -76,6 +81,7 @@ class ExecutionSummary(BaseModel):
 
 class CostSummary(BaseModel):
     """Cost summary for workflows."""
+
     total_executions: int
     total_cost: float
     total_tokens: int

@@ -8,9 +8,9 @@ Sends budget alerts to configured channels:
 - Generic webhook (existing behavior)
 """
 
-import os
 import asyncio
 import logging
+import os
 from datetime import datetime, timezone
 
 import httpx
@@ -37,8 +37,8 @@ SEVERITY_MAP = {
 
 # Slack color coding by alert type
 SLACK_COLORS = {
-    "approaching_limit": "#f0ad4e",   # yellow/warning
-    "budget_exceeded": "#d9534f",     # red/critical
+    "approaching_limit": "#f0ad4e",  # yellow/warning
+    "budget_exceeded": "#d9534f",  # red/critical
     "request_exceeds_budget": "#5bc0de",  # blue/info
 }
 
@@ -73,7 +73,7 @@ async def _send_with_retry(fn, *args, channel: str, max_retries: int = 3):
             return
         except Exception as e:
             if attempt < max_retries - 1:
-                wait = 2 ** attempt
+                wait = 2**attempt
                 logger.warning(f"{channel} attempt {attempt + 1} failed: {e}, retrying in {wait}s")
                 await asyncio.sleep(wait)
             else:
@@ -90,34 +90,39 @@ async def _send_slack(alert, http_client: httpx.AsyncClient):
     color = SLACK_COLORS.get(alert.alert_type, "#808080")
 
     payload = {
-        "attachments": [{
-            "color": color,
-            "blocks": [
-                {
-                    "type": "header",
-                    "text": {"type": "plain_text", "text": f"Budget Alert: {alert.alert_type.replace('_', ' ').title()}"}
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {"type": "mrkdwn", "text": f"*{entity_type}:*\n{entity}"},
-                        {"type": "mrkdwn", "text": f"*Threshold:*\n{alert.threshold_percent:.1f}%"},
-                        {"type": "mrkdwn", "text": f"*Spend:*\n${alert.current_spend:.2f}"},
-                        {"type": "mrkdwn", "text": f"*Limit:*\n${alert.budget_limit:.2f}"},
-                    ]
-                },
-                {
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": f"```{progress}``` {pct:.1f}%"}
-                },
-                {
-                    "type": "context",
-                    "elements": [
-                        {"type": "mrkdwn", "text": f"AI Control Plane | {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"}
-                    ]
-                }
-            ]
-        }]
+        "attachments": [
+            {
+                "color": color,
+                "blocks": [
+                    {
+                        "type": "header",
+                        "text": {
+                            "type": "plain_text",
+                            "text": f"Budget Alert: {alert.alert_type.replace('_', ' ').title()}",
+                        },
+                    },
+                    {
+                        "type": "section",
+                        "fields": [
+                            {"type": "mrkdwn", "text": f"*{entity_type}:*\n{entity}"},
+                            {"type": "mrkdwn", "text": f"*Threshold:*\n{alert.threshold_percent:.1f}%"},
+                            {"type": "mrkdwn", "text": f"*Spend:*\n${alert.current_spend:.2f}"},
+                            {"type": "mrkdwn", "text": f"*Limit:*\n${alert.budget_limit:.2f}"},
+                        ],
+                    },
+                    {"type": "section", "text": {"type": "mrkdwn", "text": f"```{progress}``` {pct:.1f}%"}},
+                    {
+                        "type": "context",
+                        "elements": [
+                            {
+                                "type": "mrkdwn",
+                                "text": f"AI Control Plane | {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+                            }
+                        ],
+                    },
+                ],
+            }
+        ]
     }
 
     response = await http_client.post(SLACK_WEBHOOK_URL, json=payload)
@@ -127,9 +132,10 @@ async def _send_slack(alert, http_client: httpx.AsyncClient):
 async def _send_email(alert):
     """Send HTML email via SMTP."""
     try:
-        import aiosmtplib
-        from email.mime.text import MIMEText
         from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        import aiosmtplib
     except ImportError:
         logger.warning("aiosmtplib not installed, skipping email notification")
         return
@@ -145,11 +151,17 @@ async def _send_email(alert):
     subject = subject_map.get(alert.alert_type, f"Budget Alert: {alert.alert_type}")
 
     filled_width = min(int(pct), 100)
-    color = "#f0ad4e" if alert.alert_type == "approaching_limit" else "#d9534f" if alert.alert_type == "budget_exceeded" else "#5bc0de"
+    color = (
+        "#f0ad4e"
+        if alert.alert_type == "approaching_limit"
+        else "#d9534f"
+        if alert.alert_type == "budget_exceeded"
+        else "#5bc0de"
+    )
 
     html = f"""
     <html><body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: {color};">{alert.alert_type.replace('_', ' ').title()}</h2>
+        <h2 style="color: {color};">{alert.alert_type.replace("_", " ").title()}</h2>
         <p>{alert.message}</p>
         <div style="background: #eee; border-radius: 8px; overflow: hidden; height: 24px; margin: 16px 0;">
             <div style="background: {color}; height: 100%; width: {filled_width}%; border-radius: 8px;"></div>
@@ -159,7 +171,7 @@ async def _send_email(alert):
             <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Budget Limit</strong></td><td>${alert.budget_limit:.2f}</td></tr>
             <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Usage</strong></td><td>{pct:.1f}%</td></tr>
         </table>
-        <p style="color: #888; font-size: 12px; margin-top: 24px;">AI Control Plane | {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}</p>
+        <p style="color: #888; font-size: 12px; margin-top: 24px;">AI Control Plane | {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")}</p>
     </body></html>
     """
 

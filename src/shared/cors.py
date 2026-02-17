@@ -1,4 +1,5 @@
 """Environment-aware CORS configuration."""
+
 import os
 
 

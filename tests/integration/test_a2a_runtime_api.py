@@ -4,27 +4,31 @@ Tests HTTP endpoints for agent registry, workflow management,
 messaging, and human-in-the-loop approvals.
 """
 
-import sys
-import os
-import json
 import importlib.util
+import json
+import os
+import sys
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 import httpx
+import pytest
 
 # Pre-mock temporalio modules since they may not be installed in test env
 for _mock_mod_name in [
-    "temporalio", "temporalio.client", "temporalio.worker",
-    "temporalio.common", "temporalio.worker.workflow_sandbox",
-    "temporalio.workflow", "temporalio.activity",
+    "temporalio",
+    "temporalio.client",
+    "temporalio.worker",
+    "temporalio.common",
+    "temporalio.worker.workflow_sandbox",
+    "temporalio.workflow",
+    "temporalio.activity",
 ]:
     if _mock_mod_name not in sys.modules:
         sys.modules[_mock_mod_name] = MagicMock()
 
 # Pre-mock redis.asyncio if not available
 try:
-    import redis.asyncio
+    import redis.asyncio  # noqa: F401
 except ImportError:
     _redis_mock = MagicMock()
     sys.modules["redis"] = _redis_mock
@@ -42,7 +46,7 @@ _spec.loader.exec_module(_mod)
 app = _mod.app
 
 # The state module holds redis_client and temporal_client after refactor
-import state as _state_mod
+import state as _state_mod  # noqa: E402
 
 
 def _make_redis_mock():
@@ -63,7 +67,7 @@ def _make_redis_mock():
 
     async def _empty_scan(*args, **kwargs):
         return
-        yield  # noqa: unreachable - makes this an async generator
+        yield  # noqa: F841 - makes this an async generator
 
     mock.scan_iter = _empty_scan
     return mock
@@ -113,15 +117,16 @@ class TestAgentRegistry:
     @pytest.mark.asyncio
     async def test_register_agent(self, client):
         """Register agent should return agent ID."""
-        resp = await client.post("/agents/register", json={
-            "id": "agent-1",
-            "name": "Test Agent",
-            "description": "A test agent",
-            "endpoint": "http://localhost:9001",
-            "capabilities": [
-                {"name": "summarize", "description": "Summarize text"}
-            ],
-        })
+        resp = await client.post(
+            "/agents/register",
+            json={
+                "id": "agent-1",
+                "name": "Test Agent",
+                "description": "A test agent",
+                "endpoint": "http://localhost:9001",
+                "capabilities": [{"name": "summarize", "description": "Summarize text"}],
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "registered"
@@ -141,15 +146,17 @@ class TestAgentRegistry:
     @pytest.mark.asyncio
     async def test_get_agent_found(self, client):
         """Get agent should return agent data when found."""
-        agent_data = json.dumps({
-            "id": "agent-1",
-            "name": "Test Agent",
-            "description": "A test agent",
-            "endpoint": "http://localhost:9001",
-            "capabilities": [],
-            "status": "available",
-            "metadata": {},
-        })
+        agent_data = json.dumps(
+            {
+                "id": "agent-1",
+                "name": "Test Agent",
+                "description": "A test agent",
+                "endpoint": "http://localhost:9001",
+                "capabilities": [],
+                "status": "available",
+                "metadata": {},
+            }
+        )
         _state_mod.redis_client.hget.return_value = agent_data
         resp = await client.get("/agents/agent-1")
         assert resp.status_code == 200
@@ -184,11 +191,14 @@ class TestWorkflowEndpoints:
     @pytest.mark.asyncio
     async def test_start_workflow_no_temporal(self, client):
         """Start workflow should return 503 when Temporal is unavailable."""
-        resp = await client.post("/workflows/start", json={
-            "workflow_type": "single_agent",
-            "agents": ["agent-1"],
-            "input": {"task": "test"},
-        })
+        resp = await client.post(
+            "/workflows/start",
+            json={
+                "workflow_type": "single_agent",
+                "agents": ["agent-1"],
+                "input": {"task": "test"},
+            },
+        )
         assert resp.status_code == 503
 
     @pytest.mark.asyncio
@@ -214,11 +224,14 @@ class TestMessagingEndpoints:
     async def test_send_message(self, client):
         """Send message should store in Redis and return message ID."""
         _state_mod.redis_client.hget.return_value = None  # no agent to notify
-        resp = await client.post("/messages", json={
-            "source_agent": "agent-1",
-            "target_agent": "agent-2",
-            "content": {"text": "Hello"},
-        })
+        resp = await client.post(
+            "/messages",
+            json={
+                "source_agent": "agent-1",
+                "target_agent": "agent-2",
+                "content": {"text": "Hello"},
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "sent"
@@ -245,13 +258,16 @@ class TestApprovalEndpoints:
     @pytest.mark.asyncio
     async def test_submit_approval(self, client):
         """Submit approval should store in Redis."""
-        resp = await client.post("/approvals", json={
-            "workflow_id": "wf-123",
-            "step_id": "step-1",
-            "approved": True,
-            "comment": "Looks good",
-            "approver": "admin",
-        })
+        resp = await client.post(
+            "/approvals",
+            json={
+                "workflow_id": "wf-123",
+                "step_id": "step-1",
+                "approved": True,
+                "comment": "Looks good",
+                "approver": "admin",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "submitted"

@@ -2,10 +2,11 @@
 WebSocket endpoint for streaming workflow execution updates.
 """
 
-import logging
-import json
 import asyncio
+import json
+import logging
 from typing import Dict, Set
+
 from fastapi import WebSocket, WebSocketDisconnect
 
 logger = logging.getLogger(__name__)
@@ -86,30 +87,22 @@ async def websocket_endpoint(websocket: WebSocket, execution_id: str):
 
     try:
         # Send initial connection acknowledgment
-        await websocket.send_json({
-            "type": "connected",
-            "execution_id": execution_id,
-            "message": "Connected to execution stream"
-        })
+        await websocket.send_json(
+            {"type": "connected", "execution_id": execution_id, "message": "Connected to execution stream"}
+        )
 
         # Keep connection alive and handle incoming messages
         while True:
             try:
                 # Wait for messages (or just keep alive)
-                data = await asyncio.wait_for(
-                    websocket.receive_text(),
-                    timeout=30.0
-                )
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
 
                 # Handle ping/pong
                 if data == "ping":
                     await websocket.send_text("pong")
                 else:
                     # Echo back any other messages
-                    await websocket.send_json({
-                        "type": "echo",
-                        "data": data
-                    })
+                    await websocket.send_json({"type": "echo", "data": data})
 
             except asyncio.TimeoutError:
                 # Send keepalive
@@ -126,11 +119,7 @@ async def websocket_endpoint(websocket: WebSocket, execution_id: str):
         await manager.disconnect(websocket, execution_id)
 
 
-async def send_execution_update(
-    execution_id: str,
-    update_type: str,
-    data: dict
-):
+async def send_execution_update(execution_id: str, update_type: str, data: dict):
     """
     Send an update to all connected clients for an execution.
 
@@ -139,8 +128,4 @@ async def send_execution_update(
         update_type: Type of update (status, node_start, node_complete, output, error)
         data: Update data
     """
-    await manager.broadcast(execution_id, {
-        "type": update_type,
-        "execution_id": execution_id,
-        **data
-    })
+    await manager.broadcast(execution_id, {"type": update_type, "execution_id": execution_id, **data})

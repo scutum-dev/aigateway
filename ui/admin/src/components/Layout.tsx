@@ -73,7 +73,7 @@ function SidebarContent({
         )}
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
+      <nav aria-label="Main navigation" className="flex-1 p-4 space-y-1">
         {navigation.map((item) => {
           const isActive = location.pathname === item.href
           return (
@@ -173,6 +173,7 @@ export default function Layout({ children, onLogout, user: _user }: LayoutProps)
           <button
             onClick={() => setMobileOpen(true)}
             className="lg:hidden p-1 text-gray-500 hover:text-gray-700"
+            aria-label="Open navigation menu"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>

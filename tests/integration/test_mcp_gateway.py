@@ -8,8 +8,9 @@ Tests:
 """
 
 import os
-import pytest
+
 import httpx
+import pytest
 
 # Configuration from environment
 MCP_GATEWAY_URL = os.getenv("MCP_GATEWAY_URL", "http://localhost:3001")
@@ -25,10 +26,7 @@ def http_client():
 @pytest.fixture
 def api_headers():
     """Common API headers."""
-    return {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
+    return {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
 
 class TestMCPToolDiscovery:
@@ -36,10 +34,7 @@ class TestMCPToolDiscovery:
 
     def test_list_tools(self, http_client, api_headers):
         """Test listing all available MCP tools."""
-        response = http_client.get(
-            f"{MCP_GATEWAY_URL}/tools",
-            headers=api_headers
-        )
+        response = http_client.get(f"{MCP_GATEWAY_URL}/tools", headers=api_headers)
 
         # May return 200 or 503 depending on MCP server availability
         if response.status_code == 200:
@@ -50,10 +45,7 @@ class TestMCPToolDiscovery:
 
     def test_tool_metadata(self, http_client, api_headers):
         """Test that tool metadata is properly formatted."""
-        response = http_client.get(
-            f"{MCP_GATEWAY_URL}/tools",
-            headers=api_headers
-        )
+        response = http_client.get(f"{MCP_GATEWAY_URL}/tools", headers=api_headers)
 
         if response.status_code == 200:
             data = response.json()
@@ -75,10 +67,7 @@ class TestMCPToolInvocation:
     def test_invoke_tool_success(self, http_client, api_headers):
         """Test successful tool invocation."""
         # First get available tools
-        tools_response = http_client.get(
-            f"{MCP_GATEWAY_URL}/tools",
-            headers=api_headers
-        )
+        tools_response = http_client.get(f"{MCP_GATEWAY_URL}/tools", headers=api_headers)
 
         if tools_response.status_code != 200:
             pytest.skip("MCP servers not available")
@@ -97,7 +86,7 @@ class TestMCPToolInvocation:
         response = http_client.post(
             f"{MCP_GATEWAY_URL}/tools/{tool_name}",
             headers=api_headers,
-            json={}  # Empty input for basic test
+            json={},  # Empty input for basic test
         )
 
         # Tool invocation might fail with bad input, but should return a valid response
@@ -105,11 +94,7 @@ class TestMCPToolInvocation:
 
     def test_invoke_nonexistent_tool(self, http_client, api_headers):
         """Test invoking a non-existent tool returns 404."""
-        response = http_client.post(
-            f"{MCP_GATEWAY_URL}/tools/nonexistent_tool_12345",
-            headers=api_headers,
-            json={}
-        )
+        response = http_client.post(f"{MCP_GATEWAY_URL}/tools/nonexistent_tool_12345", headers=api_headers, json={})
 
         # Should return 404 or 502 if gateway is unavailable
         assert response.status_code in [404, 502, 503]
@@ -120,10 +105,7 @@ class TestMCPToolAggregation:
 
     def test_tools_from_multiple_servers(self, http_client, api_headers):
         """Test that tools from multiple servers are aggregated."""
-        response = http_client.get(
-            f"{MCP_GATEWAY_URL}/tools",
-            headers=api_headers
-        )
+        response = http_client.get(f"{MCP_GATEWAY_URL}/tools", headers=api_headers)
 
         if response.status_code != 200:
             pytest.skip("MCP servers not available")
@@ -149,7 +131,7 @@ class TestMCPSSE:
         response = http_client.get(
             f"{MCP_GATEWAY_URL}/sse",
             headers=api_headers,
-            timeout=5.0  # Short timeout for connection test
+            timeout=5.0,  # Short timeout for connection test
         )
 
         # Should either work or return appropriate error

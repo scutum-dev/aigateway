@@ -7,15 +7,14 @@ Tests Models, Policies, Budgets, Teams, Keys, and Settings routers by:
 4. Overriding auth dependencies to bypass JWT validation
 """
 
-import sys
-import os
-import json
 import importlib.util
+import os
+import sys
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 import httpx
+import pytest
 
 # ---------------------------------------------------------------------------
 # Module loading (mirrors test_auth.py pattern)
@@ -54,9 +53,7 @@ sys.modules.setdefault("alembic.config", _alembic_mock)
 sys.modules.setdefault("alembic.command", _alembic_mock)
 
 # Now import the admin-api modules
-_spec = importlib.util.spec_from_file_location(
-    "admin_api_main", os.path.join(_service_dir, "main.py")
-)
+_spec = importlib.util.spec_from_file_location("admin_api_main", os.path.join(_service_dir, "main.py"))
 _main_mod = importlib.util.module_from_spec(_spec)
 sys.modules["admin_api_main"] = _main_mod
 _spec.loader.exec_module(_main_mod)
@@ -64,13 +61,13 @@ _spec.loader.exec_module(_main_mod)
 app = _main_mod.app
 
 # Import deps and auth from the already-loaded service path
-import deps
-from auth import get_current_user, require_admin, UserInfo
-
+import deps  # noqa: E402
+from auth import UserInfo, get_current_user, require_admin  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Auth override -- bypass JWT for all endpoints
 # ---------------------------------------------------------------------------
+
 
 def _fake_user():
     return UserInfo(user_id="test-admin", role="admin", is_admin=True)
@@ -83,6 +80,7 @@ app.dependency_overrides[require_admin] = _fake_user
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_async_conn(
     fetch_return=None,
@@ -127,6 +125,7 @@ def _reset_deps():
 # ---------------------------------------------------------------------------
 # Client helper
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def client():

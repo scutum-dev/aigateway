@@ -10,9 +10,8 @@ Implements intelligent model selection based on:
 """
 
 import logging
-from typing import List, Dict, Any, Optional, Tuple
-from decimal import Decimal
 from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
 
 from models import ModelInfo, ModelTier, RoutingRequest
 
@@ -22,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ScoredModel:
     """Model with routing score."""
+
     model: ModelInfo
     score: float
     reasons: List[str]
@@ -88,7 +88,7 @@ class RoutingStrategy:
         self,
         models: List[ModelInfo],
         request: RoutingRequest,
-        policy_results: Optional[Dict[str, Tuple[bool, List[str]]]] = None
+        policy_results: Optional[Dict[str, Tuple[bool, List[str]]]] = None,
     ) -> List[ScoredModel]:
         """
         Rank models for a given request.
@@ -119,22 +119,14 @@ class RoutingStrategy:
             score, reasons = self._calculate_score(model, request)
 
             if score > 0:
-                scored_models.append(ScoredModel(
-                    model=model,
-                    score=score,
-                    reasons=reasons
-                ))
+                scored_models.append(ScoredModel(model=model, score=score, reasons=reasons))
 
         # Sort by score descending
         scored_models.sort(key=lambda x: x.score, reverse=True)
 
         return scored_models
 
-    def _calculate_score(
-        self,
-        model: ModelInfo,
-        request: RoutingRequest
-    ) -> Tuple[float, List[str]]:
+    def _calculate_score(self, model: ModelInfo, request: RoutingRequest) -> Tuple[float, List[str]]:
         """
         Calculate routing score for a model.
 
@@ -272,7 +264,7 @@ class RoutingStrategy:
         models: List[ModelInfo],
         request: RoutingRequest,
         policy_results: Optional[Dict[str, Tuple[bool, List[str]]]] = None,
-        num_fallbacks: int = 2
+        num_fallbacks: int = 2,
     ) -> Tuple[Optional[ModelInfo], List[ModelInfo], str]:
         """
         Select best model with fallback options.
@@ -292,18 +284,13 @@ class RoutingStrategy:
             return None, [], "No models available matching criteria"
 
         selected = scored[0]
-        fallbacks = [s.model for s in scored[1:num_fallbacks + 1]]
+        fallbacks = [s.model for s in scored[1 : num_fallbacks + 1]]
 
         reason = f"Selected {selected.model.model_id} (score: {selected.score:.1f}) - {', '.join(selected.reasons)}"
 
         return selected.model, fallbacks, reason
 
-    def estimate_cost(
-        self,
-        model: ModelInfo,
-        input_tokens: int,
-        output_tokens: int
-    ) -> float:
+    def estimate_cost(self, model: ModelInfo, input_tokens: int, output_tokens: int) -> float:
         """
         Estimate cost for a request.
 

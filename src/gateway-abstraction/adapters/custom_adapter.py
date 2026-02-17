@@ -6,11 +6,12 @@ for proprietary or specialized AI backends.
 """
 
 import logging
-from typing import Optional, Set, List, Dict, Any, AsyncIterator, Callable
+from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Set
+
 import httpx
 
-from ..core.interface import AbstractGateway, GatewayCapability
 from ..core.errors import GatewayConnectionError
+from ..core.interface import AbstractGateway, GatewayCapability
 from ..models.request import ChatRequest
 from ..models.response import ChatResponse
 
@@ -162,10 +163,7 @@ class CustomAdapter(AbstractGateway):
             )
 
             if response.status_code != 200:
-                raise GatewayConnectionError(
-                    f"Request failed: {response.status_code}",
-                    gateway=self._name
-                )
+                raise GatewayConnectionError(f"Request failed: {response.status_code}", gateway=self._name)
 
             data = response.json()
             return self._transform_response(data)
@@ -173,10 +171,7 @@ class CustomAdapter(AbstractGateway):
         except httpx.RequestError as e:
             raise GatewayConnectionError(str(e), gateway=self._name)
 
-    async def chat_completion_stream(
-        self,
-        request: ChatRequest
-    ) -> AsyncIterator[ChatResponse]:
+    async def chat_completion_stream(self, request: ChatRequest) -> AsyncIterator[ChatResponse]:
         """Create a streaming chat completion."""
         if not self._client:
             await self.connect()
@@ -191,10 +186,7 @@ class CustomAdapter(AbstractGateway):
                 json=request_data,
             ) as response:
                 if response.status_code != 200:
-                    raise GatewayConnectionError(
-                        f"Stream request failed: {response.status_code}",
-                        gateway=self._name
-                    )
+                    raise GatewayConnectionError(f"Stream request failed: {response.status_code}", gateway=self._name)
 
                 async for line in response.aiter_lines():
                     if line.startswith("data: "):
@@ -203,6 +195,7 @@ class CustomAdapter(AbstractGateway):
                             break
                         try:
                             import json
+
                             chunk = json.loads(data)
                             yield ChatResponse.stream_chunk(
                                 content=chunk.get("choices", [{}])[0].get("delta", {}).get("content"),

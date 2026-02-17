@@ -11,24 +11,24 @@ Features:
 - Integration with cost predictor
 """
 
-import os
 import logging
-from typing import Optional
-from datetime import datetime, timezone
+import os
 from contextlib import asynccontextmanager
 from decimal import Decimal
+from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request
+import asyncpg
+import httpx
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 from opentelemetry import trace
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.resources import Resource
-import httpx
-import asyncpg
+from pydantic import BaseModel, Field
+
 from shared.cors import get_cors_origins
 from shared.middleware import ServiceAuthMiddleware
 
@@ -39,11 +39,13 @@ logger = logging.getLogger(__name__)
 
 class WebhookRequest(BaseModel):
     """LiteLLM webhook request format."""
+
     data: dict = Field(..., description="Request data from LiteLLM")
 
 
 class WebhookResponse(BaseModel):
     """Webhook response format."""
+
     allow: bool = Field(..., description="Whether to allow the request")
     message: Optional[str] = Field(default=None, description="Message for rejection or warning")
     modified_data: Optional[dict] = Field(default=None, description="Modified request data")
@@ -51,6 +53,7 @@ class WebhookResponse(BaseModel):
 
 class BudgetAlert(BaseModel):
     """Budget alert model."""
+
     user_id: Optional[str] = None
     team_id: Optional[str] = None
     alert_type: str
@@ -144,7 +147,7 @@ async def get_budget_info(api_key: str) -> dict:
         response = await http_client.get(
             f"{litellm_url}/key/info",
             params={"key": api_key},
-            headers={"Authorization": f"Bearer {litellm_master_key}"}
+            headers={"Authorization": f"Bearer {litellm_master_key}"},
         )
 
         if response.status_code == 200:
@@ -167,11 +170,7 @@ async def predict_cost(model: str, messages: list, max_tokens: Optional[int]) ->
             headers["X-Service-Key"] = INTERNAL_SERVICE_KEY
         response = await http_client.post(
             f"{predictor_url}/predict",
-            json={
-                "model": model,
-                "messages": messages,
-                "max_tokens": max_tokens
-            },
+            json={"model": model, "messages": messages, "max_tokens": max_tokens},
             headers=headers,
         )
 
@@ -193,12 +192,20 @@ async def record_alert(alert: BudgetAlert):
 
     try:
         async with db_pool.acquire() as conn:
-            await conn.execute("""
+            await conn.execute(
+                """
                 INSERT INTO budget_alerts
                 (user_id, team_id, alert_type, threshold_percent, current_spend, budget_limit, message)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
-            """, alert.user_id, alert.team_id, alert.alert_type,
-                alert.threshold_percent, alert.current_spend, alert.budget_limit, alert.message)
+            """,
+                alert.user_id,
+                alert.team_id,
+                alert.alert_type,
+                alert.threshold_percent,
+                alert.current_spend,
+                alert.budget_limit,
+                alert.message,
+            )
     except Exception as e:
         logger.error(f"Failed to record alert: {e}")
 
@@ -206,6 +213,7 @@ async def record_alert(alert: BudgetAlert):
 async def send_notification(alert: BudgetAlert):
     """Send budget alert notification to all configured channels."""
     from notifier import send_all_notifications
+
     await send_all_notifications(alert, http_client)
 
 
@@ -273,14 +281,14 @@ async def pre_request_webhook(request: WebhookRequest):
                 threshold_percent=usage_percent * 100,
                 current_spend=current_spend,
                 budget_limit=max_budget,
-                message=f"Budget limit exceeded: ${current_spend:.2f} / ${max_budget:.2f}"
+                message=f"Budget limit exceeded: ${current_spend:.2f} / ${max_budget:.2f}",
             )
             await record_alert(alert)
             await send_notification(alert)
 
             return WebhookResponse(
                 allow=False,
-                message=f"Budget limit exceeded. Current spend: ${current_spend:.2f}, Limit: ${max_budget:.2f}"
+                message=f"Budget limit exceeded. Current spend: ${current_spend:.2f}, Limit: ${max_budget:.2f}",
             )
 
         # Check if this request would exceed budget
@@ -292,13 +300,13 @@ async def pre_request_webhook(request: WebhookRequest):
                 threshold_percent=usage_percent * 100,
                 current_spend=current_spend,
                 budget_limit=max_budget,
-                message=f"Request would exceed budget: estimated ${estimated_cost:.4f}, remaining ${remaining_budget:.2f}"
+                message=f"Request would exceed budget: estimated ${estimated_cost:.4f}, remaining ${remaining_budget:.2f}",
             )
             await record_alert(alert)
 
             return WebhookResponse(
                 allow=False,
-                message=f"Request would exceed budget. Estimated cost: ${estimated_cost:.4f}, Remaining: ${remaining_budget:.2f}"
+                message=f"Request would exceed budget. Estimated cost: ${estimated_cost:.4f}, Remaining: ${remaining_budget:.2f}",
             )
 
         # Check soft limit (warning)
@@ -310,14 +318,13 @@ async def pre_request_webhook(request: WebhookRequest):
                 threshold_percent=usage_percent * 100,
                 current_spend=current_spend,
                 budget_limit=max_budget,
-                message=f"Approaching budget limit: {usage_percent*100:.1f}% used"
+                message=f"Approaching budget limit: {usage_percent * 100:.1f}% used",
             )
             await record_alert(alert)
             await send_notification(alert)
 
             return WebhookResponse(
-                allow=True,
-                message=f"Warning: Approaching budget limit ({usage_percent*100:.1f}% used)"
+                allow=True, message=f"Warning: Approaching budget limit ({usage_percent * 100:.1f}% used)"
             )
 
         return WebhookResponse(allow=True)
@@ -349,7 +356,8 @@ async def post_request_webhook(request: WebhookRequest):
         if db_pool:
             try:
                 async with db_pool.acquire() as conn:
-                    await conn.execute("""
+                    await conn.execute(
+                        """
                         INSERT INTO cost_tracking_daily
                         (date, user_id, team_id, model, request_count, input_tokens, output_tokens, total_cost)
                         VALUES (CURRENT_DATE, $1, $2, $3, 1, $4, $5, $6)
@@ -360,10 +368,14 @@ async def post_request_webhook(request: WebhookRequest):
                             output_tokens = cost_tracking_daily.output_tokens + $5,
                             total_cost = cost_tracking_daily.total_cost + $6,
                             updated_at = CURRENT_TIMESTAMP
-                    """, user_id, team_id, model,
+                    """,
+                        user_id,
+                        team_id,
+                        model,
                         usage.get("prompt_tokens", 0),
                         usage.get("completion_tokens", 0),
-                        Decimal(str(cost)))
+                        Decimal(str(cost)),
+                    )
             except Exception as e:
                 logger.error(f"Failed to record cost: {e}")
 
@@ -371,11 +383,7 @@ async def post_request_webhook(request: WebhookRequest):
 
 
 @app.get("/alerts")
-async def get_recent_alerts(
-    user_id: Optional[str] = None,
-    team_id: Optional[str] = None,
-    limit: int = 100
-):
+async def get_recent_alerts(user_id: Optional[str] = None, team_id: Optional[str] = None, limit: int = 100):
     """Get recent budget alerts."""
     if not db_pool:
         return {"alerts": [], "message": "Database not available"}
@@ -401,9 +409,7 @@ async def get_recent_alerts(
 
             rows = await conn.fetch(query, *params)
 
-            return {
-                "alerts": [dict(row) for row in rows]
-            }
+            return {"alerts": [dict(row) for row in rows]}
     except Exception as e:
         logger.error(f"Failed to get alerts: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -411,4 +417,5 @@ async def get_recent_alerts(
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8081)

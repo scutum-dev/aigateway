@@ -2,15 +2,17 @@
 Pydantic models for Policy Router service.
 """
 
-from typing import Optional, List, Dict, Any
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
 class GatewayCapability(str, Enum):
     """Model capabilities for routing decisions."""
+
     STREAMING = "streaming"
     FUNCTION_CALLING = "function_calling"
     VISION = "vision"
@@ -20,6 +22,7 @@ class GatewayCapability(str, Enum):
 
 class ModelTier(str, Enum):
     """Model pricing tiers."""
+
     FREE = "free"
     BUDGET = "budget"
     STANDARD = "standard"
@@ -28,6 +31,7 @@ class ModelTier(str, Enum):
 
 class RoutingRequest(BaseModel):
     """Request for model routing decision."""
+
     user_id: Optional[str] = Field(default=None, description="User identifier")
     team_id: Optional[str] = Field(default=None, description="Team identifier")
     requested_model: Optional[str] = Field(default=None, description="Requested model alias or name")
@@ -41,6 +45,7 @@ class RoutingRequest(BaseModel):
 
 class ModelInfo(BaseModel):
     """Model information with current metrics."""
+
     model_id: str
     provider: str
     tier: ModelTier
@@ -59,6 +64,7 @@ class ModelInfo(BaseModel):
 
 class RoutingDecision(BaseModel):
     """Response with routing decision."""
+
     selected_model: str = Field(..., description="Selected model for the request")
     fallback_models: List[str] = Field(default_factory=list, description="Ordered list of fallback models")
     decision_reason: str = Field(..., description="Explanation for the routing decision")
@@ -69,6 +75,7 @@ class RoutingDecision(BaseModel):
 
 class PolicyEvaluationRequest(BaseModel):
     """Request for direct Cedar policy evaluation."""
+
     principal: str = Field(..., description="Principal entity (user::user-id)")
     action: str = Field(..., description="Action being evaluated")
     resource: str = Field(..., description="Resource entity (model::gpt-4o)")
@@ -77,6 +84,7 @@ class PolicyEvaluationRequest(BaseModel):
 
 class PolicyEvaluationResponse(BaseModel):
     """Response from Cedar policy evaluation."""
+
     decision: str = Field(..., description="allow, deny, or error")
     reasons: List[str] = Field(default_factory=list, description="Policy IDs that contributed to decision")
     errors: List[str] = Field(default_factory=list, description="Any errors during evaluation")
@@ -84,6 +92,7 @@ class PolicyEvaluationResponse(BaseModel):
 
 class RoutingDecisionRecord(BaseModel):
     """Database record for routing decisions."""
+
     id: Optional[str] = None
     timestamp: datetime
     user_id: Optional[str] = None
@@ -97,6 +106,7 @@ class RoutingDecisionRecord(BaseModel):
 
 class ModelRoutingConfig(BaseModel):
     """Configuration for a model in routing."""
+
     model_id: str
     provider: str
     tier: str

@@ -2,9 +2,9 @@
 Workflow state models for LangGraph integration.
 """
 
-from typing import Optional, List, Dict, Any, Annotated
 from datetime import datetime
-from operator import add
+from typing import Annotated, Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -33,6 +33,7 @@ def last_value(left: Any, right: Any) -> Any:
 
 class MessageState(BaseModel):
     """A message in the workflow state."""
+
     role: str = Field(..., description="Message role: user, assistant, system, tool")
     content: str = Field(..., description="Message content")
     name: Optional[str] = Field(default=None, description="Tool name if tool message")
@@ -42,6 +43,7 @@ class MessageState(BaseModel):
 
 class NodeState(BaseModel):
     """State of a specific node execution."""
+
     node_name: str
     status: str = Field(default="pending")  # pending, running, completed, failed
     input: Optional[Dict[str, Any]] = None
@@ -60,6 +62,7 @@ class WorkflowState(BaseModel):
     This state is passed through the LangGraph workflow and
     persisted via PostgreSQL checkpointing.
     """
+
     # Core state - use custom merger instead of LangGraph's add_messages to avoid HumanMessage conversion
     messages: Annotated[List[Dict[str, Any]], merge_messages] = Field(default_factory=list)
     current_node: Annotated[Optional[str], last_value] = None
@@ -106,16 +109,13 @@ class WorkflowState(BaseModel):
         tokens: int = 0,
         cost: float = 0.0,
         output: Optional[Dict[str, Any]] = None,
-        error: Optional[str] = None
+        error: Optional[str] = None,
     ) -> "WorkflowState":
         """Update the state of a specific node."""
         now = datetime.utcnow()
 
         if node_name not in self.node_states:
-            self.node_states[node_name] = NodeState(
-                node_name=node_name,
-                started_at=now
-            )
+            self.node_states[node_name] = NodeState(node_name=node_name, started_at=now)
 
         node_state = self.node_states[node_name]
         node_state.status = status

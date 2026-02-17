@@ -10,33 +10,32 @@ A FastAPI service for orchestrating multi-step AI workflows with:
 - WebSocket streaming for execution updates
 """
 
-import os
-import logging
 import asyncio
-from typing import Optional, Dict, Any
-from datetime import datetime, timezone
+import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
+import asyncpg
+from api.routes import router, set_dependencies
+from api.websocket import send_execution_update, websocket_endpoint
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from models.execution import ExecutionStatus, WorkflowExecution
+from models.workflow import WorkflowInput, WorkflowOutput, WorkflowTemplate
 from opentelemetry import trace
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.resources import Resource
-import asyncpg
-
-from config import config
-from models.workflow import WorkflowInput, WorkflowOutput, WorkflowTemplate
-from models.execution import WorkflowExecution, ExecutionStatus
-from persistence.repository import WorkflowRepository
 from persistence.checkpointer import create_checkpointer
+from persistence.repository import WorkflowRepository
+from templates import CodingAgentWorkflow, DataAnalysisWorkflow, ResearchAgentWorkflow
 from tools.llm_client import LLMClient
 from tools.mcp_binding import MCPClient
-from templates import ResearchAgentWorkflow, CodingAgentWorkflow, DataAnalysisWorkflow
-from api.routes import router, set_dependencies
-from api.websocket import websocket_endpoint, send_execution_update
+
+from config import config
 from shared.cors import get_cors_origins
 from shared.middleware import ServiceAuthMiddleware
 
@@ -141,10 +140,14 @@ class WorkflowManager:
                 duration_ms=duration_ms,
             )
 
-            await send_execution_update(execution_id, "status", {
-                "status": "completed",
-                "output": final_state.output,
-            })
+            await send_execution_update(
+                execution_id,
+                "status",
+                {
+                    "status": "completed",
+                    "output": final_state.output,
+                },
+            )
 
             return WorkflowOutput(
                 execution_id=execution_id,
@@ -206,10 +209,14 @@ class WorkflowManager:
                 total_cost=final_state.total_cost,
             )
 
-            await send_execution_update(execution_id, "status", {
-                "status": "completed",
-                "output": final_state.output,
-            })
+            await send_execution_update(
+                execution_id,
+                "status",
+                {
+                    "status": "completed",
+                    "output": final_state.output,
+                },
+            )
 
             return WorkflowOutput(
                 execution_id=execution_id,
@@ -328,4 +335,5 @@ async def execution_websocket(websocket: WebSocket, execution_id: str):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host=config.host, port=config.port)

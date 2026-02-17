@@ -3,10 +3,9 @@
 Tests multi-channel alert delivery, retry logic, and severity routing.
 """
 
-import sys
-import os
 import importlib.util
-import asyncio
+import os
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -273,12 +272,14 @@ class TestSendAllNotifications:
         alert = _make_alert(alert_type="budget_exceeded")
         mock_client = AsyncMock()
 
-        with patch.object(_mod, "SLACK_WEBHOOK_URL", "https://slack"), \
-             patch.object(_mod, "PAGERDUTY_ROUTING_KEY", "pd-key"), \
-             patch.object(_mod, "SMTP_HOST", "smtp.test.com"), \
-             patch.object(_mod, "SMTP_ALERT_RECIPIENTS", "a@b.com"), \
-             patch.object(_mod, "ALERT_WEBHOOK_URL", "https://webhook"), \
-             patch.object(_mod, "_send_with_retry", new_callable=AsyncMock) as mock_retry:
+        with (
+            patch.object(_mod, "SLACK_WEBHOOK_URL", "https://slack"),
+            patch.object(_mod, "PAGERDUTY_ROUTING_KEY", "pd-key"),
+            patch.object(_mod, "SMTP_HOST", "smtp.test.com"),
+            patch.object(_mod, "SMTP_ALERT_RECIPIENTS", "a@b.com"),
+            patch.object(_mod, "ALERT_WEBHOOK_URL", "https://webhook"),
+            patch.object(_mod, "_send_with_retry", new_callable=AsyncMock) as mock_retry,
+        ):
             await send_all_notifications(alert, mock_client)
 
         # budget_exceeded enables all 4 channels
@@ -290,12 +291,14 @@ class TestSendAllNotifications:
         alert = _make_alert(alert_type="budget_exceeded")
         mock_client = AsyncMock()
 
-        with patch.object(_mod, "SLACK_WEBHOOK_URL", "https://slack"), \
-             patch.object(_mod, "PAGERDUTY_ROUTING_KEY", ""), \
-             patch.object(_mod, "SMTP_HOST", ""), \
-             patch.object(_mod, "SMTP_ALERT_RECIPIENTS", ""), \
-             patch.object(_mod, "ALERT_WEBHOOK_URL", ""), \
-             patch.object(_mod, "_send_with_retry", new_callable=AsyncMock) as mock_retry:
+        with (
+            patch.object(_mod, "SLACK_WEBHOOK_URL", "https://slack"),
+            patch.object(_mod, "PAGERDUTY_ROUTING_KEY", ""),
+            patch.object(_mod, "SMTP_HOST", ""),
+            patch.object(_mod, "SMTP_ALERT_RECIPIENTS", ""),
+            patch.object(_mod, "ALERT_WEBHOOK_URL", ""),
+            patch.object(_mod, "_send_with_retry", new_callable=AsyncMock) as mock_retry,
+        ):
             await send_all_notifications(alert, mock_client)
 
         # Only Slack is configured
@@ -307,12 +310,14 @@ class TestSendAllNotifications:
         alert = _make_alert(alert_type="budget_exceeded")
         mock_client = AsyncMock()
 
-        with patch.object(_mod, "SLACK_WEBHOOK_URL", ""), \
-             patch.object(_mod, "PAGERDUTY_ROUTING_KEY", ""), \
-             patch.object(_mod, "SMTP_HOST", ""), \
-             patch.object(_mod, "SMTP_ALERT_RECIPIENTS", ""), \
-             patch.object(_mod, "ALERT_WEBHOOK_URL", ""), \
-             patch.object(_mod, "_send_with_retry", new_callable=AsyncMock) as mock_retry:
+        with (
+            patch.object(_mod, "SLACK_WEBHOOK_URL", ""),
+            patch.object(_mod, "PAGERDUTY_ROUTING_KEY", ""),
+            patch.object(_mod, "SMTP_HOST", ""),
+            patch.object(_mod, "SMTP_ALERT_RECIPIENTS", ""),
+            patch.object(_mod, "ALERT_WEBHOOK_URL", ""),
+            patch.object(_mod, "_send_with_retry", new_callable=AsyncMock) as mock_retry,
+        ):
             await send_all_notifications(alert, mock_client)
 
         mock_retry.assert_not_called()

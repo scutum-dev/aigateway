@@ -4,10 +4,9 @@ Tests pure functions (get_date_range) and mock-based tests for trend calculation
 and export format.
 """
 
-import os
 import importlib.util
+import os
 from datetime import date, timedelta
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -77,8 +76,7 @@ class TestTrendCalculation:
     def test_increasing_trend(self):
         """Second half higher than first half should be 'increasing'."""
         data_points = [
-            TrendDataPoint(date=date(2025, 1, i + 1), cost=float(i), requests=10, tokens=1000)
-            for i in range(10)
+            TrendDataPoint(date=date(2025, 1, i + 1), cost=float(i), requests=10, tokens=1000) for i in range(10)
         ]
         costs = [dp.cost for dp in data_points]
         mid = len(costs) // 2
@@ -87,13 +85,14 @@ class TestTrendCalculation:
         percent_change = ((second_half_avg - first_half_avg) / first_half_avg) * 100
 
         assert percent_change > 10
-        assert "increasing" == ("increasing" if percent_change > 10 else "decreasing" if percent_change < -10 else "stable")
+        assert "increasing" == (
+            "increasing" if percent_change > 10 else "decreasing" if percent_change < -10 else "stable"
+        )
 
     def test_decreasing_trend(self):
         """Second half lower than first half should be 'decreasing'."""
         data_points = [
-            TrendDataPoint(date=date(2025, 1, i + 1), cost=float(10 - i), requests=10, tokens=1000)
-            for i in range(10)
+            TrendDataPoint(date=date(2025, 1, i + 1), cost=float(10 - i), requests=10, tokens=1000) for i in range(10)
         ]
         costs = [dp.cost for dp in data_points]
         mid = len(costs) // 2
@@ -105,10 +104,7 @@ class TestTrendCalculation:
 
     def test_stable_trend(self):
         """Constant costs should be 'stable'."""
-        data_points = [
-            TrendDataPoint(date=date(2025, 1, i + 1), cost=5.0, requests=10, tokens=1000)
-            for i in range(10)
-        ]
+        data_points = [TrendDataPoint(date=date(2025, 1, i + 1), cost=5.0, requests=10, tokens=1000) for i in range(10)]
         costs = [dp.cost for dp in data_points]
         mid = len(costs) // 2
         first_half_avg = sum(costs[:mid]) / mid
@@ -130,8 +126,14 @@ class TestExportFormat:
         import io
 
         headers = [
-            "date", "user_id", "team_id", "model",
-            "request_count", "input_tokens", "output_tokens", "total_cost"
+            "date",
+            "user_id",
+            "team_id",
+            "model",
+            "request_count",
+            "input_tokens",
+            "output_tokens",
+            "total_cost",
         ]
         output = io.StringIO()
         writer = csv.writer(output)

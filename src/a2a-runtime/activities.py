@@ -1,13 +1,12 @@
 import asyncio
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
 import httpx
-from temporalio import activity
-
 import state
 from a2a_models import Agent, InvokeAgentInput, InvokeAgentOutput
+from temporalio import activity
 
 
 @activity.defn

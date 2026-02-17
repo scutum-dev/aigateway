@@ -4,13 +4,13 @@ Integration tests for Workflow Engine Service.
 Tests workflow execution, templates, WebSocket streaming,
 checkpointing, and cost tracking.
 """
-import pytest
-import httpx
-import asyncio
+
 import json
 from typing import Generator
-from websockets.sync.client import connect as ws_connect
 
+import httpx
+import pytest
+from websockets.sync.client import connect as ws_connect
 
 # Test configuration
 WORKFLOW_ENGINE_URL = "http://localhost:8085"
@@ -55,9 +55,7 @@ class TestWorkflowTemplates:
         assert isinstance(data, list)
         assert len(data) >= 3  # research, coding, data_analysis
 
-    def test_template_has_required_fields(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_template_has_required_fields(self, http_client: httpx.Client, api_headers: dict):
         """Test template info contains required fields."""
         response = http_client.get("/api/v1/templates", headers=api_headers)
         assert response.status_code == 200
@@ -69,9 +67,7 @@ class TestWorkflowTemplates:
             assert "input_schema" in template
             assert "nodes" in template
 
-    def test_research_template_exists(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_research_template_exists(self, http_client: httpx.Client, api_headers: dict):
         """Test research template is available."""
         response = http_client.get("/api/v1/templates", headers=api_headers)
         assert response.status_code == 200
@@ -80,9 +76,7 @@ class TestWorkflowTemplates:
         template_names = [t["name"] for t in data]
         assert "research" in template_names
 
-    def test_coding_template_exists(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_coding_template_exists(self, http_client: httpx.Client, api_headers: dict):
         """Test coding template is available."""
         response = http_client.get("/api/v1/templates", headers=api_headers)
         assert response.status_code == 200
@@ -91,9 +85,7 @@ class TestWorkflowTemplates:
         template_names = [t["name"] for t in data]
         assert "coding" in template_names
 
-    def test_data_analysis_template_exists(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_data_analysis_template_exists(self, http_client: httpx.Client, api_headers: dict):
         """Test data analysis template is available."""
         response = http_client.get("/api/v1/templates", headers=api_headers)
         assert response.status_code == 200
@@ -109,6 +101,7 @@ class TestWorkflowDefinitions:
     def test_create_workflow(self, http_client: httpx.Client, api_headers: dict):
         """Test creating a custom workflow definition."""
         import uuid
+
         workflow_name = f"test-workflow-{uuid.uuid4().hex[:8]}"
 
         response = http_client.post(
@@ -146,12 +139,11 @@ class TestWorkflowDefinitions:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_get_workflow_by_id(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_get_workflow_by_id(self, http_client: httpx.Client, api_headers: dict):
         """Test getting workflow by ID."""
         # First create a workflow
         import uuid
+
         workflow_name = f"test-workflow-{uuid.uuid4().hex[:8]}"
 
         create_response = http_client.post(
@@ -181,9 +173,7 @@ class TestWorkflowDefinitions:
 class TestWorkflowExecution:
     """Test workflow execution."""
 
-    def test_start_execution_from_template(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_start_execution_from_template(self, http_client: httpx.Client, api_headers: dict):
         """Test starting workflow execution from template."""
         response = http_client.post(
             "/api/v1/executions",
@@ -202,9 +192,7 @@ class TestWorkflowExecution:
         assert "execution_id" in data or "id" in data
         assert "status" in data
 
-    def test_get_execution_status(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_get_execution_status(self, http_client: httpx.Client, api_headers: dict):
         """Test getting execution status."""
         # Start an execution
         start_response = http_client.post(
@@ -229,9 +217,7 @@ class TestWorkflowExecution:
         assert "status" in data
         assert data["status"] in ["pending", "running", "paused", "completed", "failed"]
 
-    def test_get_execution_steps(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_get_execution_steps(self, http_client: httpx.Client, api_headers: dict):
         """Test getting execution step details."""
         # Start an execution
         start_response = http_client.post(
@@ -254,9 +240,7 @@ class TestWorkflowExecution:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_execution_with_invalid_template(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_execution_with_invalid_template(self, http_client: httpx.Client, api_headers: dict):
         """Test execution with non-existent template."""
         response = http_client.post(
             "/api/v1/executions",
@@ -268,9 +252,7 @@ class TestWorkflowExecution:
         )
         assert response.status_code in [400, 404, 422]
 
-    def test_execution_with_invalid_input(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_execution_with_invalid_input(self, http_client: httpx.Client, api_headers: dict):
         """Test execution with invalid input schema."""
         response = http_client.post(
             "/api/v1/executions",
@@ -287,9 +269,7 @@ class TestWorkflowExecution:
 class TestWorkflowPauseResume:
     """Test workflow pause and resume functionality."""
 
-    def test_pause_execution(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_pause_execution(self, http_client: httpx.Client, api_headers: dict):
         """Test pausing a running execution."""
         # Start an execution
         start_response = http_client.post(
@@ -311,9 +291,7 @@ class TestWorkflowPauseResume:
         # May fail if execution already completed
         assert response.status_code in [200, 400, 409]
 
-    def test_resume_execution(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_resume_execution(self, http_client: httpx.Client, api_headers: dict):
         """Test resuming a paused execution."""
         # Start an execution
         start_response = http_client.post(
@@ -341,9 +319,7 @@ class TestWorkflowPauseResume:
 class TestWorkflowCosts:
     """Test workflow cost tracking."""
 
-    def test_get_cost_summary(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_get_cost_summary(self, http_client: httpx.Client, api_headers: dict):
         """Test getting workflow cost summary."""
         response = http_client.get(
             "/api/v1/costs/summary",
@@ -353,9 +329,7 @@ class TestWorkflowCosts:
         data = response.json()
         assert "total_cost" in data or "workflows" in data
 
-    def test_cost_summary_by_user(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_cost_summary_by_user(self, http_client: httpx.Client, api_headers: dict):
         """Test getting cost summary filtered by user."""
         response = http_client.get(
             "/api/v1/costs/summary",
@@ -364,9 +338,7 @@ class TestWorkflowCosts:
         )
         assert response.status_code == 200
 
-    def test_cost_summary_by_team(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_cost_summary_by_team(self, http_client: httpx.Client, api_headers: dict):
         """Test getting cost summary filtered by team."""
         response = http_client.get(
             "/api/v1/costs/summary",
@@ -433,7 +405,7 @@ class TestWebSocketStreaming:
                     try:
                         msg = websocket.recv(timeout=5)
                         messages.append(json.loads(msg))
-                    except:
+                    except Exception:
                         break
 
             # Verify message structure if we got any
@@ -446,9 +418,7 @@ class TestWebSocketStreaming:
 class TestCodingWorkflow:
     """Test coding workflow specific functionality."""
 
-    def test_coding_workflow_execution(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_coding_workflow_execution(self, http_client: httpx.Client, api_headers: dict):
         """Test coding workflow execution."""
         response = http_client.post(
             "/api/v1/executions",
@@ -470,9 +440,7 @@ class TestCodingWorkflow:
 class TestDataAnalysisWorkflow:
     """Test data analysis workflow specific functionality."""
 
-    def test_data_analysis_workflow_execution(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_data_analysis_workflow_execution(self, http_client: httpx.Client, api_headers: dict):
         """Test data analysis workflow execution."""
         response = http_client.post(
             "/api/v1/executions",
@@ -494,11 +462,10 @@ class TestDataAnalysisWorkflow:
 class TestErrorHandling:
     """Test error handling scenarios."""
 
-    def test_get_nonexistent_execution(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_get_nonexistent_execution(self, http_client: httpx.Client, api_headers: dict):
         """Test getting non-existent execution."""
         import uuid
+
         fake_id = str(uuid.uuid4())
         response = http_client.get(
             f"/api/v1/executions/{fake_id}",
@@ -506,11 +473,10 @@ class TestErrorHandling:
         )
         assert response.status_code == 404
 
-    def test_get_nonexistent_workflow(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_get_nonexistent_workflow(self, http_client: httpx.Client, api_headers: dict):
         """Test getting non-existent workflow."""
         import uuid
+
         fake_id = str(uuid.uuid4())
         response = http_client.get(
             f"/api/v1/workflows/{fake_id}",

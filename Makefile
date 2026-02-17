@@ -46,13 +46,13 @@ help: ## Show this help message
 # ENVIRONMENT SETUP
 # =============================================================================
 
-init: ## Initialize environment (copy .env.example to .env)
-	@if [ ! -f .env ]; then \
-		cp .env.example .env; \
-		echo "$(GREEN)Created .env from .env.example$(RESET)"; \
-		echo "$(YELLOW)Please edit .env and add your API keys$(RESET)"; \
+init: ## Initialize environment (copy config/.env.example to config/.env)
+	@if [ ! -f config/.env ]; then \
+		cp config/.env.example config/.env; \
+		echo "$(GREEN)Created config/.env from config/.env.example$(RESET)"; \
+		echo "$(YELLOW)Please edit config/.env and add your API keys$(RESET)"; \
 	else \
-		echo "$(YELLOW).env already exists$(RESET)"; \
+		echo "$(YELLOW)config/.env already exists$(RESET)"; \
 	fi
 
 env-check: ## Verify environment configuration

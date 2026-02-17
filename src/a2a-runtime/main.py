@@ -15,45 +15,45 @@ Features:
 - Message routing and delivery
 - Execution history and audit logging
 """
+
 import asyncio
 import logging
 from contextlib import asynccontextmanager
 
+import redis.asyncio as redis
+import state
+from activities import invoke_agent, record_execution_step, send_message, wait_for_human_approval
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import redis.asyncio as redis
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from routes.agents import router as agents_router
+from routes.approvals import router as approvals_router
+from routes.messages import router as messages_router
+from routes.workflows import router as workflows_router
 from temporalio.client import Client as TemporalClient
 from temporalio.worker import Worker
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner, SandboxRestrictions
-from opentelemetry import trace
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from workflows import (
+    HumanInLoopWorkflow,
+    ParallelAgentWorkflow,
+    SequentialAgentWorkflow,
+    SingleAgentWorkflow,
+    SupervisorAgentWorkflow,
+)
 
-import state
 from config import (
+    OTEL_ENDPOINT,
+    REDIS_URL,
     TEMPORAL_HOST,
     TEMPORAL_NAMESPACE,
     TEMPORAL_TASK_QUEUE,
-    REDIS_URL,
-    OTEL_ENDPOINT,
 )
-from activities import invoke_agent, send_message, wait_for_human_approval, record_execution_step
-from workflows import (
-    SingleAgentWorkflow,
-    SequentialAgentWorkflow,
-    ParallelAgentWorkflow,
-    SupervisorAgentWorkflow,
-    HumanInLoopWorkflow,
-)
-from routes.agents import router as agents_router
-from routes.workflows import router as workflows_router
-from routes.approvals import router as approvals_router
-from routes.messages import router as messages_router
 from shared.cors import get_cors_origins
 from shared.middleware import ServiceAuthMiddleware
-
 
 logger = logging.getLogger(__name__)
 
@@ -164,4 +164,5 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8087)

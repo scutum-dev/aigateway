@@ -1,9 +1,8 @@
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Depends
-
 import deps
-from auth import get_current_user, require_admin, UserInfo
+from auth import UserInfo, get_current_user, require_admin
+from fastapi import APIRouter, Depends, HTTPException
 from models import ModelConfig, ModelConfigUpdate
 
 router = APIRouter()
@@ -33,11 +32,7 @@ async def list_models(user: UserInfo = Depends(get_current_user)):
 
 
 @router.put("/models/{model_id}", response_model=ModelConfig)
-async def update_model(
-    model_id: str,
-    update: ModelConfigUpdate,
-    user: UserInfo = Depends(require_admin)
-):
+async def update_model(model_id: str, update: ModelConfigUpdate, user: UserInfo = Depends(require_admin)):
     """Update model configuration."""
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")

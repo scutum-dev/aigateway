@@ -1,7 +1,7 @@
 """Shared test fixtures for unit and integration tests."""
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 

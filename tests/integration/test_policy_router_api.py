@@ -4,13 +4,13 @@ Tests HTTP endpoints, ServiceAuthMiddleware, Cedar policy evaluation,
 and model routing logic.
 """
 
-import sys
-import os
 import importlib.util
-from unittest.mock import AsyncMock, MagicMock
+import os
+import sys
+from unittest.mock import AsyncMock
 
-import pytest
 import httpx
+import pytest
 
 # Load the policy-router module
 _service_dir = os.path.join(os.path.dirname(__file__), "../../src/policy-router")
@@ -23,7 +23,7 @@ _spec.loader.exec_module(_mod)
 
 app = _mod.app
 
-from routing_strategy import RoutingStrategy
+from routing_strategy import RoutingStrategy  # noqa: E402
 
 SERVICE_KEY = "test-integration-key"
 
@@ -97,10 +97,7 @@ class TestServiceAuthMiddleware:
     @pytest.mark.asyncio
     async def test_models_with_correct_key(self, authed_client):
         """Models endpoint should work with correct key."""
-        resp = await authed_client.get(
-            "/models",
-            headers={"X-Service-Key": SERVICE_KEY}
-        )
+        resp = await authed_client.get("/models", headers={"X-Service-Key": SERVICE_KEY})
         assert resp.status_code != 401
 
     @pytest.mark.asyncio
@@ -133,10 +130,13 @@ class TestRouteEndpoint:
     @pytest.mark.asyncio
     async def test_route_returns_decision(self, client):
         """Route should return a routing decision with default models."""
-        resp = await client.post("/route", json={
-            "user_id": "user-1",
-            "priority": "normal",
-        })
+        resp = await client.post(
+            "/route",
+            json={
+                "user_id": "user-1",
+                "priority": "normal",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert "selected_model" in data
@@ -150,18 +150,25 @@ class TestRouteEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         assert data["selected_model"] in [
-            "gpt-4o", "gpt-4o-mini", "claude-3-5-sonnet",
-            "claude-3-haiku", "grok-3", "llama-3.1-70b",
+            "gpt-4o",
+            "gpt-4o-mini",
+            "claude-3-5-sonnet",
+            "claude-3-haiku",
+            "grok-3",
+            "llama-3.1-70b",
         ]
 
     @pytest.mark.asyncio
     async def test_route_with_budget_constraint(self, client):
         """Route with tight budget should prefer cheaper models."""
-        resp = await client.post("/route", json={
-            "user_id": "user-1",
-            "budget_remaining": 1.0,
-            "priority": "normal",
-        })
+        resp = await client.post(
+            "/route",
+            json={
+                "user_id": "user-1",
+                "budget_remaining": 1.0,
+                "priority": "normal",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["selected_model"] is not None
@@ -178,12 +185,15 @@ class TestEvaluateEndpoint:
     async def test_evaluate_without_cedar_engine(self, client):
         """Evaluate should return 503 when cedar engine is unavailable."""
         _mod.cedar_engine = None
-        resp = await client.post("/evaluate", json={
-            "principal": "user::test-user",
-            "action": "use",
-            "resource": "model::gpt-4o",
-            "context": {},
-        })
+        resp = await client.post(
+            "/evaluate",
+            json={
+                "principal": "user::test-user",
+                "action": "use",
+                "resource": "model::gpt-4o",
+                "context": {},
+            },
+        )
         assert resp.status_code == 503
 
 

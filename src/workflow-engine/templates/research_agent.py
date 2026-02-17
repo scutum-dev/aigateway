@@ -12,12 +12,11 @@ Flow:
 """
 
 import logging
-from typing import Dict, Any, Optional
-
-from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from typing import Any, Dict, Optional
 
 from graphs.base import BaseWorkflow
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.graph import END, StateGraph
 from models.state import WorkflowState
 
 logger = logging.getLogger(__name__)
@@ -94,10 +93,10 @@ Respond in JSON format:
                     "model": "gpt-4o-mini",
                     "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Research query: {query}"}
+                        {"role": "user", "content": f"Research query: {query}"},
                     ],
                     "temperature": 0.3,
-                }
+                },
             )
 
             data = response.json()
@@ -121,11 +120,7 @@ Respond in JSON format:
         try:
             # Call Brave Search via MCP
             response = await self.mcp_client.post(
-                "/mcp/tools/call",
-                json={
-                    "name": "brave_search",
-                    "arguments": {"query": query, "count": 10}
-                }
+                "/mcp/tools/call", json={"name": "brave_search", "arguments": {"query": query, "count": 10}}
             )
 
             results = []
@@ -152,10 +147,8 @@ Respond in JSON format:
                 "/mcp/tools/call",
                 json={
                     "name": "postgres_query",
-                    "arguments": {
-                        "query": "SELECT * FROM cost_tracking_daily ORDER BY date DESC LIMIT 10"
-                    }
-                }
+                    "arguments": {"query": "SELECT * FROM cost_tracking_daily ORDER BY date DESC LIMIT 10"},
+                },
             )
 
             results = []
@@ -192,10 +185,10 @@ Provide a structured analysis."""
                     "model": "gpt-4o",
                     "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Search results:\n{results}"}
+                        {"role": "user", "content": f"Search results:\n{results}"},
                     ],
                     "temperature": 0.5,
-                }
+                },
             )
 
             data = response.json()
@@ -237,11 +230,11 @@ Use markdown formatting."""
                     "model": "gpt-4o",
                     "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Query: {query}\n\nAnalysis:\n{analysis}"}
+                        {"role": "user", "content": f"Query: {query}\n\nAnalysis:\n{analysis}"},
                     ],
                     "temperature": 0.7,
                     "max_tokens": 4000,
-                }
+                },
             )
 
             data = response.json()

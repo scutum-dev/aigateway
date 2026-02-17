@@ -11,9 +11,9 @@ Requirements:
 
 import os
 import time
-import pytest
+
 import httpx
-from typing import Optional
+import pytest
 
 # Configuration
 LITELLM_URL = os.getenv("LITELLM_URL", "http://localhost:4000")
@@ -37,7 +37,7 @@ def api_headers():
     return {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json",
-        "X-Request-ID": f"e2e-test-{int(time.time())}"
+        "X-Request-ID": f"e2e-test-{int(time.time())}",
     }
 
 
@@ -77,20 +77,14 @@ class TestFullStackE2E:
         4. Check cost was tracked
         """
         model = "gpt-4o-mini"
-        messages = [
-            {"role": "user", "content": "What is 2+2? Reply with just the number."}
-        ]
+        messages = [{"role": "user", "content": "What is 2+2? Reply with just the number."}]
 
         # Step 1: Predict cost (if service available)
         try:
             predict_response = http_client.post(
                 f"{COST_PREDICTOR_URL}/predict",
                 headers=api_headers,
-                json={
-                    "model": model,
-                    "messages": messages,
-                    "max_tokens": 10
-                }
+                json={"model": model, "messages": messages, "max_tokens": 10},
             )
 
             if predict_response.status_code == 200:
@@ -105,11 +99,7 @@ class TestFullStackE2E:
         llm_response = http_client.post(
             f"{LITELLM_URL}/v1/chat/completions",
             headers=api_headers,
-            json={
-                "model": model,
-                "messages": messages,
-                "max_tokens": 10
-            }
+            json={"model": model, "messages": messages, "max_tokens": 10},
         )
 
         assert llm_response.status_code == 200
@@ -137,12 +127,10 @@ class TestFullStackE2E:
             headers=api_headers,
             json={
                 "model": "gpt-4o-mini",
-                "messages": [
-                    {"role": "user", "content": "Count from 1 to 5."}
-                ],
+                "messages": [{"role": "user", "content": "Count from 1 to 5."}],
                 "max_tokens": 50,
-                "stream": True
-            }
+                "stream": True,
+            },
         ) as response:
             assert response.status_code == 200
 
@@ -164,11 +152,9 @@ class TestFullStackE2E:
             headers=api_headers,
             json={
                 "model": "gpt-4o",  # Primary model
-                "messages": [
-                    {"role": "user", "content": "Say 'test'"}
-                ],
-                "max_tokens": 10
-            }
+                "messages": [{"role": "user", "content": "Say 'test'"}],
+                "max_tokens": 10,
+            },
         )
 
         # Should succeed either with primary or fallback
@@ -182,11 +168,7 @@ class TestFullStackE2E:
             response = http_client.post(
                 f"{LITELLM_URL}/v1/chat/completions",
                 headers=api_headers,
-                json={
-                    "model": "gpt-4o-mini",
-                    "messages": [{"role": "user", "content": "Hi"}],
-                    "max_tokens": 5
-                }
+                json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hi"}], "max_tokens": 5},
             )
             responses.append(response.status_code)
             time.sleep(0.1)
@@ -206,21 +188,14 @@ class TestFullStackE2E:
         response = http_client.post(
             f"{LITELLM_URL}/v1/chat/completions",
             headers=api_headers,
-            json={
-                "model": "gpt-4o-mini",
-                "messages": [{"role": "user", "content": "Hello"}],
-                "max_tokens": 10
-            }
+            json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hello"}], "max_tokens": 10},
         )
 
         assert response.status_code == 200
 
         # Check if spend logs are available
         try:
-            spend_response = http_client.get(
-                f"{LITELLM_URL}/spend/logs",
-                headers=api_headers
-            )
+            spend_response = http_client.get(f"{LITELLM_URL}/spend/logs", headers=api_headers)
 
             if spend_response.status_code == 200:
                 spend_data = spend_response.json()
@@ -237,11 +212,7 @@ class TestFullStackE2E:
         response = http_client.post(
             f"{LITELLM_URL}/v1/chat/completions",
             headers=headers,
-            json={
-                "model": "gpt-4o-mini",
-                "messages": [{"role": "user", "content": "Test"}],
-                "max_tokens": 5
-            }
+            json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Test"}], "max_tokens": 5},
         )
 
         assert response.status_code == 200
@@ -259,8 +230,8 @@ class TestFullStackE2E:
             json={
                 "model": "nonexistent-model-12345",
                 "messages": [{"role": "user", "content": "Test"}],
-                "max_tokens": 10
-            }
+                "max_tokens": 10,
+            },
         )
 
         # Should return an error (400, 404, or similar)
@@ -273,7 +244,7 @@ class TestFullStackE2E:
             json={
                 "model": "gpt-4o-mini",
                 # Missing messages
-            }
+            },
         )
 
         assert response.status_code in [400, 422]
@@ -286,9 +257,7 @@ class TestFinOpsIntegration:
         """Test generating cost reports."""
         try:
             response = http_client.get(
-                f"{FINOPS_REPORTER_URL}/reports/cost",
-                headers=api_headers,
-                params={"period": "daily"}
+                f"{FINOPS_REPORTER_URL}/reports/cost", headers=api_headers, params={"period": "daily"}
             )
 
             if response.status_code == 200:
@@ -302,10 +271,7 @@ class TestFinOpsIntegration:
     def test_summary_stats(self, http_client, api_headers):
         """Test summary statistics endpoint."""
         try:
-            response = http_client.get(
-                f"{FINOPS_REPORTER_URL}/reports/summary",
-                headers=api_headers
-            )
+            response = http_client.get(f"{FINOPS_REPORTER_URL}/reports/summary", headers=api_headers)
 
             if response.status_code == 200:
                 summary = response.json()

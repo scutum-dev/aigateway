@@ -12,27 +12,27 @@ Features:
 - Cache hit/miss metrics
 - Redis backend with vector search (RedisVL) or PostgreSQL with pgvector
 """
-import os
-import json
-import hashlib
-import time
-import logging
-import struct
-from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Any, Tuple
-from contextlib import asynccontextmanager
 
-import numpy as np
-from fastapi import FastAPI, HTTPException, Header, Depends, Request
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+import hashlib
+import json
+import logging
+import os
+import struct
+from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple
+
 import httpx
+import numpy as np
 import redis.asyncio as redis
+from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry import trace
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from pydantic import BaseModel
 
 from shared.cors import get_cors_origins
 from shared.middleware import ServiceAuthMiddleware
@@ -66,6 +66,7 @@ class Message(BaseModel):
 
 class CacheLookupRequest(BaseModel):
     """Request for cache lookup."""
+
     messages: List[Message]
     model: str
     user_id: Optional[str] = None
@@ -76,6 +77,7 @@ class CacheLookupRequest(BaseModel):
 
 class CacheStoreRequest(BaseModel):
     """Request to store in cache."""
+
     messages: List[Message]
     model: str
     response: Dict[str, Any]
@@ -88,6 +90,7 @@ class CacheStoreRequest(BaseModel):
 
 class CacheLookupResponse(BaseModel):
     """Response from cache lookup."""
+
     hit: bool
     response: Optional[Dict[str, Any]] = None
     similarity: Optional[float] = None
@@ -98,6 +101,7 @@ class CacheLookupResponse(BaseModel):
 
 class CacheStats(BaseModel):
     """Cache statistics."""
+
     total_entries: int
     hits: int
     misses: int
@@ -110,6 +114,7 @@ class CacheStats(BaseModel):
 
 class CacheEntry(BaseModel):
     """Cache entry structure."""
+
     key: str
     embedding: List[float]
     response: Dict[str, Any]
@@ -187,16 +192,28 @@ async def init_cache_index():
     except Exception:
         try:
             await redis_client.execute_command(
-                "FT.CREATE", "idx:semantic_cache",
-                "ON", "HASH",
-                "PREFIX", "1", "semantic_cache:",
+                "FT.CREATE",
+                "idx:semantic_cache",
+                "ON",
+                "HASH",
+                "PREFIX",
+                "1",
+                "semantic_cache:",
                 "SCHEMA",
-                "model", "TAG",
-                "user_id", "TAG",
-                "embedding", "VECTOR", "FLAT", "6",
-                    "TYPE", "FLOAT32",
-                    "DIM", "1536",
-                    "DISTANCE_METRIC", "COSINE",
+                "model",
+                "TAG",
+                "user_id",
+                "TAG",
+                "embedding",
+                "VECTOR",
+                "FLAT",
+                "6",
+                "TYPE",
+                "FLOAT32",
+                "DIM",
+                "1536",
+                "DISTANCE_METRIC",
+                "COSINE",
             )
             logger.info("Created semantic cache vector index")
         except Exception as e:
@@ -230,16 +247,10 @@ async def get_embedding(text: str, api_key: Optional[str] = None) -> List[float]
                 return embedding
             else:
                 span.set_attribute("error", True)
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Embedding API error: {response.status_code}"
-                )
+                raise HTTPException(status_code=500, detail=f"Embedding API error: {response.status_code}")
         except httpx.RequestError as e:
             span.set_attribute("error", True)
-            raise HTTPException(
-                status_code=503,
-                detail=f"Embedding service unavailable: {e}"
-            )
+            raise HTTPException(status_code=503, detail=f"Embedding service unavailable: {e}")
 
 
 def messages_to_text(messages: List[Message]) -> str:
@@ -252,11 +263,14 @@ def messages_to_text(messages: List[Message]) -> str:
 
 def compute_cache_key(messages: List[Message], model: str, user_id: Optional[str] = None) -> str:
     """Compute a deterministic cache key."""
-    content = json.dumps({
-        "messages": [m.model_dump() for m in messages],
-        "model": model,
-        "user_id": user_id,
-    }, sort_keys=True)
+    content = json.dumps(
+        {
+            "messages": [m.model_dump() for m in messages],
+            "model": model,
+            "user_id": user_id,
+        },
+        sort_keys=True,
+    )
     return hashlib.sha256(content.encode()).hexdigest()[:32]
 
 
@@ -303,7 +317,7 @@ async def _find_similar_scan(
                 emb_bytes = await redis_client.hget(key, "embedding")
                 if emb_bytes:
                     dim = len(emb_bytes) // 4
-                    entry_data["embedding"] = list(struct.unpack(f'{dim}f', emb_bytes))
+                    entry_data["embedding"] = list(struct.unpack(f"{dim}f", emb_bytes))
                 else:
                     continue
 
@@ -345,18 +359,29 @@ async def find_similar_cached(
         span.set_attribute("model", model)
         span.set_attribute("threshold", threshold)
 
-        query_blob = struct.pack(f'{len(embedding)}f', *embedding)
+        query_blob = struct.pack(f"{len(embedding)}f", *embedding)
 
         try:
             filter_expr = f"@model:{{{model}}}"
             results = await redis_client.execute_command(
-                "FT.SEARCH", "idx:semantic_cache",
+                "FT.SEARCH",
+                "idx:semantic_cache",
                 f"({filter_expr})=>[KNN 1 @embedding $query_vec AS similarity]",
-                "PARAMS", "2", "query_vec", query_blob,
-                "SORTBY", "similarity",
-                "RETURN", "2", "data", "similarity",
-                "LIMIT", "0", "1",
-                "DIALECT", "2",
+                "PARAMS",
+                "2",
+                "query_vec",
+                query_blob,
+                "SORTBY",
+                "similarity",
+                "RETURN",
+                "2",
+                "data",
+                "similarity",
+                "LIMIT",
+                "0",
+                "1",
+                "DIALECT",
+                "2",
             )
 
             if results[0] == 0:
@@ -512,17 +537,20 @@ async def cache_store(
         )
 
         # Store in Redis as HASH for vector search
-        embedding_bytes = struct.pack(f'{len(embedding)}f', *embedding)
+        embedding_bytes = struct.pack(f"{len(embedding)}f", *embedding)
         redis_key = f"semantic_cache:{request.model}:{cache_key}"
         entry_data = entry.model_dump()
         entry_data.pop("embedding")  # stored separately as binary
 
-        await redis_client.hset(redis_key, mapping={
-            "data": json.dumps(entry_data),
-            "model": request.model,
-            "user_id": request.user_id or "",
-            "embedding": embedding_bytes,
-        })
+        await redis_client.hset(
+            redis_key,
+            mapping={
+                "data": json.dumps(entry_data),
+                "model": request.model,
+                "user_id": request.user_id or "",
+                "embedding": embedding_bytes,
+            },
+        )
         await redis_client.expire(redis_key, CACHE_TTL_SECONDS)
 
         span.set_attribute("cache_key", cache_key)
@@ -685,4 +713,5 @@ async def compute_similarity(
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8083)

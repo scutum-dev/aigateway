@@ -3,9 +3,9 @@
 Tests pure merge functions and WorkflowState node tracking logic.
 """
 
-import sys
-import os
 import importlib.util
+import os
+import sys
 
 import pytest
 

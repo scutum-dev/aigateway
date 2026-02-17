@@ -4,14 +4,16 @@ Google Vertex AI Gateway Adapter.
 Provides integration with Google Cloud Vertex AI for accessing
 Gemini models and other Google AI models.
 """
-import os
-import json
-import httpx
-from typing import AsyncIterator, Dict, List, Optional, Set, Any
-from datetime import datetime
 
-from ..core.interface import AbstractGateway, GatewayCapability
+import json
+import os
+from datetime import datetime
+from typing import Any, AsyncIterator, Dict, List, Optional, Set
+
+import httpx
+
 from ..core.errors import GatewayConnectionError, GatewayRequestError
+from ..core.interface import AbstractGateway, GatewayCapability
 from ..models.request import ChatRequest
 from ..models.response import ChatResponse, Usage
 
@@ -114,9 +116,7 @@ class VertexAIAdapter(AbstractGateway):
             from google.auth import default
             from google.auth.transport.requests import Request
 
-            credentials, project = default(
-                scopes=["https://www.googleapis.com/auth/cloud-platform"]
-            )
+            credentials, project = default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
             credentials.refresh(Request())
 
             if not self._project_id:
@@ -125,10 +125,7 @@ class VertexAIAdapter(AbstractGateway):
             return credentials.token
 
         except ImportError:
-            raise GatewayConnectionError(
-                "vertex_ai",
-                "google-auth is required. Install with: pip install google-auth"
-            )
+            raise GatewayConnectionError("vertex_ai", "google-auth is required. Install with: pip install google-auth")
         except Exception as e:
             raise GatewayConnectionError("vertex_ai", f"Authentication error: {e}")
 
@@ -210,10 +207,12 @@ class VertexAIAdapter(AbstractGateway):
                 system_instruction = {"parts": [{"text": msg.content}]}
             else:
                 role = "user" if msg.role == "user" else "model"
-                contents.append({
-                    "role": role,
-                    "parts": [{"text": msg.content}],
-                })
+                contents.append(
+                    {
+                        "role": role,
+                        "parts": [{"text": msg.content}],
+                    }
+                )
 
         payload = {
             "contents": contents,
@@ -237,9 +236,7 @@ class VertexAIAdapter(AbstractGateway):
 
         return payload
 
-    def _parse_gemini_response(
-        self, data: Dict[str, Any], model: str
-    ) -> ChatResponse:
+    def _parse_gemini_response(self, data: Dict[str, Any], model: str) -> ChatResponse:
         """Parse Gemini response."""
         candidates = data.get("candidates", [])
         if not candidates:
@@ -291,28 +288,17 @@ class VertexAIAdapter(AbstractGateway):
 
             if response.status_code != 200:
                 error_body = response.text
-                raise GatewayRequestError(
-                    self._name,
-                    f"Vertex AI error: {response.status_code} - {error_body}"
-                )
+                raise GatewayRequestError(self._name, f"Vertex AI error: {response.status_code} - {error_body}")
 
             data = response.json()
             return self._parse_gemini_response(data, request.model)
 
         except httpx.TimeoutException:
-            raise GatewayConnectionError(
-                self._get_base_url(),
-                "Request timed out"
-            )
+            raise GatewayConnectionError(self._get_base_url(), "Request timed out")
         except httpx.RequestError as e:
-            raise GatewayConnectionError(
-                self._get_base_url(),
-                str(e)
-            )
+            raise GatewayConnectionError(self._get_base_url(), str(e))
 
-    async def chat_completion_stream(
-        self, request: ChatRequest
-    ) -> AsyncIterator[ChatResponse]:
+    async def chat_completion_stream(self, request: ChatRequest) -> AsyncIterator[ChatResponse]:
         """Execute streaming chat completion request."""
         if not self._client:
             await self.connect()
@@ -328,8 +314,7 @@ class VertexAIAdapter(AbstractGateway):
                 if response.status_code != 200:
                     error_body = await response.aread()
                     raise GatewayRequestError(
-                        self._name,
-                        f"Vertex AI error: {response.status_code} - {error_body.decode()}"
+                        self._name, f"Vertex AI error: {response.status_code} - {error_body.decode()}"
                     )
 
                 buffer = ""
@@ -370,10 +355,7 @@ class VertexAIAdapter(AbstractGateway):
                             break
 
         except httpx.TimeoutException:
-            raise GatewayConnectionError(
-                self._get_base_url(),
-                "Stream request timed out"
-            )
+            raise GatewayConnectionError(self._get_base_url(), "Stream request timed out")
 
     async def list_models(self) -> List[Dict[str, Any]]:
         """List available Vertex AI models."""
@@ -426,10 +408,7 @@ class VertexAIAdapter(AbstractGateway):
             predictions = data.get("predictions", [])
             return [pred.get("embeddings", {}).get("values", []) for pred in predictions]
 
-        raise GatewayRequestError(
-            self._name,
-            f"Embedding error: {response.status_code} - {response.text}"
-        )
+        raise GatewayRequestError(self._name, f"Embedding error: {response.status_code} - {response.text}")
 
     def has_capability(self, capability: GatewayCapability) -> bool:
         """Check if gateway has a specific capability."""

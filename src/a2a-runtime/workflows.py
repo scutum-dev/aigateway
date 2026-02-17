@@ -1,12 +1,12 @@
 from datetime import timedelta
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 with workflow.unsafe.imports_passed_through():
-    from activities import invoke_agent, send_message, wait_for_human_approval, record_execution_step
     from a2a_models import InvokeAgentInput
+    from activities import invoke_agent, record_execution_step, wait_for_human_approval
 
 
 @workflow.defn
@@ -43,7 +43,14 @@ class SingleAgentWorkflow:
         # Record completion
         await workflow.execute_activity(
             record_execution_step,
-            args=[workflow_id, "complete", "completed" if result.success else "failed", {}, result.result, result.error],
+            args=[
+                workflow_id,
+                "complete",
+                "completed" if result.success else "failed",
+                {},
+                result.result,
+                result.error,
+            ],
             start_to_close_timeout=timedelta(seconds=30),
         )
 
@@ -106,11 +113,13 @@ class SequentialAgentWorkflow:
                 start_to_close_timeout=timedelta(seconds=30),
             )
 
-            results.append({
-                "agent_id": agent_id,
-                "result": result.result,
-                "tokens_used": result.tokens_used,
-            })
+            results.append(
+                {
+                    "agent_id": agent_id,
+                    "result": result.result,
+                    "tokens_used": result.tokens_used,
+                }
+            )
 
             # Pass output to next agent
             current_input = result.result or {}
@@ -127,7 +136,7 @@ class ParallelAgentWorkflow:
 
     @workflow.run
     async def run(self, agents: List[Dict[str, str]], input_data: Dict[str, Any]) -> Dict[str, Any]:
-        workflow_id = workflow.info().workflow_id
+        _workflow_id = workflow.info().workflow_id
 
         # Start all agents in parallel
         tasks = []
@@ -178,7 +187,7 @@ class SupervisorAgentWorkflow:
         task: Dict[str, Any],
         max_iterations: int = 10,
     ) -> Dict[str, Any]:
-        workflow_id = workflow.info().workflow_id
+        _workflow_id = workflow.info().workflow_id
         iteration = 0
         context = {"task": task, "results": [], "status": "in_progress"}
 
@@ -228,13 +237,15 @@ class SupervisorAgentWorkflow:
                     retry_policy=RetryPolicy(maximum_attempts=2),
                 )
 
-                context["results"].append({
-                    "iteration": iteration,
-                    "agent": worker_id,
-                    "success": worker_result.success,
-                    "result": worker_result.result,
-                    "error": worker_result.error,
-                })
+                context["results"].append(
+                    {
+                        "iteration": iteration,
+                        "agent": worker_id,
+                        "success": worker_result.success,
+                        "result": worker_result.result,
+                        "error": worker_result.error,
+                    }
+                )
 
             elif action == "parallel":
                 # Run multiple agents in parallel
@@ -263,11 +274,13 @@ class SupervisorAgentWorkflow:
                         "error": result.error,
                     }
 
-                context["results"].append({
-                    "iteration": iteration,
-                    "type": "parallel",
-                    "results": parallel_results,
-                })
+                context["results"].append(
+                    {
+                        "iteration": iteration,
+                        "type": "parallel",
+                        "results": parallel_results,
+                    }
+                )
 
         return context
 

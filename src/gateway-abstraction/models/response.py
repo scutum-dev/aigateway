@@ -2,14 +2,16 @@
 Unified response models for gateway abstraction.
 """
 
-from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
-from pydantic import BaseModel, Field
 from enum import Enum
+from typing import Any, Dict, List, Literal, Optional
+
+from pydantic import BaseModel, Field
 
 
 class FinishReason(str, Enum):
     """Reasons for completion finishing."""
+
     STOP = "stop"
     LENGTH = "length"
     TOOL_CALLS = "tool_calls"
@@ -19,6 +21,7 @@ class FinishReason(str, Enum):
 
 class Usage(BaseModel):
     """Token usage information."""
+
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
@@ -30,6 +33,7 @@ class Usage(BaseModel):
 
 class ToolCallResponse(BaseModel):
     """Tool call in response."""
+
     id: str
     type: Literal["function"] = "function"
     function: Dict[str, Any]
@@ -37,6 +41,7 @@ class ToolCallResponse(BaseModel):
 
 class ResponseMessage(BaseModel):
     """Message in response."""
+
     role: Literal["assistant"] = "assistant"
     content: Optional[str] = None
     tool_calls: Optional[List[ToolCallResponse]] = None
@@ -45,6 +50,7 @@ class ResponseMessage(BaseModel):
 
 class Choice(BaseModel):
     """A single completion choice."""
+
     index: int = 0
     message: ResponseMessage
     finish_reason: Optional[str] = None
@@ -53,6 +59,7 @@ class Choice(BaseModel):
 
 class StreamDelta(BaseModel):
     """Delta content for streaming."""
+
     role: Optional[str] = None
     content: Optional[str] = None
     tool_calls: Optional[List[Dict[str, Any]]] = None
@@ -60,6 +67,7 @@ class StreamDelta(BaseModel):
 
 class StreamChoice(BaseModel):
     """A streaming choice."""
+
     index: int = 0
     delta: StreamDelta
     finish_reason: Optional[str] = None
@@ -71,6 +79,7 @@ class ChatResponse(BaseModel):
 
     Compatible with OpenAI API format.
     """
+
     id: str = Field(default="")
     object: str = Field(default="chat.completion")
     created: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
@@ -95,17 +104,19 @@ class ChatResponse(BaseModel):
         choices = []
         for c in data.get("choices", []):
             message = c.get("message", {})
-            choices.append(Choice(
-                index=c.get("index", 0),
-                message=ResponseMessage(
-                    role=message.get("role", "assistant"),
-                    content=message.get("content"),
-                    tool_calls=[
-                        ToolCallResponse(**tc) for tc in message.get("tool_calls", [])
-                    ] if message.get("tool_calls") else None,
-                ),
-                finish_reason=c.get("finish_reason"),
-            ))
+            choices.append(
+                Choice(
+                    index=c.get("index", 0),
+                    message=ResponseMessage(
+                        role=message.get("role", "assistant"),
+                        content=message.get("content"),
+                        tool_calls=[ToolCallResponse(**tc) for tc in message.get("tool_calls", [])]
+                        if message.get("tool_calls")
+                        else None,
+                    ),
+                    finish_reason=c.get("finish_reason"),
+                )
+            )
 
         usage_data = data.get("usage")
         usage = Usage(**usage_data) if usage_data else None
@@ -132,24 +143,28 @@ class ChatResponse(BaseModel):
             if block.get("type") == "text":
                 content += block.get("text", "")
             elif block.get("type") == "tool_use":
-                tool_calls.append(ToolCallResponse(
-                    id=block.get("id", ""),
-                    type="function",
-                    function={
-                        "name": block.get("name", ""),
-                        "arguments": str(block.get("input", {})),
-                    }
-                ))
+                tool_calls.append(
+                    ToolCallResponse(
+                        id=block.get("id", ""),
+                        type="function",
+                        function={
+                            "name": block.get("name", ""),
+                            "arguments": str(block.get("input", {})),
+                        },
+                    )
+                )
 
-        choices = [Choice(
-            index=0,
-            message=ResponseMessage(
-                role="assistant",
-                content=content if content else None,
-                tool_calls=tool_calls if tool_calls else None,
-            ),
-            finish_reason=data.get("stop_reason", "stop"),
-        )]
+        choices = [
+            Choice(
+                index=0,
+                message=ResponseMessage(
+                    role="assistant",
+                    content=content if content else None,
+                    tool_calls=tool_calls if tool_calls else None,
+                ),
+                finish_reason=data.get("stop_reason", "stop"),
+            )
+        ]
 
         usage_data = data.get("usage", {})
         usage = Usage(
@@ -182,11 +197,13 @@ class ChatResponse(BaseModel):
             id="",
             object="chat.completion.chunk",
             model=model,
-            choices=[StreamChoice(
-                index=0,
-                delta=StreamDelta(content=content),
-                finish_reason=finish_reason,
-            )],
+            choices=[
+                StreamChoice(
+                    index=0,
+                    delta=StreamDelta(content=content),
+                    finish_reason=finish_reason,
+                )
+            ],
             is_stream=True,
             gateway=gateway,
         )

@@ -2,14 +2,16 @@
 Workflow definition models.
 """
 
-from typing import Optional, List, Dict, Any
-from enum import Enum
 from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
 class WorkflowStatus(str, Enum):
     """Workflow definition status."""
+
     DRAFT = "draft"
     ACTIVE = "active"
     ARCHIVED = "archived"
@@ -17,6 +19,7 @@ class WorkflowStatus(str, Enum):
 
 class WorkflowTemplate(str, Enum):
     """Pre-built workflow templates."""
+
     RESEARCH = "research"
     CODING = "coding"
     DATA_ANALYSIS = "data_analysis"
@@ -25,6 +28,7 @@ class WorkflowTemplate(str, Enum):
 
 class NodeDefinition(BaseModel):
     """Definition of a workflow node."""
+
     name: str = Field(..., description="Unique node identifier")
     type: str = Field(..., description="Node type: llm, tool, router, etc.")
     config: Dict[str, Any] = Field(default_factory=dict, description="Node configuration")
@@ -33,6 +37,7 @@ class NodeDefinition(BaseModel):
 
 class EdgeDefinition(BaseModel):
     """Definition of a workflow edge."""
+
     source: str = Field(..., description="Source node name")
     target: str = Field(..., description="Target node name")
     condition: Optional[str] = Field(default=None, description="Conditional expression")
@@ -40,6 +45,7 @@ class EdgeDefinition(BaseModel):
 
 class GraphDefinition(BaseModel):
     """Definition of the workflow graph."""
+
     nodes: List[NodeDefinition] = Field(default_factory=list)
     edges: List[EdgeDefinition] = Field(default_factory=list)
     entry_point: str = Field(..., description="Starting node")
@@ -48,6 +54,7 @@ class GraphDefinition(BaseModel):
 
 class WorkflowDefinition(BaseModel):
     """Complete workflow definition."""
+
     id: Optional[str] = None
     name: str = Field(..., description="Workflow name")
     version: str = Field(default="1.0.0", description="Workflow version")
@@ -66,6 +73,7 @@ class WorkflowDefinition(BaseModel):
 
 class WorkflowInput(BaseModel):
     """Input for starting a workflow execution."""
+
     workflow_id: Optional[str] = Field(default=None, description="Workflow definition ID")
     template: Optional[WorkflowTemplate] = Field(default=None, description="Template type if no workflow_id")
     input: Dict[str, Any] = Field(..., description="Input data for the workflow")
@@ -76,6 +84,7 @@ class WorkflowInput(BaseModel):
 
 class WorkflowOutput(BaseModel):
     """Output from workflow execution."""
+
     execution_id: str
     status: str
     output: Optional[Dict[str, Any]] = None

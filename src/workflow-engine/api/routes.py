@@ -3,13 +3,11 @@ REST API routes for workflow engine.
 """
 
 import logging
-from typing import Optional, List
-from datetime import datetime, timezone
+from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Depends
-
+from fastapi import APIRouter, HTTPException, Query
+from models.execution import CostSummary, ExecutionSummary
 from models.workflow import WorkflowDefinition, WorkflowInput, WorkflowOutput, WorkflowTemplate
-from models.execution import WorkflowExecution, ExecutionStatus, ExecutionSummary, CostSummary
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +27,7 @@ def set_dependencies(repository, workflow_manager):
 
 
 # Workflow Definitions
+
 
 @router.post("/workflows", response_model=dict)
 async def create_workflow(workflow: WorkflowDefinition):
@@ -79,6 +78,7 @@ async def get_workflow(workflow_id: str):
 
 # Templates
 
+
 @router.get("/templates")
 async def list_templates():
     """List available pre-built workflow templates."""
@@ -107,6 +107,7 @@ async def list_templates():
 
 
 # Executions
+
 
 @router.post("/executions", response_model=WorkflowOutput)
 async def start_execution(request: WorkflowInput):
@@ -202,6 +203,7 @@ async def cancel_execution(execution_id: str):
 
 # Cost Summary
 
+
 @router.get("/costs/summary", response_model=CostSummary)
 async def get_cost_summary(
     user_id: Optional[str] = None,
@@ -220,7 +222,7 @@ async def get_cost_summary(
     )
 
     total_cost = sum(e.total_cost for e in executions)
-    total_tokens = sum(getattr(e, 'total_tokens', 0) for e in executions if hasattr(e, 'total_tokens'))
+    total_tokens = sum(getattr(e, "total_tokens", 0) for e in executions if hasattr(e, "total_tokens"))
 
     # Aggregate by workflow
     cost_by_workflow = {}

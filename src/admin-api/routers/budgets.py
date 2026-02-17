@@ -1,9 +1,8 @@
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Depends
-
 import deps
-from auth import get_current_user, require_admin, UserInfo
+from auth import UserInfo, get_current_user, require_admin
+from fastapi import APIRouter, Depends, HTTPException
 from models import Budget, BudgetCreate, BudgetUpdate
 
 router = APIRouter()
@@ -39,31 +38,32 @@ async def list_budgets(user: UserInfo = Depends(get_current_user)):
 
 
 @router.post("/budgets", response_model=Budget)
-async def create_budget(
-    budget: BudgetCreate,
-    user: UserInfo = Depends(require_admin)
-):
+async def create_budget(budget: BudgetCreate, user: UserInfo = Depends(require_admin)):
     """Create a new budget."""
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        row = await conn.fetchrow("""
+        row = await conn.fetchrow(
+            """
             INSERT INTO budgets (name, entity_type, entity_id, monthly_limit, soft_limit_percent, hard_limit_percent, alert_email)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
-        """, budget.name, budget.entity_type, budget.entity_id, budget.monthly_limit,
-            budget.soft_limit_percent, budget.hard_limit_percent, budget.alert_email)
+        """,
+            budget.name,
+            budget.entity_type,
+            budget.entity_id,
+            budget.monthly_limit,
+            budget.soft_limit_percent,
+            budget.hard_limit_percent,
+            budget.alert_email,
+        )
 
         return _row_to_budget(row)
 
 
 @router.put("/budgets/{budget_id}", response_model=Budget)
-async def update_budget(
-    budget_id: str,
-    update: BudgetUpdate,
-    user: UserInfo = Depends(require_admin)
-):
+async def update_budget(budget_id: str, update: BudgetUpdate, user: UserInfo = Depends(require_admin)):
     """Update a budget."""
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")

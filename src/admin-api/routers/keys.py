@@ -1,18 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends
-import httpx
-
 import deps
-from auth import get_current_user, require_admin, UserInfo
-from models import KeyGenerateRequest, KeyUpdateRequest, KeyDeleteRequest
+import httpx
+from auth import UserInfo, get_current_user, require_admin
+from fastapi import APIRouter, Depends, HTTPException
+from models import KeyDeleteRequest, KeyGenerateRequest, KeyUpdateRequest
 
 router = APIRouter()
 
 
 @router.post("/keys/generate")
-async def generate_key(
-    request: KeyGenerateRequest,
-    user: UserInfo = Depends(require_admin)
-):
+async def generate_key(request: KeyGenerateRequest, user: UserInfo = Depends(require_admin)):
     """Generate a new API key via LiteLLM."""
     try:
         response = await deps.http_client.post(
@@ -45,10 +41,7 @@ async def list_keys(user: UserInfo = Depends(get_current_user)):
 
 
 @router.get("/keys/{key}")
-async def get_key_info(
-    key: str,
-    user: UserInfo = Depends(get_current_user)
-):
+async def get_key_info(key: str, user: UserInfo = Depends(get_current_user)):
     """Get info about a specific API key via LiteLLM."""
     try:
         response = await deps.http_client.get(
@@ -65,10 +58,7 @@ async def get_key_info(
 
 
 @router.post("/keys/update")
-async def update_key(
-    request: KeyUpdateRequest,
-    user: UserInfo = Depends(require_admin)
-):
+async def update_key(request: KeyUpdateRequest, user: UserInfo = Depends(require_admin)):
     """Update an API key via LiteLLM."""
     try:
         response = await deps.http_client.post(
@@ -85,10 +75,7 @@ async def update_key(
 
 
 @router.post("/keys/delete")
-async def delete_keys(
-    request: KeyDeleteRequest,
-    user: UserInfo = Depends(require_admin)
-):
+async def delete_keys(request: KeyDeleteRequest, user: UserInfo = Depends(require_admin)):
     """Delete API keys via LiteLLM."""
     try:
         response = await deps.http_client.post(

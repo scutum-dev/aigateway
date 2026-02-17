@@ -136,8 +136,9 @@ export default function Budgets() {
       <form onSubmit={isEdit ? handleUpdate : handleCreate} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="label">Name</label>
+            <label htmlFor="budget-name" className="label">Name</label>
             <input
+              id="budget-name"
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -146,8 +147,9 @@ export default function Budgets() {
             />
           </div>
           <div>
-            <label className="label">Entity Type</label>
+            <label htmlFor="budget-entity-type" className="label">Entity Type</label>
             <select
+              id="budget-entity-type"
               value={form.entity_type}
               onChange={(e) => setForm({ ...form, entity_type: e.target.value })}
               className="input"
@@ -159,8 +161,9 @@ export default function Budgets() {
             </select>
           </div>
           <div>
-            <label className="label">Entity ID</label>
+            <label htmlFor="budget-entity-id" className="label">Entity ID</label>
             <input
+              id="budget-entity-id"
               type="text"
               value={form.entity_id}
               onChange={(e) => setForm({ ...form, entity_id: e.target.value })}
@@ -170,9 +173,11 @@ export default function Budgets() {
             />
           </div>
           <div>
-            <label className="label">Monthly Limit ($)</label>
+            <label htmlFor="budget-monthly-limit" className="label">Monthly Limit ($)</label>
             <input
+              id="budget-monthly-limit"
               type="number"
+              min="0"
               value={form.monthly_limit}
               onChange={(e) =>
                 setForm({ ...form, monthly_limit: parseFloat(e.target.value) })
@@ -182,8 +187,9 @@ export default function Budgets() {
             />
           </div>
           <div>
-            <label className="label">Soft Limit (%)</label>
+            <label htmlFor="budget-soft-limit" className="label">Soft Limit (%)</label>
             <input
+              id="budget-soft-limit"
               type="number"
               step="0.01"
               min="0"
@@ -199,8 +205,9 @@ export default function Budgets() {
             />
           </div>
           <div>
-            <label className="label">Hard Limit (%)</label>
+            <label htmlFor="budget-hard-limit" className="label">Hard Limit (%)</label>
             <input
+              id="budget-hard-limit"
               type="number"
               step="0.01"
               min="0"
@@ -216,8 +223,9 @@ export default function Budgets() {
             />
           </div>
           <div>
-            <label className="label">Alert Email</label>
+            <label htmlFor="budget-alert-email" className="label">Alert Email</label>
             <input
+              id="budget-alert-email"
               type="email"
               value={form.alert_email}
               onChange={(e) => setForm({ ...form, alert_email: e.target.value })}
@@ -302,7 +310,7 @@ export default function Budgets() {
                     <button
                       onClick={() => handleEdit(budget)}
                       className="text-gray-400 hover:text-primary-600 p-1"
-                      title="Edit budget"
+                      aria-label={`Edit budget ${budget.name}`}
                     >
                       <PencilIcon className="w-4 h-4" />
                     </button>

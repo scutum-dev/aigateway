@@ -1,9 +1,8 @@
 import json
 
-from fastapi import APIRouter, HTTPException, Depends
-
 import deps
-from auth import get_current_user, require_admin, UserInfo
+from auth import UserInfo, get_current_user, require_admin
+from fastapi import APIRouter, Depends, HTTPException
 from models import PlatformSettings
 
 router = APIRouter()
@@ -29,20 +28,21 @@ async def get_settings(user: UserInfo = Depends(get_current_user)):
 
 
 @router.put("/settings", response_model=PlatformSettings)
-async def update_settings(
-    settings: PlatformSettings,
-    user: UserInfo = Depends(require_admin)
-):
+async def update_settings(settings: PlatformSettings, user: UserInfo = Depends(require_admin)):
     """Update platform settings."""
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
         for key, value in settings.model_dump().items():
-            await conn.execute("""
+            await conn.execute(
+                """
                 INSERT INTO platform_settings (key, value, updated_at)
                 VALUES ($1, $2, CURRENT_TIMESTAMP)
                 ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP
-            """, key, json.dumps(value))
+            """,
+                key,
+                json.dumps(value),
+            )
 
     return settings

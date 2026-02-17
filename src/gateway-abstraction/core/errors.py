@@ -14,16 +14,19 @@ class GatewayError(Exception):
 
 class GatewayNotFoundError(GatewayError):
     """Raised when a gateway is not found."""
+
     pass
 
 
 class GatewayConnectionError(GatewayError):
     """Raised when connection to gateway fails."""
+
     pass
 
 
 class GatewayAuthenticationError(GatewayError):
     """Raised when authentication fails."""
+
     pass
 
 
@@ -37,6 +40,7 @@ class GatewayRateLimitError(GatewayError):
 
 class GatewayTimeoutError(GatewayError):
     """Raised when request times out."""
+
     pass
 
 
@@ -50,4 +54,5 @@ class GatewayModelNotFoundError(GatewayError):
 
 class GatewayInvalidRequestError(GatewayError):
     """Raised when request is invalid."""
+
     pass

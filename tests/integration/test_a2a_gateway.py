@@ -8,9 +8,9 @@ Tests:
 """
 
 import os
-import pytest
+
 import httpx
-import json
+import pytest
 
 # Configuration from environment
 A2A_GATEWAY_URL = os.getenv("A2A_GATEWAY_URL", "http://localhost:3002")
@@ -26,10 +26,7 @@ def http_client():
 @pytest.fixture
 def api_headers():
     """Common API headers."""
-    return {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
+    return {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
 
 class TestAgentDiscovery:
@@ -37,10 +34,7 @@ class TestAgentDiscovery:
 
     def test_list_agents(self, http_client, api_headers):
         """Test listing registered agents."""
-        response = http_client.get(
-            f"{A2A_GATEWAY_URL}/agents",
-            headers=api_headers
-        )
+        response = http_client.get(f"{A2A_GATEWAY_URL}/agents", headers=api_headers)
 
         if response.status_code == 200:
             data = response.json()
@@ -51,10 +45,7 @@ class TestAgentDiscovery:
 
     def test_agent_card_endpoint(self, http_client, api_headers):
         """Test the well-known agent card endpoint."""
-        response = http_client.get(
-            f"{A2A_GATEWAY_URL}/.well-known/agent.json",
-            headers=api_headers
-        )
+        response = http_client.get(f"{A2A_GATEWAY_URL}/.well-known/agent.json", headers=api_headers)
 
         if response.status_code == 200:
             data = response.json()
@@ -70,9 +61,7 @@ class TestAgentDiscovery:
     def test_discover_agent_by_capability(self, http_client, api_headers):
         """Test discovering agents by capability."""
         response = http_client.get(
-            f"{A2A_GATEWAY_URL}/agents",
-            headers=api_headers,
-            params={"capability": "code_generation"}
+            f"{A2A_GATEWAY_URL}/agents", headers=api_headers, params={"capability": "code_generation"}
         )
 
         if response.status_code == 200:
@@ -94,10 +83,7 @@ class TestAgentCommunication:
     def test_send_message_to_agent(self, http_client, api_headers):
         """Test sending a message to an agent."""
         # First, get list of agents
-        agents_response = http_client.get(
-            f"{A2A_GATEWAY_URL}/agents",
-            headers=api_headers
-        )
+        agents_response = http_client.get(f"{A2A_GATEWAY_URL}/agents", headers=api_headers)
 
         if agents_response.status_code != 200:
             pytest.skip("A2A gateway not available")
@@ -116,12 +102,7 @@ class TestAgentCommunication:
         response = http_client.post(
             f"{A2A_GATEWAY_URL}/agents/{agent_id}",
             headers=api_headers,
-            json={
-                "type": "message",
-                "content": {
-                    "text": "Hello, this is a test message."
-                }
-            }
+            json={"type": "message", "content": {"text": "Hello, this is a test message."}},
         )
 
         # Message might be rejected, queued, or processed
@@ -129,10 +110,7 @@ class TestAgentCommunication:
 
     def test_send_task_to_agent(self, http_client, api_headers):
         """Test sending a task request to an agent."""
-        agents_response = http_client.get(
-            f"{A2A_GATEWAY_URL}/agents",
-            headers=api_headers
-        )
+        agents_response = http_client.get(f"{A2A_GATEWAY_URL}/agents", headers=api_headers)
 
         if agents_response.status_code != 200:
             pytest.skip("A2A gateway not available")
@@ -148,14 +126,7 @@ class TestAgentCommunication:
         response = http_client.post(
             f"{A2A_GATEWAY_URL}/agents/{agent_id}/tasks",
             headers=api_headers,
-            json={
-                "type": "task",
-                "task": {
-                    "id": "test-task-001",
-                    "description": "Test task",
-                    "input": {"test": True}
-                }
-            }
+            json={"type": "task", "task": {"id": "test-task-001", "description": "Test task", "input": {"test": True}}},
         )
 
         # Task might be rejected or accepted
@@ -171,14 +142,10 @@ class TestAgentRegistration:
             "name": "test-agent",
             "description": "A test agent for integration testing",
             "url": "http://test-agent:8080",
-            "capabilities": ["testing", "echo"]
+            "capabilities": ["testing", "echo"],
         }
 
-        response = http_client.post(
-            f"{A2A_GATEWAY_URL}/agents",
-            headers=api_headers,
-            json=agent_data
-        )
+        response = http_client.post(f"{A2A_GATEWAY_URL}/agents", headers=api_headers, json=agent_data)
 
         # Registration might succeed or fail depending on auth
         assert response.status_code in [200, 201, 400, 401, 403, 502, 503]

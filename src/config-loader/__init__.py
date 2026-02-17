@@ -21,7 +21,7 @@ Usage:
     replicas = config.get_service_config("litellm", "replicas")
 """
 
-from .loader import ConfigLoader, get_config, Environment
+from .loader import ConfigLoader, Environment, get_config
 from .vault_client import VaultClient
 
 __all__ = ["ConfigLoader", "get_config", "Environment", "VaultClient"]

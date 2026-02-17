@@ -2,12 +2,14 @@
 Unified request models for gateway abstraction.
 """
 
-from typing import Optional, List, Dict, Any, Union, Literal
+from typing import Any, Dict, List, Literal, Optional, Union
+
 from pydantic import BaseModel, Field
 
 
 class FunctionDefinition(BaseModel):
     """Function definition for tool use."""
+
     name: str
     description: Optional[str] = None
     parameters: Optional[Dict[str, Any]] = None
@@ -15,12 +17,14 @@ class FunctionDefinition(BaseModel):
 
 class Tool(BaseModel):
     """Tool definition."""
+
     type: Literal["function"] = "function"
     function: FunctionDefinition
 
 
 class ToolCall(BaseModel):
     """Tool call in a message."""
+
     id: str
     type: Literal["function"] = "function"
     function: Dict[str, Any]  # {"name": str, "arguments": str}
@@ -36,6 +40,7 @@ class Message(BaseModel):
     - Assistant messages (with optional tool calls)
     - Tool messages (results)
     """
+
     role: Literal["system", "user", "assistant", "tool"]
     content: Optional[Union[str, List[Dict[str, Any]]]] = None
     name: Optional[str] = None
@@ -53,6 +58,7 @@ class ChatRequest(BaseModel):
     Compatible with OpenAI API format with extensions for
     other providers.
     """
+
     # Required
     model: str = Field(..., description="Model identifier")
     messages: List[Message] = Field(..., description="Conversation messages")
@@ -86,17 +92,24 @@ class ChatRequest(BaseModel):
         """Convert to OpenAI API format."""
         data = {
             "model": self.model,
-            "messages": [
-                {k: v for k, v in m.model_dump().items() if v is not None}
-                for m in self.messages
-            ],
+            "messages": [{k: v for k, v in m.model_dump().items() if v is not None} for m in self.messages],
         }
 
         # Add optional parameters
         optional_fields = [
-            "temperature", "top_p", "n", "stream", "stop", "max_tokens",
-            "presence_penalty", "frequency_penalty", "logit_bias", "user",
-            "tools", "tool_choice", "response_format"
+            "temperature",
+            "top_p",
+            "n",
+            "stream",
+            "stop",
+            "max_tokens",
+            "presence_penalty",
+            "frequency_penalty",
+            "logit_bias",
+            "user",
+            "tools",
+            "tool_choice",
+            "response_format",
         ]
 
         for field in optional_fields:

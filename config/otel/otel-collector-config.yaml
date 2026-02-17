@@ -145,7 +145,7 @@ exporters:
 
   # OTLP exporter to Jaeger (traces)
   otlp/jaeger:
-    endpoint: localhost:4317
+    endpoint: jaeger:4317
     tls:
       insecure: true
 
@@ -215,7 +215,7 @@ service:
       exporters:
         - debug
         - file/traces
-        # - otlp/jaeger  # Uncomment when Jaeger is running
+        - otlp/jaeger
 
     # Metrics pipeline
     metrics:

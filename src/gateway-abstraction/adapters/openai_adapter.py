@@ -5,13 +5,14 @@ Provides direct access to OpenAI's API without going through LiteLLM.
 Useful for fallback or when specific OpenAI features are needed.
 """
 
-import logging
 import json
-from typing import Optional, Set, List, Dict, Any, AsyncIterator
+import logging
+from typing import Any, AsyncIterator, Dict, List, Optional, Set
+
 import httpx
 
+from ..core.errors import GatewayAuthenticationError, GatewayConnectionError, GatewayRateLimitError
 from ..core.interface import AbstractGateway, GatewayCapability
-from ..core.errors import GatewayConnectionError, GatewayAuthenticationError, GatewayRateLimitError
 from ..models.request import ChatRequest
 from ..models.response import ChatResponse
 
@@ -86,10 +87,7 @@ class OpenAIAdapter(AbstractGateway):
             return
 
         if not self._api_key:
-            raise GatewayAuthenticationError(
-                "API key required",
-                gateway=self._name
-            )
+            raise GatewayAuthenticationError("API key required", gateway=self._name)
 
         headers = {
             "Content-Type": "application/json",
@@ -135,10 +133,7 @@ class OpenAIAdapter(AbstractGateway):
         except httpx.RequestError as e:
             raise GatewayConnectionError(str(e), gateway=self._name)
 
-    async def chat_completion_stream(
-        self,
-        request: ChatRequest
-    ) -> AsyncIterator[ChatResponse]:
+    async def chat_completion_stream(self, request: ChatRequest) -> AsyncIterator[ChatResponse]:
         """Create a streaming chat completion via OpenAI API."""
         if not self._client:
             await self.connect()
@@ -174,17 +169,12 @@ class OpenAIAdapter(AbstractGateway):
             return
 
         if response.status_code == 401:
-            raise GatewayAuthenticationError(
-                "Invalid API key",
-                gateway=self._name
-            )
+            raise GatewayAuthenticationError("Invalid API key", gateway=self._name)
 
         if response.status_code == 429:
             retry_after = response.headers.get("Retry-After")
             raise GatewayRateLimitError(
-                "Rate limit exceeded",
-                gateway=self._name,
-                retry_after=float(retry_after) if retry_after else None
+                "Rate limit exceeded", gateway=self._name, retry_after=float(retry_after) if retry_after else None
             )
 
         error_data = {}
@@ -193,10 +183,7 @@ class OpenAIAdapter(AbstractGateway):
         except Exception:
             pass
 
-        raise GatewayConnectionError(
-            f"Request failed: {response.status_code} - {error_data}",
-            gateway=self._name
-        )
+        raise GatewayConnectionError(f"Request failed: {response.status_code} - {error_data}", gateway=self._name)
 
     def _parse_stream_chunk(self, chunk: Dict[str, Any]) -> ChatResponse:
         """Parse a streaming chunk into ChatResponse."""

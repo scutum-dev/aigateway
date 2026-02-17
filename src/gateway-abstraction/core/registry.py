@@ -3,9 +3,10 @@ Gateway registry for managing and discovering gateway adapters.
 """
 
 import logging
-from typing import Dict, List, Optional, Type, Any
-from .interface import AbstractGateway, GatewayCapability
+from typing import Any, Dict, List, Optional, Type
+
 from .errors import GatewayNotFoundError
+from .interface import AbstractGateway, GatewayCapability
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +25,7 @@ class GatewayRegistry:
         self._instances: Dict[str, AbstractGateway] = {}
         self._default_gateway: Optional[str] = None
 
-    def register_adapter(
-        self,
-        gateway_type: str,
-        adapter_class: Type[AbstractGateway]
-    ) -> None:
+    def register_adapter(self, gateway_type: str, adapter_class: Type[AbstractGateway]) -> None:
         """
         Register a gateway adapter class.
 
@@ -39,12 +36,7 @@ class GatewayRegistry:
         self._adapters[gateway_type] = adapter_class
         logger.info(f"Registered gateway adapter: {gateway_type}")
 
-    def create_gateway(
-        self,
-        gateway_type: str,
-        name: str,
-        config: Dict[str, Any]
-    ) -> AbstractGateway:
+    def create_gateway(self, gateway_type: str, name: str, config: Dict[str, Any]) -> AbstractGateway:
         """
         Create a gateway instance from registered adapter.
 
@@ -125,9 +117,7 @@ class GatewayRegistry:
         ]
 
     def find_gateway_for_model(
-        self,
-        model: str,
-        model_routing: Optional[Dict[str, List[str]]] = None
+        self, model: str, model_routing: Optional[Dict[str, List[str]]] = None
     ) -> Optional[AbstractGateway]:
         """
         Find a gateway that can handle a specific model.
@@ -149,6 +139,7 @@ class GatewayRegistry:
 
             # Check pattern matches
             import fnmatch
+
             for pattern, gateway_names in model_routing.items():
                 if fnmatch.fnmatch(model, pattern):
                     for name in gateway_names:
@@ -158,10 +149,7 @@ class GatewayRegistry:
         # Fall back to default
         return self.get_default_gateway()
 
-    def find_gateways_with_capability(
-        self,
-        capability: GatewayCapability
-    ) -> List[AbstractGateway]:
+    def find_gateways_with_capability(self, capability: GatewayCapability) -> List[AbstractGateway]:
         """
         Find all gateways that support a capability.
 
@@ -171,10 +159,7 @@ class GatewayRegistry:
         Returns:
             List of gateways with that capability
         """
-        return [
-            gw for gw in self._instances.values()
-            if gw.supports(capability) and gw.is_connected
-        ]
+        return [gw for gw in self._instances.values() if gw.supports(capability) and gw.is_connected]
 
     async def connect_all(self) -> None:
         """Connect all registered gateways."""

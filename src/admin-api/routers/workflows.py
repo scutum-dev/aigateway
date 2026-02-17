@@ -1,12 +1,11 @@
 import json
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Depends
-import httpx
-
 import deps
-from auth import get_current_user, require_admin, UserInfo
-from models import WorkflowSummary, WorkflowCreate, WorkflowExecuteRequest
+import httpx
+from auth import UserInfo, get_current_user, require_admin
+from fastapi import APIRouter, Depends, HTTPException
+from models import WorkflowCreate, WorkflowExecuteRequest, WorkflowSummary
 
 router = APIRouter()
 
@@ -37,21 +36,24 @@ async def list_workflows(user: UserInfo = Depends(get_current_user)):
 
 
 @router.post("/workflows", response_model=WorkflowSummary)
-async def create_workflow(
-    workflow: WorkflowCreate,
-    user: UserInfo = Depends(require_admin)
-):
+async def create_workflow(workflow: WorkflowCreate, user: UserInfo = Depends(require_admin)):
     """Create a new workflow definition."""
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
         graph_def = json.dumps(workflow.config or {"template": workflow.template_type})
-        row = await conn.fetchrow("""
+        row = await conn.fetchrow(
+            """
             INSERT INTO workflow_definitions (name, template_type, description, graph_definition, is_active)
             VALUES ($1, $2, $3, $4, true)
             RETURNING *
-        """, workflow.name, workflow.template_type, workflow.description, graph_def)
+        """,
+            workflow.name,
+            workflow.template_type,
+            workflow.description,
+            graph_def,
+        )
 
         return WorkflowSummary(
             id=str(row["id"]),
@@ -80,10 +82,7 @@ async def list_workflow_templates(user: UserInfo = Depends(get_current_user)):
 
 
 @router.post("/workflow-executions")
-async def execute_workflow(
-    request: WorkflowExecuteRequest,
-    user: UserInfo = Depends(get_current_user)
-):
+async def execute_workflow(request: WorkflowExecuteRequest, user: UserInfo = Depends(get_current_user)):
     """Execute a workflow via the Workflow Engine."""
     try:
         # Translate admin-api model to workflow engine format
@@ -125,10 +124,7 @@ async def list_workflow_executions(user: UserInfo = Depends(get_current_user)):
 
 
 @router.get("/workflow-executions/{execution_id}")
-async def get_workflow_execution(
-    execution_id: str,
-    user: UserInfo = Depends(get_current_user)
-):
+async def get_workflow_execution(execution_id: str, user: UserInfo = Depends(get_current_user)):
     """Get a specific workflow execution from the Workflow Engine."""
     try:
         response = await deps.http_client.get(

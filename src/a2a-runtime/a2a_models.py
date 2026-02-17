@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -31,6 +31,7 @@ class WorkflowStatus(str, Enum):
 # Pydantic Models
 class AgentCapability(BaseModel):
     """Agent capability definition."""
+
     name: str
     description: str
     input_schema: Optional[Dict[str, Any]] = None
@@ -39,6 +40,7 @@ class AgentCapability(BaseModel):
 
 class Agent(BaseModel):
     """Agent registration."""
+
     id: str
     name: str
     description: str
@@ -52,6 +54,7 @@ class Agent(BaseModel):
 
 class AgentMessage(BaseModel):
     """Message between agents."""
+
     id: Optional[str] = None
     source_agent: str
     target_agent: str
@@ -64,6 +67,7 @@ class AgentMessage(BaseModel):
 
 class A2AWorkflowRequest(BaseModel):
     """Request to start an A2A workflow."""
+
     workflow_type: str  # single_agent, sequential, parallel, supervisor
     agents: List[str]
     input: Dict[str, Any]
@@ -74,6 +78,7 @@ class A2AWorkflowRequest(BaseModel):
 
 class A2AWorkflowResponse(BaseModel):
     """Response from workflow operations."""
+
     workflow_id: str
     status: WorkflowStatus
     result: Optional[Dict[str, Any]] = None
@@ -84,6 +89,7 @@ class A2AWorkflowResponse(BaseModel):
 
 class HumanApprovalRequest(BaseModel):
     """Human approval for workflow step."""
+
     workflow_id: str
     step_id: str
     approved: bool

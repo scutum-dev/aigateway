@@ -4,14 +4,16 @@ Ollama Gateway Adapter.
 Provides integration with local Ollama server for running
 open-source models like Llama, Mistral, CodeLlama, etc.
 """
-import os
-import json
-import httpx
-from typing import AsyncIterator, Dict, List, Optional, Set, Any
-from datetime import datetime
 
-from ..core.interface import AbstractGateway, GatewayCapability
+import json
+import os
+from datetime import datetime
+from typing import Any, AsyncIterator, Dict, List, Optional, Set
+
+import httpx
+
 from ..core.errors import GatewayConnectionError, GatewayRequestError
+from ..core.interface import AbstractGateway, GatewayCapability
 from ..models.request import ChatRequest
 from ..models.response import ChatResponse, Usage
 
@@ -101,19 +103,11 @@ class OllamaAdapter(AbstractGateway):
             if response.status_code == 200:
                 self._connected = True
                 data = response.json()
-                self._available_models = [
-                    m.get("name") for m in data.get("models", [])
-                ]
+                self._available_models = [m.get("name") for m in data.get("models", [])]
             else:
-                raise GatewayConnectionError(
-                    self._base_url,
-                    f"Ollama returned status {response.status_code}"
-                )
+                raise GatewayConnectionError(self._base_url, f"Ollama returned status {response.status_code}")
         except httpx.RequestError as e:
-            raise GatewayConnectionError(
-                self._base_url,
-                f"Cannot connect to Ollama: {e}"
-            )
+            raise GatewayConnectionError(self._base_url, f"Cannot connect to Ollama: {e}")
 
     async def disconnect(self) -> None:
         """Close connection."""
@@ -216,28 +210,17 @@ class OllamaAdapter(AbstractGateway):
 
             if response.status_code != 200:
                 error_body = response.text
-                raise GatewayRequestError(
-                    self._name,
-                    f"Ollama error: {response.status_code} - {error_body}"
-                )
+                raise GatewayRequestError(self._name, f"Ollama error: {response.status_code} - {error_body}")
 
             data = response.json()
             return self._parse_response(data, request.model)
 
         except httpx.TimeoutException:
-            raise GatewayConnectionError(
-                self._base_url,
-                "Request timed out - model may be loading"
-            )
+            raise GatewayConnectionError(self._base_url, "Request timed out - model may be loading")
         except httpx.RequestError as e:
-            raise GatewayConnectionError(
-                self._base_url,
-                str(e)
-            )
+            raise GatewayConnectionError(self._base_url, str(e))
 
-    async def chat_completion_stream(
-        self, request: ChatRequest
-    ) -> AsyncIterator[ChatResponse]:
+    async def chat_completion_stream(self, request: ChatRequest) -> AsyncIterator[ChatResponse]:
         """Execute streaming chat completion request."""
         if not self._client:
             await self.connect()
@@ -271,8 +254,7 @@ class OllamaAdapter(AbstractGateway):
                 if response.status_code != 200:
                     error_body = await response.aread()
                     raise GatewayRequestError(
-                        self._name,
-                        f"Ollama error: {response.status_code} - {error_body.decode()}"
+                        self._name, f"Ollama error: {response.status_code} - {error_body.decode()}"
                     )
 
                 async for line in response.aiter_lines():
@@ -288,10 +270,7 @@ class OllamaAdapter(AbstractGateway):
                             continue
 
         except httpx.TimeoutException:
-            raise GatewayConnectionError(
-                self._base_url,
-                "Stream request timed out"
-            )
+            raise GatewayConnectionError(self._base_url, "Stream request timed out")
 
     async def list_models(self) -> List[Dict[str, Any]]:
         """List available Ollama models."""

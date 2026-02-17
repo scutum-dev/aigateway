@@ -1,10 +1,11 @@
 """Shared middleware for AI Control Plane services."""
-import os
-import hmac
 
+import hmac
+import os
+
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
-from fastapi import Request
 
 
 class ServiceAuthMiddleware(BaseHTTPMiddleware):

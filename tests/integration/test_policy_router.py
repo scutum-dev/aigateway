@@ -4,10 +4,11 @@ Integration tests for Policy Router Service.
 Tests Cedar policy evaluation, model routing decisions,
 metrics collection, and policy management.
 """
-import pytest
-import httpx
+
 from typing import Generator
 
+import httpx
+import pytest
 
 # Test configuration
 POLICY_ROUTER_URL = "http://localhost:8084"
@@ -45,9 +46,7 @@ class TestHealthCheck:
 class TestModelRouting:
     """Test model routing decisions."""
 
-    def test_route_with_budget_constraint(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_route_with_budget_constraint(self, http_client: httpx.Client, api_headers: dict):
         """Test routing selects budget-friendly model when budget is low."""
         response = http_client.post(
             "/route",
@@ -72,9 +71,7 @@ class TestModelRouting:
             "claude-3-haiku",
         ]
 
-    def test_route_with_high_budget(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_route_with_high_budget(self, http_client: httpx.Client, api_headers: dict):
         """Test routing allows premium models with high budget."""
         response = http_client.post(
             "/route",
@@ -98,9 +95,7 @@ class TestModelRouting:
             "gpt-4o-mini",
         ]
 
-    def test_route_with_strict_latency_sla(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_route_with_strict_latency_sla(self, http_client: httpx.Client, api_headers: dict):
         """Test routing respects latency SLA requirements."""
         response = http_client.post(
             "/route",
@@ -120,9 +115,7 @@ class TestModelRouting:
         # Decision should mention latency in reason
         assert data["selected_model"] is not None
 
-    def test_route_with_specific_model_request(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_route_with_specific_model_request(self, http_client: httpx.Client, api_headers: dict):
         """Test routing with a specific model requested."""
         response = http_client.post(
             "/route",
@@ -140,9 +133,7 @@ class TestModelRouting:
         # Should try to honor specific model if allowed by policies
         assert "selected_model" in data
 
-    def test_route_missing_required_fields(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_route_missing_required_fields(self, http_client: httpx.Client, api_headers: dict):
         """Test routing returns error for missing fields."""
         response = http_client.post(
             "/route",
@@ -154,9 +145,7 @@ class TestModelRouting:
         )
         assert response.status_code == 422  # Validation error
 
-    def test_route_includes_fallback_chain(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_route_includes_fallback_chain(self, http_client: httpx.Client, api_headers: dict):
         """Test routing provides fallback models."""
         response = http_client.post(
             "/route",
@@ -178,17 +167,15 @@ class TestModelRouting:
 class TestCedarPolicyEvaluation:
     """Test direct Cedar policy evaluation."""
 
-    def test_evaluate_permit_policy(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_evaluate_permit_policy(self, http_client: httpx.Client, api_headers: dict):
         """Test Cedar policy evaluation returns permit."""
         response = http_client.post(
             "/evaluate",
             headers=api_headers,
             json={
-                "principal": "User::\"test-user\"",
+                "principal": 'User::"test-user"',
                 "action": "routing:select_model",
-                "resource": "Model::\"gpt-4o-mini\"",
+                "resource": 'Model::"gpt-4o-mini"',
                 "context": {
                     "cost_budget_remaining": 100.0,
                     "latency_sla_ms": 5000,
@@ -200,17 +187,15 @@ class TestCedarPolicyEvaluation:
         assert "decision" in data
         assert data["decision"] in ["permit", "deny"]
 
-    def test_evaluate_deny_over_budget(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_evaluate_deny_over_budget(self, http_client: httpx.Client, api_headers: dict):
         """Test Cedar policy denies premium model when over budget."""
         response = http_client.post(
             "/evaluate",
             headers=api_headers,
             json={
-                "principal": "User::\"test-user\"",
+                "principal": 'User::"test-user"',
                 "action": "routing:select_model",
-                "resource": "Model::\"gpt-4o\"",
+                "resource": 'Model::"gpt-4o"',
                 "context": {
                     "cost_budget_remaining": 1.0,
                     "latency_sla_ms": 5000,
@@ -226,9 +211,7 @@ class TestCedarPolicyEvaluation:
 class TestPolicyManagement:
     """Test policy reload and management."""
 
-    def test_reload_policies(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_reload_policies(self, http_client: httpx.Client, api_headers: dict):
         """Test hot-reload of Cedar policies."""
         response = http_client.post(
             "/policies/reload",
@@ -239,9 +222,7 @@ class TestPolicyManagement:
         assert data["status"] == "reloaded"
         assert "policies_count" in data
 
-    def test_reload_policies_idempotent(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_reload_policies_idempotent(self, http_client: httpx.Client, api_headers: dict):
         """Test policy reload is idempotent."""
         # Reload twice
         response1 = http_client.post("/policies/reload", headers=api_headers)
@@ -264,9 +245,7 @@ class TestModelListing:
         assert isinstance(data, list)
         assert len(data) > 0
 
-    def test_model_has_required_fields(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_model_has_required_fields(self, http_client: httpx.Client, api_headers: dict):
         """Test model info contains required fields."""
         response = http_client.get("/models", headers=api_headers)
         assert response.status_code == 200
@@ -278,9 +257,7 @@ class TestModelListing:
             assert "tier" in model
             assert "available" in model
 
-    def test_models_include_metrics(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_models_include_metrics(self, http_client: httpx.Client, api_headers: dict):
         """Test model info includes real-time metrics."""
         response = http_client.get("/models", headers=api_headers)
         assert response.status_code == 200
@@ -297,12 +274,11 @@ class TestModelListing:
 class TestRoutingDecisionRecording:
     """Test that routing decisions are recorded to database."""
 
-    def test_routing_records_decision(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_routing_records_decision(self, http_client: httpx.Client, api_headers: dict):
         """Test routing decision is recorded."""
         # Make a routing request with a unique user
         import uuid
+
         unique_user = f"test-user-{uuid.uuid4().hex[:8]}"
 
         response = http_client.post(
@@ -335,9 +311,7 @@ class TestErrorHandling:
         )
         assert response.status_code == 422
 
-    def test_invalid_context_types(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_invalid_context_types(self, http_client: httpx.Client, api_headers: dict):
         """Test handling of invalid context value types."""
         response = http_client.post(
             "/route",
@@ -356,9 +330,7 @@ class TestErrorHandling:
 class TestMetricsIntegration:
     """Test Prometheus metrics integration."""
 
-    def test_metrics_affect_routing(
-        self, http_client: httpx.Client, api_headers: dict
-    ):
+    def test_metrics_affect_routing(self, http_client: httpx.Client, api_headers: dict):
         """Test that metrics influence routing decisions."""
         # This is a smoke test - actual behavior depends on Prometheus data
         response = http_client.post(

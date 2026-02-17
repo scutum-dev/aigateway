@@ -246,8 +246,9 @@ export default function MCPServers() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="label">Name</label>
+                <label htmlFor="mcp-name" className="label">Name</label>
                 <input
+                  id="mcp-name"
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -257,8 +258,9 @@ export default function MCPServers() {
                 />
               </div>
               <div>
-                <label className="label">Server Type</label>
+                <label htmlFor="mcp-server-type" className="label">Server Type</label>
                 <select
+                  id="mcp-server-type"
                   value={form.server_type}
                   onChange={(e) =>
                     setForm({ ...form, server_type: e.target.value })
@@ -272,8 +274,9 @@ export default function MCPServers() {
               {form.server_type === 'stdio' && (
                 <>
                   <div className="col-span-2">
-                    <label className="label">Command</label>
+                    <label htmlFor="mcp-command" className="label">Command</label>
                     <input
+                      id="mcp-command"
                       type="text"
                       value={form.command}
                       onChange={(e) =>
@@ -284,8 +287,9 @@ export default function MCPServers() {
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className="label">Arguments (space separated)</label>
+                    <label htmlFor="mcp-args" className="label">Arguments (space separated)</label>
                     <input
+                      id="mcp-args"
                       type="text"
                       value={form.args}
                       onChange={(e) =>
@@ -299,8 +303,9 @@ export default function MCPServers() {
               )}
               {form.server_type === 'http' && (
                 <div className="col-span-2">
-                  <label className="label">URL</label>
+                  <label htmlFor="mcp-url" className="label">URL</label>
                   <input
+                    id="mcp-url"
                     type="url"
                     value={form.url}
                     onChange={(e) => setForm({ ...form, url: e.target.value })}
@@ -310,8 +315,9 @@ export default function MCPServers() {
                 </div>
               )}
               <div className="col-span-2">
-                <label className="label">Environment Variables (JSON)</label>
+                <label htmlFor="mcp-env" className="label">Environment Variables (JSON)</label>
                 <textarea
+                  id="mcp-env"
                   value={form.env}
                   onChange={(e) => setForm({ ...form, env: e.target.value })}
                   className="input font-mono text-sm"

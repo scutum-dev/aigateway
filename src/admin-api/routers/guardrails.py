@@ -3,11 +3,10 @@
 import json
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Depends, Query
-from pydantic import BaseModel, Field
-
 import deps
-from auth import get_current_user, require_admin, UserInfo
+from auth import UserInfo, get_current_user, require_admin
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -16,6 +15,7 @@ router = APIRouter()
 # Pydantic models
 # ---------------------------------------------------------------------------
 
+
 class GuardrailConfigCreate(BaseModel):
     name: str
     description: Optional[str] = None
@@ -23,10 +23,17 @@ class GuardrailConfigCreate(BaseModel):
     prompt_injection_threshold: float = 0.90
     enable_pii_detection: bool = True
     pii_action: str = "anonymize"
-    pii_entities: List[str] = Field(default_factory=lambda: [
-        "PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD",
-        "US_SSN", "IBAN_CODE", "IP_ADDRESS",
-    ])
+    pii_entities: List[str] = Field(
+        default_factory=lambda: [
+            "PERSON",
+            "EMAIL_ADDRESS",
+            "PHONE_NUMBER",
+            "CREDIT_CARD",
+            "US_SSN",
+            "IBAN_CODE",
+            "IP_ADDRESS",
+        ]
+    )
     enable_toxicity: bool = True
     toxicity_threshold: float = 0.70
     banned_topics: List[str] = Field(default_factory=list)
@@ -103,10 +110,10 @@ class GuardrailEvent(BaseModel):
     created_at: Optional[str] = None
 
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _row_to_config(row) -> GuardrailConfig:
     return GuardrailConfig(
@@ -155,6 +162,7 @@ def _row_to_event(row) -> GuardrailEvent:
 # CRUD endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.get("/guardrails", response_model=List[GuardrailConfig])
 async def list_guardrail_configs(user: UserInfo = Depends(get_current_user)):
     """List all guardrail configurations."""
@@ -176,7 +184,8 @@ async def create_guardrail_config(
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        row = await conn.fetchrow("""
+        row = await conn.fetchrow(
+            """
             INSERT INTO guardrail_configs (
                 name, description,
                 enable_prompt_injection, prompt_injection_threshold,
@@ -188,13 +197,23 @@ async def create_guardrail_config(
             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
             RETURNING *
         """,
-            config.name, config.description,
-            config.enable_prompt_injection, config.prompt_injection_threshold,
-            config.enable_pii_detection, config.pii_action, config.pii_entities,
-            config.enable_toxicity, config.toxicity_threshold, config.banned_topics,
-            config.enable_secrets_detection, config.enable_invisible_text,
-            config.enable_malicious_urls, config.enable_sensitive_output,
-            config.mode, config.on_fail, config.is_active,
+            config.name,
+            config.description,
+            config.enable_prompt_injection,
+            config.prompt_injection_threshold,
+            config.enable_pii_detection,
+            config.pii_action,
+            config.pii_entities,
+            config.enable_toxicity,
+            config.toxicity_threshold,
+            config.banned_topics,
+            config.enable_secrets_detection,
+            config.enable_invisible_text,
+            config.enable_malicious_urls,
+            config.enable_sensitive_output,
+            config.mode,
+            config.on_fail,
+            config.is_active,
         )
         return _row_to_config(row)
 
@@ -209,9 +228,7 @@ async def get_guardrail_config(
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT * FROM guardrail_configs WHERE id = $1", config_id
-        )
+        row = await conn.fetchrow("SELECT * FROM guardrail_configs WHERE id = $1", config_id)
         if not row:
             raise HTTPException(status_code=404, detail="Guardrail config not found")
         return _row_to_config(row)
@@ -237,12 +254,12 @@ async def update_guardrail_config(
         set_clauses.append(f"{key} = ${i}")
         values.append(val)
 
-    set_clauses.append(f"updated_at = CURRENT_TIMESTAMP")
+    set_clauses.append("updated_at = CURRENT_TIMESTAMP")
     values.append(config_id)
 
     query = f"""
         UPDATE guardrail_configs
-        SET {', '.join(set_clauses)}
+        SET {", ".join(set_clauses)}
         WHERE id = ${len(values)}
         RETURNING *
     """
@@ -264,9 +281,7 @@ async def delete_guardrail_config(
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        result = await conn.execute(
-            "DELETE FROM guardrail_configs WHERE id = $1", config_id
-        )
+        result = await conn.execute("DELETE FROM guardrail_configs WHERE id = $1", config_id)
         if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Guardrail config not found")
 
@@ -276,6 +291,7 @@ async def delete_guardrail_config(
 # ---------------------------------------------------------------------------
 # Team assignment
 # ---------------------------------------------------------------------------
+
 
 @router.post("/guardrails/{config_id}/assign/{team_id}")
 async def assign_guardrail_to_team(
@@ -289,11 +305,16 @@ async def assign_guardrail_to_team(
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        await conn.execute("""
+        await conn.execute(
+            """
             INSERT INTO team_guardrails (team_id, guardrail_config_id, priority)
             VALUES ($1, $2, $3)
             ON CONFLICT (team_id, guardrail_config_id) DO UPDATE SET priority = $3
-        """, team_id, config_id, priority)
+        """,
+            team_id,
+            config_id,
+            priority,
+        )
 
     return {"status": "assigned"}
 
@@ -339,10 +360,14 @@ async def unassign_guardrail_from_team(
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        result = await conn.execute("""
+        result = await conn.execute(
+            """
             DELETE FROM team_guardrails
             WHERE team_id = $1 AND guardrail_config_id = $2
-        """, team_id, config_id)
+        """,
+            team_id,
+            config_id,
+        )
         if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Assignment not found")
 
@@ -352,6 +377,7 @@ async def unassign_guardrail_from_team(
 # ---------------------------------------------------------------------------
 # Events
 # ---------------------------------------------------------------------------
+
 
 @router.get("/guardrail-events", response_model=List[GuardrailEvent])
 async def list_guardrail_events(
@@ -393,5 +419,3 @@ async def list_guardrail_events(
     async with deps.db_pool.acquire() as conn:
         rows = await conn.fetch(query, *params)
         return [_row_to_event(row) for row in rows]
-
-

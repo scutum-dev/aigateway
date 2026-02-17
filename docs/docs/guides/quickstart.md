@@ -12,7 +12,7 @@ No other dependencies are required. Everything runs inside containers.
 ## 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/gateway.git
+git clone https://github.com/deo-labs/gateway.git
 cd gateway
 ```
 

@@ -89,8 +89,9 @@ export default function Settings() {
           <h2 className="text-lg font-semibold mb-4">General</h2>
           <div className="space-y-4">
             <div>
-              <label className="label">Default Model</label>
+              <label htmlFor="settings-default-model" className="label">Default Model</label>
               <input
+                id="settings-default-model"
                 type="text"
                 value={form.default_model}
                 onChange={(e) =>
@@ -103,9 +104,11 @@ export default function Settings() {
               </p>
             </div>
             <div>
-              <label className="label">Global Rate Limit (req/min)</label>
+              <label htmlFor="settings-rate-limit" className="label">Global Rate Limit (req/min)</label>
               <input
+                id="settings-rate-limit"
                 type="number"
+                min="1"
                 value={form.global_rate_limit}
                 onChange={(e) =>
                   setForm({
@@ -125,13 +128,16 @@ export default function Settings() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <label className="font-medium">Enable Caching</label>
+                <label id="caching-label" className="font-medium">Enable Caching</label>
                 <p className="text-sm text-gray-500">
                   Cache LLM responses for identical requests
                 </p>
               </div>
               <button
                 type="button"
+                role="switch"
+                aria-checked={form.enable_caching}
+                aria-labelledby="caching-label"
                 onClick={() =>
                   setForm({ ...form, enable_caching: !form.enable_caching })
                 }
@@ -147,9 +153,11 @@ export default function Settings() {
               </button>
             </div>
             <div>
-              <label className="label">Cache TTL (seconds)</label>
+              <label htmlFor="settings-cache-ttl" className="label">Cache TTL (seconds)</label>
               <input
+                id="settings-cache-ttl"
                 type="number"
+                min="0"
                 value={form.cache_ttl_seconds}
                 onChange={(e) =>
                   setForm({
@@ -170,13 +178,16 @@ export default function Settings() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <label className="font-medium">Cost Tracking</label>
+                <label id="cost-tracking-label" className="font-medium">Cost Tracking</label>
                 <p className="text-sm text-gray-500">
                   Track token usage and costs per request
                 </p>
               </div>
               <button
                 type="button"
+                role="switch"
+                aria-checked={form.enable_cost_tracking}
+                aria-labelledby="cost-tracking-label"
                 onClick={() =>
                   setForm({
                     ...form,
@@ -197,13 +208,16 @@ export default function Settings() {
 
             <div className="flex items-center justify-between">
               <div>
-                <label className="font-medium">Budget Enforcement</label>
+                <label id="budget-enforcement-label" className="font-medium">Budget Enforcement</label>
                 <p className="text-sm text-gray-500">
                   Enforce budget limits and alerts
                 </p>
               </div>
               <button
                 type="button"
+                role="switch"
+                aria-checked={form.enable_budget_enforcement}
+                aria-labelledby="budget-enforcement-label"
                 onClick={() =>
                   setForm({
                     ...form,
@@ -228,13 +242,16 @@ export default function Settings() {
 
             <div className="flex items-center justify-between">
               <div>
-                <label className="font-medium">Routing Policies</label>
+                <label id="routing-policies-label" className="font-medium">Routing Policies</label>
                 <p className="text-sm text-gray-500">
                   Enable Cedar policy-based routing
                 </p>
               </div>
               <button
                 type="button"
+                role="switch"
+                aria-checked={form.enable_routing_policies}
+                aria-labelledby="routing-policies-label"
                 onClick={() =>
                   setForm({
                     ...form,
@@ -259,13 +276,16 @@ export default function Settings() {
 
             <div className="flex items-center justify-between">
               <div>
-                <label className="font-medium">Guardrails</label>
+                <label id="guardrails-label" className="font-medium">Guardrails</label>
                 <p className="text-sm text-gray-500">
                   Content safety scanning and PII protection
                 </p>
               </div>
               <button
                 type="button"
+                role="switch"
+                aria-checked={form.enable_guardrails}
+                aria-labelledby="guardrails-label"
                 onClick={() =>
                   setForm({
                     ...form,
@@ -297,13 +317,16 @@ export default function Settings() {
           </h2>
           <div className="flex items-center justify-between">
             <div>
-              <label className="font-medium">Enable Maintenance Mode</label>
+              <label id="maintenance-label" className="font-medium">Enable Maintenance Mode</label>
               <p className="text-sm text-gray-500">
                 Block all API requests except health checks
               </p>
             </div>
             <button
               type="button"
+              role="switch"
+              aria-checked={form.maintenance_mode}
+              aria-labelledby="maintenance-label"
               onClick={handleMaintenanceToggle}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 form.maintenance_mode ? 'bg-red-600' : 'bg-gray-300'

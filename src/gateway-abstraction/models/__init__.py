@@ -2,8 +2,8 @@
 Gateway abstraction data models.
 """
 
-from .request import ChatRequest, Message, ToolCall, Tool, FunctionDefinition
-from .response import ChatResponse, Choice, Usage, StreamChoice, FinishReason
+from .request import ChatRequest, FunctionDefinition, Message, Tool, ToolCall
+from .response import ChatResponse, Choice, FinishReason, StreamChoice, Usage
 
 __all__ = [
     "ChatRequest",

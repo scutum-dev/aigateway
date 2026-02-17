@@ -186,8 +186,8 @@ resource "google_container_cluster" "main" {
 
   master_authorized_networks_config {
     cidr_blocks {
-      cidr_block   = "0.0.0.0/0"
-      display_name = "All"
+      cidr_block   = var.master_authorized_cidr
+      display_name = "Authorized network"
     }
   }
 
@@ -218,6 +218,11 @@ resource "kubernetes_namespace" "gateway" {
 # Secrets
 # =============================================================================
 
+resource "random_password" "jwt_secret" {
+  length  = 64
+  special = true
+}
+
 resource "kubernetes_secret" "gateway_secrets" {
   depends_on = [kubernetes_namespace.gateway]
 
@@ -239,7 +244,7 @@ resource "kubernetes_secret" "gateway_secrets" {
     AWS_SECRET_ACCESS_KEY = var.aws_secret_access_key
     AWS_REGION_NAME       = var.aws_region
     VERTEX_PROJECT        = var.vertex_project != "" ? var.vertex_project : var.project_id
-    JWT_SECRET_KEY        = "jwt-secret-${var.project_id}"
+    JWT_SECRET_KEY        = random_password.jwt_secret.result
     GRAFANA_PASSWORD      = var.grafana_password
     INTERNAL_SERVICE_KEY  = var.internal_service_key
   }

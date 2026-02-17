@@ -4,11 +4,9 @@ Tests pure functions (no mocks needed): token counting, pricing lookup,
 output estimation.
 """
 
-import os
 import importlib.util
+import os
 from decimal import Decimal
-
-import pytest
 
 # Load the cost-predictor main module under a unique name to avoid sys.modules collision
 _service_path = os.path.join(os.path.dirname(__file__), "../../src/cost-predictor/main.py")
@@ -57,9 +55,7 @@ class TestCountMessageTokens:
 
     def test_message_overhead(self):
         """Multiple messages should include per-message overhead."""
-        one_msg = count_message_tokens(
-            [{"role": "user", "content": "Hello"}], "gpt-4o"
-        )
+        one_msg = count_message_tokens([{"role": "user", "content": "Hello"}], "gpt-4o")
         two_msg = count_message_tokens(
             [
                 {"role": "user", "content": "Hello"},

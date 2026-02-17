@@ -199,3 +199,9 @@ variable "budget_alert_email" {
   type        = string
   default     = "shankar.deo1771@gmail.com"
 }
+
+variable "master_authorized_cidr" {
+  description = "CIDR block allowed to reach the GKE API server (e.g. VPN or office IP)"
+  type        = string
+  default     = "0.0.0.0/0"  # Override in tfvars for non-dev environments
+}

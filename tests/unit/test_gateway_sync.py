@@ -4,9 +4,9 @@ Tests the build_gateway_config function that generates Agent Gateway
 YAML configuration from MCP server definitions.
 """
 
-import sys
-import os
 import importlib.util
+import os
+import sys
 
 import pytest
 import yaml
@@ -67,7 +67,14 @@ class TestBuildGatewayConfigStdio:
     def test_single_stdio_server(self):
         """Single stdio server should produce correct cmd and args."""
         servers = [
-            {"name": "my-server", "server_type": "stdio", "command": "node", "url": None, "args": ["index.js"], "env": {}},
+            {
+                "name": "my-server",
+                "server_type": "stdio",
+                "command": "node",
+                "url": None,
+                "args": ["index.js"],
+                "env": {},
+            },
         ]
         result = build_gateway_config(servers)
         parsed = yaml.safe_load(result)
@@ -80,7 +87,14 @@ class TestBuildGatewayConfigStdio:
     def test_command_with_args_splitting(self):
         """Command with multiple words should split into cmd + extra_args prepended to args."""
         servers = [
-            {"name": "npx-server", "server_type": "stdio", "command": "npx -y @modelcontextprotocol/server", "url": None, "args": ["--port", "3001"], "env": {}},
+            {
+                "name": "npx-server",
+                "server_type": "stdio",
+                "command": "npx -y @modelcontextprotocol/server",
+                "url": None,
+                "args": ["--port", "3001"],
+                "env": {},
+            },
         ]
         result = build_gateway_config(servers)
         parsed = yaml.safe_load(result)
@@ -91,7 +105,14 @@ class TestBuildGatewayConfigStdio:
     def test_env_vars_included_when_present(self):
         """Environment variables should be included in stdio config when non-empty."""
         servers = [
-            {"name": "env-server", "server_type": "stdio", "command": "python", "url": None, "args": ["serve.py"], "env": {"API_KEY": "secret123", "DEBUG": "true"}},
+            {
+                "name": "env-server",
+                "server_type": "stdio",
+                "command": "python",
+                "url": None,
+                "args": ["serve.py"],
+                "env": {"API_KEY": "secret123", "DEBUG": "true"},
+            },
         ]
         result = build_gateway_config(servers)
         parsed = yaml.safe_load(result)
@@ -119,7 +140,14 @@ class TestBuildGatewayConfigHttp:
     def test_single_http_server(self):
         """Single http server should produce correct sse/url structure."""
         servers = [
-            {"name": "web-server", "server_type": "http", "command": None, "url": "https://api.example.com/mcp", "args": None, "env": None},
+            {
+                "name": "web-server",
+                "server_type": "http",
+                "command": None,
+                "url": "https://api.example.com/mcp",
+                "args": None,
+                "env": None,
+            },
         ]
         result = build_gateway_config(servers)
         parsed = yaml.safe_load(result)
@@ -138,8 +166,22 @@ class TestBuildGatewayConfigMixed:
     def test_mixed_server_types(self):
         """Mixed stdio and http servers should both appear in targets."""
         servers = [
-            {"name": "local-tool", "server_type": "stdio", "command": "python tool.py", "url": None, "args": [], "env": {}},
-            {"name": "remote-tool", "server_type": "http", "command": None, "url": "https://remote.example.com/sse", "args": None, "env": None},
+            {
+                "name": "local-tool",
+                "server_type": "stdio",
+                "command": "python tool.py",
+                "url": None,
+                "args": [],
+                "env": {},
+            },
+            {
+                "name": "remote-tool",
+                "server_type": "http",
+                "command": None,
+                "url": "https://remote.example.com/sse",
+                "args": None,
+                "env": None,
+            },
         ]
         result = build_gateway_config(servers)
         parsed = yaml.safe_load(result)

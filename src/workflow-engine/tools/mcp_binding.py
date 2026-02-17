@@ -3,7 +3,8 @@ MCP client for tool integration via Agent Gateway.
 """
 
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -71,10 +72,7 @@ class MCPClient:
         """
         client = await self._get_client()
 
-        response = await client.post(
-            "/mcp/tools/list",
-            json={}
-        )
+        response = await client.post("/mcp/tools/list", json={})
 
         if response.status_code != 200:
             logger.warning(f"Failed to list tools: {response.status_code}")
@@ -104,7 +102,7 @@ class MCPClient:
             json={
                 "name": name,
                 "arguments": arguments,
-            }
+            },
         )
 
         if response.status_code != 200:

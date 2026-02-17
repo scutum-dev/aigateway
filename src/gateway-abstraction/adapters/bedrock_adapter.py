@@ -4,14 +4,15 @@ AWS Bedrock Gateway Adapter.
 Provides integration with AWS Bedrock for accessing foundation models
 including Claude, Llama, Titan, and others.
 """
-import os
-import json
-from typing import AsyncIterator, Dict, List, Optional, Set, Any
-from datetime import datetime
 
-from ..core.interface import AbstractGateway, GatewayCapability
+import json
+import os
+from datetime import datetime
+from typing import Any, AsyncIterator, Dict, List, Optional, Set
+
 from ..core.errors import GatewayConnectionError, GatewayRequestError
-from ..models.request import ChatRequest, Message
+from ..core.interface import AbstractGateway, GatewayCapability
+from ..models.request import ChatRequest
 from ..models.response import ChatResponse, Usage
 
 
@@ -171,8 +172,7 @@ class BedrockAdapter(AbstractGateway):
 
         except ImportError:
             raise GatewayConnectionError(
-                "bedrock",
-                "boto3 is required for Bedrock adapter. Install with: pip install boto3"
+                "bedrock", "boto3 is required for Bedrock adapter. Install with: pip install boto3"
             )
         except Exception as e:
             raise GatewayConnectionError("bedrock", str(e))
@@ -208,9 +208,7 @@ class BedrockAdapter(AbstractGateway):
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
-    def _build_anthropic_payload(
-        self, request: ChatRequest, model_id: str
-    ) -> Dict[str, Any]:
+    def _build_anthropic_payload(self, request: ChatRequest, model_id: str) -> Dict[str, Any]:
         """Build payload for Anthropic Claude models."""
         system_message = None
         messages = []
@@ -219,10 +217,12 @@ class BedrockAdapter(AbstractGateway):
             if msg.role == "system":
                 system_message = msg.content
             else:
-                messages.append({
-                    "role": msg.role,
-                    "content": msg.content,
-                })
+                messages.append(
+                    {
+                        "role": msg.role,
+                        "content": msg.content,
+                    }
+                )
 
         payload = {
             "anthropic_version": "bedrock-2023-05-31",
@@ -241,15 +241,15 @@ class BedrockAdapter(AbstractGateway):
 
         return payload
 
-    def _build_meta_payload(
-        self, request: ChatRequest, model_id: str
-    ) -> Dict[str, Any]:
+    def _build_meta_payload(self, request: ChatRequest, model_id: str) -> Dict[str, Any]:
         """Build payload for Meta Llama models."""
         # Build prompt from messages
         prompt_parts = []
         for msg in request.messages:
             if msg.role == "system":
-                prompt_parts.append(f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n{msg.content}<|eot_id|>")
+                prompt_parts.append(
+                    f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n{msg.content}<|eot_id|>"
+                )
             elif msg.role == "user":
                 prompt_parts.append(f"<|start_header_id|>user<|end_header_id|>\n{msg.content}<|eot_id|>")
             elif msg.role == "assistant":
@@ -270,9 +270,7 @@ class BedrockAdapter(AbstractGateway):
 
         return payload
 
-    def _build_titan_payload(
-        self, request: ChatRequest, model_id: str
-    ) -> Dict[str, Any]:
+    def _build_titan_payload(self, request: ChatRequest, model_id: str) -> Dict[str, Any]:
         """Build payload for Amazon Titan models."""
         # Convert messages to text
         text_parts = []
@@ -298,9 +296,7 @@ class BedrockAdapter(AbstractGateway):
 
         return payload
 
-    def _build_payload(
-        self, request: ChatRequest, model_id: str
-    ) -> Dict[str, Any]:
+    def _build_payload(self, request: ChatRequest, model_id: str) -> Dict[str, Any]:
         """Build model-specific payload."""
         provider = self._get_provider(model_id)
 
@@ -314,9 +310,7 @@ class BedrockAdapter(AbstractGateway):
             # Generic payload for other providers
             return self._build_anthropic_payload(request, model_id)
 
-    def _parse_response(
-        self, response_body: Dict[str, Any], model_id: str, model: str
-    ) -> ChatResponse:
+    def _parse_response(self, response_body: Dict[str, Any], model_id: str, model: str) -> ChatResponse:
         """Parse Bedrock response based on provider."""
         provider = self._get_provider(model_id)
 
@@ -353,8 +347,7 @@ class BedrockAdapter(AbstractGateway):
                     prompt_tokens=response_body.get("prompt_token_count", 0),
                     completion_tokens=response_body.get("generation_token_count", 0),
                     total_tokens=(
-                        response_body.get("prompt_token_count", 0) +
-                        response_body.get("generation_token_count", 0)
+                        response_body.get("prompt_token_count", 0) + response_body.get("generation_token_count", 0)
                     ),
                 ),
                 raw_response=response_body,
@@ -374,8 +367,8 @@ class BedrockAdapter(AbstractGateway):
                     prompt_tokens=response_body.get("inputTextTokenCount", 0),
                     completion_tokens=results[0].get("tokenCount", 0) if results else 0,
                     total_tokens=(
-                        response_body.get("inputTextTokenCount", 0) +
-                        (results[0].get("tokenCount", 0) if results else 0)
+                        response_body.get("inputTextTokenCount", 0)
+                        + (results[0].get("tokenCount", 0) if results else 0)
                     ),
                 ),
                 raw_response=response_body,
@@ -418,9 +411,7 @@ class BedrockAdapter(AbstractGateway):
         except Exception as e:
             raise GatewayRequestError(self._name, str(e))
 
-    async def chat_completion_stream(
-        self, request: ChatRequest
-    ) -> AsyncIterator[ChatResponse]:
+    async def chat_completion_stream(self, request: ChatRequest) -> AsyncIterator[ChatResponse]:
         """Execute streaming chat completion request."""
         if not self._runtime_client:
             await self.connect()

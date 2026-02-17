@@ -3,10 +3,10 @@
 Tests entity building, policy evaluation fallbacks, and model selection logic.
 """
 
-import sys
-import os
 import importlib.util
-from unittest.mock import patch, MagicMock
+import os
+import sys
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -108,7 +108,9 @@ class TestEvaluate:
             with patch.dict(sys.modules, {"cedarpy": mock_cedarpy}):
                 _mod.cedarpy = mock_cedarpy
                 result = engine.evaluate(
-                    "user::u1", "routing:select_model", "model::gpt-4o",
+                    "user::u1",
+                    "routing:select_model",
+                    "model::gpt-4o",
                     {"provider": "openai"},
                 )
 

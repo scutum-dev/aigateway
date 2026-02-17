@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Depends
-
 import deps
-from auth import get_current_user, UserInfo
+from auth import UserInfo, get_current_user
+from fastapi import APIRouter, Depends
 from models import RealtimeMetrics
 
 router = APIRouter()
@@ -19,8 +18,7 @@ async def get_realtime_metrics(user: UserInfo = Depends(get_current_user)):
     try:
         # Get LiteLLM health
         response = await deps.http_client.get(
-            f"{deps.LITELLM_URL}/health/liveliness",
-            headers={"Authorization": f"Bearer {deps.LITELLM_MASTER_KEY}"}
+            f"{deps.LITELLM_URL}/health/liveliness", headers={"Authorization": f"Bearer {deps.LITELLM_MASTER_KEY}"}
         )
         provider_status["litellm"] = response.status_code == 200
     except Exception:

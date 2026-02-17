@@ -2,11 +2,11 @@
 Configuration loading for gateway abstraction layer.
 """
 
-import os
 import logging
-from typing import Dict, List, Any, Optional
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 import yaml
 
@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GatewayInstanceConfig:
     """Configuration for a single gateway instance."""
+
     type: str
     name: str
     base_url: str
@@ -27,6 +28,7 @@ class GatewayInstanceConfig:
 @dataclass
 class RoutingConfig:
     """Configuration for model routing."""
+
     strategy: str = "priority"  # priority, round_robin, least_latency
     model_routing: Dict[str, List[str]] = field(default_factory=dict)
 
@@ -34,6 +36,7 @@ class RoutingConfig:
 @dataclass
 class GatewayConfig:
     """Complete gateway configuration."""
+
     default_gateway: Optional[str] = None
     gateways: List[GatewayInstanceConfig] = field(default_factory=list)
     routing: RoutingConfig = field(default_factory=RoutingConfig)
@@ -66,7 +69,7 @@ def load_config(config_path: Optional[str] = None) -> GatewayConfig:
         return _default_config()
 
     try:
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             data = yaml.safe_load(f)
 
         return _parse_config(data)
@@ -87,14 +90,16 @@ def _parse_config(data: Dict[str, Any]) -> GatewayConfig:
             env_var = api_key[2:-1]
             api_key = os.environ.get(env_var, "")
 
-        gateways.append(GatewayInstanceConfig(
-            type=gw_data.get("type", ""),
-            name=gw_data.get("name", ""),
-            base_url=gw_data.get("base_url", ""),
-            api_key=api_key,
-            timeout=gw_data.get("timeout", 60.0),
-            extra=gw_data.get("extra", {}),
-        ))
+        gateways.append(
+            GatewayInstanceConfig(
+                type=gw_data.get("type", ""),
+                name=gw_data.get("name", ""),
+                base_url=gw_data.get("base_url", ""),
+                api_key=api_key,
+                timeout=gw_data.get("timeout", 60.0),
+                extra=gw_data.get("extra", {}),
+            )
+        )
 
     routing_data = data.get("routing", {})
     routing = RoutingConfig(

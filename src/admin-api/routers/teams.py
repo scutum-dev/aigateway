@@ -1,19 +1,15 @@
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Depends
-
 import deps
-from auth import get_current_user, require_admin, UserInfo
-from models import Team, TeamCreate, TeamUpdate, TeamMember
+from auth import UserInfo, get_current_user, require_admin
+from fastapi import APIRouter, Depends, HTTPException
+from models import Team, TeamCreate, TeamMember, TeamUpdate
 
 router = APIRouter()
 
 
 async def _row_to_team(conn, row) -> Team:
-    members = await conn.fetch(
-        "SELECT user_id FROM team_members WHERE team_id = $1",
-        row["id"]
-    )
+    members = await conn.fetch("SELECT user_id FROM team_members WHERE team_id = $1", row["id"])
     return Team(
         id=str(row["id"]),
         name=row["name"],
@@ -39,20 +35,23 @@ async def list_teams(user: UserInfo = Depends(get_current_user)):
 
 
 @router.post("/teams", response_model=Team)
-async def create_team(
-    team: TeamCreate,
-    user: UserInfo = Depends(require_admin)
-):
+async def create_team(team: TeamCreate, user: UserInfo = Depends(require_admin)):
     """Create a new team."""
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        row = await conn.fetchrow("""
+        row = await conn.fetchrow(
+            """
             INSERT INTO teams (name, description, monthly_budget, default_model)
             VALUES ($1, $2, $3, $4)
             RETURNING *
-        """, team.name, team.description, team.monthly_budget, team.default_model)
+        """,
+            team.name,
+            team.description,
+            team.monthly_budget,
+            team.default_model,
+        )
 
         return await _row_to_team(conn, row)
 
@@ -82,7 +81,7 @@ async def update_team(
 
     query = f"""
         UPDATE teams
-        SET {', '.join(set_clauses)}
+        SET {", ".join(set_clauses)}
         WHERE id = ${len(values)}
         RETURNING *
     """
@@ -104,15 +103,9 @@ async def delete_team(
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        await conn.execute(
-            "DELETE FROM team_guardrails WHERE team_id = $1", team_id
-        )
-        await conn.execute(
-            "DELETE FROM team_members WHERE team_id = $1", team_id
-        )
-        result = await conn.execute(
-            "DELETE FROM teams WHERE id = $1", team_id
-        )
+        await conn.execute("DELETE FROM team_guardrails WHERE team_id = $1", team_id)
+        await conn.execute("DELETE FROM team_members WHERE team_id = $1", team_id)
+        result = await conn.execute("DELETE FROM teams WHERE id = $1", team_id)
         if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Team not found")
 
@@ -120,20 +113,21 @@ async def delete_team(
 
 
 @router.post("/teams/{team_id}/members")
-async def add_team_member(
-    team_id: str,
-    member: TeamMember,
-    user: UserInfo = Depends(require_admin)
-):
+async def add_team_member(team_id: str, member: TeamMember, user: UserInfo = Depends(require_admin)):
     """Add a member to a team."""
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        await conn.execute("""
+        await conn.execute(
+            """
             INSERT INTO team_members (team_id, user_id, role)
             VALUES ($1, $2, $3)
             ON CONFLICT (team_id, user_id) DO UPDATE SET role = $3
-        """, team_id, member.user_id, member.role)
+        """,
+            team_id,
+            member.user_id,
+            member.role,
+        )
 
     return {"status": "added"}

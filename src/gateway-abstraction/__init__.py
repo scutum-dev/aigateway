@@ -8,9 +8,9 @@ A pluggable interface for AI gateways allowing:
 - Configuration-based gateway selection
 """
 
+from .core.config import GatewayConfig, load_config
 from .core.interface import AbstractGateway, GatewayCapability
 from .core.registry import GatewayRegistry
-from .core.config import GatewayConfig, load_config
 from .models.request import ChatRequest, Message, ToolCall
 from .models.response import ChatResponse, Choice, Usage
 

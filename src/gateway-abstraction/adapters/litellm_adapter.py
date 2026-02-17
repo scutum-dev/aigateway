@@ -5,13 +5,14 @@ Primary adapter for the AI Control Plane platform, providing access
 to all models through LiteLLM's unified proxy.
 """
 
-import logging
 import json
-from typing import Optional, Set, List, Dict, Any, AsyncIterator
+import logging
+from typing import Any, AsyncIterator, Dict, List, Optional, Set
+
 import httpx
 
+from ..core.errors import GatewayAuthenticationError, GatewayConnectionError
 from ..core.interface import AbstractGateway, GatewayCapability
-from ..core.errors import GatewayConnectionError, GatewayAuthenticationError
 from ..models.request import ChatRequest
 from ..models.response import ChatResponse
 
@@ -93,17 +94,11 @@ class LiteLLMAdapter(AbstractGateway):
         try:
             response = await self._client.get("/health/liveliness")
             if response.status_code != 200:
-                raise GatewayConnectionError(
-                    f"Health check failed: {response.status_code}",
-                    gateway=self._name
-                )
+                raise GatewayConnectionError(f"Health check failed: {response.status_code}", gateway=self._name)
             self._connected = True
             logger.info(f"Connected to LiteLLM at {self._base_url}")
         except httpx.RequestError as e:
-            raise GatewayConnectionError(
-                f"Failed to connect: {e}",
-                gateway=self._name
-            )
+            raise GatewayConnectionError(f"Failed to connect: {e}", gateway=self._name)
 
     async def disconnect(self) -> None:
         """Close connection to LiteLLM proxy."""
@@ -111,7 +106,7 @@ class LiteLLMAdapter(AbstractGateway):
             await self._client.aclose()
             self._client = None
             self._connected = False
-            logger.info(f"Disconnected from LiteLLM")
+            logger.info("Disconnected from LiteLLM")
 
     async def chat_completion(self, request: ChatRequest) -> ChatResponse:
         """Create a chat completion through LiteLLM."""
@@ -125,16 +120,12 @@ class LiteLLMAdapter(AbstractGateway):
             )
 
             if response.status_code == 401:
-                raise GatewayAuthenticationError(
-                    "Authentication failed",
-                    gateway=self._name
-                )
+                raise GatewayAuthenticationError("Authentication failed", gateway=self._name)
 
             if response.status_code != 200:
                 error_data = response.json() if response.content else {}
                 raise GatewayConnectionError(
-                    f"Request failed: {response.status_code} - {error_data}",
-                    gateway=self._name
+                    f"Request failed: {response.status_code} - {error_data}", gateway=self._name
                 )
 
             data = response.json()
@@ -143,10 +134,7 @@ class LiteLLMAdapter(AbstractGateway):
         except httpx.RequestError as e:
             raise GatewayConnectionError(str(e), gateway=self._name)
 
-    async def chat_completion_stream(
-        self,
-        request: ChatRequest
-    ) -> AsyncIterator[ChatResponse]:
+    async def chat_completion_stream(self, request: ChatRequest) -> AsyncIterator[ChatResponse]:
         """Create a streaming chat completion through LiteLLM."""
         if not self._client:
             await self.connect()
@@ -162,10 +150,7 @@ class LiteLLMAdapter(AbstractGateway):
                 json=request_data,
             ) as response:
                 if response.status_code != 200:
-                    raise GatewayConnectionError(
-                        f"Stream request failed: {response.status_code}",
-                        gateway=self._name
-                    )
+                    raise GatewayConnectionError(f"Stream request failed: {response.status_code}", gateway=self._name)
 
                 async for line in response.aiter_lines():
                     if line.startswith("data: "):

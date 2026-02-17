@@ -4,12 +4,13 @@ PostgreSQL checkpointer for LangGraph state persistence.
 
 import logging
 from typing import Optional
+
 import asyncpg
 
 logger = logging.getLogger(__name__)
 
 
-async def create_checkpointer(database_url: str) -> Optional["AsyncPostgresSaver"]:
+async def create_checkpointer(database_url: str) -> Optional["AsyncPostgresSaver"]:  # noqa: F821
     """
     Create a PostgreSQL checkpointer for LangGraph.
 

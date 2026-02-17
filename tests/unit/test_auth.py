@@ -4,9 +4,9 @@ Tests JWT creation, decoding, validation, and API key validation
 against LiteLLM.
 """
 
-import sys
-import os
 import importlib.util
+import os
+import sys
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
