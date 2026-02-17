@@ -1,8 +1,17 @@
 """Shared test fixtures for unit and integration tests."""
 
+import os
+import sys
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
+# Ensure `from shared.xxx import ...` works for all test modules that load service code.
+# The shared package lives at src/shared/, so its parent (src/) must be on sys.path.
+_repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_src_dir = os.path.join(_repo_root, "src")
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
 
 
 @pytest.fixture

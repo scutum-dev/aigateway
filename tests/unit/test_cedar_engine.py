@@ -13,6 +13,15 @@ import pytest
 # Load the cedar_engine module from src/policy-router/cedar_engine.py
 _service_dir = os.path.join(os.path.dirname(__file__), "../../src/policy-router")
 sys.path.insert(0, _service_dir)
+
+# Pre-load policy-router's models.py so cedar_engine picks it up instead of
+# the admin-api models.py that may already be cached in sys.modules.
+_saved_models = sys.modules.pop("models", None)
+_models_spec = importlib.util.spec_from_file_location("models", os.path.join(_service_dir, "models.py"))
+_models_mod = importlib.util.module_from_spec(_models_spec)
+sys.modules["models"] = _models_mod
+_models_spec.loader.exec_module(_models_mod)
+
 _spec = importlib.util.spec_from_file_location(
     "cedar_engine_mod",
     os.path.join(_service_dir, "cedar_engine.py"),
@@ -20,6 +29,10 @@ _spec = importlib.util.spec_from_file_location(
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["cedar_engine_mod"] = _mod
 _spec.loader.exec_module(_mod)
+
+# Restore the original models module (if any) so other tests aren't affected
+if _saved_models is not None:
+    sys.modules["models"] = _saved_models
 
 CedarEngine = _mod.CedarEngine
 

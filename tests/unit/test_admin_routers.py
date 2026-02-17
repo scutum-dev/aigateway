@@ -97,9 +97,11 @@ def _make_async_conn(
 
 def _make_pool(conn):
     """Wrap a mock connection in a pool that supports `async with pool.acquire()`."""
-    pool = AsyncMock()
-    pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
-    pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
+    pool = MagicMock()
+    ctx = AsyncMock()
+    ctx.__aenter__.return_value = conn
+    ctx.__aexit__.return_value = None
+    pool.acquire.return_value = ctx
     return pool
 
 

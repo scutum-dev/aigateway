@@ -147,8 +147,8 @@ class TestFindSimilarCached:
             temperature=None,
             input_tokens=10,
             output_tokens=20,
-            created_at="2025-01-01T00:00:00",
-            expires_at="2099-01-01T00:00:00",
+            created_at="2025-01-01T00:00:00+00:00",
+            expires_at="2099-01-01T00:00:00+00:00",
         )
 
         mock_redis = AsyncMock()
@@ -172,12 +172,13 @@ class TestFindSimilarCached:
             temperature=None,
             input_tokens=10,
             output_tokens=20,
-            created_at="2025-01-01T00:00:00",
-            expires_at="2099-01-01T00:00:00",
+            created_at="2025-01-01T00:00:00+00:00",
+            expires_at="2099-01-01T00:00:00+00:00",
         )
 
         mock_redis = AsyncMock()
         mock_redis.scan_iter = self._make_async_iter([b"semantic_cache:gpt-4o:test"])
+        mock_redis.hget.return_value = None  # force fallback to legacy string format
         mock_redis.get.return_value = json.dumps(entry.model_dump()).encode()
         mock_redis.delete = AsyncMock()
         _mod.redis_client = mock_redis
@@ -200,8 +201,8 @@ class TestFindSimilarCached:
             temperature=None,
             input_tokens=10,
             output_tokens=20,
-            created_at="2025-01-01T00:00:00",
-            expires_at="2099-01-01T00:00:00",
+            created_at="2025-01-01T00:00:00+00:00",
+            expires_at="2099-01-01T00:00:00+00:00",
         )
 
         mock_redis = AsyncMock()
