@@ -11,7 +11,7 @@ import deps
 from auth import UserInfo, get_current_user, require_admin
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -22,8 +22,8 @@ router = APIRouter()
 
 
 class CostAllocationRuleCreate(BaseModel):
-    name: str
-    team_id: Optional[str] = None
+    name: str = Field(..., description="Human-readable rule name")
+    team_id: Optional[str] = Field(None, description="Team being forecasted")
     allocation_type: str
     allocation_target: str
     allocation_percent: Optional[float] = 100.0
@@ -31,42 +31,42 @@ class CostAllocationRuleCreate(BaseModel):
 
 
 class CostAllocationRule(BaseModel):
-    id: str
-    name: str
+    id: str = Field(..., description="Unique rule identifier (UUID)")
+    name: str = Field(..., description="Human-readable rule name")
     team_id: Optional[str] = None
     allocation_type: str
     allocation_target: str
     allocation_percent: float
     metadata: Dict[str, Any]
-    is_active: bool
-    created_at: Optional[str] = None
+    is_active: bool = Field(..., description="Whether this rule is applied")
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation timestamp")
 
 
 class ChargebackReport(BaseModel):
-    id: str
+    id: str = Field(..., description="Unique report identifier (UUID)")
     report_period: str
-    status: str
-    total_cost: float
-    breakdown: list
+    status: str = Field(..., description="Report status (draft, finalized)")
+    total_cost: float = Field(..., description="Total cost in USD for the period")
+    breakdown: list = Field(..., description="Per-team and per-model cost breakdown (JSON)")
     generated_by: Optional[str] = None
-    finalized_at: Optional[str] = None
-    created_at: Optional[str] = None
+    finalized_at: Optional[str] = Field(None, description="ISO 8601 finalization timestamp")
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation timestamp")
 
 
 class BudgetForecast(BaseModel):
-    id: str
+    id: str = Field(..., description="Unique forecast identifier (UUID)")
     team_id: Optional[str] = None
     forecast_period: str
     forecast_type: str
     forecasted_cost: Optional[float] = None
-    confidence_low: Optional[float] = None
-    confidence_high: Optional[float] = None
+    confidence_low: Optional[float] = Field(None, description="Lower bound of confidence interval")
+    confidence_high: Optional[float] = Field(None, description="Upper bound of confidence interval")
     actual_cost: Optional[float] = None
     created_at: Optional[str] = None
 
 
 class GenerateReportRequest(BaseModel):
-    period: str  # e.g. "2026-02"
+    period: str = Field(..., description="Billing period in YYYY-MM format")  # e.g. "2026-02" = Field(..., description="Billing period (YYYY-MM format)")
 
 
 class GenerateForecastRequest(BaseModel):

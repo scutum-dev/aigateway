@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 import deps
 from auth import UserInfo, get_current_user, require_admin
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -19,11 +19,11 @@ router = APIRouter()
 
 
 class PlaygroundSessionCreate(BaseModel):
-    name: Optional[str] = None
-    prompt: str
-    models: List[str]
-    settings: Optional[Dict] = None
-    results: Optional[Dict] = None
+    name: Optional[str] = Field(None, description="Session display name")
+    prompt: str = Field(..., description="Prompt text used in the session")
+    models: List[str] = Field(..., description="List of models used for comparison")
+    settings: Optional[Dict] = Field(None, description="Model settings (temperature, max_tokens, etc.)")
+    results: Optional[Dict] = Field(None, description="Execution results from each model (JSON)")
     is_public: Optional[bool] = False
 
 
@@ -33,7 +33,7 @@ class PlaygroundSessionUpdate(BaseModel):
     models: Optional[List[str]] = None
     settings: Optional[Dict] = None
     results: Optional[Dict] = None
-    is_public: Optional[bool] = None
+    is_public: Optional[bool] = Field(None, description="Whether this session is publicly shareable")
 
 
 # ---------------------------------------------------------------------------

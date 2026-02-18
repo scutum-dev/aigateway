@@ -1,12 +1,16 @@
 """Model access governance router — tiers, access requests, and approvals."""
 
+import json
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import deps
 from auth import UserInfo, get_current_user, require_admin
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -17,42 +21,42 @@ router = APIRouter()
 
 
 class ModelAccessTierCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
-    requires_approval: Optional[bool] = False
-    requires_justification: Optional[bool] = False
-    max_grant_duration_days: Optional[int] = None
-    models: Optional[List[str]] = None
+    name: str = Field(..., description="Tier display name")
+    description: Optional[str] = Field(None, description="Brief description of this access level")
+    requires_approval: Optional[bool] = Field(False, description="Whether access requires admin approval")
+    requires_justification: Optional[bool] = Field(False, description="Whether users must provide a reason")
+    max_grant_duration_days: Optional[int] = Field(None, description="Auto-expiry period in days")
+    models: Optional[List[str]] = Field(None, description="Explicit list of allowed models")
 
 
 class ModelAccessTier(BaseModel):
-    id: str
-    name: str
-    description: Optional[str] = None
-    requires_approval: bool = False
-    requires_justification: bool = False
-    max_grant_duration_days: Optional[int] = None
-    models: List[str] = []
-    created_at: Optional[str] = None
+    id: str = Field(..., description="Unique tier identifier (UUID)")
+    name: str = Field(..., description="Tier display name")
+    description: Optional[str] = Field(None, description="Brief description of this access level")
+    requires_approval: bool = Field(False, description="Whether access requires admin approval")
+    requires_justification: bool = Field(False, description="Whether users must provide a reason")
+    max_grant_duration_days: Optional[int] = Field(None, description="Auto-expiry period in days")
+    models: List[str] = Field(default=[], description="List of allowed models")
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation timestamp")
 
 
 class ModelAccessRequestCreate(BaseModel):
-    model_pattern: str
-    tier_id: Optional[str] = None
-    team_id: Optional[str] = None
-    justification: Optional[str] = None
+    model_pattern: str = Field(..., description="Model pattern being requested")
+    tier_id: Optional[str] = Field(None, description="Access tier being requested")
+    team_id: Optional[str] = Field(None, description="Team to grant access to")
+    justification: Optional[str] = Field(None, description="Reason for requesting access")
 
 
 class ModelAccessRequest(BaseModel):
-    id: str
-    user_id: str
-    team_id: Optional[str] = None
-    model_pattern: str
-    tier_id: Optional[str] = None
-    justification: Optional[str] = None
-    status: str = "pending"
-    reviewer: Optional[str] = None
-    review_comment: Optional[str] = None
+    id: str = Field(..., description="Unique request identifier (UUID)")
+    user_id: str = Field(..., description="User who submitted the request")
+    team_id: Optional[str] = Field(None, description="Team to grant access to")
+    model_pattern: str = Field(..., description="Model pattern being requested")
+    tier_id: Optional[str] = Field(None, description="Access tier being requested")
+    justification: Optional[str] = Field(None, description="Reason for requesting access")
+    status: str = Field("pending", description="Request status (pending, approved, rejected)")
+    reviewer: Optional[str] = Field(None, description="Admin who reviewed the request")
+    review_comment: Optional[str] = Field(None, description="Reviewer comment or feedback")
     granted_at: Optional[str] = None
     expires_at: Optional[str] = None
     created_at: Optional[str] = None
@@ -91,6 +95,87 @@ def _row_to_request(row) -> ModelAccessRequest:
         expires_at=str(row["expires_at"]) if row["expires_at"] else None,
         created_at=str(row["created_at"]) if row["created_at"] else None,
     )
+
+
+async def _grant_model_access_in_litellm(team_id: str, model_pattern: str):
+    """Add a model to a team's allowed models in LiteLLM."""
+    if not deps.http_client or not team_id:
+        return
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {deps.LITELLM_MASTER_KEY}",
+            "Content-Type": "application/json",
+        }
+
+        # First get the current team info to get existing models
+        info_resp = await deps.http_client.get(
+            f"{deps.LITELLM_URL}/team/info",
+            headers=headers,
+            params={"team_id": team_id},
+        )
+
+        current_models = []
+        if info_resp.status_code == 200:
+            team_info = info_resp.json().get("team_info", {})
+            current_models = team_info.get("models", []) or []
+
+        # Add the new model if not already present
+        if model_pattern not in current_models:
+            current_models.append(model_pattern)
+
+            resp = await deps.http_client.post(
+                f"{deps.LITELLM_URL}/team/update",
+                headers=headers,
+                json={
+                    "team_id": team_id,
+                    "models": current_models,
+                },
+            )
+            if resp.status_code == 200:
+                logger.info("Granted model %s to team %s in LiteLLM", model_pattern, team_id)
+            else:
+                logger.warning("LiteLLM /team/update returned %s: %s", resp.status_code, resp.text[:200])
+        else:
+            logger.info("Model %s already in team %s models", model_pattern, team_id)
+    except Exception as e:
+        logger.warning("Failed to grant model access in LiteLLM: %s", e)
+
+
+async def _revoke_model_access_in_litellm(team_id: str, model_pattern: str):
+    """Remove a model from a team's allowed models in LiteLLM (for expiry)."""
+    if not deps.http_client or not team_id:
+        return
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {deps.LITELLM_MASTER_KEY}",
+            "Content-Type": "application/json",
+        }
+
+        info_resp = await deps.http_client.get(
+            f"{deps.LITELLM_URL}/team/info",
+            headers=headers,
+            params={"team_id": team_id},
+        )
+
+        if info_resp.status_code == 200:
+            team_info = info_resp.json().get("team_info", {})
+            current_models = team_info.get("models", []) or []
+
+            if model_pattern in current_models:
+                current_models.remove(model_pattern)
+                await deps.http_client.post(
+                    f"{deps.LITELLM_URL}/team/update",
+                    headers=headers,
+                    json={
+                        "team_id": team_id,
+                        "models": current_models,
+                    },
+                )
+                logger.info("Revoked model %s from team %s in LiteLLM", model_pattern, team_id)
+    except Exception as e:
+        logger.warning("Failed to revoke model access in LiteLLM: %s", e)
 
 
 # ---------------------------------------------------------------------------
@@ -332,6 +417,14 @@ async def approve_request(
             expires_at,
             id,
         )
+
+        # Grant model access in LiteLLM
+        if request["team_id"]:
+            await _grant_model_access_in_litellm(
+                str(request["team_id"]),
+                request["model_pattern"],
+            )
+
         return {"status": "approved"}
 
 

@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 import deps
 from auth import UserInfo, get_current_user, require_admin
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -19,80 +19,80 @@ router = APIRouter()
 
 
 class SLADefinitionCreate(BaseModel):
-    name: str
-    provider: Optional[str] = None
-    model_pattern: Optional[str] = None
-    target_p50_ms: Optional[int] = None
-    target_p95_ms: Optional[int] = None
-    target_p99_ms: Optional[int] = None
-    target_error_rate: Optional[float] = 0.01
-    target_availability: Optional[float] = 0.999
-    evaluation_window_minutes: Optional[int] = 60
-    alert_channels: Optional[List[str]] = None
+    name: str = Field(..., description="Human-readable SLA definition name")
+    provider: Optional[str] = Field(None, description="Provider name (e.g. openai, anthropic)")
+    model_pattern: Optional[str] = Field(None, description="Glob pattern for matching models")
+    target_p50_ms: Optional[int] = Field(None, description="50th-percentile latency target in ms")
+    target_p95_ms: Optional[int] = Field(None, description="95th-percentile latency target in ms")
+    target_p99_ms: Optional[int] = Field(None, description="99th-percentile latency target in ms")
+    target_error_rate: Optional[float] = Field(0.01, description="Max acceptable error rate (0.0-1.0)")
+    target_availability: Optional[float] = Field(0.999, description="Min availability target (0.0-1.0)")
+    evaluation_window_minutes: Optional[int] = Field(60, description="Rolling window size in minutes")
+    alert_channels: Optional[List[str]] = Field(None, description="Notification channels for alerts")
 
 
 class SLADefinition(BaseModel):
-    id: str
-    name: str
-    provider: Optional[str] = None
-    model_pattern: Optional[str] = None
-    target_p50_ms: Optional[int] = None
-    target_p95_ms: Optional[int] = None
-    target_p99_ms: Optional[int] = None
-    target_error_rate: float
-    target_availability: float
-    evaluation_window_minutes: int
-    alert_channels: List[str]
-    is_active: bool
-    created_at: Optional[str] = None
+    id: str = Field(..., description="Unique SLA definition identifier (UUID)")
+    name: str = Field(..., description="Human-readable SLA definition name")
+    provider: Optional[str] = Field(None, description="Provider name (e.g. openai, anthropic)")
+    model_pattern: Optional[str] = Field(None, description="Glob pattern for matching models")
+    target_p50_ms: Optional[int] = Field(None, description="50th-percentile latency target in ms")
+    target_p95_ms: Optional[int] = Field(None, description="95th-percentile latency target in ms")
+    target_p99_ms: Optional[int] = Field(None, description="99th-percentile latency target in ms")
+    target_error_rate: float = Field(..., description="Max acceptable error rate (0.0-1.0)")
+    target_availability: float = Field(..., description="Min availability target (0.0-1.0)")
+    evaluation_window_minutes: int = Field(..., description="Rolling window size in minutes")
+    alert_channels: List[str] = Field(..., description="Notification channels for alerts")
+    is_active: bool = Field(..., description="Whether this SLA definition is active")
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation timestamp")
 
 
 class ProviderHealthMetric(BaseModel):
-    id: str
-    provider: str
-    model: str
-    bucket_start: str
-    request_count: int
-    error_count: int
-    p50_latency_ms: Optional[int] = None
-    p95_latency_ms: Optional[int] = None
-    p99_latency_ms: Optional[int] = None
-    avg_latency_ms: Optional[int] = None
-    total_tokens: int
-    total_cost: float
+    id: str = Field(..., description="Unique health metric identifier (UUID)")
+    provider: str = Field(..., description="Provider name (e.g. openai, anthropic)")
+    model: str = Field(..., description="Model identifier")
+    bucket_start: str = Field(..., description="Start of the time bucket (ISO 8601)")
+    request_count: int = Field(..., description="Total requests in this bucket")
+    error_count: int = Field(..., description="Failed requests in this bucket")
+    p50_latency_ms: Optional[int] = Field(None, description="50th-percentile latency in ms")
+    p95_latency_ms: Optional[int] = Field(None, description="95th-percentile latency in ms")
+    p99_latency_ms: Optional[int] = Field(None, description="99th-percentile latency in ms")
+    avg_latency_ms: Optional[int] = Field(None, description="Average latency in ms")
+    total_tokens: int = Field(..., description="Total tokens consumed in this bucket")
+    total_cost: float = Field(..., description="Total cost in USD for this bucket")
 
 
 class SLAViolation(BaseModel):
-    id: str
-    sla_definition_id: Optional[str] = None
-    provider: Optional[str] = None
-    model: Optional[str] = None
-    violation_type: Optional[str] = None
-    threshold_value: Optional[float] = None
-    actual_value: Optional[float] = None
-    alert_sent: bool
-    resolved_at: Optional[str] = None
-    created_at: Optional[str] = None
+    id: str = Field(..., description="Unique violation identifier (UUID)")
+    sla_definition_id: Optional[str] = Field(None, description="Associated SLA definition ID")
+    provider: Optional[str] = Field(None, description="Provider that violated the SLA")
+    model: Optional[str] = Field(None, description="Model that violated the SLA")
+    violation_type: Optional[str] = Field(None, description="Type: latency, error_rate, or availability")
+    threshold_value: Optional[float] = Field(None, description="SLA threshold that was exceeded")
+    actual_value: Optional[float] = Field(None, description="Observed value that breached the SLA")
+    alert_sent: bool = Field(..., description="Whether an alert was dispatched")
+    resolved_at: Optional[str] = Field(None, description="ISO 8601 resolution timestamp")
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation timestamp")
 
 
 class FailoverRuleCreate(BaseModel):
-    primary_model: str
-    fallback_model: str
-    trigger_condition: Optional[str] = None
-    trigger_threshold: Optional[float] = None
-    cooldown_minutes: Optional[int] = 15
+    primary_model: str = Field(..., description="Model to monitor for failures")
+    fallback_model: str = Field(..., description="Model to route to on failure")
+    trigger_condition: Optional[str] = Field(None, description="Condition type: error_rate or latency")
+    trigger_threshold: Optional[float] = Field(None, description="Threshold value to trigger failover")
+    cooldown_minutes: Optional[int] = Field(15, description="Minutes to wait before re-triggering")
 
 
 class FailoverRule(BaseModel):
-    id: str
-    primary_model: str
-    fallback_model: str
-    trigger_condition: Optional[str] = None
-    trigger_threshold: Optional[float] = None
-    cooldown_minutes: int
-    is_active: bool
-    last_triggered_at: Optional[str] = None
-    created_at: Optional[str] = None
+    id: str = Field(..., description="Unique failover rule identifier (UUID)")
+    primary_model: str = Field(..., description="Model being monitored for failures")
+    fallback_model: str = Field(..., description="Model to route to on failure")
+    trigger_condition: Optional[str] = Field(None, description="Condition type: error_rate or latency")
+    trigger_threshold: Optional[float] = Field(None, description="Threshold value to trigger failover")
+    cooldown_minutes: int = Field(..., description="Minutes to wait before re-triggering")
+    is_active: bool = Field(..., description="Whether this failover rule is active")
+    last_triggered_at: Optional[str] = Field(None, description="ISO 8601 timestamp of last trigger")
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation timestamp")
 
 
 # ---------------------------------------------------------------------------

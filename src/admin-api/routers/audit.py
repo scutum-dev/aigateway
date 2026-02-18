@@ -10,7 +10,7 @@ import deps
 from auth import UserInfo, get_current_user, require_admin
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -21,18 +21,18 @@ router = APIRouter()
 
 
 class AuditLogEntry(BaseModel):
-    id: str
-    timestamp: Optional[str] = None
-    actor_id: str
-    actor_email: Optional[str] = None
-    actor_ip: Optional[str] = None
-    org_id: Optional[str] = None
-    action: str
-    resource_type: str
-    resource_id: Optional[str] = None
-    resource_name: Optional[str] = None
-    changes: dict = {}
-    request_metadata: dict = {}
+    id: str = Field(..., description="Unique audit log entry identifier (UUID)")
+    timestamp: Optional[str] = Field(None, description="ISO 8601 event timestamp")
+    actor_id: str = Field(..., description="User ID who performed the action")
+    actor_email: Optional[str] = Field(None, description="Email of the actor")
+    actor_ip: Optional[str] = Field(None, description="IP address of the actor")
+    org_id: Optional[str] = Field(None, description="Organization context (UUID)")
+    action: str = Field(..., description="Action performed (create, update, delete)")
+    resource_type: str = Field(..., description="Type of resource affected")
+    resource_id: Optional[str] = Field(None, description="Identifier of the affected resource")
+    resource_name: Optional[str] = Field(None, description="Human-readable name of the resource")
+    changes: dict = Field({}, description="JSON diff of changes made")
+    request_metadata: dict = Field({}, description="HTTP request metadata (method, path, user-agent)")
     created_at: Optional[str] = None
 
 

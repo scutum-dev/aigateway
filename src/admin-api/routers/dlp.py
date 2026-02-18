@@ -8,7 +8,7 @@ import deps
 from audit import log_audit_event
 from auth import UserInfo, get_current_user, require_admin
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -19,51 +19,51 @@ router = APIRouter()
 
 
 class ContentDetectorCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
-    detector_type: str
-    config: dict = {}
+    name: str = Field(..., description="Human-readable detector name")
+    description: Optional[str] = Field(None, description="Brief description of what this detector finds")
+    detector_type: str = Field(..., description="Detection method: regex, keyword, or pii")
+    config: dict = Field({}, description="Type-specific config (patterns, keywords, entity_types)")
 
 
 class ContentDetectorUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    detector_type: Optional[str] = None
-    config: Optional[dict] = None
-    is_active: Optional[bool] = None
+    name: Optional[str] = Field(None, description="Human-readable detector name")
+    description: Optional[str] = Field(None, description="Updated description")
+    detector_type: Optional[str] = Field(None, description="Detection method: regex, keyword, or pii")
+    config: Optional[dict] = Field(None, description="Updated type-specific configuration")
+    is_active: Optional[bool] = Field(None, description="Whether the detector is active")
 
 
 class ContentDetector(BaseModel):
-    id: str
-    name: str
-    description: Optional[str] = None
-    detector_type: str
-    config: dict = {}
-    is_active: bool = True
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    id: str = Field(..., description="Unique detector identifier (UUID)")
+    name: str = Field(..., description="Updated detector name")
+    description: Optional[str] = Field(None, description="Brief description of what this detector finds")
+    detector_type: str = Field(..., description="Updated detection method")
+    config: dict = Field({}, description="Policy-specific configuration options")
+    is_active: bool = Field(True, description="Whether the detector is active")
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation timestamp")
+    updated_at: Optional[str] = Field(None, description="ISO 8601 last-update timestamp")
 
 
 class DetectorTestRequest(BaseModel):
-    text: str
+    text: str = Field(..., description="Sample text to run the detector against")
 
 
 class DetectorTestResult(BaseModel):
-    matches: list = []
+    matches: list = Field([], description="List of detected content matches")
 
 
 class TeamContentPolicyCreate(BaseModel):
-    policy_type: str
-    config: dict = {}
+    policy_type: str = Field(..., description="Policy type (block, redact, warn)")
+    config: dict = Field({}, description="Policy-specific configuration options")
 
 
 class TeamContentPolicy(BaseModel):
-    id: str
-    team_id: str
-    policy_type: str
+    id: str = Field(..., description="Unique content policy identifier (UUID)")
+    team_id: str = Field(..., description="Team this policy is assigned to")
+    policy_type: str = Field(..., description="Policy type (block, redact, warn)")
     config: dict = {}
-    is_active: bool = True
-    created_at: Optional[str] = None
+    is_active: bool = Field(True, description="Whether the policy is active")
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation timestamp")
 
 
 # ---------------------------------------------------------------------------
@@ -162,6 +162,106 @@ def _run_detector(detector_type: str, config: dict, text: str) -> list:
                 })
 
     return matches
+
+
+async def scan_text_with_detectors(text: str, team_id: str = None, guardrail_id: str = None) -> dict:
+    """Run all relevant detectors against text. Returns {clean, matches, blocked, block_reasons}.
+
+    If guardrail_id is provided, only run detectors attached to that guardrail.
+    Otherwise, run all active detectors. Also checks team content policies if team_id is given.
+    """
+    result = {"clean": True, "matches": [], "blocked": False, "block_reasons": []}
+
+    if not deps.db_pool:
+        return result
+
+    async with deps.db_pool.acquire() as conn:
+        # Load detectors
+        if guardrail_id:
+            rows = await conn.fetch(
+                """
+                SELECT cd.* FROM content_detectors cd
+                JOIN guardrail_detectors gd ON gd.detector_id = cd.id
+                WHERE gd.guardrail_config_id = $1 AND cd.is_active = true
+                ORDER BY gd.priority
+                """,
+                guardrail_id,
+            )
+        else:
+            rows = await conn.fetch(
+                "SELECT * FROM content_detectors WHERE is_active = true ORDER BY name"
+            )
+
+        for row in rows:
+            detector = _row_to_detector(row)
+            matches = _run_detector(detector.detector_type, detector.config, text)
+            if matches:
+                result["clean"] = False
+                for m in matches:
+                    m["detector_name"] = detector.name
+                    m["detector_id"] = detector.id
+                result["matches"].extend(matches)
+
+                # Check if any pattern has action=block
+                cfg = detector.config
+                if detector.detector_type == "regex":
+                    for p in cfg.get("patterns", []):
+                        if isinstance(p, dict) and p.get("action") == "block":
+                            result["blocked"] = True
+                            result["block_reasons"].append(f"Detector '{detector.name}' blocked content")
+                            break
+                elif detector.detector_type == "pii":
+                    # PII detectors with action=block in config
+                    if cfg.get("action") == "block":
+                        result["blocked"] = True
+                        result["block_reasons"].append(f"PII detector '{detector.name}' blocked content")
+
+        # Check team content policies
+        if team_id:
+            policies = await conn.fetch(
+                "SELECT * FROM team_content_policies WHERE team_id = $1 AND is_active = true",
+                team_id,
+            )
+            for policy in policies:
+                cfg = policy["config"]
+                if isinstance(cfg, str):
+                    cfg = json.loads(cfg)
+                policy_type = policy["policy_type"]
+
+                if policy_type == "block":
+                    blocked_keywords = cfg.get("keywords", [])
+                    for kw in blocked_keywords:
+                        if kw.lower() in text.lower():
+                            result["clean"] = False
+                            result["blocked"] = True
+                            result["matches"].append({"label": "blocked_keyword", "match": kw})
+                            result["block_reasons"].append(f"Team policy blocks keyword: {kw}")
+
+                elif policy_type == "warn":
+                    warn_keywords = cfg.get("keywords", [])
+                    for kw in warn_keywords:
+                        if kw.lower() in text.lower():
+                            result["clean"] = False
+                            result["matches"].append({"label": "warn_keyword", "match": kw})
+
+    return result
+
+
+class ScanRequest(BaseModel):
+    text: str = Field(..., description="Text to scan for sensitive content")
+    team_id: Optional[str] = Field(None, description="Optional team ID to check team content policies")
+    guardrail_id: Optional[str] = Field(None, description="Optional guardrail ID to use only its attached detectors")
+
+
+@router.post("/scan")
+async def scan_text(data: ScanRequest, user: UserInfo = Depends(get_current_user)):
+    """Scan text against all active DLP detectors and team content policies."""
+    result = await scan_text_with_detectors(
+        text=data.text,
+        team_id=data.team_id,
+        guardrail_id=data.guardrail_id,
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------

@@ -1,12 +1,13 @@
 """Model Deprecations router -- track model deprecation and sunset schedules."""
 
 import logging
+from datetime import date, datetime
 from typing import Optional
 
 import deps
 from auth import UserInfo, get_current_user, require_admin
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -18,11 +19,11 @@ router = APIRouter()
 
 
 class ModelDeprecationCreate(BaseModel):
-    model_name: str
-    replacement_model: Optional[str] = None
-    deprecation_date: Optional[str] = None
-    sunset_date: Optional[str] = None
-    message: Optional[str] = None
+    model_name: str = Field(..., description="Name of the model being deprecated")
+    replacement_model: Optional[str] = Field(None, description="Suggested replacement model")
+    deprecation_date: Optional[str] = Field(None, description="Date the model is officially deprecated")
+    sunset_date: Optional[str] = Field(None, description="Date the model will stop accepting requests")
+    message: Optional[str] = Field(None, description="User-facing deprecation notice message")
 
 
 class ModelDeprecationUpdate(BaseModel):
@@ -48,6 +49,39 @@ def _row_to_deprecation(row) -> dict:
         "message": row["message"],
         "created_at": str(row["created_at"]) if row["created_at"] else None,
     }
+
+
+async def check_model_deprecation(model_name: str) -> dict:
+    """Check if a model is deprecated. Returns {deprecated, sunset, message, replacement_model}.
+
+    - deprecated=True if the model has a deprecation record
+    - sunset=True if the sunset_date has passed (model should be blocked)
+    """
+    result = {"deprecated": False, "sunset": False, "message": None, "replacement_model": None}
+
+    if not deps.db_pool:
+        return result
+
+    async with deps.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT * FROM model_deprecations WHERE model_name = $1",
+            model_name,
+        )
+        if not row:
+            return result
+
+        result["deprecated"] = True
+        result["message"] = row["message"]
+        result["replacement_model"] = row["replacement_model"]
+
+        if row["sunset_date"]:
+            sunset = row["sunset_date"]
+            if isinstance(sunset, str):
+                sunset = datetime.strptime(sunset, "%Y-%m-%d").date()
+            if sunset <= date.today():
+                result["sunset"] = True
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -218,3 +252,79 @@ async def delete_deprecation(
             raise HTTPException(status_code=404, detail="Deprecation not found")
         logger.info("Model deprecation deleted: %s by %s", deprecation_id, user.user_id)
         return {"status": "ok"}
+
+
+@router.post("/model-deprecations/{deprecation_id}/sync-alias")
+async def sync_deprecation_alias(
+    deprecation_id: str,
+    user: UserInfo = Depends(require_admin),
+):
+    """Create a LiteLLM model alias to auto-redirect deprecated model to its replacement.
+
+    When called, adds a new model entry in LiteLLM that routes traffic from the
+    deprecated model name to its replacement model.
+    """
+    if not deps.db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with deps.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT * FROM model_deprecations WHERE id = $1::uuid",
+            deprecation_id,
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Deprecation not found")
+
+    if not row["replacement_model"]:
+        raise HTTPException(status_code=400, detail="No replacement model specified for this deprecation")
+
+    if not deps.http_client:
+        raise HTTPException(status_code=503, detail="HTTP client not available")
+
+    try:
+        response = await deps.http_client.post(
+            f"{deps.LITELLM_URL}/model/new",
+            headers={
+                "Authorization": f"Bearer {deps.LITELLM_MASTER_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model_name": row["model_name"],
+                "litellm_params": {
+                    "model": row["replacement_model"],
+                    "metadata": {
+                        "deprecation_alias": True,
+                        "deprecation_id": str(row["id"]),
+                    },
+                },
+                "model_info": {
+                    "deprecation_alias": True,
+                    "original_model": row["model_name"],
+                    "replacement_model": row["replacement_model"],
+                },
+            },
+        )
+
+        if response.status_code in (200, 201):
+            logger.info(
+                "Synced deprecation alias: %s -> %s in LiteLLM",
+                row["model_name"],
+                row["replacement_model"],
+            )
+            return {
+                "status": "synced",
+                "model_name": row["model_name"],
+                "replacement_model": row["replacement_model"],
+                "litellm_response": response.json(),
+            }
+        else:
+            logger.warning("LiteLLM /model/new returned %s: %s", response.status_code, response.text[:200])
+            raise HTTPException(
+                status_code=502,
+                detail=f"LiteLLM returned {response.status_code}: {response.text[:200]}",
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to sync deprecation alias: %s", e)
+        raise HTTPException(status_code=502, detail=f"Failed to sync alias: {str(e)}")

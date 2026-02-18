@@ -7,7 +7,7 @@ import deps
 from audit import log_audit_event
 from auth import UserInfo, get_current_user, require_admin
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -18,9 +18,9 @@ router = APIRouter()
 
 
 class OrganizationCreate(BaseModel):
-    name: str
-    slug: str
-    description: Optional[str] = None
+    name: str = Field(..., description="Human-readable organization name")
+    slug: str = Field(..., description="URL-friendly unique identifier")
+    description: Optional[str] = Field(None, description="Brief description of the organization")
     max_budget: Optional[float] = None
     allowed_models: Optional[List[str]] = None
 
@@ -28,32 +28,32 @@ class OrganizationCreate(BaseModel):
 class OrganizationUpdate(BaseModel):
     name: Optional[str] = None
     slug: Optional[str] = None
-    description: Optional[str] = None
+    description: Optional[str] = Field(None, description="Brief description of the organization")
     max_budget: Optional[float] = None
     allowed_models: Optional[List[str]] = None
-    is_active: Optional[bool] = None
+    is_active: Optional[bool] = Field(None, description="Whether the organization is active")
 
 
 class Organization(BaseModel):
-    id: str
-    name: str
-    slug: str
-    description: Optional[str] = None
+    id: str = Field(..., description="Unique organization identifier (UUID)")
+    name: str = Field(..., description="Human-readable organization name")
+    slug: str = Field(..., description="URL-friendly unique identifier")
+    description: Optional[str] = Field(None, description="Brief description of the business unit")
     max_budget: Optional[float] = None
     allowed_models: Optional[List[str]] = None
     metadata: dict = {}
     is_active: bool = True
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation timestamp")
+    updated_at: Optional[str] = Field(None, description="ISO 8601 last-update timestamp")
     bu_count: int = 0
     team_count: int = 0
     member_count: int = 0
 
 
 class BusinessUnitCreate(BaseModel):
-    name: str
+    name: str = Field(..., description="Business unit name")
     slug: str
-    description: Optional[str] = None
+    description: Optional[str] = Field(None, description="Brief description of the business unit")
     max_budget: Optional[float] = None
     allowed_models: Optional[List[str]] = None
 
@@ -64,55 +64,55 @@ class BusinessUnitUpdate(BaseModel):
     description: Optional[str] = None
     max_budget: Optional[float] = None
     allowed_models: Optional[List[str]] = None
-    is_active: Optional[bool] = None
+    is_active: Optional[bool] = Field(None, description="Whether the business unit is active")
 
 
 class BusinessUnit(BaseModel):
-    id: str
-    org_id: str
-    name: str
+    id: str = Field(..., description="Unique business unit identifier (UUID)")
+    org_id: str = Field(..., description="Parent organization ID")
+    name: str = Field(..., description="Business unit name")
     slug: str
     description: Optional[str] = None
     max_budget: Optional[float] = None
     allowed_models: Optional[List[str]] = None
     is_active: bool = True
-    created_at: Optional[str] = None
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation timestamp")
     updated_at: Optional[str] = None
 
 
 class TeamAssign(BaseModel):
-    bu_id: Optional[str] = None
-    max_budget_override: Optional[float] = None
+    bu_id: Optional[str] = Field(None, description="Business unit to assign team to")
+    max_budget_override: Optional[float] = Field(None, description="Override max budget for this team")
 
 
 class TeamHierarchy(BaseModel):
-    team_id: str
-    org_id: str
-    bu_id: Optional[str] = None
-    max_budget_override: Optional[float] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    team_id: str = Field(..., description="Team identifier")
+    org_id: str = Field(..., description="Organization identifier")
+    bu_id: Optional[str] = Field(None, description="Business unit identifier")
+    max_budget_override: Optional[float] = Field(None, description="Override max budget for this team")
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation timestamp")
+    updated_at: Optional[str] = Field(None, description="ISO 8601 last-update timestamp")
 
 
 class OrgMemberAdd(BaseModel):
-    user_id: str
-    role: str = "member"
-    bu_id: Optional[str] = None
+    user_id: str = Field(..., description="User identifier to add")
+    role: str = Field("member", description="Organization role (admin, member, viewer)")
+    bu_id: Optional[str] = Field(None, description="Business unit to assign member to")
 
 
 class OrgMemberUpdate(BaseModel):
-    role: str
+    role: str = Field(..., description="Updated organization role")
 
 
 class OrgMembership(BaseModel):
-    id: str
-    user_id: str
-    email: Optional[str] = None
-    display_name: Optional[str] = None
-    org_id: str
-    role: str
-    bu_id: Optional[str] = None
-    created_at: Optional[str] = None
+    id: str = Field(..., description="Unique membership identifier (UUID)")
+    user_id: str = Field(..., description="User identifier")
+    email: Optional[str] = Field(None, description="Member email address")
+    display_name: Optional[str] = Field(None, description="Member display name")
+    org_id: str = Field(..., description="Organization identifier")
+    role: str = Field(..., description="Organization role (admin, member, viewer)")
+    bu_id: Optional[str] = Field(None, description="Business unit identifier")
+    created_at: Optional[str] = Field(None, description="ISO 8601 join timestamp")
 
 
 # ---------------------------------------------------------------------------

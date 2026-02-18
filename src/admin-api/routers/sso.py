@@ -8,7 +8,7 @@ import deps
 from audit import log_audit_event
 from auth import UserInfo, get_current_user, require_admin
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -21,40 +21,40 @@ router = APIRouter()
 
 
 class SSOConfigCreate(BaseModel):
-    provider_type: str
-    provider_name: str
-    client_id: Optional[str] = None
-    client_secret: Optional[str] = None
-    issuer_url: Optional[str] = None
-    authorization_url: Optional[str] = None
-    token_url: Optional[str] = None
-    userinfo_url: Optional[str] = None
+    provider_type: str = Field(..., description="SSO provider type (oidc, saml, okta, azure_ad)")
+    provider_name: str = Field(..., description="Human-readable provider display name")
+    client_id: Optional[str] = Field(None, description="OAuth2/OIDC client identifier")
+    client_secret: Optional[str] = Field(None, description="OAuth2/OIDC client secret (encrypted)")
+    issuer_url: Optional[str] = Field(None, description="OIDC issuer URL or SAML entity ID")
+    authorization_url: Optional[str] = Field(None, description="Custom authorization endpoint URL")
+    token_url: Optional[str] = Field(None, description="Custom token endpoint URL")
+    userinfo_url: Optional[str] = Field(None, description="Custom userinfo endpoint URL")
     jwks_uri: Optional[str] = None
     saml_metadata_url: Optional[str] = None
-    scopes: Optional[str] = "openid email profile"
-    group_claim: Optional[str] = "groups"
+    scopes: Optional[str] = Field("openid email profile", description="OAuth2 scopes to request")
+    group_claim: Optional[str] = Field("groups", description="JWT claim containing group memberships")
     group_to_org_mapping: Optional[dict] = None
-    is_active: bool = True
+    is_active: bool = Field(True, description="Whether this SSO config is active")
 
 
 class SSOConfig(BaseModel):
-    id: str
-    org_id: str
-    provider_type: str
-    provider_name: str
-    client_id: Optional[str] = None
-    issuer_url: Optional[str] = None
-    authorization_url: Optional[str] = None
-    token_url: Optional[str] = None
-    userinfo_url: Optional[str] = None
+    id: str = Field(..., description="Unique SSO configuration identifier (UUID)")
+    org_id: str = Field(..., description="Organization this SSO config belongs to")
+    provider_type: str = Field(..., description="SSO provider type (oidc, saml, okta, azure_ad)")
+    provider_name: str = Field(..., description="Human-readable provider display name")
+    client_id: Optional[str] = Field(None, description="OAuth2/OIDC client identifier")
+    issuer_url: Optional[str] = Field(None, description="OIDC issuer URL or SAML entity ID")
+    authorization_url: Optional[str] = Field(None, description="Custom authorization endpoint URL")
+    token_url: Optional[str] = Field(None, description="Custom token endpoint URL")
+    userinfo_url: Optional[str] = Field(None, description="Custom userinfo endpoint URL")
     jwks_uri: Optional[str] = None
     saml_metadata_url: Optional[str] = None
-    scopes: Optional[str] = None
-    group_claim: Optional[str] = None
+    scopes: Optional[str] = Field(None, description="OAuth2 scopes to request")
+    group_claim: Optional[str] = Field(None, description="JWT claim containing group memberships")
     group_to_org_mapping: dict = {}
     is_active: bool = True
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation timestamp")
+    updated_at: Optional[str] = Field(None, description="ISO 8601 last-update timestamp")
 
 
 class SSOTestResult(BaseModel):
@@ -223,7 +223,7 @@ async def test_sso_connection(
     org_id: str,
     user: UserInfo = Depends(require_admin),
 ):
-    """Test SSO connection for an organization (mock test)."""
+    """Test SSO connection by attempting OIDC discovery against the configured issuer."""
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
 
@@ -234,27 +234,65 @@ async def test_sso_connection(
         if not row:
             raise HTTPException(status_code=404, detail="SSO config not found")
 
-    # Mock test — in production this would attempt to connect to the IdP
     has_issuer = bool(row["issuer_url"])
     has_client = bool(row["client_id"])
 
-    if has_issuer and has_client:
+    if not has_issuer or not has_client:
+        return SSOTestResult(
+            status="error",
+            message="SSO configuration is incomplete",
+            details={
+                "has_issuer_url": has_issuer,
+                "has_client_id": has_client,
+            },
+        )
+
+    # Attempt OIDC discovery
+    discovery_url = row["issuer_url"].rstrip("/") + "/.well-known/openid-configuration"
+    discovery_data = {}
+    discovery_ok = False
+
+    if deps.http_client:
+        try:
+            resp = await deps.http_client.get(discovery_url, timeout=10.0)
+            if resp.status_code == 200:
+                discovery_data = resp.json()
+                discovery_ok = True
+        except Exception as e:
+            return SSOTestResult(
+                status="error",
+                message=f"OIDC discovery failed: {str(e)}",
+                details={
+                    "discovery_url": discovery_url,
+                    "provider_type": row["provider_type"],
+                },
+            )
+
+    if discovery_ok:
         return SSOTestResult(
             status="ok",
-            message=f"SSO configuration for {row['provider_name']} appears valid",
+            message=f"SSO connection to {row['provider_name']} is working",
+            details={
+                "provider_type": row["provider_type"],
+                "issuer": discovery_data.get("issuer"),
+                "authorization_endpoint": discovery_data.get("authorization_endpoint"),
+                "token_endpoint": discovery_data.get("token_endpoint"),
+                "userinfo_endpoint": discovery_data.get("userinfo_endpoint"),
+                "has_client_id": True,
+                "has_client_secret": bool(row["client_secret_encrypted"]),
+                "scopes_supported": discovery_data.get("scopes_supported", []),
+            },
+        )
+    else:
+        # No HTTP client or non-200
+        return SSOTestResult(
+            status="warning",
+            message=f"SSO configuration for {row['provider_name']} appears valid but discovery could not be verified",
             details={
                 "provider_type": row["provider_type"],
                 "issuer_url": row["issuer_url"],
                 "has_client_id": True,
                 "has_client_secret": bool(row["client_secret_encrypted"]),
-            },
-        )
-    else:
-        return SSOTestResult(
-            status="warning",
-            message="SSO configuration is incomplete",
-            details={
-                "has_issuer_url": has_issuer,
-                "has_client_id": has_client,
+                "discovery_url": discovery_url,
             },
         )

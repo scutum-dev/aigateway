@@ -1,7 +1,9 @@
 """Prompt registry router — template management, versioning, approvals, and analytics."""
 
 import json
+import logging
 import re
+import time
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
@@ -9,7 +11,11 @@ from typing import Any, Dict, List, Optional
 import deps
 from auth import UserInfo, get_current_user, require_admin
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from routers.deprecations import check_model_deprecation
+from routers.dlp import scan_text_with_detectors
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -20,79 +26,86 @@ router = APIRouter()
 
 
 class VariableSpec(BaseModel):
-    name: str
+    name: str = Field(..., description="Human-readable template name")
     type: str = "string"
     required: bool = True
     default: Optional[str] = None
 
 
 class PromptTemplateCreate(BaseModel):
-    name: str
-    slug: str
-    description: Optional[str] = None
-    category: Optional[str] = None
-    template_text: str
-    variables: Optional[List[VariableSpec]] = None
-    model_hint: Optional[str] = None
-    tags: Optional[List[str]] = None
+    name: str = Field(..., description="Updated template name")
+    slug: str = Field(..., description="URL-friendly unique identifier")
+    description: Optional[str] = Field(None, description="Brief description of what this prompt does")
+    category: Optional[str] = Field(None, description="Template category for organization")
+    template_text: str = Field(..., description="Prompt content with {{variable}} placeholders")
+    variables: Optional[List[VariableSpec]] = Field(None, description="Updated variable definitions")
+    model_hint: Optional[str] = Field(None, description="Suggested model for execution")
+    tags: Optional[List[str]] = Field(None, description="Searchable tags for categorization")
 
 
 class PromptTemplateUpdate(BaseModel):
     name: Optional[str] = None
-    description: Optional[str] = None
-    category: Optional[str] = None
-    template_text: Optional[str] = None
-    variables: Optional[List[VariableSpec]] = None
-    model_hint: Optional[str] = None
-    tags: Optional[List[str]] = None
-    status: Optional[str] = None
+    description: Optional[str] = Field(None, description="Updated description")
+    category: Optional[str] = Field(None, description="Updated category")
+    template_text: Optional[str] = Field(None, description="Prompt content with {{variable}} placeholders")
+    variables: Optional[List[VariableSpec]] = Field(None, description="List of template variable definitions")
+    model_hint: Optional[str] = Field(None, description="Updated model suggestion")
+    tags: Optional[List[str]] = Field(None, description="Updated tags")
+    status: Optional[str] = Field(None, description="Review status (pending, approved, rejected)")
 
 
 class PromptTemplate(BaseModel):
-    id: str
-    name: str
-    slug: str
-    description: Optional[str] = None
-    category: Optional[str] = None
-    template_text: str
-    variables: List[Dict[str, Any]] = []
-    version: int
-    is_current: bool
-    status: str
-    team_id: Optional[str] = None
-    model_hint: Optional[str] = None
-    tags: List[str] = []
-    created_by: Optional[str] = None
-    approved_by: Optional[str] = None
-    approved_at: Optional[str] = None
-    is_active: bool = True
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    id: str = Field(..., description="Unique template identifier (UUID)")
+    name: str = Field(..., description="Human-readable template name")
+    slug: str = Field(..., description="URL-friendly unique identifier")
+    description: Optional[str] = Field(None, description="Brief description of what this prompt does")
+    category: Optional[str] = Field(None, description="Template category for organization")
+    template_text: str = Field(..., description="Updated prompt content")
+    variables: List[Dict[str, Any]] = Field([], description="Variable name-value pairs for substitution")
+    version: int = Field(..., description="Auto-incrementing version number")
+    is_current: bool = Field(..., description="Whether this is the active version")
+    status: str = Field(..., description="Updated status (draft, pending_review, approved)")
+    team_id: Optional[str] = Field(None, description="Owning team identifier")
+    model_hint: Optional[str] = Field(None, description="Suggested model for execution")
+    tags: List[str] = Field([], description="Searchable tags for categorization")
+    created_by: Optional[str] = Field(None, description="User who created this version")
+    approved_by: Optional[str] = Field(None, description="Admin who approved this version")
+    approved_at: Optional[str] = Field(None, description="ISO 8601 approval timestamp")
+    is_active: bool = Field(True, description="Whether this template is active (not deleted)")
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation timestamp")
+    updated_at: Optional[str] = Field(None, description="ISO 8601 last-update timestamp")
 
 
 class PromptApproval(BaseModel):
-    id: str
-    template_id: str
-    template_version: int
-    requested_by: str
-    reviewer: Optional[str] = None
-    status: str
-    comment: Optional[str] = None
-    requested_at: Optional[str] = None
-    reviewed_at: Optional[str] = None
+    id: str = Field(..., description="Unique approval request identifier (UUID)")
+    template_id: str = Field(..., description="Template being reviewed")
+    template_version: int = Field(..., description="Version under review")
+    requested_by: str = Field(..., description="User who submitted the review")
+    reviewer: Optional[str] = Field(None, description="Admin who reviewed the request")
+    status: str = Field(..., description="Approval status (draft, pending_review, approved)")
+    comment: Optional[str] = Field(None, description="Reviewer comment or feedback")
+    requested_at: Optional[str] = Field(None, description="ISO 8601 request timestamp")
+    reviewed_at: Optional[str] = Field(None, description="ISO 8601 review timestamp")
 
 
 class PromptRenderRequest(BaseModel):
+    variables: Dict[str, str] = Field({}, description="Variable name-value pairs for substitution")
+
+
+class PromptExecuteRequest(BaseModel):
     variables: Dict[str, str] = {}
+    model: Optional[str] = None  # Override model_hint
+    max_tokens: Optional[int] = Field(None, description="Maximum tokens in the LLM response")
+    temperature: Optional[float] = Field(None, description="Sampling temperature (0.0 to 2.0)")
 
 
 class PromptUsageStats(BaseModel):
-    version: int
-    total_uses: int
-    avg_latency_ms: Optional[float] = None
-    total_cost: Optional[float] = None
-    total_input_tokens: Optional[int] = None
-    total_output_tokens: Optional[int] = None
+    version: int = Field(..., description="Template version number")
+    total_uses: int = Field(..., description="Total number of executions")
+    avg_latency_ms: Optional[float] = Field(None, description="Average execution latency in milliseconds")
+    total_cost: Optional[float] = Field(None, description="Cumulative cost in USD")
+    total_input_tokens: Optional[int] = Field(None, description="Total prompt tokens consumed")
+    total_output_tokens: Optional[int] = Field(None, description="Total completion tokens generated")
 
 
 # ---------------------------------------------------------------------------
@@ -424,6 +437,153 @@ async def render_prompt(
         "unresolved_variables": unresolved,
         "template_version": row["version"],
     }
+
+
+@router.post("/prompts/{slug}/execute")
+async def execute_prompt(
+    slug: str,
+    data: PromptExecuteRequest,
+    user: UserInfo = Depends(get_current_user),
+):
+    """Render a prompt template and execute it against LiteLLM, tracking usage."""
+    if not deps.db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with deps.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT * FROM prompt_templates WHERE slug = $1 AND is_current = true AND is_active = true",
+            slug,
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Prompt template not found")
+
+        if row["status"] != "approved" and row["status"] != "draft":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Template status is '{row['status']}', must be 'approved' or 'draft'",
+            )
+
+        # Render template
+        template_text = row["template_text"]
+        rendered = template_text
+        for key, value in data.variables.items():
+            rendered = rendered.replace("{{" + key + "}}", value)
+
+        unresolved = re.findall(r"\{\{(\w+)\}\}", rendered)
+        if unresolved:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unresolved variables: {', '.join(unresolved)}",
+            )
+
+        # DLP scan: check rendered text before sending to LLM
+        warnings = {}
+        dlp_result = await scan_text_with_detectors(
+            text=rendered,
+            team_id=str(row["team_id"]) if row["team_id"] else None,
+        )
+        if dlp_result["blocked"]:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "message": "Content blocked by DLP policy",
+                    "reasons": dlp_result["block_reasons"],
+                    "matches": dlp_result["matches"],
+                },
+            )
+        if dlp_result["matches"]:
+            warnings["dlp_warnings"] = dlp_result["matches"]
+
+        # Determine model
+        model = data.model or row["model_hint"] or "gpt-4o-mini"
+
+        # Deprecation check: warn or block if model is deprecated/sunset
+        deprecation = await check_model_deprecation(model)
+        if deprecation["sunset"]:
+            replacement = deprecation["replacement_model"]
+            msg = deprecation["message"] or f"Model '{model}' has been sunset."
+            if replacement:
+                msg += f" Use '{replacement}' instead."
+            raise HTTPException(status_code=410, detail=msg)
+        if deprecation["deprecated"]:
+            warnings["deprecation_warning"] = {
+                "message": deprecation["message"] or f"Model '{model}' is deprecated.",
+                "replacement_model": deprecation["replacement_model"],
+            }
+
+        # Call LiteLLM
+        if not deps.http_client:
+            raise HTTPException(status_code=503, detail="HTTP client not available")
+
+        llm_request = {
+            "model": model,
+            "messages": [{"role": "user", "content": rendered}],
+        }
+        if data.max_tokens:
+            llm_request["max_tokens"] = data.max_tokens
+        if data.temperature is not None:
+            llm_request["temperature"] = data.temperature
+
+        start_time = time.time()
+        try:
+            response = await deps.http_client.post(
+                f"{deps.LITELLM_URL}/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {deps.LITELLM_MASTER_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json=llm_request,
+                timeout=120.0,
+            )
+            response.raise_for_status()
+            llm_result = response.json()
+        except Exception as e:
+            logger.error("LiteLLM call failed for prompt %s: %s", slug, e)
+            raise HTTPException(status_code=502, detail=f"LLM request failed: {str(e)}")
+
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        # Extract usage
+        usage = llm_result.get("usage", {})
+        input_tokens = usage.get("prompt_tokens", 0)
+        output_tokens = usage.get("completion_tokens", 0)
+        cost = llm_result.get("_hidden_params", {}).get("spend", 0) or 0
+
+        # Record usage
+        try:
+            await conn.execute(
+                """
+                INSERT INTO prompt_template_usage
+                    (template_id, template_version, user_id, model, input_tokens, output_tokens, cost, latency_ms, status)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                """,
+                row["id"],
+                row["version"],
+                user.user_id,
+                model,
+                input_tokens,
+                output_tokens,
+                cost,
+                latency_ms,
+                "success",
+            )
+        except Exception as e:
+            logger.warning("Failed to record prompt usage: %s", e)
+
+        result = {
+            "rendered_prompt": rendered,
+            "model": model,
+            "response": llm_result.get("choices", [{}])[0].get("message", {}).get("content", ""),
+            "usage": {
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "latency_ms": latency_ms,
+            },
+            "template_version": row["version"],
+        }
+        if warnings:
+            result["warnings"] = warnings
+        return result
 
 
 @router.post("/prompts/{id}/submit-review", response_model=PromptApproval)

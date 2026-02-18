@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 import deps
 from auth import UserInfo, get_current_user, require_admin
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -19,10 +19,10 @@ router = APIRouter()
 
 
 class EventSubscriptionCreate(BaseModel):
-    name: str
-    event_types: List[str]
-    channel: str
-    config: Dict
+    name: str = Field(..., description="Human-readable subscription name")
+    event_types: List[str] = Field(..., description="List of event types to subscribe to")
+    channel: str = Field(..., description="Delivery channel: webhook, slack, email, pagerduty")
+    config: Dict = Field(..., description="Channel-specific config (url, webhook_url, etc.)")
     filters: Optional[Dict] = None
 
 
