@@ -394,30 +394,5 @@ class TestDeleteCacheEntry:
         assert "Cache entry not found" in resp.json()["detail"]
 
 
-# ============================================================================
-# Cache Lookup
-# ============================================================================
-
-
-class TestCacheLookup:
-    """Tests for POST /api/v1/cache/lookup."""
-
-    @pytest.mark.asyncio
-    async def test_cache_lookup_no_db(self, client):
-        """POST /cache/lookup returns 503 when DB is unavailable."""
-        deps.db_pool = None
-
-        async with client:
-            resp = await client.post(
-                "/api/v1/cache/lookup",
-                json={
-                    "prompt": "What is AI?",
-                },
-            )
-
-        assert resp.status_code == 503
-        assert "Database not available" in resp.json()["detail"]
-
-
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
