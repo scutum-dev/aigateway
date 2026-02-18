@@ -6,7 +6,6 @@ unreachable, validation failures, and concurrent state scenarios.
 """
 
 import importlib.util
-import json
 import os
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -613,8 +612,8 @@ class TestConcurrentState:
     @pytest.mark.asyncio
     async def test_deps_reset_between_tests(self, client):
         """Verify deps are properly restored after modification."""
-        original_pool = deps.db_pool
-        original_http = deps.http_client
+        _original_pool = deps.db_pool
+        _original_http = deps.http_client
 
         # Modify deps
         deps.db_pool = "modified"

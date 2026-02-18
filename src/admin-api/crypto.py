@@ -1,7 +1,7 @@
 """Fernet encryption for SSO client secrets."""
 
-import os
 import logging
+import os
 
 from cryptography.fernet import Fernet
 

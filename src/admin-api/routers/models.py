@@ -1,7 +1,7 @@
 """Model management router — proxies to LiteLLM."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import deps
 from auth import UserInfo, get_current_user, require_admin

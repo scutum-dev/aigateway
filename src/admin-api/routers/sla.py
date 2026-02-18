@@ -1,9 +1,6 @@
 """SLA monitoring router -- definitions, health metrics, violations, and failover rules."""
 
-import json
-from datetime import datetime, timezone
-from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import deps
 from auth import UserInfo, get_current_user, require_admin
@@ -366,7 +363,7 @@ async def list_violations(
 
     conditions: list = []
     params: list = []
-    idx = 1
+    _idx = 1
 
     if resolved is not None:
         if resolved:

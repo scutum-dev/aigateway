@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import List, Optional
+from typing import Optional
 
 import deps
 from audit import log_audit_event

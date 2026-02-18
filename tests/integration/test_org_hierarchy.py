@@ -6,7 +6,6 @@ side_effect returns to simulate multi-step workflows.
 """
 
 import importlib.util
-import json
 import os
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -43,8 +42,8 @@ else:
     _main_mod = sys.modules["admin_api_main"]
 
 app = _main_mod.app
-import deps
-from auth import UserInfo, get_current_user, require_admin
+import deps  # noqa: E402
+from auth import UserInfo, get_current_user, require_admin  # noqa: E402
 
 
 def _fake_user():

@@ -4,10 +4,9 @@ Tests the /api/v1/rate-limits and /api/v1/rate-limit-events endpoints.
 """
 
 import importlib.util
-import json
 import os
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
@@ -46,9 +45,8 @@ else:
 
 app = _main_mod.app
 
-import deps
-from auth import UserInfo, get_current_user, require_admin
-
+import deps  # noqa: E402
+from auth import UserInfo, get_current_user, require_admin  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Auth override

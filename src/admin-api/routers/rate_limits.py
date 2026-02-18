@@ -1,6 +1,5 @@
 """Granular rate limit policies router — CRUD, status, and event tracking."""
 
-import json
 import logging
 from decimal import Decimal
 from typing import Any, Dict, List, Optional

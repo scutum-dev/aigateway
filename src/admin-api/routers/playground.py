@@ -5,7 +5,7 @@ import logging
 from typing import Dict, List, Optional
 
 import deps
-from auth import UserInfo, get_current_user, require_admin
+from auth import UserInfo, get_current_user
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 

@@ -5,6 +5,7 @@ Tests authentication, MCP server configuration, workflow templates,
 and platform settings.
 """
 
+import uuid
 from typing import Generator
 
 import httpx

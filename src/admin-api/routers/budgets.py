@@ -1,7 +1,7 @@
 """Budget management router — proxies to LiteLLM."""
 
 import logging
-from typing import List, Optional
+from typing import Optional
 
 import deps
 from auth import UserInfo, get_current_user, require_admin

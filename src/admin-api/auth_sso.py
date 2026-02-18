@@ -18,9 +18,8 @@ import urllib.parse
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
-import jwt as pyjwt
-
 import deps
+import jwt as pyjwt
 from auth import JWT_ALGORITHM, JWT_EXPIRATION_HOURS, JWT_SECRET_KEY
 from crypto import decrypt_value
 from fastapi import HTTPException, Query

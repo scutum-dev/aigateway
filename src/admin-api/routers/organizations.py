@@ -6,7 +6,7 @@ from typing import List, Optional
 import deps
 from audit import log_audit_event
 from auth import UserInfo, get_current_user, require_admin
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 router = APIRouter()

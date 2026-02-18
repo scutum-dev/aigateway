@@ -3,9 +3,7 @@
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
-
-import httpx
+from typing import Optional
 
 import deps
 from auth import UserInfo, get_current_user, require_admin
