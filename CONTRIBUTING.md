@@ -27,11 +27,11 @@ make up
 ### Service Profiles
 
 ```bash
-make up                          # Core services only
-make up PROFILE=observability    # + OTEL, Prometheus, Grafana, Jaeger
-make up PROFILE=workflows        # + Temporal, Temporal UI, Workflow Engine, A2A Runtime
-make up PROFILE=finops           # + Cost Predictor, Budget Webhook
-make up PROFILE=full             # Everything
+make up                  # Core services only
+make up-observability    # + OTEL, Prometheus, Grafana, Jaeger
+make up-workflows        # + Temporal, Temporal UI, Workflow Engine, A2A Runtime
+make up-finops           # + Cost Predictor, Budget Webhook
+make up-full             # Everything
 ```
 
 ### Environment Configuration

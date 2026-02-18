@@ -379,6 +379,168 @@ Alert types:
 
 To receive alerts, ensure the `alert_email` field is set when creating budgets. The Budget Webhook service (port 8081, part of the `finops` profile) processes these alerts.
 
+## Chargeback & Cost Allocation
+
+The chargeback system maps AI spending to business cost centers, enabling finance teams to allocate costs accurately.
+
+### Cost Allocation Rules
+
+Allocation rules map teams to cost centers, projects, or departments. Each rule specifies an allocation percentage (defaulting to 100%).
+
+#### Creating Rules in the Admin UI
+
+1. Navigate to **Chargeback** from the sidebar.
+2. On the **Allocation Rules** tab, click **Create Rule**.
+3. Fill in:
+   - **Name**: Descriptive name (e.g., "Engineering to CC-1234")
+   - **Team**: The team whose spend is being allocated
+   - **Allocation Type**: `cost_center`, `project`, or `department`
+   - **Allocation Target**: The target identifier (e.g., CC-1234, PROJ-AI-001)
+   - **Allocation Percent**: Percentage of the team's spend to allocate (default: 100%)
+   - **Metadata**: Optional JSON with SAP codes, Workday IDs, GL accounts
+4. Click **Create**.
+
+#### Creating Rules via API
+
+```bash
+curl -X POST http://localhost:8086/api/v1/cost-allocation/rules \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Engineering to CC-1234",
+    "team_id": "engineering-team-uuid",
+    "allocation_type": "cost_center",
+    "allocation_target": "CC-1234",
+    "allocation_percent": 100.0,
+    "metadata": {"gl_account": "6200-AI-SERVICES"}
+  }'
+```
+
+### Chargeback Reports
+
+Reports aggregate spend by period and apply allocation rules to produce a cost breakdown.
+
+1. Navigate to **Chargeback > Reports** tab.
+2. Click **Generate Report** and select the period (e.g., 2026-02).
+3. The report shows total cost, breakdown by team and allocation target.
+4. Reports go through a lifecycle: `draft` → `finalized` → `exported`.
+5. Click **Export** to download as CSV, JSON, or SAP format.
+
+#### Generating Reports via API
+
+```bash
+# Generate a report
+curl -X POST http://localhost:8086/api/v1/chargeback/reports/generate \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"period": "2026-02"}'
+
+# Export a report
+curl "http://localhost:8086/api/v1/chargeback/reports/{report_id}/export?format=csv" \
+  -H "Authorization: Bearer $TOKEN" -o chargeback_feb.csv
+```
+
+### Budget Forecasts
+
+The platform generates spending forecasts using a weighted moving average over the last 3 months.
+
+```bash
+# Get forecasts
+curl http://localhost:8086/api/v1/reports/forecast \
+  -H "Authorization: Bearer $TOKEN"
+
+# Generate a new forecast
+curl -X POST http://localhost:8086/api/v1/reports/forecast/generate \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Forecasts include `forecasted_cost`, `confidence_low`, and `confidence_high` for each team. View them in the Admin UI under **Chargeback > Forecasts** tab.
+
+## SLA Monitoring
+
+The SLA monitoring system tracks provider health metrics and alerts when service level agreements are violated.
+
+### SLA Definitions
+
+Define target metrics for each provider or model:
+
+| Metric | Description |
+|--------|-------------|
+| Target P50 latency | Median response time target (ms) |
+| Target P95 latency | 95th percentile response time target (ms) |
+| Target P99 latency | 99th percentile response time target (ms) |
+| Target error rate | Maximum acceptable error rate (e.g., 0.01 = 1%) |
+| Target availability | Minimum uptime (e.g., 0.999 = 99.9%) |
+
+#### Creating SLA Definitions
+
+1. Navigate to **SLA Monitor** from the sidebar.
+2. Click **Create Definition**.
+3. Set the provider, model pattern, and target metrics.
+4. Configure alert channels and evaluation window.
+
+#### Via API
+
+```bash
+curl -X POST http://localhost:8086/api/v1/sla/definitions \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "OpenAI GPT-4o SLA",
+    "provider": "openai",
+    "model_pattern": "gpt-4o*",
+    "target_p95_ms": 3000,
+    "target_error_rate": 0.01,
+    "target_availability": 0.999,
+    "evaluation_window_minutes": 60
+  }'
+```
+
+### Provider Health
+
+The background health collector runs every 5 minutes, querying LiteLLM spend logs to compute per-provider metrics. View the results:
+
+```bash
+# Current health
+curl http://localhost:8086/api/v1/sla/health \
+  -H "Authorization: Bearer $TOKEN"
+
+# Historical metrics (for charts)
+curl "http://localhost:8086/api/v1/sla/health/history?hours=24" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### SLA Violations
+
+When metrics breach SLA thresholds, violations are recorded and alerts are sent to configured channels.
+
+```bash
+# List active violations
+curl http://localhost:8086/api/v1/sla/violations/active \
+  -H "Authorization: Bearer $TOKEN"
+
+# Resolve a violation
+curl -X POST http://localhost:8086/api/v1/sla/violations/{id}/resolve \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Failover Rules
+
+Failover rules automatically route traffic away from degraded providers:
+
+```bash
+curl -X POST http://localhost:8086/api/v1/sla/failover-rules \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "primary_model": "gpt-4o",
+    "fallback_model": "claude-sonnet-4.5",
+    "trigger_condition": "error_rate",
+    "trigger_threshold": 0.05,
+    "cooldown_minutes": 15
+  }'
+```
+
 ## Cost Optimization Tips
 
 ### 1. Use Model Aliases
@@ -395,11 +557,7 @@ response = client.chat.completions.create(model="cost-effective", ...)
 
 ### 2. Enable Semantic Caching
 
-The semantic cache (port 8083, `experimental` profile) caches responses for semantically similar prompts. If a new prompt is 92%+ similar to a cached one, the cached response is returned instantly at zero cost.
-
-```bash
-docker compose --env-file config/.env --profile experimental up -d
-```
+LiteLLM supports semantic caching via Redis. When enabled, semantically similar prompts return cached responses instantly at zero cost. Configure caching in the Admin UI under **Settings > Caching**.
 
 ### 3. Set max_tokens
 
@@ -442,3 +600,9 @@ docker compose --env-file config/.env --profile local-models up -d
 ```
 
 Then use the `local` provider alias or specific model names like `llama-3.1-70b`.
+
+## Related Guides
+
+- [Admin Guide - Chargeback](./admin-guide.md#chargeback) -- detailed UI walkthrough
+- [Admin Guide - SLA Monitor](./admin-guide.md#sla-monitor) -- provider health dashboard
+- [Hello World Examples](../../examples/hello-world/README.md) -- cost tracking example scripts

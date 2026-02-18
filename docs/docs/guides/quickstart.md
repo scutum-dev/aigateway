@@ -55,6 +55,8 @@ This starts the core services:
 | Admin API  | http://localhost:8086      | Configuration & management |
 | Admin UI   | http://localhost:5173      | Web admin console          |
 | Landing UI | http://localhost:9999      | Interactive playground     |
+| Playground | http://localhost:6001      | Multi-model comparison     |
+| Deck       | http://localhost:6002      | Product presentation       |
 | Docs Site  | http://localhost:8089      | Developer documentation    |
 | PostgreSQL | localhost:5432             | Database                   |
 | Redis      | localhost:6379             | Cache                      |
@@ -126,11 +128,22 @@ Navigate to **http://localhost:5173** in your browser.
 3. You will land on the **Dashboard** showing today's request count, cost, and model usage
 
 From the sidebar, explore:
-- **API Keys** -- generate and manage API keys with budgets and model restrictions
 - **Models** -- see all 100+ configured models, filter by provider, edit routing tiers
-- **Budgets** -- create spending limits for teams or users
+- **API Keys** -- generate and manage API keys with budgets and model restrictions
 - **Teams** -- organize users into teams with default models
+- **Budgets** -- create spending limits for teams or users
+- **Organizations** -- manage org hierarchy, business units, SSO, and members
+- **Audit Log** -- view a filterable trail of every configuration change
+- **Prompts** -- manage versioned prompt templates with approval workflows
+- **Rate Limits** -- set granular rate limiting policies per user, team, or model
+- **Model Access** -- define access tiers and approval workflows for premium models
+- **Chargeback** -- allocate costs to cost centers and generate chargeback reports
+- **SLA Monitor** -- track provider health, latency percentiles, and SLA violations
+- **A/B Tests** -- compare model variants with traffic splitting and metrics
+- **Events** -- configure event subscriptions (Slack, PagerDuty, email, webhooks)
 - **MCP Servers** -- configure Model Context Protocol servers for tool access
+- **A2A Agents** -- manage Agent-to-Agent protocol registrations
+- **Guardrails** -- configure content filtering, DLP detectors, and safety rules
 - **Workflows** -- run and monitor LangGraph workflow templates
 - **Settings** -- toggle caching, cost tracking, routing policies, and more
 
@@ -149,7 +162,7 @@ docker compose --env-file config/.env --profile observability up -d
 # Add workflow engine (Temporal, LangGraph workflows)
 docker compose --env-file config/.env --profile workflows up -d
 
-# Add FinOps services (cost predictor, budget webhook, reporter)
+# Add FinOps services (cost predictor, budget webhook)
 docker compose --env-file config/.env --profile finops up -d
 
 # Start everything
@@ -188,3 +201,4 @@ docker compose logs admin-api
 - [Model Routing Guide](./model-routing.md) -- understand how models are selected and routed
 - [Cost Management Guide](./cost-management.md) -- set up budgets, alerts, and cost optimization
 - [Admin UI Guide](./admin-guide.md) -- detailed walkthrough of every admin console page
+- [Hello World Examples](../../examples/hello-world/README.md) -- step-by-step examples showing how organizations use the platform

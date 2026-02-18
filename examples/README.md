@@ -1,127 +1,100 @@
-# Agent Gateway Platform Examples
+# AI Control Plane Examples
 
-This directory contains examples and guides for using the Agent Gateway platform components.
+This directory contains examples and guides for using the AI Control Plane platform.
 
 ## Overview
 
-The Agent Gateway platform provides three main gateways:
+The AI Control Plane platform provides:
 
-1. **LLM Gateway (Port 3000)** - Unified API for LLM providers with cost tracking
-2. **MCP Gateway (Port 3001)** - Tool federation using Model Context Protocol
-3. **A2A Gateway (Port 3002)** - Agent-to-agent communication and orchestration
+1. **LiteLLM Proxy (Port 4000)** - Unified OpenAI-compatible API for 100+ models with cost tracking
+2. **Agent Gateway (Port 9000)** - MCP tool federation + A2A agent routing (single service)
+3. **Admin API (Port 8086)** - REST API for all platform configuration
+
+## Hello World: How Organizations Use the Platform
+
+New to the AI Control Plane? Start here:
+
+**[Hello World Examples](./hello-world/README.md)** — Step-by-step guide showing how organizations adopt the platform:
+
+| Example | Language | What it shows |
+|---------|----------|---------------|
+| `01_basic_chat.py` | Python | Simplest LLM call through the control plane |
+| `02_multi_model.py` | Python | Same prompt to 3 providers, compare cost/speed |
+| `03_streaming.py` | Python | Streaming responses with cost tracking |
+| `04_enterprise_setup.py` | Python | Admin provisions org → teams → keys → guardrails |
+| `05_cost_tracking.py` | Python | Query spend by model, team, daily trends |
+| `06_guardrails_and_cache.py` | Python | DLP detectors, semantic cache, audit trail |
+| `basic_chat.ts` | TypeScript | Chat + streaming + multi-model comparison |
+| `admin_setup.ts` | TypeScript | Org provisioning via Admin API |
 
 ## Quick Start
 
 ### Prerequisites
 
 ```bash
-# Set environment variables
-export GATEWAY_URL="http://agentgateway.agentgateway.svc.cluster.local"
-export API_KEY="your-api-key"
+# Local development (Docker Compose)
+export LITELLM_URL="http://localhost:4000"
+export ADMIN_API_URL="http://localhost:8086"
+export API_KEY="$LITELLM_KEY"
 
-# Verify gateway is running
-kubectl get pods -n agentgateway
-kubectl get pods -n mcp-servers
-kubectl get pods -n a2a
+# Verify services are running
+docker compose ps
 ```
 
 ### Test Connectivity
 
 ```bash
-# Test LLM Gateway
-curl -X POST "$GATEWAY_URL:9000/v1/chat/completions" \
+# Test LiteLLM proxy
+curl -X POST "$LITELLM_URL/v1/chat/completions" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Hello!"}]}'
 
-# Test MCP Gateway
-curl -X GET "$GATEWAY_URL:9001/mcp/tools" \
-  -H "Authorization: Bearer $API_KEY"
+# Test Admin API
+curl "$ADMIN_API_URL/health"
 
-# Test A2A Gateway
-curl -X GET "$GATEWAY_URL:9002/a2a/agents" \
-  -H "Authorization: Bearer $API_KEY"
+# Test Agent Gateway (requires --profile full)
+curl http://localhost:9000/health
 ```
 
 ## Examples
 
-### 1. MCP Gateway Usage
+### 1. MCP Servers (via Admin API)
 
-**File:** [mcp-usage.md](./mcp-usage.md)
-
-Learn how to:
-- Discover available MCP tools
-- Invoke filesystem operations
-- Query databases via MCP
-- Analyze code using MCP tools
-- Integrate MCP with LLMs
-
-**Quick Example:**
+MCP servers are configured through the Admin API and deployed to Agent Gateway:
 
 ```bash
-# List available tools
-curl "$GATEWAY_URL:9001/mcp/tools" -H "Authorization: Bearer $API_KEY"
+# List configured MCP servers
+curl "$ADMIN_API_URL/api/v1/mcp-servers" \
+  -H "Authorization: Bearer $(curl -s $ADMIN_API_URL/auth/login -d '{"api_key":"'$API_KEY'"}' -H 'Content-Type: application/json' | jq -r .access_token)"
 
-# Read a file
-curl -X POST "$GATEWAY_URL:9001/mcp/invoke" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "tool": "filesystem.read_file",
-    "params": {"path": "/data/example.txt"}
-  }'
+# Preview gateway config
+curl "$ADMIN_API_URL/api/v1/mcp-servers/sync/preview" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-### 2. Agent-to-Agent Communication
+### 2. A2A Agents (via Admin API)
 
-**File:** [agent-communication.md](./agent-communication.md)
-
-Learn how to:
-- Discover agents dynamically
-- Match capabilities to tasks
-- Send messages between agents
-- Implement multi-agent workflows
-- Use WebSocket for streaming
-
-**Quick Example:**
+A2A agents are registered through the Admin API:
 
 ```bash
-# List agents
-curl "$GATEWAY_URL:9002/a2a/agents" -H "Authorization: Bearer $API_KEY"
-
-# Send message to agent
-curl -X POST "$GATEWAY_URL:9002/a2a/send" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "from": "client",
-    "to": "code-assistant",
-    "capability": "code-review",
-    "message": {"code": "def add(a,b): return a+b", "language": "python"}
-  }'
+# List A2A agents
+curl "$ADMIN_API_URL/api/v1/agents" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-### 3. Multi-Agent Workflow
+### 3. Workflow Engine
 
-**File:** [a2a-workflow.yaml](./a2a-workflow.yaml)
-
-Complete workflow example demonstrating:
-- Sequential agent execution
-- Parallel agent execution
-- Capability-based routing
-- Result aggregation
-
-**Deploy and Run:**
+Run multi-step AI workflows using LangGraph templates (requires `--profile workflows`):
 
 ```bash
-# Deploy workflow
-kubectl apply -f examples/a2a-workflow.yaml
+# List available workflow templates
+curl http://localhost:8085/api/v1/templates
 
-# Run workflow job
-kubectl create job --from=configmap/workflow-example run-workflow -n a2a
-
-# View logs
-kubectl logs -n a2a job/run-workflow -f
+# Start a research workflow
+curl -X POST http://localhost:8085/api/v1/executions \
+  -H "Content-Type: application/json" \
+  -d '{"template": "research", "input": {"query": "Latest trends in AI agents"}}'
 ```
 
 ## Use Cases
@@ -172,275 +145,143 @@ Feature Request → Research Agent (find examples)
 
 ## SDK Examples
 
+LiteLLM is OpenAI-compatible, so any OpenAI SDK works out of the box.
+
 ### Python
 
 ```python
-from agent_gateway import AgentGatewayClient
+from openai import OpenAI
 
-client = AgentGatewayClient(
-    base_url="http://agentgateway.agentgateway.svc.cluster.local",
-    api_key="your-api-key"
+client = OpenAI(
+    base_url="http://localhost:4000/v1",
+    api_key="$LITELLM_KEY"
 )
 
-# Use MCP tools
-result = client.mcp.invoke_tool(
-    tool="filesystem.read_file",
-    params={"path": "/data/config.yaml"}
-)
-
-# Communicate with agents
-result = client.a2a.send_message(
-    to_agent="code-assistant",
-    capability="code-review",
-    message={"code": "...", "language": "python"}
-)
-
-# Chat with LLM
-result = client.llm.chat(
-    model="gpt-4o",
+# Chat with any model (OpenAI, Anthropic, Google, etc.)
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
     messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.choices[0].message.content)
+
+# Use model group aliases for automatic routing
+response = client.chat.completions.create(
+    model="fast",  # routes to cheapest fast model
+    messages=[{"role": "user", "content": "What is 2+2?"}]
 )
 ```
 
 ### JavaScript/TypeScript
 
 ```typescript
-import { AgentGatewayClient } from '@agent-gateway/client';
+import OpenAI from 'openai';
 
-const client = new AgentGatewayClient({
-  baseUrl: 'http://agentgateway.agentgateway.svc.cluster.local',
-  apiKey: 'your-api-key'
+const client = new OpenAI({
+  baseURL: 'http://localhost:4000/v1',
+  apiKey: '$LITELLM_KEY',
 });
 
-// Use MCP tools
-const result = await client.mcp.invokeTool({
-  tool: 'filesystem.read_file',
-  params: { path: '/data/config.yaml' }
+const response = await client.chat.completions.create({
+  model: 'claude-sonnet-4.5',
+  messages: [{ role: 'user', content: 'Explain the Gateway pattern.' }],
 });
-
-// Communicate with agents
-const review = await client.a2a.sendMessage({
-  toAgent: 'code-assistant',
-  capability: 'code-review',
-  message: { code: '...', language: 'python' }
-});
+console.log(response.choices[0].message.content);
 ```
 
-### Go
+### curl
 
-```go
-package main
-
-import (
-    "github.com/agent-gateway/go-client"
-)
-
-func main() {
-    client := agentgateway.NewClient(&agentgateway.Config{
-        BaseURL: "http://agentgateway.agentgateway.svc.cluster.local",
-        APIKey:  "your-api-key",
-    })
-
-    // Use MCP tools
-    result, err := client.MCP.InvokeTool(ctx, &agentgateway.InvokeToolRequest{
-        Tool: "filesystem.read_file",
-        Params: map[string]interface{}{
-            "path": "/data/config.yaml",
-        },
-    })
-
-    // Communicate with agents
-    result, err := client.A2A.SendMessage(ctx, &agentgateway.SendMessageRequest{
-        ToAgent:    "code-assistant",
-        Capability: "code-review",
-        Message: map[string]interface{}{
-            "code":     "...",
-            "language": "python",
-        },
-    })
-}
+```bash
+curl http://localhost:4000/v1/chat/completions \
+  -H "Authorization: Bearer $LITELLM_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "smart", "messages": [{"role": "user", "content": "Hello!"}]}'
 ```
 
 ## Architecture Diagrams
 
-### Full Platform Architecture
+### Platform Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     Kubernetes Cluster                          │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-    ┌─────────────────────────┼─────────────────────────┐
-    │                         │                         │
-    ▼                         ▼                         ▼
-┌──────────┐          ┌──────────────┐          ┌─────────────┐
-│ External │          │    vLLM      │          │ MCP Servers │
-│   LLMs   │          │  Self-hosted │          │   & Tools   │
-└──────────┘          └──────────────┘          └─────────────┘
-    ▲                         ▲                         ▲
-    │                         │                         │
-    └─────────────────────────┼─────────────────────────┘
-                              │
-              ┌───────────────────────────────┐
-              │   Agent Gateway (Rust)        │
-              │  ┌────────────────────────┐   │
-              │  │ LLM Gateway :9000      │   │
-              │  │ MCP Gateway :9001      │   │
-              │  │ A2A Gateway :9002      │   │
-              │  └────────────────────────┘   │
-              └───────────────────────────────┘
-                              ▲
-                              │
-              ┌───────────────────────────────┐
-              │   LiteLLM Proxy (Python)      │
-              │  • Cost tracking              │
-              │  • Budget management          │
-              │  • Provider routing           │
-              └───────────────────────────────┘
-                              ▲
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        │                     │                     │
-        ▼                     ▼                     ▼
-┌──────────────┐      ┌─────────────┐      ┌─────────────┐
-│   Agents     │      │ Workflows   │      │  API Clients│
-│  (A2A)       │      │Orchestrators│      │             │
-└──────────────┘      └─────────────┘      └─────────────┘
-```
-
-### MCP Gateway Architecture
-
-```
-┌────────────────┐
-│  LLM or Agent  │
-└────────┬───────┘
-         │ List tools / Invoke tool
-         ▼
-┌────────────────────────┐
-│   MCP Gateway          │
-│  ┌──────────────────┐  │
-│  │ Tool Aggregator  │  │  Discovers and aggregates
-│  │ (Deduplication)  │  │  tools from all MCP servers
-│  └──────────────────┘  │
-└────────┬───────────────┘
-         │
-    ┌────┴────┬─────────┬────────┐
-    ▼         ▼         ▼        ▼
-┌────────┐ ┌───────┐ ┌──────┐ ┌─────────┐
-│FileSystem│Database│ Code  │ │OpenAPI  │
-│  MCP   │ │  MCP  │ │Analysis│Bridge   │
-└────────┘ └───────┘ └──────┘ └─────────┘
-```
-
-### A2A Gateway Architecture
-
-```
-┌──────────────┐
-│ Orchestrator │
-└──────┬───────┘
-       │ Discover / Send message
-       ▼
-┌──────────────────────┐
-│   A2A Gateway        │
-│ ┌─────────────────┐  │
-│ │ Capability      │  │  Matches capabilities
-│ │ Matcher         │  │  to find best agent
-│ └─────────────────┘  │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│  Agent Registry      │
-│  (Service Discovery) │
-└──────┬───────────────┘
-       │
-  ┌────┴────┬──────────┬────────┐
-  ▼         ▼          ▼        ▼
-┌────┐   ┌────┐    ┌────┐   ┌────┐
-│Code│   │Data│    │Research│ │...│
-│Asst│   │Anal│    │ Agent │ │   │
-└────┘   └────┘    └────┘   └────┘
+│                          Clients / Apps                          │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+       ┌──────▼──────┐ ┌────▼─────┐ ┌──────▼──────┐
+       │  LiteLLM    │ │  Agent   │ │  Admin UI   │
+       │  Port 4000  │ │  Gateway │ │  Port 5173  │
+       │             │ │  Port 9000│ │  (React)    │
+       │ • 100+ models│ │ • MCP    │ └──────┬──────┘
+       │ • 9 providers│ │ • A2A    │        │
+       │ • Cost track │ │ • Hot-   │ ┌──────▼──────┐
+       └──────┬──────┘ │   reload │ │  Admin API  │
+              │        └────▲─────┘ │  Port 8086  │
+              │             │config  │  FastAPI    │
+              │        ┌────┴─────┐ └──────┬──────┘
+              │        │  Shared  │        │
+              │        │  Volume  │        │
+              │        └──────────┘        │
+              │                            │
+       ┌──────▼────────────────────────────▼──────┐
+       │              PostgreSQL + Redis           │
+       └───────────────────────────────────────────┘
 ```
 
 ## Monitoring
 
-### View Metrics
+Start the observability stack with Docker Compose:
 
 ```bash
-# Forward Prometheus
-kubectl port-forward -n observability svc/prometheus 9090:9090
-
-# Open in browser
-open http://localhost:9090
-
-# Query MCP metrics
-agentgateway_mcp_requests_total
-agentgateway_mcp_duration_seconds
-
-# Query A2A metrics
-agentgateway_a2a_messages_total
-agentgateway_a2a_agent_up
+docker compose --env-file config/.env --profile observability up -d
 ```
 
-### View Traces
+| Service | URL | Purpose |
+|---------|-----|---------|
+| Grafana | http://localhost:3030 | Dashboards (admin / admin) |
+| Prometheus | http://localhost:9090 | Metrics queries |
+| Jaeger | http://localhost:16686 | Distributed tracing |
 
-```bash
-# Forward Jaeger
-kubectl port-forward -n observability svc/jaeger 16686:16686
+### Grafana Dashboards
 
-# Open in browser
-open http://localhost:16686
+- **AI Control Plane Overview** — requests, errors, latency, spend
+- **FinOps Cost Tracking** — spend by model, team, and time
 
-# Search for traces:
-# - Service: mcp-gateway, a2a-gateway
-# - Operation: mcp.invoke_tool, a2a.send_message
-```
+### Prometheus Queries
 
-### View Dashboards
-
-```bash
-# Forward Grafana
-kubectl port-forward -n observability svc/grafana 3000:9000
-
-# Open in browser
-open http://localhost:9000
-
-# Dashboards:
-# - Agent Gateway Overview
-# - MCP Gateway Metrics
-# - A2A Agent Communication
-# - LiteLLM Cost Tracking
+```promql
+litellm_requests_metric_total
+litellm_spend_metric_total
+litellm_llm_api_latency_metric_bucket
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Agent not found**
+1. **Service not healthy**
    ```bash
-   kubectl get pods -n a2a
-   kubectl logs -n a2a -l app.kubernetes.io/type=agent
+   docker compose ps
+   docker compose logs <service-name> --tail 100
    ```
 
-2. **MCP server unavailable**
+2. **LiteLLM returning 401**
    ```bash
-   kubectl get pods -n mcp-servers
-   kubectl logs -n mcp-servers -l app.kubernetes.io/type=mcp-server
+   # Verify your API key matches config/.env
+   grep LITELLM_MASTER_KEY config/.env
    ```
 
-3. **Authentication failed**
+3. **Model returning errors**
    ```bash
-   # Verify API key
-   echo $API_KEY
-
-   # Check gateway logs
-   kubectl logs -n agentgateway -l app.kubernetes.io/name=agentgateway
+   # Check provider API keys are set
+   docker compose logs litellm --tail 50
    ```
 
-4. **Rate limit exceeded**
+4. **Agent Gateway not starting**
    ```bash
-   # Check rate limit config
-   kubectl get configmap -n agentgateway agentgateway-config -o yaml
+   # Agent Gateway requires --profile full
+   docker compose --env-file config/.env --profile full up -d
+   docker compose logs agentgateway --tail 50
    ```
 
 ## Best Practices
@@ -456,10 +297,10 @@ open http://localhost:9000
 ## Next Steps
 
 - [Platform Documentation](../README.md)
-- [Configuration Guide](../config/README.md)
-- [Deployment Guide](../kubernetes/README.md)
-- [Security Guide](../docs/security/threat-model.md)
-- [FinOps Guide](../docs/finops/cost-tracking.md)
+- [Quickstart Guide](../docs/docs/guides/quickstart.md)
+- [API Integration Guide](../docs/docs/guides/api-integration.md)
+- [Cost Management Guide](../docs/docs/guides/cost-management.md)
+- [Security Threat Model](../docs/security/threat-model.md)
 
 ## Contributing
 
