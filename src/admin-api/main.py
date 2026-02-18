@@ -37,15 +37,29 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from routers import agents as agents_router
+from routers import audit as audit_router
 from routers import budgets as budgets_router
+from routers import dlp as dlp_router
+from routers import chargeback as chargeback_router
+from routers import model_access as model_access_router
+from routers import sla as sla_router
+from routers import prompts as prompts_router
+from routers import rate_limits as rate_limits_router
 from routers import guardrails as guardrails_router
 from routers import keys as keys_router
 from routers import mcp_servers as mcp_servers_router
 from routers import models as models_router
+from routers import organizations as organizations_router
 from routers import reports as reports_router
 from routers import settings as settings_router
+from routers import sso as sso_router
 from routers import teams as teams_router
 from routers import workflows as workflows_router
+from routers import ab_tests as ab_tests_router
+from routers import cache as cache_router
+from routers import events as events_router
+from routers import playground as playground_router
+from routers import deprecations as deprecations_router
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
@@ -394,6 +408,31 @@ async def get_me(user: UserInfo = Depends(get_current_user)):
 
 
 # =============================================================================
+# SSO Auth Endpoints
+# =============================================================================
+
+from auth_sso import list_sso_providers, sso_authorize, sso_callback  # noqa: E402
+
+
+@app.get("/auth/sso/providers")
+async def auth_sso_providers():
+    """List available SSO providers."""
+    return await list_sso_providers()
+
+
+@app.get("/auth/sso/authorize/{org_slug}")
+async def auth_sso_authorize(org_slug: str):
+    """Redirect to IdP for SSO authentication."""
+    return await sso_authorize(org_slug)
+
+
+@app.get("/auth/sso/callback")
+async def auth_sso_callback(code: str = "", state: str = ""):
+    """Handle OIDC callback from IdP."""
+    return await sso_callback(code=code, state=state)
+
+
+# =============================================================================
 # Include Routers
 # =============================================================================
 
@@ -407,6 +446,20 @@ app.include_router(keys_router.router, prefix="/api/v1", tags=["API Keys"])
 app.include_router(models_router.router, prefix="/api/v1", tags=["Models"])
 app.include_router(teams_router.router, prefix="/api/v1", tags=["Teams"])
 app.include_router(budgets_router.router, prefix="/api/v1", tags=["Budgets"])
+app.include_router(organizations_router.router, prefix="/api/v1", tags=["Organizations"])
+app.include_router(sso_router.router, prefix="/api/v1", tags=["SSO"])
+app.include_router(audit_router.router, prefix="/api/v1", tags=["Audit"])
+app.include_router(dlp_router.router, prefix="/api/v1", tags=["DLP"])
+app.include_router(prompts_router.router, prefix="/api/v1", tags=["Prompts"])
+app.include_router(rate_limits_router.router, prefix="/api/v1", tags=["Rate Limits"])
+app.include_router(model_access_router.router, prefix="/api/v1", tags=["Model Access"])
+app.include_router(chargeback_router.router, prefix="/api/v1", tags=["Chargeback"])
+app.include_router(sla_router.router, prefix="/api/v1", tags=["SLA"])
+app.include_router(ab_tests_router.router, prefix="/api/v1", tags=["A/B Tests"])
+app.include_router(cache_router.router, prefix="/api/v1", tags=["Cache"])
+app.include_router(events_router.router, prefix="/api/v1", tags=["Events"])
+app.include_router(playground_router.router, prefix="/api/v1", tags=["Playground"])
+app.include_router(deprecations_router.router, prefix="/api/v1", tags=["Deprecations"])
 
 
 if __name__ == "__main__":

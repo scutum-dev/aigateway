@@ -10,6 +10,19 @@ import {
   keysApi,
   teamsApi,
   budgetsApi,
+  organizationsApi,
+  auditApi,
+  dlpApi,
+  promptsApi,
+  rateLimitsApi,
+  modelAccessApi,
+  chargebackApi,
+  slaApi,
+  abTestsApi,
+  cacheApi,
+  eventsApi,
+  playgroundApi,
+  deprecationsApi,
 } from './client'
 import type {
   GuardrailAssignment,
@@ -45,6 +58,47 @@ import type {
   BudgetInfo,
   BudgetCreateRequest,
   BudgetUpdateRequest,
+  Organization,
+  OrganizationCreate,
+  OrganizationUpdate,
+  BusinessUnit,
+  BusinessUnitCreate,
+  OrgMembership,
+  AuditLogEntry,
+  ContentDetector,
+  ContentDetectorCreate,
+  PromptTemplate,
+  PromptTemplateCreate,
+  PromptApproval,
+  RateLimitPolicy,
+  RateLimitPolicyCreate,
+  RateLimitEvent,
+  ModelAccessTier,
+  ModelAccessTierCreate,
+  ModelAccessRequest,
+  ModelAccessRequestCreate,
+  CostAllocationRule,
+  CostAllocationRuleCreate,
+  ChargebackReport,
+  BudgetForecast,
+  SLADefinition,
+  SLADefinitionCreate,
+  ProviderHealthMetric,
+  SLAViolation,
+  FailoverRule,
+  FailoverRuleCreate,
+  ABTest,
+  ABTestCreate,
+  ABTestSnapshot,
+  CacheStats,
+  CacheEntry,
+  EventSubscription,
+  EventSubscriptionCreate,
+  EventLogEntry,
+  PlaygroundSession,
+  PlaygroundSessionCreate,
+  ModelDeprecation,
+  ModelDeprecationCreate,
 } from '../types'
 
 // MCP Servers hooks
@@ -451,5 +505,526 @@ export function useDeleteBudget() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budgets'] })
     },
+  })
+}
+
+// Organizations hooks
+export function useOrganizations() {
+  return useQuery<Organization[]>({
+    queryKey: ['organizations'],
+    queryFn: organizationsApi.list,
+  })
+}
+
+export function useOrganization(id: string | null) {
+  return useQuery<Organization>({
+    queryKey: ['organizations', id],
+    queryFn: () => organizationsApi.get(id!),
+    enabled: !!id,
+  })
+}
+
+export function useCreateOrganization() {
+  const queryClient = useQueryClient()
+  return useMutation<Organization, Error, OrganizationCreate>({
+    mutationFn: organizationsApi.create,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['organizations'] }) },
+  })
+}
+
+export function useUpdateOrganization() {
+  const queryClient = useQueryClient()
+  return useMutation<Organization, Error, { id: string; data: OrganizationUpdate }>({
+    mutationFn: ({ id, data }) => organizationsApi.update(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['organizations'] }) },
+  })
+}
+
+export function useDeleteOrganization() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: organizationsApi.delete,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['organizations'] }) },
+  })
+}
+
+export function useBusinessUnits(orgId: string | null) {
+  return useQuery<BusinessUnit[]>({
+    queryKey: ['organizations', orgId, 'business-units'],
+    queryFn: () => organizationsApi.listBUs(orgId!),
+    enabled: !!orgId,
+  })
+}
+
+export function useCreateBusinessUnit() {
+  const queryClient = useQueryClient()
+  return useMutation<BusinessUnit, Error, { orgId: string; data: BusinessUnitCreate }>({
+    mutationFn: ({ orgId, data }) => organizationsApi.createBU(orgId, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['organizations'] }) },
+  })
+}
+
+export function useOrgMembers(orgId: string | null) {
+  return useQuery<OrgMembership[]>({
+    queryKey: ['organizations', orgId, 'members'],
+    queryFn: () => organizationsApi.listMembers(orgId!),
+    enabled: !!orgId,
+  })
+}
+
+// Audit hooks
+export function useAuditLogs(params?: { actor_id?: string; resource_type?: string; action?: string; limit?: number; offset?: number }) {
+  return useQuery<AuditLogEntry[]>({
+    queryKey: ['audit-logs', params],
+    queryFn: () => auditApi.list(params),
+    refetchInterval: 30000,
+  })
+}
+
+// DLP hooks
+export function useContentDetectors() {
+  return useQuery<ContentDetector[]>({
+    queryKey: ['detectors'],
+    queryFn: dlpApi.listDetectors,
+  })
+}
+
+export function useCreateDetector() {
+  const queryClient = useQueryClient()
+  return useMutation<ContentDetector, Error, ContentDetectorCreate>({
+    mutationFn: dlpApi.createDetector,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['detectors'] }) },
+  })
+}
+
+export function useDeleteDetector() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: dlpApi.deleteDetector,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['detectors'] }) },
+  })
+}
+
+// Prompt hooks
+export function usePromptTemplates(params?: { category?: string; status?: string }) {
+  return useQuery<PromptTemplate[]>({
+    queryKey: ['prompts', params],
+    queryFn: () => promptsApi.list(params),
+  })
+}
+
+export function usePromptTemplate(slug: string | null) {
+  return useQuery<PromptTemplate>({
+    queryKey: ['prompts', slug],
+    queryFn: () => promptsApi.get(slug!),
+    enabled: !!slug,
+  })
+}
+
+export function useCreatePromptTemplate() {
+  const queryClient = useQueryClient()
+  return useMutation<PromptTemplate, Error, PromptTemplateCreate>({
+    mutationFn: promptsApi.create,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['prompts'] }) },
+  })
+}
+
+export function useUpdatePromptTemplate() {
+  const queryClient = useQueryClient()
+  return useMutation<PromptTemplate, Error, { id: string; data: Partial<PromptTemplateCreate> }>({
+    mutationFn: ({ id, data }) => promptsApi.update(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['prompts'] }) },
+  })
+}
+
+export function useDeletePromptTemplate() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: promptsApi.delete,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['prompts'] }) },
+  })
+}
+
+export function usePromptApprovals() {
+  return useQuery<PromptApproval[]>({
+    queryKey: ['prompt-approvals'],
+    queryFn: promptsApi.listApprovals,
+  })
+}
+
+// Rate limit hooks
+export function useRateLimitPolicies() {
+  return useQuery<RateLimitPolicy[]>({
+    queryKey: ['rate-limits'],
+    queryFn: rateLimitsApi.list,
+  })
+}
+
+export function useCreateRateLimitPolicy() {
+  const queryClient = useQueryClient()
+  return useMutation<RateLimitPolicy, Error, RateLimitPolicyCreate>({
+    mutationFn: rateLimitsApi.create,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['rate-limits'] }) },
+  })
+}
+
+export function useUpdateRateLimitPolicy() {
+  const queryClient = useQueryClient()
+  return useMutation<RateLimitPolicy, Error, { id: string; data: Partial<RateLimitPolicyCreate> }>({
+    mutationFn: ({ id, data }) => rateLimitsApi.update(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['rate-limits'] }) },
+  })
+}
+
+export function useDeleteRateLimitPolicy() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: rateLimitsApi.delete,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['rate-limits'] }) },
+  })
+}
+
+export function useRateLimitEvents(params?: { limit?: number }) {
+  return useQuery<RateLimitEvent[]>({
+    queryKey: ['rate-limit-events', params],
+    queryFn: () => rateLimitsApi.events(params),
+    refetchInterval: 15000,
+  })
+}
+
+// Model access hooks
+export function useModelAccessTiers() {
+  return useQuery<ModelAccessTier[]>({
+    queryKey: ['model-access-tiers'],
+    queryFn: modelAccessApi.listTiers,
+  })
+}
+
+export function useCreateModelAccessTier() {
+  const queryClient = useQueryClient()
+  return useMutation<ModelAccessTier, Error, ModelAccessTierCreate>({
+    mutationFn: modelAccessApi.createTier,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['model-access-tiers'] }) },
+  })
+}
+
+export function useModelAccessRequests(params?: { status?: string }) {
+  return useQuery<ModelAccessRequest[]>({
+    queryKey: ['model-access-requests', params],
+    queryFn: () => modelAccessApi.listRequests(params),
+  })
+}
+
+export function useCreateModelAccessRequest() {
+  const queryClient = useQueryClient()
+  return useMutation<ModelAccessRequest, Error, ModelAccessRequestCreate>({
+    mutationFn: modelAccessApi.createRequest,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['model-access-requests'] }) },
+  })
+}
+
+export function useMyModelAccess() {
+  return useQuery<ModelAccessRequest[]>({
+    queryKey: ['model-access-my'],
+    queryFn: modelAccessApi.myAccess,
+  })
+}
+
+// Chargeback hooks
+export function useCostAllocationRules() {
+  return useQuery<CostAllocationRule[]>({
+    queryKey: ['cost-allocation-rules'],
+    queryFn: chargebackApi.listRules,
+  })
+}
+
+export function useCreateCostAllocationRule() {
+  const queryClient = useQueryClient()
+  return useMutation<CostAllocationRule, Error, CostAllocationRuleCreate>({
+    mutationFn: chargebackApi.createRule,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['cost-allocation-rules'] }) },
+  })
+}
+
+export function useDeleteCostAllocationRule() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: chargebackApi.deleteRule,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['cost-allocation-rules'] }) },
+  })
+}
+
+export function useChargebackReports() {
+  return useQuery<ChargebackReport[]>({
+    queryKey: ['chargeback-reports'],
+    queryFn: chargebackApi.listReports,
+  })
+}
+
+export function useBudgetForecasts() {
+  return useQuery<BudgetForecast[]>({
+    queryKey: ['budget-forecasts'],
+    queryFn: chargebackApi.getForecasts,
+  })
+}
+
+// SLA hooks
+export function useSLADefinitions() {
+  return useQuery<SLADefinition[]>({
+    queryKey: ['sla-definitions'],
+    queryFn: slaApi.listDefinitions,
+  })
+}
+
+export function useCreateSLADefinition() {
+  const queryClient = useQueryClient()
+  return useMutation<SLADefinition, Error, SLADefinitionCreate>({
+    mutationFn: slaApi.createDefinition,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['sla-definitions'] }) },
+  })
+}
+
+export function useProviderHealth() {
+  return useQuery<ProviderHealthMetric[]>({
+    queryKey: ['sla-health'],
+    queryFn: slaApi.getHealth,
+    refetchInterval: 60000,
+  })
+}
+
+export function useSLAViolations(params?: { resolved?: boolean }) {
+  return useQuery<SLAViolation[]>({
+    queryKey: ['sla-violations', params],
+    queryFn: () => slaApi.listViolations(params),
+  })
+}
+
+export function useActiveViolations() {
+  return useQuery<SLAViolation[]>({
+    queryKey: ['sla-violations-active'],
+    queryFn: slaApi.activeViolations,
+    refetchInterval: 30000,
+  })
+}
+
+export function useFailoverRules() {
+  return useQuery<FailoverRule[]>({
+    queryKey: ['failover-rules'],
+    queryFn: slaApi.listFailoverRules,
+  })
+}
+
+export function useCreateFailoverRule() {
+  const queryClient = useQueryClient()
+  return useMutation<FailoverRule, Error, FailoverRuleCreate>({
+    mutationFn: slaApi.createFailoverRule,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['failover-rules'] }) },
+  })
+}
+
+// A/B Tests hooks
+export function useABTests() {
+  return useQuery<ABTest[]>({
+    queryKey: ['ab-tests'],
+    queryFn: abTestsApi.list,
+  })
+}
+
+export function useABTest(id: string | null) {
+  return useQuery<ABTest & { latest_snapshot?: ABTestSnapshot }>({
+    queryKey: ['ab-tests', id],
+    queryFn: () => abTestsApi.get(id!),
+    enabled: !!id,
+  })
+}
+
+export function useCreateABTest() {
+  const queryClient = useQueryClient()
+  return useMutation<ABTest, Error, ABTestCreate>({
+    mutationFn: abTestsApi.create,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['ab-tests'] }) },
+  })
+}
+
+export function useDeleteABTest() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: abTestsApi.delete,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['ab-tests'] }) },
+  })
+}
+
+export function useStartABTest() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: abTestsApi.start,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['ab-tests'] }) },
+  })
+}
+
+export function useStopABTest() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: abTestsApi.stop,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['ab-tests'] }) },
+  })
+}
+
+export function usePromoteABTest() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: abTestsApi.promote,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['ab-tests'] }) },
+  })
+}
+
+export function useABTestSnapshots(testId: string | null) {
+  return useQuery<ABTestSnapshot[]>({
+    queryKey: ['ab-tests', testId, 'snapshots'],
+    queryFn: () => abTestsApi.snapshots(testId!),
+    enabled: !!testId,
+    refetchInterval: 30000,
+  })
+}
+
+// Cache hooks
+export function useCacheStats() {
+  return useQuery<CacheStats>({
+    queryKey: ['cache-stats'],
+    queryFn: cacheApi.stats,
+    refetchInterval: 30000,
+  })
+}
+
+export function useCacheEntries(params?: { limit?: number; offset?: number }) {
+  return useQuery<CacheEntry[]>({
+    queryKey: ['cache-entries', params],
+    queryFn: () => cacheApi.entries(params),
+  })
+}
+
+export function useClearCache() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error>({
+    mutationFn: cacheApi.clear,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cache-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['cache-entries'] })
+    },
+  })
+}
+
+export function useDeleteCacheEntry() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: cacheApi.deleteEntry,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cache-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['cache-entries'] })
+    },
+  })
+}
+
+// Events hooks
+export function useEventSubscriptions() {
+  return useQuery<EventSubscription[]>({
+    queryKey: ['event-subscriptions'],
+    queryFn: eventsApi.listSubscriptions,
+  })
+}
+
+export function useCreateEventSubscription() {
+  const queryClient = useQueryClient()
+  return useMutation<EventSubscription, Error, EventSubscriptionCreate>({
+    mutationFn: eventsApi.createSubscription,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['event-subscriptions'] }) },
+  })
+}
+
+export function useUpdateEventSubscription() {
+  const queryClient = useQueryClient()
+  return useMutation<EventSubscription, Error, { id: string; data: Partial<EventSubscriptionCreate> }>({
+    mutationFn: ({ id, data }) => eventsApi.updateSubscription(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['event-subscriptions'] }) },
+  })
+}
+
+export function useDeleteEventSubscription() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: eventsApi.deleteSubscription,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['event-subscriptions'] }) },
+  })
+}
+
+export function useEventLog(params?: { event_type?: string; limit?: number; offset?: number }) {
+  return useQuery<EventLogEntry[]>({
+    queryKey: ['event-log', params],
+    queryFn: () => eventsApi.listEvents(params),
+    refetchInterval: 15000,
+  })
+}
+
+export function useSendTestEvent() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, { event_type: string; payload: Record<string, unknown> }>({
+    mutationFn: eventsApi.sendTestEvent,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['event-log'] }) },
+  })
+}
+
+// Playground hooks
+export function usePlaygroundSessions(params?: { is_public?: boolean }) {
+  return useQuery<PlaygroundSession[]>({
+    queryKey: ['playground-sessions', params],
+    queryFn: () => playgroundApi.listSessions(params),
+  })
+}
+
+export function useCreatePlaygroundSession() {
+  const queryClient = useQueryClient()
+  return useMutation<PlaygroundSession, Error, PlaygroundSessionCreate>({
+    mutationFn: playgroundApi.createSession,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['playground-sessions'] }) },
+  })
+}
+
+export function useDeletePlaygroundSession() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: playgroundApi.deleteSession,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['playground-sessions'] }) },
+  })
+}
+
+// Deprecations hooks
+export function useModelDeprecations() {
+  return useQuery<ModelDeprecation[]>({
+    queryKey: ['model-deprecations'],
+    queryFn: deprecationsApi.list,
+  })
+}
+
+export function useCreateModelDeprecation() {
+  const queryClient = useQueryClient()
+  return useMutation<ModelDeprecation, Error, ModelDeprecationCreate>({
+    mutationFn: deprecationsApi.create,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['model-deprecations'] }) },
+  })
+}
+
+export function useUpdateModelDeprecation() {
+  const queryClient = useQueryClient()
+  return useMutation<ModelDeprecation, Error, { id: string; data: Partial<ModelDeprecationCreate> }>({
+    mutationFn: ({ id, data }) => deprecationsApi.update(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['model-deprecations'] }) },
+  })
+}
+
+export function useDeleteModelDeprecation() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: deprecationsApi.delete,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['model-deprecations'] }) },
   })
 }

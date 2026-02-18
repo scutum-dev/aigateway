@@ -62,6 +62,10 @@ class UserInfo(BaseModel):
     role: str
     team_id: Optional[str] = None
     is_admin: bool = False
+    email: Optional[str] = None
+    org_id: Optional[str] = None
+    is_platform_admin: bool = False
+    org_roles: dict = {}
 
 
 async def validate_api_key(api_key: str) -> Optional[dict]:
@@ -124,6 +128,10 @@ def create_access_token(user_info: dict) -> tuple[str, datetime]:
         "role": user_info.get("role", "user"),
         "team_id": user_info.get("team_id"),
         "is_admin": user_info.get("is_admin", False),
+        "email": user_info.get("email"),
+        "org_id": user_info.get("org_id"),
+        "is_platform_admin": user_info.get("is_platform_admin", False),
+        "org_roles": user_info.get("org_roles", {}),
         "exp": expires_at,
         "iat": datetime.now(timezone.utc),
     }
@@ -179,6 +187,10 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         role=payload.get("role", "user"),
         team_id=payload.get("team_id"),
         is_admin=payload.get("is_admin", False),
+        email=payload.get("email"),
+        org_id=payload.get("org_id"),
+        is_platform_admin=payload.get("is_platform_admin", False),
+        org_roles=payload.get("org_roles", {}),
     )
 
 
@@ -199,6 +211,27 @@ async def require_admin(user: UserInfo = Depends(get_current_user)) -> UserInfo:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
+        )
+    return user
+
+
+async def require_platform_admin(user: UserInfo = Depends(get_current_user)) -> UserInfo:
+    """
+    Require platform admin role for endpoint.
+
+    Args:
+        user: Current user
+
+    Returns:
+        UserInfo if platform admin
+
+    Raises:
+        HTTPException: If not platform admin
+    """
+    if not user.is_platform_admin and not user.is_admin and user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Platform admin access required",
         )
     return user
 

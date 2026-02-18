@@ -35,6 +35,52 @@ import type {
   BudgetInfo,
   BudgetCreateRequest,
   BudgetUpdateRequest,
+  Organization,
+  OrganizationCreate,
+  OrganizationUpdate,
+  BusinessUnit,
+  BusinessUnitCreate,
+  TeamHierarchy,
+  OrgMembership,
+  AuditLogEntry,
+  ContentDetector,
+  ContentDetectorCreate,
+  TeamContentPolicy,
+  SSOConfig,
+  SSOProvider,
+  PromptTemplate,
+  PromptTemplateCreate,
+  PromptApproval,
+  RateLimitPolicy,
+  RateLimitPolicyCreate,
+  RateLimitEvent,
+  ModelAccessTier,
+  ModelAccessTierCreate,
+  ModelAccessRequest,
+  ModelAccessRequestCreate,
+  CostAllocationRule,
+  CostAllocationRuleCreate,
+  ChargebackReport,
+  BudgetForecast,
+  SLADefinition,
+  SLADefinitionCreate,
+  ProviderHealthMetric,
+  SLAViolation,
+  FailoverRule,
+  FailoverRuleCreate,
+  ABTest,
+  ABTestCreate,
+  ABTestSnapshot,
+  CacheStats,
+  CacheEntry,
+  CacheSettings,
+  EventSubscription,
+  EventSubscriptionCreate,
+  EventLogEntry,
+  PlaygroundSession,
+  PlaygroundSessionCreate,
+  ModelDeprecation,
+  ModelDeprecationCreate,
 } from '../types'
 
 // Use Vite's BASE_URL so API calls route through the admin-ui nginx proxy
@@ -322,5 +368,496 @@ export const budgetsApi = {
   },
   delete: async (id: string): Promise<void> => {
     await api.post('/budgets/delete', { id })
+  },
+}
+
+// Organizations API
+export const organizationsApi = {
+  list: async (): Promise<Organization[]> => {
+    const response = await api.get('/organizations')
+    return response.data
+  },
+  get: async (id: string): Promise<Organization> => {
+    const response = await api.get(`/organizations/${id}`)
+    return response.data
+  },
+  create: async (data: OrganizationCreate): Promise<Organization> => {
+    const response = await api.post('/organizations', data)
+    return response.data
+  },
+  update: async (id: string, data: OrganizationUpdate): Promise<Organization> => {
+    const response = await api.put(`/organizations/${id}`, data)
+    return response.data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/organizations/${id}`)
+  },
+  listBUs: async (orgId: string): Promise<BusinessUnit[]> => {
+    const response = await api.get(`/organizations/${orgId}/business-units`)
+    return response.data
+  },
+  createBU: async (orgId: string, data: BusinessUnitCreate): Promise<BusinessUnit> => {
+    const response = await api.post(`/organizations/${orgId}/business-units`, data)
+    return response.data
+  },
+  updateBU: async (orgId: string, buId: string, data: Partial<BusinessUnitCreate>): Promise<BusinessUnit> => {
+    const response = await api.put(`/organizations/${orgId}/business-units/${buId}`, data)
+    return response.data
+  },
+  deleteBU: async (orgId: string, buId: string): Promise<void> => {
+    await api.delete(`/organizations/${orgId}/business-units/${buId}`)
+  },
+  listTeams: async (orgId: string): Promise<TeamHierarchy[]> => {
+    const response = await api.get(`/organizations/${orgId}/teams`)
+    return response.data
+  },
+  assignTeam: async (orgId: string, teamId: string, buId?: string): Promise<void> => {
+    await api.post(`/organizations/${orgId}/teams/${teamId}`, { bu_id: buId })
+  },
+  removeTeam: async (orgId: string, teamId: string): Promise<void> => {
+    await api.delete(`/organizations/${orgId}/teams/${teamId}`)
+  },
+  listMembers: async (orgId: string): Promise<OrgMembership[]> => {
+    const response = await api.get(`/organizations/${orgId}/members`)
+    return response.data
+  },
+  addMember: async (orgId: string, data: { user_id: string; role: string; bu_id?: string }): Promise<OrgMembership> => {
+    const response = await api.post(`/organizations/${orgId}/members`, data)
+    return response.data
+  },
+  updateMember: async (orgId: string, userId: string, data: { role: string }): Promise<void> => {
+    await api.put(`/organizations/${orgId}/members/${userId}`, data)
+  },
+  removeMember: async (orgId: string, userId: string): Promise<void> => {
+    await api.delete(`/organizations/${orgId}/members/${userId}`)
+  },
+  getSSO: async (orgId: string): Promise<SSOConfig> => {
+    const response = await api.get(`/organizations/${orgId}/sso`)
+    return response.data
+  },
+  updateSSO: async (orgId: string, data: Record<string, unknown>): Promise<SSOConfig> => {
+    const response = await api.post(`/organizations/${orgId}/sso`, data)
+    return response.data
+  },
+  deleteSSO: async (orgId: string): Promise<void> => {
+    await api.delete(`/organizations/${orgId}/sso`)
+  },
+}
+
+// Audit API
+export const auditApi = {
+  list: async (params?: { actor_id?: string; resource_type?: string; action?: string; org_id?: string; limit?: number; offset?: number }): Promise<AuditLogEntry[]> => {
+    const response = await api.get('/audit-logs', { params })
+    return response.data
+  },
+  export: async (format: string = 'csv'): Promise<Blob> => {
+    const response = await api.get('/audit-logs/export', { params: { format }, responseType: 'blob' })
+    return response.data
+  },
+}
+
+// DLP API
+export const dlpApi = {
+  listDetectors: async (): Promise<ContentDetector[]> => {
+    const response = await api.get('/detectors')
+    return response.data
+  },
+  createDetector: async (data: ContentDetectorCreate): Promise<ContentDetector> => {
+    const response = await api.post('/detectors', data)
+    return response.data
+  },
+  getDetector: async (id: string): Promise<ContentDetector> => {
+    const response = await api.get(`/detectors/${id}`)
+    return response.data
+  },
+  updateDetector: async (id: string, data: Partial<ContentDetectorCreate>): Promise<ContentDetector> => {
+    const response = await api.put(`/detectors/${id}`, data)
+    return response.data
+  },
+  deleteDetector: async (id: string): Promise<void> => {
+    await api.delete(`/detectors/${id}`)
+  },
+  testDetector: async (id: string, text: string): Promise<{ matches: unknown[] }> => {
+    const response = await api.post(`/detectors/${id}/test`, { text })
+    return response.data
+  },
+  attachDetector: async (guardrailId: string, detectorId: string): Promise<void> => {
+    await api.post(`/guardrails/${guardrailId}/detectors/${detectorId}`)
+  },
+  detachDetector: async (guardrailId: string, detectorId: string): Promise<void> => {
+    await api.delete(`/guardrails/${guardrailId}/detectors/${detectorId}`)
+  },
+  getContentPolicies: async (teamId: string): Promise<TeamContentPolicy[]> => {
+    const response = await api.get(`/teams/${teamId}/content-policies`)
+    return response.data
+  },
+  updateContentPolicy: async (teamId: string, data: { policy_type: string; config: Record<string, unknown> }): Promise<TeamContentPolicy> => {
+    const response = await api.put(`/teams/${teamId}/content-policies`, data)
+    return response.data
+  },
+}
+
+// Prompts API
+export const promptsApi = {
+  list: async (params?: { category?: string; status?: string }): Promise<PromptTemplate[]> => {
+    const response = await api.get('/prompts', { params })
+    return response.data
+  },
+  get: async (slug: string): Promise<PromptTemplate> => {
+    const response = await api.get(`/prompts/${slug}`)
+    return response.data
+  },
+  create: async (data: PromptTemplateCreate): Promise<PromptTemplate> => {
+    const response = await api.post('/prompts', data)
+    return response.data
+  },
+  update: async (id: string, data: Partial<PromptTemplateCreate>): Promise<PromptTemplate> => {
+    const response = await api.put(`/prompts/${id}`, data)
+    return response.data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/prompts/${id}`)
+  },
+  getVersions: async (slug: string): Promise<PromptTemplate[]> => {
+    const response = await api.get(`/prompts/${slug}/versions`)
+    return response.data
+  },
+  createVersion: async (slug: string, data: { template_text: string; variables?: unknown[] }): Promise<PromptTemplate> => {
+    const response = await api.post(`/prompts/${slug}/versions`, data)
+    return response.data
+  },
+  render: async (slug: string, variables: Record<string, string>): Promise<{ rendered: string }> => {
+    const response = await api.post(`/prompts/${slug}/render`, { variables })
+    return response.data
+  },
+  submitReview: async (id: string): Promise<PromptApproval> => {
+    const response = await api.post(`/prompts/${id}/submit-review`)
+    return response.data
+  },
+  listApprovals: async (): Promise<PromptApproval[]> => {
+    const response = await api.get('/prompt-approvals')
+    return response.data
+  },
+  approve: async (id: string, comment?: string): Promise<void> => {
+    await api.post(`/prompt-approvals/${id}/approve`, { comment })
+  },
+  reject: async (id: string, comment?: string): Promise<void> => {
+    await api.post(`/prompt-approvals/${id}/reject`, { comment })
+  },
+  analytics: async (slug: string): Promise<unknown> => {
+    const response = await api.get(`/prompts/${slug}/analytics`)
+    return response.data
+  },
+}
+
+// Rate Limits API
+export const rateLimitsApi = {
+  list: async (): Promise<RateLimitPolicy[]> => {
+    const response = await api.get('/rate-limits')
+    return response.data
+  },
+  create: async (data: RateLimitPolicyCreate): Promise<RateLimitPolicy> => {
+    const response = await api.post('/rate-limits', data)
+    return response.data
+  },
+  get: async (id: string): Promise<RateLimitPolicy> => {
+    const response = await api.get(`/rate-limits/${id}`)
+    return response.data
+  },
+  update: async (id: string, data: Partial<RateLimitPolicyCreate>): Promise<RateLimitPolicy> => {
+    const response = await api.put(`/rate-limits/${id}`, data)
+    return response.data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/rate-limits/${id}`)
+  },
+  status: async (): Promise<unknown> => {
+    const response = await api.get('/rate-limits/status')
+    return response.data
+  },
+  events: async (params?: { limit?: number }): Promise<RateLimitEvent[]> => {
+    const response = await api.get('/rate-limit-events', { params })
+    return response.data
+  },
+}
+
+// Model Access API
+export const modelAccessApi = {
+  listTiers: async (): Promise<ModelAccessTier[]> => {
+    const response = await api.get('/model-access/tiers')
+    return response.data
+  },
+  createTier: async (data: ModelAccessTierCreate): Promise<ModelAccessTier> => {
+    const response = await api.post('/model-access/tiers', data)
+    return response.data
+  },
+  updateTier: async (id: string, data: Partial<ModelAccessTierCreate>): Promise<ModelAccessTier> => {
+    const response = await api.put(`/model-access/tiers/${id}`, data)
+    return response.data
+  },
+  deleteTier: async (id: string): Promise<void> => {
+    await api.delete(`/model-access/tiers/${id}`)
+  },
+  listRequests: async (params?: { status?: string }): Promise<ModelAccessRequest[]> => {
+    const response = await api.get('/model-access/requests', { params })
+    return response.data
+  },
+  createRequest: async (data: ModelAccessRequestCreate): Promise<ModelAccessRequest> => {
+    const response = await api.post('/model-access/requests', data)
+    return response.data
+  },
+  approveRequest: async (id: string, comment?: string): Promise<void> => {
+    await api.post(`/model-access/requests/${id}/approve`, { comment })
+  },
+  rejectRequest: async (id: string, comment?: string): Promise<void> => {
+    await api.post(`/model-access/requests/${id}/reject`, { comment })
+  },
+  myAccess: async (): Promise<ModelAccessRequest[]> => {
+    const response = await api.get('/model-access/my-access')
+    return response.data
+  },
+}
+
+// Chargeback API
+export const chargebackApi = {
+  listRules: async (): Promise<CostAllocationRule[]> => {
+    const response = await api.get('/cost-allocation/rules')
+    return response.data
+  },
+  createRule: async (data: CostAllocationRuleCreate): Promise<CostAllocationRule> => {
+    const response = await api.post('/cost-allocation/rules', data)
+    return response.data
+  },
+  updateRule: async (id: string, data: Partial<CostAllocationRuleCreate>): Promise<CostAllocationRule> => {
+    const response = await api.put(`/cost-allocation/rules/${id}`, data)
+    return response.data
+  },
+  deleteRule: async (id: string): Promise<void> => {
+    await api.delete(`/cost-allocation/rules/${id}`)
+  },
+  generateReport: async (period: string): Promise<ChargebackReport> => {
+    const response = await api.post('/chargeback/reports/generate', { period })
+    return response.data
+  },
+  listReports: async (): Promise<ChargebackReport[]> => {
+    const response = await api.get('/chargeback/reports')
+    return response.data
+  },
+  getReport: async (id: string): Promise<ChargebackReport> => {
+    const response = await api.get(`/chargeback/reports/${id}`)
+    return response.data
+  },
+  exportReport: async (id: string, format: string = 'csv'): Promise<Blob> => {
+    const response = await api.get(`/chargeback/reports/${id}/export`, { params: { format }, responseType: 'blob' })
+    return response.data
+  },
+  finalizeReport: async (id: string): Promise<void> => {
+    await api.post(`/chargeback/reports/${id}/finalize`)
+  },
+  getForecasts: async (): Promise<BudgetForecast[]> => {
+    const response = await api.get('/reports/forecast')
+    return response.data
+  },
+  generateForecast: async (params?: { team_id?: string }): Promise<BudgetForecast[]> => {
+    const response = await api.post('/reports/forecast/generate', params)
+    return response.data
+  },
+}
+
+// SLA API
+export const slaApi = {
+  listDefinitions: async (): Promise<SLADefinition[]> => {
+    const response = await api.get('/sla/definitions')
+    return response.data
+  },
+  createDefinition: async (data: SLADefinitionCreate): Promise<SLADefinition> => {
+    const response = await api.post('/sla/definitions', data)
+    return response.data
+  },
+  updateDefinition: async (id: string, data: Partial<SLADefinitionCreate>): Promise<SLADefinition> => {
+    const response = await api.put(`/sla/definitions/${id}`, data)
+    return response.data
+  },
+  deleteDefinition: async (id: string): Promise<void> => {
+    await api.delete(`/sla/definitions/${id}`)
+  },
+  getHealth: async (): Promise<ProviderHealthMetric[]> => {
+    const response = await api.get('/sla/health')
+    return response.data
+  },
+  getHealthHistory: async (params?: { provider?: string; model?: string; hours?: number }): Promise<ProviderHealthMetric[]> => {
+    const response = await api.get('/sla/health/history', { params })
+    return response.data
+  },
+  listViolations: async (params?: { resolved?: boolean }): Promise<SLAViolation[]> => {
+    const response = await api.get('/sla/violations', { params })
+    return response.data
+  },
+  activeViolations: async (): Promise<SLAViolation[]> => {
+    const response = await api.get('/sla/violations/active')
+    return response.data
+  },
+  resolveViolation: async (id: string): Promise<void> => {
+    await api.post(`/sla/violations/${id}/resolve`)
+  },
+  listFailoverRules: async (): Promise<FailoverRule[]> => {
+    const response = await api.get('/sla/failover-rules')
+    return response.data
+  },
+  createFailoverRule: async (data: FailoverRuleCreate): Promise<FailoverRule> => {
+    const response = await api.post('/sla/failover-rules', data)
+    return response.data
+  },
+  updateFailoverRule: async (id: string, data: Partial<FailoverRuleCreate>): Promise<FailoverRule> => {
+    const response = await api.put(`/sla/failover-rules/${id}`, data)
+    return response.data
+  },
+  deleteFailoverRule: async (id: string): Promise<void> => {
+    await api.delete(`/sla/failover-rules/${id}`)
+  },
+  triggerFailover: async (id: string): Promise<void> => {
+    await api.post(`/sla/failover-rules/${id}/trigger`)
+  },
+  getCompliance: async (): Promise<unknown> => {
+    const response = await api.get('/sla/compliance')
+    return response.data
+  },
+}
+
+// A/B Tests API
+export const abTestsApi = {
+  list: async (): Promise<ABTest[]> => {
+    const response = await api.get('/ab-tests')
+    return response.data
+  },
+  get: async (id: string): Promise<ABTest & { latest_snapshot?: ABTestSnapshot }> => {
+    const response = await api.get(`/ab-tests/${id}`)
+    return response.data
+  },
+  create: async (data: ABTestCreate): Promise<ABTest> => {
+    const response = await api.post('/ab-tests', data)
+    return response.data
+  },
+  update: async (id: string, data: Partial<ABTestCreate>): Promise<ABTest> => {
+    const response = await api.put(`/ab-tests/${id}`, data)
+    return response.data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/ab-tests/${id}`)
+  },
+  start: async (id: string): Promise<void> => {
+    await api.post(`/ab-tests/${id}/start`)
+  },
+  stop: async (id: string): Promise<void> => {
+    await api.post(`/ab-tests/${id}/stop`)
+  },
+  promote: async (id: string): Promise<void> => {
+    await api.post(`/ab-tests/${id}/promote`)
+  },
+  snapshots: async (id: string): Promise<ABTestSnapshot[]> => {
+    const response = await api.get(`/ab-tests/${id}/snapshots`)
+    return response.data
+  },
+}
+
+// Cache API
+export const cacheApi = {
+  stats: async (): Promise<CacheStats> => {
+    const response = await api.get('/cache/stats')
+    return response.data
+  },
+  clear: async (): Promise<void> => {
+    await api.post('/cache/clear')
+  },
+  settings: async (data: CacheSettings): Promise<CacheSettings> => {
+    const response = await api.put('/cache/settings', data)
+    return response.data
+  },
+  entries: async (params?: { limit?: number; offset?: number }): Promise<CacheEntry[]> => {
+    const response = await api.get('/cache/entries', { params })
+    return response.data
+  },
+  deleteEntry: async (id: string): Promise<void> => {
+    await api.delete(`/cache/entries/${id}`)
+  },
+}
+
+// Events API
+export const eventsApi = {
+  listSubscriptions: async (): Promise<EventSubscription[]> => {
+    const response = await api.get('/events/subscriptions')
+    return response.data
+  },
+  createSubscription: async (data: EventSubscriptionCreate): Promise<EventSubscription> => {
+    const response = await api.post('/events/subscriptions', data)
+    return response.data
+  },
+  getSubscription: async (id: string): Promise<EventSubscription> => {
+    const response = await api.get(`/events/subscriptions/${id}`)
+    return response.data
+  },
+  updateSubscription: async (id: string, data: Partial<EventSubscriptionCreate>): Promise<EventSubscription> => {
+    const response = await api.put(`/events/subscriptions/${id}`, data)
+    return response.data
+  },
+  deleteSubscription: async (id: string): Promise<void> => {
+    await api.delete(`/events/subscriptions/${id}`)
+  },
+  listEvents: async (params?: { event_type?: string; limit?: number; offset?: number }): Promise<EventLogEntry[]> => {
+    const response = await api.get('/events/log', { params })
+    return response.data
+  },
+  sendTestEvent: async (data: { event_type: string; payload: Record<string, unknown> }): Promise<void> => {
+    await api.post('/events/test', data)
+  },
+}
+
+// Playground API
+export const playgroundApi = {
+  listSessions: async (params?: { is_public?: boolean }): Promise<PlaygroundSession[]> => {
+    const response = await api.get('/playground/sessions', { params })
+    return response.data
+  },
+  createSession: async (data: PlaygroundSessionCreate): Promise<PlaygroundSession> => {
+    const response = await api.post('/playground/sessions', data)
+    return response.data
+  },
+  getSession: async (id: string): Promise<PlaygroundSession> => {
+    const response = await api.get(`/playground/sessions/${id}`)
+    return response.data
+  },
+  updateSession: async (id: string, data: Partial<PlaygroundSessionCreate>): Promise<PlaygroundSession> => {
+    const response = await api.put(`/playground/sessions/${id}`, data)
+    return response.data
+  },
+  deleteSession: async (id: string): Promise<void> => {
+    await api.delete(`/playground/sessions/${id}`)
+  },
+}
+
+// Deprecations API
+export const deprecationsApi = {
+  list: async (): Promise<ModelDeprecation[]> => {
+    const response = await api.get('/model-deprecations')
+    return response.data
+  },
+  create: async (data: ModelDeprecationCreate): Promise<ModelDeprecation> => {
+    const response = await api.post('/model-deprecations', data)
+    return response.data
+  },
+  get: async (id: string): Promise<ModelDeprecation> => {
+    const response = await api.get(`/model-deprecations/${id}`)
+    return response.data
+  },
+  update: async (id: string, data: Partial<ModelDeprecationCreate>): Promise<ModelDeprecation> => {
+    const response = await api.put(`/model-deprecations/${id}`, data)
+    return response.data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/model-deprecations/${id}`)
+  },
+  check: async (modelName: string): Promise<{ deprecated: boolean; deprecation?: ModelDeprecation }> => {
+    const response = await api.get(`/model-deprecations/check/${modelName}`)
+    return response.data
   },
 }

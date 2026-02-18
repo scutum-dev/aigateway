@@ -15,6 +15,17 @@ import Agents from './pages/Agents'
 import Guardrails from './pages/Guardrails'
 import Workflows from './pages/Workflows'
 import Settings from './pages/Settings'
+import Organizations from './pages/Organizations'
+import OrganizationDetail from './pages/OrganizationDetail'
+import AuditLog from './pages/AuditLog'
+import Prompts from './pages/Prompts'
+import RateLimits from './pages/RateLimits'
+import ModelAccess from './pages/ModelAccess'
+import Chargeback from './pages/Chargeback'
+import SLAMonitoring from './pages/SLAMonitoring'
+import ABTests from './pages/ABTests'
+import Events from './pages/Events'
+import SSOComplete from './pages/SSOComplete'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -76,6 +87,17 @@ function App() {
         <Route path="/guardrails" element={<Guardrails />} />
         <Route path="/workflows" element={<Workflows />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/organizations" element={<Organizations />} />
+        <Route path="/organizations/:orgId" element={<OrganizationDetail />} />
+        <Route path="/audit-log" element={<AuditLog />} />
+        <Route path="/prompts" element={<Prompts />} />
+        <Route path="/rate-limits" element={<RateLimits />} />
+        <Route path="/model-access" element={<ModelAccess />} />
+        <Route path="/chargeback" element={<Chargeback />} />
+        <Route path="/sla" element={<SLAMonitoring />} />
+        <Route path="/ab-tests" element={<ABTests />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/auth/sso/complete" element={<SSOComplete />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </ErrorBoundary>
