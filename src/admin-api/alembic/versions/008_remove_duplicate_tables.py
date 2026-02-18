@@ -120,4 +120,6 @@ def downgrade() -> None:
         )
     """)
 
-    op.execute("INSERT INTO platform_settings (key, value) VALUES ('enable_routing_policies', 'true') ON CONFLICT DO NOTHING")
+    op.execute(
+        "INSERT INTO platform_settings (key, value) VALUES ('enable_routing_policies', 'true') ON CONFLICT DO NOTHING"
+    )

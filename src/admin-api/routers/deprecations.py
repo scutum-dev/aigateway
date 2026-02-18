@@ -96,9 +96,7 @@ async def list_deprecations(user: UserInfo = Depends(get_current_user)):
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT * FROM model_deprecations ORDER BY created_at DESC"
-        )
+        rows = await conn.fetch("SELECT * FROM model_deprecations ORDER BY created_at DESC")
         return [_row_to_deprecation(row) for row in rows]
 
 
@@ -225,7 +223,7 @@ async def update_deprecation(
         values.append(deprecation_id)
         query = f"""
             UPDATE model_deprecations
-            SET {', '.join(set_clauses)}
+            SET {", ".join(set_clauses)}
             WHERE id = ${len(values)}::uuid
             RETURNING *
         """

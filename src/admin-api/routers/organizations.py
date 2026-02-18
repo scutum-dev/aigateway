@@ -248,7 +248,8 @@ async def get_organization(org_id: str, user: UserInfo = Depends(get_current_use
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        row = await conn.fetchrow("""
+        row = await conn.fetchrow(
+            """
             SELECT o.*,
                    COALESCE(bu.cnt, 0) AS bu_count,
                    COALESCE(th.cnt, 0) AS team_count,
@@ -258,7 +259,9 @@ async def get_organization(org_id: str, user: UserInfo = Depends(get_current_use
             LEFT JOIN (SELECT org_id, COUNT(*) AS cnt FROM team_hierarchy WHERE org_id = $1 GROUP BY org_id) th ON th.org_id = o.id
             LEFT JOIN (SELECT org_id, COUNT(*) AS cnt FROM org_memberships WHERE org_id = $1 GROUP BY org_id) om ON om.org_id = o.id
             WHERE o.id = $1
-        """, org_id)
+        """,
+            org_id,
+        )
         if not row:
             raise HTTPException(status_code=404, detail="Organization not found")
         return _row_to_org(row)
@@ -347,9 +350,7 @@ async def list_business_units(org_id: str, user: UserInfo = Depends(get_current_
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT * FROM business_units WHERE org_id = $1 ORDER BY name", org_id
-        )
+        rows = await conn.fetch("SELECT * FROM business_units WHERE org_id = $1 ORDER BY name", org_id)
         return [_row_to_bu(row) for row in rows]
 
 
@@ -452,9 +453,7 @@ async def delete_business_unit(
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        result = await conn.execute(
-            "DELETE FROM business_units WHERE id = $1 AND org_id = $2", bu_id, org_id
-        )
+        result = await conn.execute("DELETE FROM business_units WHERE id = $1 AND org_id = $2", bu_id, org_id)
         if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Business unit not found")
 
@@ -522,9 +521,7 @@ async def remove_team_from_org(
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        result = await conn.execute(
-            "DELETE FROM team_hierarchy WHERE team_id = $1 AND org_id = $2", team_id, org_id
-        )
+        result = await conn.execute("DELETE FROM team_hierarchy WHERE team_id = $1 AND org_id = $2", team_id, org_id)
         if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Team assignment not found")
 
@@ -546,9 +543,7 @@ async def list_org_teams(org_id: str, user: UserInfo = Depends(get_current_user)
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT * FROM team_hierarchy WHERE org_id = $1 ORDER BY team_id", org_id
-        )
+        rows = await conn.fetch("SELECT * FROM team_hierarchy WHERE org_id = $1 ORDER BY team_id", org_id)
         return [_row_to_team(row) for row in rows]
 
 
@@ -564,13 +559,16 @@ async def list_org_members(org_id: str, user: UserInfo = Depends(get_current_use
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        rows = await conn.fetch("""
+        rows = await conn.fetch(
+            """
             SELECT om.*, u.email, u.display_name
             FROM org_memberships om
             LEFT JOIN users u ON u.id = om.user_id
             WHERE om.org_id = $1
             ORDER BY om.created_at
-        """, org_id)
+        """,
+            org_id,
+        )
         return [_row_to_membership(row) for row in rows]
 
 

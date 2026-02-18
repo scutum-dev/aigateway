@@ -222,9 +222,7 @@ async def _upsert_user(
         return dict(row) if row else {}
 
 
-async def _apply_group_mapping(
-    user_id: str, org_id: str, groups: list, group_to_org_mapping: dict
-) -> dict:
+async def _apply_group_mapping(user_id: str, org_id: str, groups: list, group_to_org_mapping: dict) -> dict:
     """Map IdP groups to org roles using the SSO config's group_to_org_mapping.
 
     group_to_org_mapping format: {"idp-group-name": "org_role", "admins": "org_admin", ...}
@@ -344,22 +342,25 @@ async def sso_authorize(org_slug: str):
     nonce = secrets.token_urlsafe(16)
 
     # Store state in Redis for callback validation
-    await _store_state(state, {
-        "org_slug": org_slug,
-        "org_id": str(row["oid"]),
-        "sso_config_id": str(row["id"]),
-        "code_verifier": code_verifier,
-        "nonce": nonce,
-        "client_id": row["client_id"],
-        "token_url": token_url,
-        "userinfo_url": userinfo_url,
-        "scopes": row["scopes"] or "openid email profile",
-        "group_claim": row["group_claim"] or "groups",
-        "group_to_org_mapping": json.loads(row["group_to_org_mapping"])
-        if isinstance(row["group_to_org_mapping"], str)
-        else (row["group_to_org_mapping"] or {}),
-        "provider_type": row["provider_type"],
-    })
+    await _store_state(
+        state,
+        {
+            "org_slug": org_slug,
+            "org_id": str(row["oid"]),
+            "sso_config_id": str(row["id"]),
+            "code_verifier": code_verifier,
+            "nonce": nonce,
+            "client_id": row["client_id"],
+            "token_url": token_url,
+            "userinfo_url": userinfo_url,
+            "scopes": row["scopes"] or "openid email profile",
+            "group_claim": row["group_claim"] or "groups",
+            "group_to_org_mapping": json.loads(row["group_to_org_mapping"])
+            if isinstance(row["group_to_org_mapping"], str)
+            else (row["group_to_org_mapping"] or {}),
+            "provider_type": row["provider_type"],
+        },
+    )
 
     # Build authorization URL
     scopes = row["scopes"] or "openid email profile"

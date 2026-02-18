@@ -112,12 +112,14 @@ def _run_detector(detector_type: str, config: dict, text: str) -> list:
             label = pattern_entry if isinstance(pattern_entry, str) else pattern_entry.get("label", pattern)
             try:
                 for m in re.finditer(pattern, text):
-                    matches.append({
-                        "label": label,
-                        "match": m.group(),
-                        "start": m.start(),
-                        "end": m.end(),
-                    })
+                    matches.append(
+                        {
+                            "label": label,
+                            "match": m.group(),
+                            "start": m.start(),
+                            "end": m.end(),
+                        }
+                    )
             except re.error:
                 pass
 
@@ -131,12 +133,14 @@ def _run_detector(detector_type: str, config: dict, text: str) -> list:
                 idx = lower_text.find(lower_kw, start)
                 if idx == -1:
                     break
-                matches.append({
-                    "label": "keyword",
-                    "match": text[idx:idx + len(kw)],
-                    "start": idx,
-                    "end": idx + len(kw),
-                })
+                matches.append(
+                    {
+                        "label": "keyword",
+                        "match": text[idx : idx + len(kw)],
+                        "start": idx,
+                        "end": idx + len(kw),
+                    }
+                )
                 start = idx + 1
 
     elif detector_type == "pii":
@@ -154,12 +158,14 @@ def _run_detector(detector_type: str, config: dict, text: str) -> list:
             if not pattern:
                 continue
             for m in re.finditer(pattern, text):
-                matches.append({
-                    "label": entity_type,
-                    "match": m.group(),
-                    "start": m.start(),
-                    "end": m.end(),
-                })
+                matches.append(
+                    {
+                        "label": entity_type,
+                        "match": m.group(),
+                        "start": m.start(),
+                        "end": m.end(),
+                    }
+                )
 
     return matches
 
@@ -188,9 +194,7 @@ async def scan_text_with_detectors(text: str, team_id: str = None, guardrail_id:
                 guardrail_id,
             )
         else:
-            rows = await conn.fetch(
-                "SELECT * FROM content_detectors WHERE is_active = true ORDER BY name"
-            )
+            rows = await conn.fetch("SELECT * FROM content_detectors WHERE is_active = true ORDER BY name")
 
         for row in rows:
             detector = _row_to_detector(row)

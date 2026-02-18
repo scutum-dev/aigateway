@@ -20,13 +20,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -97,19 +103,39 @@ def _make_pool(conn):
 # Mock rows
 # ---------------------------------------------------------------------------
 
-_policy_row = _make_row({
-    "id": "rl-1", "name": "Default", "description": "Default policy",
-    "scope": "global", "scope_value": None, "rpm_limit": 100, "tpm_limit": 10000,
-    "rpd_limit": None, "tpd_limit": None, "burst_multiplier": 1.5,
-    "burst_window_seconds": 10, "priority": 0, "is_active": True,
-    "created_at": "2024-01-01", "updated_at": None,
-})
+_policy_row = _make_row(
+    {
+        "id": "rl-1",
+        "name": "Default",
+        "description": "Default policy",
+        "scope": "global",
+        "scope_value": None,
+        "rpm_limit": 100,
+        "tpm_limit": 10000,
+        "rpd_limit": None,
+        "tpd_limit": None,
+        "burst_multiplier": 1.5,
+        "burst_window_seconds": 10,
+        "priority": 0,
+        "is_active": True,
+        "created_at": "2024-01-01",
+        "updated_at": None,
+    }
+)
 
-_event_row = _make_row({
-    "id": "evt-1", "policy_id": "rl-1", "scope": "global", "scope_value": None,
-    "limit_type": "rpm", "current_value": 110, "limit_value": 100,
-    "action": "burst_allowed", "created_at": "2024-01-01",
-})
+_event_row = _make_row(
+    {
+        "id": "evt-1",
+        "policy_id": "rl-1",
+        "scope": "global",
+        "scope_value": None,
+        "limit_type": "rpm",
+        "current_value": 110,
+        "limit_value": 100,
+        "action": "burst_allowed",
+        "created_at": "2024-01-01",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -187,13 +213,16 @@ class TestCreatePolicy:
         deps.http_client = None  # No LiteLLM sync
 
         async with client:
-            resp = await client.post("/api/v1/rate-limits", json={
-                "name": "Default",
-                "description": "Default policy",
-                "scope": "global",
-                "rpm_limit": 100,
-                "tpm_limit": 10000,
-            })
+            resp = await client.post(
+                "/api/v1/rate-limits",
+                json={
+                    "name": "Default",
+                    "description": "Default policy",
+                    "scope": "global",
+                    "rpm_limit": 100,
+                    "tpm_limit": 10000,
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -245,22 +274,37 @@ class TestUpdatePolicy:
 
     @pytest.mark.asyncio
     async def test_update_policy(self, client):
-        updated_row = _make_row({
-            "id": "rl-1", "name": "Updated", "description": "Updated policy",
-            "scope": "global", "scope_value": None, "rpm_limit": 200, "tpm_limit": 10000,
-            "rpd_limit": None, "tpd_limit": None, "burst_multiplier": 1.5,
-            "burst_window_seconds": 10, "priority": 0, "is_active": True,
-            "created_at": "2024-01-01", "updated_at": "2024-06-01",
-        })
+        updated_row = _make_row(
+            {
+                "id": "rl-1",
+                "name": "Updated",
+                "description": "Updated policy",
+                "scope": "global",
+                "scope_value": None,
+                "rpm_limit": 200,
+                "tpm_limit": 10000,
+                "rpd_limit": None,
+                "tpd_limit": None,
+                "burst_multiplier": 1.5,
+                "burst_window_seconds": 10,
+                "priority": 0,
+                "is_active": True,
+                "created_at": "2024-01-01",
+                "updated_at": "2024-06-01",
+            }
+        )
         conn = _make_async_conn(fetchrow_return=updated_row)
         deps.db_pool = _make_pool(conn)
         deps.http_client = None  # No LiteLLM sync
 
         async with client:
-            resp = await client.put("/api/v1/rate-limits/rl-1", json={
-                "name": "Updated",
-                "rpm_limit": 200,
-            })
+            resp = await client.put(
+                "/api/v1/rate-limits/rl-1",
+                json={
+                    "name": "Updated",
+                    "rpm_limit": 200,
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -274,9 +318,12 @@ class TestUpdatePolicy:
         deps.http_client = None
 
         async with client:
-            resp = await client.put("/api/v1/rate-limits/nonexistent", json={
-                "name": "Updated",
-            })
+            resp = await client.put(
+                "/api/v1/rate-limits/nonexistent",
+                json={
+                    "name": "Updated",
+                },
+            )
 
         assert resp.status_code == 404
         assert "Rate limit policy not found" in resp.json()["detail"]

@@ -18,13 +18,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -145,12 +151,15 @@ async def test_create_subscription(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/events/subscriptions", json={
-            "name": "Budget Alerts",
-            "event_types": ["budget.exceeded", "budget.warning"],
-            "channel": "webhook",
-            "config": {"url": "https://hooks.example.com/budget"},
-        })
+        resp = await client.post(
+            "/api/v1/events/subscriptions",
+            json={
+                "name": "Budget Alerts",
+                "event_types": ["budget.exceeded", "budget.warning"],
+                "channel": "webhook",
+                "config": {"url": "https://hooks.example.com/budget"},
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -219,10 +228,13 @@ async def test_update_subscription(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.put("/api/v1/events/subscriptions/sub-001", json={
-            "name": "Updated Alerts",
-            "channel": "slack",
-        })
+        resp = await client.put(
+            "/api/v1/events/subscriptions/sub-001",
+            json={
+                "name": "Updated Alerts",
+                "channel": "slack",
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -305,19 +317,26 @@ async def test_list_events_with_type_filter(client):
 @pytest.mark.asyncio
 async def test_send_test_event(client):
     """POST /events/test inserts a test event into event_log."""
-    evt_row = _make_row(_event_row({
-        "event_type": "test.ping",
-        "payload": json.dumps({"message": "hello"}),
-        "source_service": "admin-api-test",
-    }))
+    evt_row = _make_row(
+        _event_row(
+            {
+                "event_type": "test.ping",
+                "payload": json.dumps({"message": "hello"}),
+                "source_service": "admin-api-test",
+            }
+        )
+    )
     conn = _make_async_conn(fetchrow_return=evt_row)
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/events/test", json={
-            "event_type": "test.ping",
-            "payload": {"message": "hello"},
-        })
+        resp = await client.post(
+            "/api/v1/events/test",
+            json={
+                "event_type": "test.ping",
+                "payload": {"message": "hello"},
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -355,9 +374,12 @@ async def test_update_subscription_not_found(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.put("/api/v1/events/subscriptions/nonexistent", json={
-            "name": "Updated",
-        })
+        resp = await client.put(
+            "/api/v1/events/subscriptions/nonexistent",
+            json={
+                "name": "Updated",
+            },
+        )
 
     assert resp.status_code == 404
     assert "not found" in resp.json()["detail"].lower()
@@ -432,10 +454,13 @@ async def test_send_test_event_no_db(client):
     deps.db_pool = None
 
     async with client:
-        resp = await client.post("/api/v1/events/test", json={
-            "event_type": "test.ping",
-            "payload": {"message": "hello"},
-        })
+        resp = await client.post(
+            "/api/v1/events/test",
+            json={
+                "event_type": "test.ping",
+                "payload": {"message": "hello"},
+            },
+        )
 
     assert resp.status_code == 503
     assert "Database not available" in resp.json()["detail"]

@@ -18,13 +18,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -160,12 +166,15 @@ async def test_create_template(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/prompts", json={
-            "name": "Summarization Prompt",
-            "slug": "summarize",
-            "template_text": "Summarize the following: {{text}}",
-            "category": "generation",
-        })
+        resp = await client.post(
+            "/api/v1/prompts",
+            json={
+                "name": "Summarization Prompt",
+                "slug": "summarize",
+                "template_text": "Summarize the following: {{text}}",
+                "category": "generation",
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -234,9 +243,12 @@ async def test_create_new_version(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/prompts/summarize/versions", json={
-            "template_text": "New: {{text}}",
-        })
+        resp = await client.post(
+            "/api/v1/prompts/summarize/versions",
+            json={
+                "template_text": "New: {{text}}",
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -256,9 +268,12 @@ async def test_render_template(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/prompts/summarize/render", json={
-            "variables": {"text": "Hello world"},
-        })
+        resp = await client.post(
+            "/api/v1/prompts/summarize/render",
+            json={
+                "variables": {"text": "Hello world"},
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -279,9 +294,12 @@ async def test_render_with_unresolved_variables(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/prompts/summarize/render", json={
-            "variables": {"name": "Alice"},
-        })
+        resp = await client.post(
+            "/api/v1/prompts/summarize/render",
+            json={
+                "variables": {"name": "Alice"},
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -330,9 +348,12 @@ async def test_approve_prompt(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/prompt-approvals/appr-001/approve", json={
-            "comment": "Looks good!",
-        })
+        resp = await client.post(
+            "/api/v1/prompt-approvals/appr-001/approve",
+            json={
+                "comment": "Looks good!",
+            },
+        )
 
     assert resp.status_code == 200
     assert resp.json()["status"] == "approved"
@@ -356,9 +377,12 @@ async def test_reject_prompt(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/prompt-approvals/appr-001/reject", json={
-            "comment": "Needs revision",
-        })
+        resp = await client.post(
+            "/api/v1/prompt-approvals/appr-001/reject",
+            json={
+                "comment": "Needs revision",
+            },
+        )
 
     assert resp.status_code == 200
     assert resp.json()["status"] == "rejected"
@@ -422,10 +446,13 @@ async def test_update_template(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.put("/api/v1/prompts/pt-001", json={
-            "name": "Updated Prompt",
-            "description": "Updated description",
-        })
+        resp = await client.put(
+            "/api/v1/prompts/pt-001",
+            json={
+                "name": "Updated Prompt",
+                "description": "Updated description",
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -444,14 +471,16 @@ async def test_analytics_returns_usage_stats(client):
         _make_row({"id": "pt-001", "version": 1}),
         _make_row({"id": "pt-002", "version": 2}),
     ]
-    usage_row = _make_row({
-        "version": 1,
-        "total_uses": 42,
-        "avg_latency_ms": 150.5,
-        "total_cost": 1.25,
-        "total_input_tokens": 10000,
-        "total_output_tokens": 5000,
-    })
+    usage_row = _make_row(
+        {
+            "version": 1,
+            "total_uses": 42,
+            "avg_latency_ms": 150.5,
+            "total_cost": 1.25,
+            "total_input_tokens": 10000,
+            "total_output_tokens": 5000,
+        }
+    )
 
     conn = _make_async_conn()
     conn.fetch = AsyncMock(side_effect=[template_rows, [usage_row]])

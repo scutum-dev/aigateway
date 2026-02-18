@@ -263,7 +263,7 @@ async def update_tier(
 
     params.append(id)
     query = f"""
-        UPDATE model_access_tiers SET {', '.join(sets)}
+        UPDATE model_access_tiers SET {", ".join(sets)}
         WHERE id = ${idx}::uuid
         RETURNING *
     """

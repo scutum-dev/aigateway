@@ -21,13 +21,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -99,23 +105,38 @@ def _make_pool(conn):
 # Mock rows
 # ---------------------------------------------------------------------------
 
-_cache_entry_row = _make_row({
-    "id": "cache-uuid-1", "prompt_hash": "abc123hash", "model": "gpt-4o",
-    "token_count": 150, "hit_count": 5, "last_hit_at": "2024-01-01T12:00:00",
-    "created_at": "2024-01-01T00:00:00", "expires_at": "2024-01-02T00:00:00",
-})
+_cache_entry_row = _make_row(
+    {
+        "id": "cache-uuid-1",
+        "prompt_hash": "abc123hash",
+        "model": "gpt-4o",
+        "token_count": 150,
+        "hit_count": 5,
+        "last_hit_at": "2024-01-01T12:00:00",
+        "created_at": "2024-01-01T00:00:00",
+        "expires_at": "2024-01-02T00:00:00",
+    }
+)
 
-_stats_row = _make_row({
-    "total_entries": 100, "total_hits": 50, "avg_token_count": 200.0,
-})
+_stats_row = _make_row(
+    {
+        "total_entries": 100,
+        "total_hits": 50,
+        "avg_token_count": 200.0,
+    }
+)
 
-_size_row = _make_row({
-    "size_bytes": 1048576,  # 1 MB
-})
+_size_row = _make_row(
+    {
+        "size_bytes": 1048576,  # 1 MB
+    }
+)
 
-_setting_row = _make_row({
-    "value": '"true"',
-})
+_setting_row = _make_row(
+    {
+        "value": '"true"',
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -280,12 +301,15 @@ class TestCacheSettings:
         deps.http_client = None
 
         async with client:
-            resp = await client.put("/api/v1/cache/settings", json={
-                "enabled": False,
-                "similarity_threshold": 0.85,
-                "ttl_seconds": 7200,
-                "max_entries": 5000,
-            })
+            resp = await client.put(
+                "/api/v1/cache/settings",
+                json={
+                    "enabled": False,
+                    "similarity_threshold": 0.85,
+                    "ttl_seconds": 7200,
+                    "max_entries": 5000,
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -384,9 +408,12 @@ class TestCacheLookup:
         deps.db_pool = None
 
         async with client:
-            resp = await client.post("/api/v1/cache/lookup", json={
-                "prompt": "What is AI?",
-            })
+            resp = await client.post(
+                "/api/v1/cache/lookup",
+                json={
+                    "prompt": "What is AI?",
+                },
+            )
 
         assert resp.status_code == 503
         assert "Database not available" in resp.json()["detail"]

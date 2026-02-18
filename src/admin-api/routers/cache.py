@@ -60,9 +60,7 @@ def _row_to_entry(row) -> dict:
 
 async def _get_cache_setting(conn, key: str, default: str) -> str:
     """Read a cache setting from platform_settings."""
-    row = await conn.fetchrow(
-        "SELECT value FROM platform_settings WHERE key = $1", f"cache_{key}"
-    )
+    row = await conn.fetchrow("SELECT value FROM platform_settings WHERE key = $1", f"cache_{key}")
     if row:
         try:
             return json.loads(row["value"])
@@ -110,9 +108,7 @@ async def _get_embedding(text: str) -> list[float] | None:
 async def _check_pgvector_available(conn) -> bool:
     """Check if pgvector extension is available."""
     try:
-        row = await conn.fetchval(
-            "SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector')"
-        )
+        row = await conn.fetchval("SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector')")
         return bool(row)
     except Exception:
         return False
@@ -216,9 +212,7 @@ async def get_cache_settings(user: UserInfo = Depends(get_current_user)):
 
     async with deps.db_pool.acquire() as conn:
         enabled = await _get_cache_setting(conn, "enabled", "true")
-        similarity_threshold = await _get_cache_setting(
-            conn, "similarity_threshold", "0.92"
-        )
+        similarity_threshold = await _get_cache_setting(conn, "similarity_threshold", "0.92")
         ttl_seconds = await _get_cache_setting(conn, "ttl_seconds", "3600")
         max_entries = await _get_cache_setting(conn, "max_entries", "10000")
 
@@ -388,9 +382,7 @@ async def cache_lookup(
         # ----- Semantic similarity fallback -----
         has_pgvector = await _check_pgvector_available(conn)
         if has_pgvector:
-            threshold_setting = await _get_cache_setting(
-                conn, "similarity_threshold", "0.92"
-            )
+            threshold_setting = await _get_cache_setting(conn, "similarity_threshold", "0.92")
             threshold = float(threshold_setting)
 
             embedding = await _get_embedding(data.prompt)
@@ -476,7 +468,8 @@ async def cache_store(
         # Check if entry with same hash exists
         existing = await conn.fetchrow(
             "SELECT id FROM semantic_cache WHERE prompt_hash = $1 AND model = $2",
-            prompt_hash, data.model,
+            prompt_hash,
+            data.model,
         )
 
         if existing:
@@ -557,9 +550,7 @@ async def delete_cache_entry(entry_id: str, user: UserInfo = Depends(require_adm
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        result = await conn.execute(
-            "DELETE FROM semantic_cache WHERE id = $1::uuid", entry_id
-        )
+        result = await conn.execute("DELETE FROM semantic_cache WHERE id = $1::uuid", entry_id)
         if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Cache entry not found")
         return {"status": "ok"}

@@ -22,13 +22,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -100,13 +106,23 @@ def _make_pool(conn):
 # Mock rows
 # ---------------------------------------------------------------------------
 
-_audit_row = _make_row({
-    "id": "audit-uuid-1", "timestamp": "2024-01-01T00:00:00", "actor_id": "admin",
-    "actor_email": "admin@test.com", "actor_ip": "127.0.0.1", "org_id": None,
-    "action": "create", "resource_type": "organization", "resource_id": "org-1",
-    "resource_name": "Test Org", "changes": "{}", "request_metadata": "{}",
-    "created_at": "2024-01-01T00:00:00",
-})
+_audit_row = _make_row(
+    {
+        "id": "audit-uuid-1",
+        "timestamp": "2024-01-01T00:00:00",
+        "actor_id": "admin",
+        "actor_email": "admin@test.com",
+        "actor_ip": "127.0.0.1",
+        "org_id": None,
+        "action": "create",
+        "resource_type": "organization",
+        "resource_id": "org-1",
+        "resource_name": "Test Org",
+        "changes": "{}",
+        "request_metadata": "{}",
+        "created_at": "2024-01-01T00:00:00",
+    }
+)
 
 
 # ---------------------------------------------------------------------------

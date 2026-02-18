@@ -19,13 +19,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -166,11 +172,14 @@ async def test_create_draft_ab_test(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/ab-tests", json={
-            "name": "GPT-4o vs Claude-3.5",
-            "base_model": "gpt-4o",
-            "variant_model": "claude-3.5-sonnet",
-        })
+        resp = await client.post(
+            "/api/v1/ab-tests",
+            json={
+                "name": "GPT-4o vs Claude-3.5",
+                "base_model": "gpt-4o",
+                "variant_model": "claude-3.5-sonnet",
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()

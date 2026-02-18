@@ -20,13 +20,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -97,15 +103,28 @@ def _make_pool(conn):
 # Mock rows
 # ---------------------------------------------------------------------------
 
-_sso_row = _make_row({
-    "id": "sso-1", "org_id": "org-1", "provider_type": "oidc",
-    "provider_name": "Okta", "client_id": "my-client-id",
-    "client_secret_encrypted": "encrypted-secret", "issuer_url": "https://dev.okta.com",
-    "authorization_url": None, "token_url": None, "userinfo_url": None,
-    "jwks_uri": None, "saml_metadata_url": None, "scopes": "openid email profile",
-    "group_claim": "groups", "group_to_org_mapping": "{}",
-    "is_active": True, "created_at": "2024-01-01", "updated_at": None,
-})
+_sso_row = _make_row(
+    {
+        "id": "sso-1",
+        "org_id": "org-1",
+        "provider_type": "oidc",
+        "provider_name": "Okta",
+        "client_id": "my-client-id",
+        "client_secret_encrypted": "encrypted-secret",
+        "issuer_url": "https://dev.okta.com",
+        "authorization_url": None,
+        "token_url": None,
+        "userinfo_url": None,
+        "jwks_uri": None,
+        "saml_metadata_url": None,
+        "scopes": "openid email profile",
+        "group_claim": "groups",
+        "group_to_org_mapping": "{}",
+        "is_active": True,
+        "created_at": "2024-01-01",
+        "updated_at": None,
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -192,15 +211,18 @@ class TestCreateSSO:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/organizations/org-1/sso", json={
-                "provider_type": "oidc",
-                "provider_name": "Okta",
-                "client_id": "my-client-id",
-                "client_secret": "my-secret",
-                "issuer_url": "https://dev.okta.com",
-                "scopes": "openid email profile",
-                "group_claim": "groups",
-            })
+            resp = await client.post(
+                "/api/v1/organizations/org-1/sso",
+                json={
+                    "provider_type": "oidc",
+                    "provider_name": "Okta",
+                    "client_id": "my-client-id",
+                    "client_secret": "my-secret",
+                    "issuer_url": "https://dev.okta.com",
+                    "scopes": "openid email profile",
+                    "group_claim": "groups",
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -213,10 +235,13 @@ class TestCreateSSO:
         deps.db_pool = None
 
         async with client:
-            resp = await client.post("/api/v1/organizations/org-1/sso", json={
-                "provider_type": "oidc",
-                "provider_name": "Okta",
-            })
+            resp = await client.post(
+                "/api/v1/organizations/org-1/sso",
+                json={
+                    "provider_type": "oidc",
+                    "provider_name": "Okta",
+                },
+            )
 
         assert resp.status_code == 503
         assert "Database not available" in resp.json()["detail"]
@@ -264,15 +289,28 @@ class TestSSOConnection:
     @pytest.mark.asyncio
     async def test_sso_incomplete(self, client):
         """SSO config missing issuer_url or client_id returns error status."""
-        incomplete_row = _make_row({
-            "id": "sso-1", "org_id": "org-1", "provider_type": "oidc",
-            "provider_name": "Okta", "client_id": None,
-            "client_secret_encrypted": None, "issuer_url": None,
-            "authorization_url": None, "token_url": None, "userinfo_url": None,
-            "jwks_uri": None, "saml_metadata_url": None, "scopes": "openid",
-            "group_claim": "groups", "group_to_org_mapping": "{}",
-            "is_active": True, "created_at": "2024-01-01", "updated_at": None,
-        })
+        incomplete_row = _make_row(
+            {
+                "id": "sso-1",
+                "org_id": "org-1",
+                "provider_type": "oidc",
+                "provider_name": "Okta",
+                "client_id": None,
+                "client_secret_encrypted": None,
+                "issuer_url": None,
+                "authorization_url": None,
+                "token_url": None,
+                "userinfo_url": None,
+                "jwks_uri": None,
+                "saml_metadata_url": None,
+                "scopes": "openid",
+                "group_claim": "groups",
+                "group_to_org_mapping": "{}",
+                "is_active": True,
+                "created_at": "2024-01-01",
+                "updated_at": None,
+            }
+        )
         conn = _make_async_conn(fetchrow_return=incomplete_row)
         deps.db_pool = _make_pool(conn)
 

@@ -61,9 +61,7 @@ class CostTrend(BaseModel):
     percent_change: float
 
 
-def get_date_range(
-    period: ReportPeriod, start: Optional[date] = None, end: Optional[date] = None
-) -> tuple[date, date]:
+def get_date_range(period: ReportPeriod, start: Optional[date] = None, end: Optional[date] = None) -> tuple[date, date]:
     today = date.today()
     if period == ReportPeriod.DAILY:
         return today, today
@@ -327,9 +325,22 @@ async def export_report(
         if format == "csv":
             output = io.StringIO()
             writer = csv.writer(output)
-            writer.writerow(["date", "user_id", "team_id", "model", "request_count", "input_tokens", "output_tokens", "total_cost"])
+            writer.writerow(
+                ["date", "user_id", "team_id", "model", "request_count", "input_tokens", "output_tokens", "total_cost"]
+            )
             for row in rows:
-                writer.writerow([row["date"], row["user_id"], row["team_id"], row["model"], row["request_count"], row["input_tokens"], row["output_tokens"], float(row["total_cost"])])
+                writer.writerow(
+                    [
+                        row["date"],
+                        row["user_id"],
+                        row["team_id"],
+                        row["model"],
+                        row["request_count"],
+                        row["input_tokens"],
+                        row["output_tokens"],
+                        float(row["total_cost"]),
+                    ]
+                )
             output.seek(0)
             return StreamingResponse(
                 iter([output.getvalue()]),

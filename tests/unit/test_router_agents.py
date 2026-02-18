@@ -20,13 +20,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -97,11 +103,16 @@ def _make_pool(conn):
 # Mock rows
 # ---------------------------------------------------------------------------
 
-_agent_row = _make_row({
-    "id": "agent-1", "name": "code-reviewer", "description": "Reviews code",
-    "url": "http://localhost:9001", "skills": '["review","refactor"]',
-    "is_active": True,
-})
+_agent_row = _make_row(
+    {
+        "id": "agent-1",
+        "name": "code-reviewer",
+        "description": "Reviews code",
+        "url": "http://localhost:9001",
+        "skills": '["review","refactor"]',
+        "is_active": True,
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -177,12 +188,15 @@ class TestCreateAgent:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/agents", json={
-                "name": "code-reviewer",
-                "description": "Reviews code",
-                "url": "http://localhost:9001",
-                "skills": ["review", "refactor"],
-            })
+            resp = await client.post(
+                "/api/v1/agents",
+                json={
+                    "name": "code-reviewer",
+                    "description": "Reviews code",
+                    "url": "http://localhost:9001",
+                    "skills": ["review", "refactor"],
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -234,19 +248,27 @@ class TestUpdateAgent:
 
     @pytest.mark.asyncio
     async def test_update_agent(self, client):
-        updated_row = _make_row({
-            "id": "agent-1", "name": "code-reviewer-v2", "description": "Reviews code v2",
-            "url": "http://localhost:9001", "skills": '["review","refactor","lint"]',
-            "is_active": True,
-        })
+        updated_row = _make_row(
+            {
+                "id": "agent-1",
+                "name": "code-reviewer-v2",
+                "description": "Reviews code v2",
+                "url": "http://localhost:9001",
+                "skills": '["review","refactor","lint"]',
+                "is_active": True,
+            }
+        )
         conn = _make_async_conn(fetchrow_return=updated_row)
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.put("/api/v1/agents/agent-1", json={
-                "name": "code-reviewer-v2",
-                "description": "Reviews code v2",
-            })
+            resp = await client.put(
+                "/api/v1/agents/agent-1",
+                json={
+                    "name": "code-reviewer-v2",
+                    "description": "Reviews code v2",
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -258,9 +280,12 @@ class TestUpdateAgent:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.put("/api/v1/agents/nonexistent", json={
-                "name": "updated",
-            })
+            resp = await client.put(
+                "/api/v1/agents/nonexistent",
+                json={
+                    "name": "updated",
+                },
+            )
 
         assert resp.status_code == 404
         assert "A2A agent not found" in resp.json()["detail"]

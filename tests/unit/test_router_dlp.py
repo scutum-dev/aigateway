@@ -20,13 +20,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -97,11 +103,18 @@ def _make_pool(conn):
 # Mock rows
 # ---------------------------------------------------------------------------
 
-_detector_row = _make_row({
-    "id": "det-1", "name": "Email PII", "description": "Detect emails",
-    "detector_type": "pii", "config": '{"entity_types":["email"]}',
-    "is_active": True, "created_at": "2024-01-01", "updated_at": None,
-})
+_detector_row = _make_row(
+    {
+        "id": "det-1",
+        "name": "Email PII",
+        "description": "Detect emails",
+        "detector_type": "pii",
+        "config": '{"entity_types":["email"]}',
+        "is_active": True,
+        "created_at": "2024-01-01",
+        "updated_at": None,
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -177,12 +190,15 @@ class TestCreateDetector:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/detectors", json={
-                "name": "Email PII",
-                "description": "Detect emails",
-                "detector_type": "pii",
-                "config": {"entity_types": ["email"]},
-            })
+            resp = await client.post(
+                "/api/v1/detectors",
+                json={
+                    "name": "Email PII",
+                    "description": "Detect emails",
+                    "detector_type": "pii",
+                    "config": {"entity_types": ["email"]},
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -234,18 +250,28 @@ class TestUpdateDetector:
 
     @pytest.mark.asyncio
     async def test_update_detector(self, client):
-        updated_row = _make_row({
-            "id": "det-1", "name": "Updated PII", "description": "Detect emails",
-            "detector_type": "pii", "config": '{"entity_types":["email"]}',
-            "is_active": True, "created_at": "2024-01-01", "updated_at": "2024-06-01",
-        })
+        updated_row = _make_row(
+            {
+                "id": "det-1",
+                "name": "Updated PII",
+                "description": "Detect emails",
+                "detector_type": "pii",
+                "config": '{"entity_types":["email"]}',
+                "is_active": True,
+                "created_at": "2024-01-01",
+                "updated_at": "2024-06-01",
+            }
+        )
         conn = _make_async_conn(fetchrow_return=updated_row)
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.put("/api/v1/detectors/det-1", json={
-                "name": "Updated PII",
-            })
+            resp = await client.put(
+                "/api/v1/detectors/det-1",
+                json={
+                    "name": "Updated PII",
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -257,9 +283,12 @@ class TestUpdateDetector:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.put("/api/v1/detectors/nonexistent", json={
-                "name": "Updated",
-            })
+            resp = await client.put(
+                "/api/v1/detectors/nonexistent",
+                json={
+                    "name": "Updated",
+                },
+            )
 
         assert resp.status_code == 404
         assert "Detector not found" in resp.json()["detail"]
@@ -306,18 +335,28 @@ class TestDetectorTest:
 
     @pytest.mark.asyncio
     async def test_test_detector(self, client):
-        det_row = _make_row({
-            "id": "det-1", "name": "Email PII", "description": "Detect emails",
-            "detector_type": "pii", "config": '{"entity_types":["email"]}',
-            "is_active": True, "created_at": "2024-01-01", "updated_at": None,
-        })
+        det_row = _make_row(
+            {
+                "id": "det-1",
+                "name": "Email PII",
+                "description": "Detect emails",
+                "detector_type": "pii",
+                "config": '{"entity_types":["email"]}',
+                "is_active": True,
+                "created_at": "2024-01-01",
+                "updated_at": None,
+            }
+        )
         conn = _make_async_conn(fetchrow_return=det_row)
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/detectors/det-1/test", json={
-                "text": "Contact user@example.com for details.",
-            })
+            resp = await client.post(
+                "/api/v1/detectors/det-1/test",
+                json={
+                    "text": "Contact user@example.com for details.",
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -330,9 +369,12 @@ class TestDetectorTest:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/detectors/nonexistent/test", json={
-                "text": "some text",
-            })
+            resp = await client.post(
+                "/api/v1/detectors/nonexistent/test",
+                json={
+                    "text": "some text",
+                },
+            )
 
         assert resp.status_code == 404
         assert "Detector not found" in resp.json()["detail"]
@@ -348,18 +390,28 @@ class TestScanText:
 
     @pytest.mark.asyncio
     async def test_scan_text(self, client):
-        det_row = _make_row({
-            "id": "det-1", "name": "Email PII", "description": "Detect emails",
-            "detector_type": "pii", "config": '{"entity_types":["email"]}',
-            "is_active": True, "created_at": "2024-01-01", "updated_at": None,
-        })
+        det_row = _make_row(
+            {
+                "id": "det-1",
+                "name": "Email PII",
+                "description": "Detect emails",
+                "detector_type": "pii",
+                "config": '{"entity_types":["email"]}',
+                "is_active": True,
+                "created_at": "2024-01-01",
+                "updated_at": None,
+            }
+        )
         conn = _make_async_conn(fetch_return=[det_row])
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/scan", json={
-                "text": "Email me at test@example.com",
-            })
+            resp = await client.post(
+                "/api/v1/scan",
+                json={
+                    "text": "Email me at test@example.com",
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()

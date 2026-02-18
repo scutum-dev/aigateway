@@ -21,13 +21,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -99,29 +105,62 @@ def _make_pool(conn):
 # Mock rows
 # ---------------------------------------------------------------------------
 
-_org_row = _make_row({
-    "id": "org-uuid-1", "name": "Acme Corp", "slug": "acme", "description": "Test org",
-    "max_budget": 1000.0, "allowed_models": ["gpt-4o"], "metadata": "{}",
-    "is_active": True, "created_at": "2024-01-01T00:00:00", "updated_at": None,
-    "bu_count": 2, "team_count": 5, "member_count": 10,
-})
+_org_row = _make_row(
+    {
+        "id": "org-uuid-1",
+        "name": "Acme Corp",
+        "slug": "acme",
+        "description": "Test org",
+        "max_budget": 1000.0,
+        "allowed_models": ["gpt-4o"],
+        "metadata": "{}",
+        "is_active": True,
+        "created_at": "2024-01-01T00:00:00",
+        "updated_at": None,
+        "bu_count": 2,
+        "team_count": 5,
+        "member_count": 10,
+    }
+)
 
-_bu_row = _make_row({
-    "id": "bu-uuid-1", "org_id": "org-uuid-1", "name": "Engineering", "slug": "eng",
-    "description": "Engineering BU", "max_budget": 500.0, "allowed_models": None,
-    "is_active": True, "created_at": "2024-01-01T00:00:00", "updated_at": None,
-})
+_bu_row = _make_row(
+    {
+        "id": "bu-uuid-1",
+        "org_id": "org-uuid-1",
+        "name": "Engineering",
+        "slug": "eng",
+        "description": "Engineering BU",
+        "max_budget": 500.0,
+        "allowed_models": None,
+        "is_active": True,
+        "created_at": "2024-01-01T00:00:00",
+        "updated_at": None,
+    }
+)
 
-_team_row = _make_row({
-    "team_id": "team-1", "org_id": "org-uuid-1", "bu_id": "bu-uuid-1",
-    "max_budget_override": 200.0, "created_at": "2024-01-01T00:00:00", "updated_at": None,
-})
+_team_row = _make_row(
+    {
+        "team_id": "team-1",
+        "org_id": "org-uuid-1",
+        "bu_id": "bu-uuid-1",
+        "max_budget_override": 200.0,
+        "created_at": "2024-01-01T00:00:00",
+        "updated_at": None,
+    }
+)
 
-_member_row = _make_row({
-    "id": "mem-uuid-1", "user_id": "user-1", "email": "user@test.com",
-    "display_name": "Test User", "org_id": "org-uuid-1", "role": "member",
-    "bu_id": None, "created_at": "2024-01-01T00:00:00",
-})
+_member_row = _make_row(
+    {
+        "id": "mem-uuid-1",
+        "user_id": "user-1",
+        "email": "user@test.com",
+        "display_name": "Test User",
+        "org_id": "org-uuid-1",
+        "role": "member",
+        "bu_id": None,
+        "created_at": "2024-01-01T00:00:00",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -197,13 +236,16 @@ class TestCreateOrganization:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/organizations", json={
-                "name": "Acme Corp",
-                "slug": "acme",
-                "description": "Test org",
-                "max_budget": 1000.0,
-                "allowed_models": ["gpt-4o"],
-            })
+            resp = await client.post(
+                "/api/v1/organizations",
+                json={
+                    "name": "Acme Corp",
+                    "slug": "acme",
+                    "description": "Test org",
+                    "max_budget": 1000.0,
+                    "allowed_models": ["gpt-4o"],
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -248,20 +290,34 @@ class TestUpdateOrganization:
     @pytest.mark.asyncio
     async def test_update_organization(self, client):
         """PUT /organizations/{id} updates and returns org."""
-        updated_row = _make_row({
-            "id": "org-uuid-1", "name": "Acme Updated", "slug": "acme", "description": "Updated",
-            "max_budget": 2000.0, "allowed_models": ["gpt-4o"], "metadata": "{}",
-            "is_active": True, "created_at": "2024-01-01T00:00:00", "updated_at": "2024-01-02T00:00:00",
-            "bu_count": 0, "team_count": 0, "member_count": 0,
-        })
+        updated_row = _make_row(
+            {
+                "id": "org-uuid-1",
+                "name": "Acme Updated",
+                "slug": "acme",
+                "description": "Updated",
+                "max_budget": 2000.0,
+                "allowed_models": ["gpt-4o"],
+                "metadata": "{}",
+                "is_active": True,
+                "created_at": "2024-01-01T00:00:00",
+                "updated_at": "2024-01-02T00:00:00",
+                "bu_count": 0,
+                "team_count": 0,
+                "member_count": 0,
+            }
+        )
         conn = _make_async_conn(fetchrow_return=updated_row)
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.put("/api/v1/organizations/org-uuid-1", json={
-                "name": "Acme Updated",
-                "max_budget": 2000.0,
-            })
+            resp = await client.put(
+                "/api/v1/organizations/org-uuid-1",
+                json={
+                    "name": "Acme Updated",
+                    "max_budget": 2000.0,
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -287,9 +343,12 @@ class TestUpdateOrganization:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.put("/api/v1/organizations/nonexistent", json={
-                "name": "Updated",
-            })
+            resp = await client.put(
+                "/api/v1/organizations/nonexistent",
+                json={
+                    "name": "Updated",
+                },
+            )
 
         assert resp.status_code == 404
         assert "Organization not found" in resp.json()["detail"]
@@ -353,12 +412,15 @@ class TestBusinessUnits:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/organizations/org-uuid-1/business-units", json={
-                "name": "Engineering",
-                "slug": "eng",
-                "description": "Engineering BU",
-                "max_budget": 500.0,
-            })
+            resp = await client.post(
+                "/api/v1/organizations/org-uuid-1/business-units",
+                json={
+                    "name": "Engineering",
+                    "slug": "eng",
+                    "description": "Engineering BU",
+                    "max_budget": 500.0,
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -369,11 +431,20 @@ class TestBusinessUnits:
     @pytest.mark.asyncio
     async def test_update_business_unit(self, client):
         """PUT /organizations/{id}/business-units/{bu_id} updates BU."""
-        updated_bu = _make_row({
-            "id": "bu-uuid-1", "org_id": "org-uuid-1", "name": "Eng Updated", "slug": "eng",
-            "description": "Updated BU", "max_budget": 700.0, "allowed_models": None,
-            "is_active": True, "created_at": "2024-01-01T00:00:00", "updated_at": "2024-01-02T00:00:00",
-        })
+        updated_bu = _make_row(
+            {
+                "id": "bu-uuid-1",
+                "org_id": "org-uuid-1",
+                "name": "Eng Updated",
+                "slug": "eng",
+                "description": "Updated BU",
+                "max_budget": 700.0,
+                "allowed_models": None,
+                "is_active": True,
+                "created_at": "2024-01-01T00:00:00",
+                "updated_at": "2024-01-02T00:00:00",
+            }
+        )
         conn = _make_async_conn(fetchrow_return=updated_bu)
         deps.db_pool = _make_pool(conn)
 
@@ -410,9 +481,7 @@ class TestBusinessUnits:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.delete(
-                "/api/v1/organizations/org-uuid-1/business-units/bu-uuid-1"
-            )
+            resp = await client.delete("/api/v1/organizations/org-uuid-1/business-units/bu-uuid-1")
 
         assert resp.status_code == 200
         assert resp.json()["status"] == "deleted"
@@ -424,9 +493,7 @@ class TestBusinessUnits:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.delete(
-                "/api/v1/organizations/org-uuid-1/business-units/nonexistent"
-            )
+            resp = await client.delete("/api/v1/organizations/org-uuid-1/business-units/nonexistent")
 
         assert resp.status_code == 404
         assert "Business unit not found" in resp.json()["detail"]
@@ -466,9 +533,7 @@ class TestTeamHierarchy:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.delete(
-                "/api/v1/organizations/org-uuid-1/teams/team-1"
-            )
+            resp = await client.delete("/api/v1/organizations/org-uuid-1/teams/team-1")
 
         assert resp.status_code == 200
         assert resp.json()["status"] == "removed"
@@ -480,9 +545,7 @@ class TestTeamHierarchy:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.delete(
-                "/api/v1/organizations/org-uuid-1/teams/nonexistent"
-            )
+            resp = await client.delete("/api/v1/organizations/org-uuid-1/teams/nonexistent")
 
         assert resp.status_code == 404
         assert "Team assignment not found" in resp.json()["detail"]
@@ -537,10 +600,13 @@ class TestOrgMemberships:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/organizations/org-uuid-1/members", json={
-                "user_id": "user-1",
-                "role": "member",
-            })
+            resp = await client.post(
+                "/api/v1/organizations/org-uuid-1/members",
+                json={
+                    "user_id": "user-1",
+                    "role": "member",
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -586,9 +652,7 @@ class TestOrgMemberships:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.delete(
-                "/api/v1/organizations/org-uuid-1/members/user-1"
-            )
+            resp = await client.delete("/api/v1/organizations/org-uuid-1/members/user-1")
 
         assert resp.status_code == 200
         assert resp.json()["status"] == "removed"

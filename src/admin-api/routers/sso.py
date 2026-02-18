@@ -105,9 +105,7 @@ async def get_sso_config(org_id: str, user: UserInfo = Depends(get_current_user)
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT * FROM sso_configs WHERE org_id = $1 AND is_active = TRUE LIMIT 1", org_id
-        )
+        row = await conn.fetchrow("SELECT * FROM sso_configs WHERE org_id = $1 AND is_active = TRUE LIMIT 1", org_id)
         if not row:
             raise HTTPException(status_code=404, detail="SSO config not found")
         return _row_to_sso(row)
@@ -129,6 +127,7 @@ async def create_or_update_sso_config(
     if data.client_secret:
         try:
             from crypto import encrypt_value
+
             client_secret_encrypted = encrypt_value(data.client_secret)
         except ValueError:
             # SSO_ENCRYPTION_KEY not configured, store as-is with a warning
@@ -228,9 +227,7 @@ async def test_sso_connection(
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT * FROM sso_configs WHERE org_id = $1 AND is_active = TRUE LIMIT 1", org_id
-        )
+        row = await conn.fetchrow("SELECT * FROM sso_configs WHERE org_id = $1 AND is_active = TRUE LIMIT 1", org_id)
         if not row:
             raise HTTPException(status_code=404, detail="SSO config not found")
 

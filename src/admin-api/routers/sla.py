@@ -268,7 +268,7 @@ async def update_definition(
 
     params.append(id)
     query = f"""
-        UPDATE sla_definitions SET {', '.join(sets)}
+        UPDATE sla_definitions SET {", ".join(sets)}
         WHERE id = ${idx}::uuid
         RETURNING *
     """
@@ -386,9 +386,7 @@ async def active_violations(user: UserInfo = Depends(get_current_user)):
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT * FROM sla_violations WHERE resolved_at IS NULL ORDER BY created_at DESC"
-        )
+        rows = await conn.fetch("SELECT * FROM sla_violations WHERE resolved_at IS NULL ORDER BY created_at DESC")
         return [_row_to_violation(row) for row in rows]
 
 
@@ -399,9 +397,7 @@ async def resolve_violation(id: str, user: UserInfo = Depends(require_admin)):
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT * FROM sla_violations WHERE id = $1::uuid", id
-        )
+        row = await conn.fetchrow("SELECT * FROM sla_violations WHERE id = $1::uuid", id)
         if not row:
             raise HTTPException(status_code=404, detail="Violation not found")
         if row["resolved_at"]:
@@ -495,7 +491,7 @@ async def update_failover_rule(
 
     params.append(id)
     query = f"""
-        UPDATE provider_failover_rules SET {', '.join(sets)}
+        UPDATE provider_failover_rules SET {", ".join(sets)}
         WHERE id = ${idx}::uuid
         RETURNING *
     """
@@ -527,9 +523,7 @@ async def trigger_failover(id: str, user: UserInfo = Depends(require_admin)):
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT * FROM provider_failover_rules WHERE id = $1::uuid", id
-        )
+        row = await conn.fetchrow("SELECT * FROM provider_failover_rules WHERE id = $1::uuid", id)
         if not row:
             raise HTTPException(status_code=404, detail="Failover rule not found")
         if not row["is_active"]:
@@ -559,9 +553,7 @@ async def get_compliance(user: UserInfo = Depends(get_current_user)):
 
     async with deps.db_pool.acquire() as conn:
         # Get active SLA definitions
-        definitions = await conn.fetch(
-            "SELECT * FROM sla_definitions WHERE is_active = true"
-        )
+        definitions = await conn.fetch("SELECT * FROM sla_definitions WHERE is_active = true")
 
         # Get violations for current month
         violations = await conn.fetch(
@@ -579,13 +571,16 @@ async def get_compliance(user: UserInfo = Depends(get_current_user)):
                 violation_map[str(v["sla_definition_id"])] = v["violation_count"]
 
         # Get total health metric buckets this month
-        total_buckets = await conn.fetchval(
-            """
+        total_buckets = (
+            await conn.fetchval(
+                """
             SELECT COUNT(*)
             FROM provider_health_metrics
             WHERE to_char(bucket_start, 'YYYY-MM') = to_char(CURRENT_TIMESTAMP, 'YYYY-MM')
             """
-        ) or 0
+            )
+            or 0
+        )
 
         compliance = []
         for defn in definitions:
@@ -598,16 +593,20 @@ async def get_compliance(user: UserInfo = Depends(get_current_user)):
             else:
                 compliance_pct = 100.0
 
-            compliance.append({
-                "sla_id": defn_id,
-                "sla_name": defn["name"],
-                "provider": defn["provider"],
-                "model_pattern": defn["model_pattern"],
-                "target_availability": float(defn["target_availability"]) if defn["target_availability"] else 0.999,
-                "compliance_percent": round(compliance_pct, 2),
-                "violations_this_month": v_count,
-                "total_buckets": total_buckets,
-                "status": "compliant" if compliance_pct >= float(defn["target_availability"] or 0.999) * 100 else "non_compliant",
-            })
+            compliance.append(
+                {
+                    "sla_id": defn_id,
+                    "sla_name": defn["name"],
+                    "provider": defn["provider"],
+                    "model_pattern": defn["model_pattern"],
+                    "target_availability": float(defn["target_availability"]) if defn["target_availability"] else 0.999,
+                    "compliance_percent": round(compliance_pct, 2),
+                    "violations_this_month": v_count,
+                    "total_buckets": total_buckets,
+                    "status": "compliant"
+                    if compliance_pct >= float(defn["target_availability"] or 0.999) * 100
+                    else "non_compliant",
+                }
+            )
 
         return compliance

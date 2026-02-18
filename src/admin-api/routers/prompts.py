@@ -377,7 +377,7 @@ async def update_prompt(
     params.append(id)
 
     query = f"""
-        UPDATE prompt_templates SET {', '.join(sets)}
+        UPDATE prompt_templates SET {", ".join(sets)}
         WHERE id = ${idx}::uuid
         RETURNING *
     """

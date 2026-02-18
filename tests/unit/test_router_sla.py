@@ -17,13 +17,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -48,6 +54,7 @@ from auth import UserInfo, get_current_user, require_admin  # noqa: E402
 
 def _fake_user():
     return UserInfo(user_id="test-admin", role="admin", is_admin=True)
+
 
 app.dependency_overrides[get_current_user] = _fake_user
 app.dependency_overrides[require_admin] = _fake_user
@@ -104,34 +111,69 @@ def client():
 # Shared mock data
 # ---------------------------------------------------------------------------
 
-_sla_def_row = _make_row({
-    "id": "sla-uuid-1", "name": "Production SLA", "provider": "openai",
-    "model_pattern": "gpt-4*", "target_p50_ms": 500, "target_p95_ms": 2000,
-    "target_p99_ms": 5000, "target_error_rate": 0.01, "target_availability": 0.999,
-    "evaluation_window_minutes": 60, "alert_channels": ["slack", "email"],
-    "is_active": True, "created_at": "2024-01-01T00:00:00",
-})
+_sla_def_row = _make_row(
+    {
+        "id": "sla-uuid-1",
+        "name": "Production SLA",
+        "provider": "openai",
+        "model_pattern": "gpt-4*",
+        "target_p50_ms": 500,
+        "target_p95_ms": 2000,
+        "target_p99_ms": 5000,
+        "target_error_rate": 0.01,
+        "target_availability": 0.999,
+        "evaluation_window_minutes": 60,
+        "alert_channels": ["slack", "email"],
+        "is_active": True,
+        "created_at": "2024-01-01T00:00:00",
+    }
+)
 
-_health_row = _make_row({
-    "id": "h-uuid-1", "provider": "openai", "model": "gpt-4o",
-    "bucket_start": "2024-01-01T00:00:00", "request_count": 100, "error_count": 2,
-    "p50_latency_ms": 300, "p95_latency_ms": 1500, "p99_latency_ms": 3000,
-    "avg_latency_ms": 500, "total_tokens": 50000, "total_cost": 5.0,
-})
+_health_row = _make_row(
+    {
+        "id": "h-uuid-1",
+        "provider": "openai",
+        "model": "gpt-4o",
+        "bucket_start": "2024-01-01T00:00:00",
+        "request_count": 100,
+        "error_count": 2,
+        "p50_latency_ms": 300,
+        "p95_latency_ms": 1500,
+        "p99_latency_ms": 3000,
+        "avg_latency_ms": 500,
+        "total_tokens": 50000,
+        "total_cost": 5.0,
+    }
+)
 
-_violation_row = _make_row({
-    "id": "v-uuid-1", "sla_definition_id": "sla-uuid-1", "provider": "openai",
-    "model": "gpt-4o", "violation_type": "latency_p95", "threshold_value": 2000.0,
-    "actual_value": 3000.0, "alert_sent": True, "resolved_at": None,
-    "created_at": "2024-01-01T00:00:00",
-})
+_violation_row = _make_row(
+    {
+        "id": "v-uuid-1",
+        "sla_definition_id": "sla-uuid-1",
+        "provider": "openai",
+        "model": "gpt-4o",
+        "violation_type": "latency_p95",
+        "threshold_value": 2000.0,
+        "actual_value": 3000.0,
+        "alert_sent": True,
+        "resolved_at": None,
+        "created_at": "2024-01-01T00:00:00",
+    }
+)
 
-_failover_row = _make_row({
-    "id": "fo-uuid-1", "primary_model": "gpt-4o", "fallback_model": "gpt-4o-mini",
-    "trigger_condition": "error_rate", "trigger_threshold": 0.05,
-    "cooldown_minutes": 15, "is_active": True, "last_triggered_at": None,
-    "created_at": "2024-01-01T00:00:00",
-})
+_failover_row = _make_row(
+    {
+        "id": "fo-uuid-1",
+        "primary_model": "gpt-4o",
+        "fallback_model": "gpt-4o-mini",
+        "trigger_condition": "error_rate",
+        "trigger_threshold": 0.05,
+        "cooldown_minutes": 15,
+        "is_active": True,
+        "last_triggered_at": None,
+        "created_at": "2024-01-01T00:00:00",
+    }
+)
 
 
 # ============================================================================
@@ -175,16 +217,19 @@ async def test_create_definition(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/sla/definitions", json={
-            "name": "Production SLA",
-            "provider": "openai",
-            "model_pattern": "gpt-4*",
-            "target_p50_ms": 500,
-            "target_p95_ms": 2000,
-            "target_p99_ms": 5000,
-            "target_error_rate": 0.01,
-            "target_availability": 0.999,
-        })
+        resp = await client.post(
+            "/api/v1/sla/definitions",
+            json={
+                "name": "Production SLA",
+                "provider": "openai",
+                "model_pattern": "gpt-4*",
+                "target_p50_ms": 500,
+                "target_p95_ms": 2000,
+                "target_p99_ms": 5000,
+                "target_error_rate": 0.01,
+                "target_availability": 0.999,
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -196,17 +241,22 @@ async def test_create_definition(client):
 @pytest.mark.asyncio
 async def test_update_definition(client):
     """PUT /sla/definitions/{id} updates the definition."""
-    updated_row = _make_row({
-        **{k: _sla_def_row[k] for k in _sla_def_row.keys()},
-        "name": "Updated SLA",
-    })
+    updated_row = _make_row(
+        {
+            **{k: _sla_def_row[k] for k in _sla_def_row.keys()},
+            "name": "Updated SLA",
+        }
+    )
     conn = _make_async_conn(fetchrow_return=updated_row)
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.put("/api/v1/sla/definitions/sla-uuid-1", json={
-            "name": "Updated SLA",
-        })
+        resp = await client.put(
+            "/api/v1/sla/definitions/sla-uuid-1",
+            json={
+                "name": "Updated SLA",
+            },
+        )
 
     assert resp.status_code == 200
     assert resp.json()["name"] == "Updated SLA"
@@ -219,9 +269,12 @@ async def test_update_definition_not_found(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.put("/api/v1/sla/definitions/nonexistent", json={
-            "name": "Updated SLA",
-        })
+        resp = await client.put(
+            "/api/v1/sla/definitions/nonexistent",
+            json={
+                "name": "Updated SLA",
+            },
+        )
 
     assert resp.status_code == 404
 
@@ -353,10 +406,12 @@ async def test_resolve_violation_not_found(client):
 @pytest.mark.asyncio
 async def test_resolve_already_resolved(client):
     """POST /sla/violations/{id}/resolve returns 400 when already resolved."""
-    resolved_row = _make_row({
-        **{k: _violation_row[k] for k in _violation_row.keys()},
-        "resolved_at": "2024-01-02T00:00:00",
-    })
+    resolved_row = _make_row(
+        {
+            **{k: _violation_row[k] for k in _violation_row.keys()},
+            "resolved_at": "2024-01-02T00:00:00",
+        }
+    )
     conn = _make_async_conn(fetchrow_return=resolved_row)
     deps.db_pool = _make_pool(conn)
 
@@ -395,13 +450,16 @@ async def test_create_failover_rule(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/sla/failover-rules", json={
-            "primary_model": "gpt-4o",
-            "fallback_model": "gpt-4o-mini",
-            "trigger_condition": "error_rate",
-            "trigger_threshold": 0.05,
-            "cooldown_minutes": 15,
-        })
+        resp = await client.post(
+            "/api/v1/sla/failover-rules",
+            json={
+                "primary_model": "gpt-4o",
+                "fallback_model": "gpt-4o-mini",
+                "trigger_condition": "error_rate",
+                "trigger_threshold": 0.05,
+                "cooldown_minutes": 15,
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -413,19 +471,24 @@ async def test_create_failover_rule(client):
 @pytest.mark.asyncio
 async def test_update_failover_rule(client):
     """PUT /sla/failover-rules/{id} updates a failover rule."""
-    updated_row = _make_row({
-        **{k: _failover_row[k] for k in _failover_row.keys()},
-        "cooldown_minutes": 30,
-    })
+    updated_row = _make_row(
+        {
+            **{k: _failover_row[k] for k in _failover_row.keys()},
+            "cooldown_minutes": 30,
+        }
+    )
     conn = _make_async_conn(fetchrow_return=updated_row)
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.put("/api/v1/sla/failover-rules/fo-uuid-1", json={
-            "primary_model": "gpt-4o",
-            "fallback_model": "gpt-4o-mini",
-            "cooldown_minutes": 30,
-        })
+        resp = await client.put(
+            "/api/v1/sla/failover-rules/fo-uuid-1",
+            json={
+                "primary_model": "gpt-4o",
+                "fallback_model": "gpt-4o-mini",
+                "cooldown_minutes": 30,
+            },
+        )
 
     assert resp.status_code == 200
     assert resp.json()["cooldown_minutes"] == 30
@@ -464,10 +527,12 @@ async def test_trigger_failover(client):
 @pytest.mark.asyncio
 async def test_trigger_inactive_failover(client):
     """POST /sla/failover-rules/{id}/trigger returns 400 for inactive rule."""
-    inactive_rule = _make_row({
-        **{k: _failover_row[k] for k in _failover_row.keys()},
-        "is_active": False,
-    })
+    inactive_rule = _make_row(
+        {
+            **{k: _failover_row[k] for k in _failover_row.keys()},
+            "is_active": False,
+        }
+    )
     conn = _make_async_conn(fetchrow_return=inactive_rule)
     deps.db_pool = _make_pool(conn)
 

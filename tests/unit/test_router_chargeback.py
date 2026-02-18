@@ -18,13 +18,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -49,6 +55,7 @@ from auth import UserInfo, get_current_user, require_admin  # noqa: E402
 
 def _fake_user():
     return UserInfo(user_id="test-admin", role="admin", is_admin=True)
+
 
 app.dependency_overrides[get_current_user] = _fake_user
 app.dependency_overrides[require_admin] = _fake_user
@@ -105,25 +112,46 @@ def client():
 # Shared mock data
 # ---------------------------------------------------------------------------
 
-_rule_row = _make_row({
-    "id": "rule-uuid-1", "name": "Engineering", "team_id": "team-1",
-    "allocation_type": "team", "allocation_target": "eng-dept",
-    "allocation_percent": 100.0, "metadata": "{}", "is_active": True,
-    "created_at": "2024-01-01T00:00:00",
-})
+_rule_row = _make_row(
+    {
+        "id": "rule-uuid-1",
+        "name": "Engineering",
+        "team_id": "team-1",
+        "allocation_type": "team",
+        "allocation_target": "eng-dept",
+        "allocation_percent": 100.0,
+        "metadata": "{}",
+        "is_active": True,
+        "created_at": "2024-01-01T00:00:00",
+    }
+)
 
-_report_row = _make_row({
-    "id": "rpt-uuid-1", "report_period": "2026-01", "status": "draft",
-    "total_cost": 1500.50, "breakdown": '[]', "generated_by": "admin",
-    "finalized_at": None, "created_at": "2024-01-01T00:00:00",
-})
+_report_row = _make_row(
+    {
+        "id": "rpt-uuid-1",
+        "report_period": "2026-01",
+        "status": "draft",
+        "total_cost": 1500.50,
+        "breakdown": "[]",
+        "generated_by": "admin",
+        "finalized_at": None,
+        "created_at": "2024-01-01T00:00:00",
+    }
+)
 
-_forecast_row = _make_row({
-    "id": "fc-uuid-1", "team_id": "team-1", "forecast_period": "2026-03",
-    "forecast_type": "weighted_moving_avg", "forecasted_cost": 1200.0,
-    "confidence_low": 720.0, "confidence_high": 1680.0,
-    "actual_cost": None, "created_at": "2024-01-01T00:00:00",
-})
+_forecast_row = _make_row(
+    {
+        "id": "fc-uuid-1",
+        "team_id": "team-1",
+        "forecast_period": "2026-03",
+        "forecast_type": "weighted_moving_avg",
+        "forecasted_cost": 1200.0,
+        "confidence_low": 720.0,
+        "confidence_high": 1680.0,
+        "actual_cost": None,
+        "created_at": "2024-01-01T00:00:00",
+    }
+)
 
 
 # ============================================================================
@@ -167,13 +195,16 @@ async def test_create_rule(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/cost-allocation/rules", json={
-            "name": "Engineering",
-            "team_id": "team-1",
-            "allocation_type": "team",
-            "allocation_target": "eng-dept",
-            "allocation_percent": 100.0,
-        })
+        resp = await client.post(
+            "/api/v1/cost-allocation/rules",
+            json={
+                "name": "Engineering",
+                "team_id": "team-1",
+                "allocation_type": "team",
+                "allocation_target": "eng-dept",
+                "allocation_percent": 100.0,
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -185,20 +216,25 @@ async def test_create_rule(client):
 @pytest.mark.asyncio
 async def test_update_rule(client):
     """PUT /cost-allocation/rules/{id} updates an allocation rule."""
-    updated_row = _make_row({
-        **{k: _rule_row[k] for k in _rule_row.keys()},
-        "allocation_percent": 75.0,
-    })
+    updated_row = _make_row(
+        {
+            **{k: _rule_row[k] for k in _rule_row.keys()},
+            "allocation_percent": 75.0,
+        }
+    )
     conn = _make_async_conn(fetchrow_return=updated_row)
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.put("/api/v1/cost-allocation/rules/rule-uuid-1", json={
-            "name": "Engineering",
-            "allocation_type": "team",
-            "allocation_target": "eng-dept",
-            "allocation_percent": 75.0,
-        })
+        resp = await client.put(
+            "/api/v1/cost-allocation/rules/rule-uuid-1",
+            json={
+                "name": "Engineering",
+                "allocation_type": "team",
+                "allocation_target": "eng-dept",
+                "allocation_percent": 75.0,
+            },
+        )
 
     assert resp.status_code == 200
     assert resp.json()["allocation_percent"] == 75.0
@@ -211,11 +247,14 @@ async def test_update_rule_not_found(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.put("/api/v1/cost-allocation/rules/nonexistent", json={
-            "name": "Test",
-            "allocation_type": "team",
-            "allocation_target": "dept",
-        })
+        resp = await client.put(
+            "/api/v1/cost-allocation/rules/nonexistent",
+            json={
+                "name": "Test",
+                "allocation_type": "team",
+                "allocation_target": "dept",
+            },
+        )
 
     assert resp.status_code == 404
 
@@ -312,11 +351,13 @@ async def test_finalize_report(client):
 @pytest.mark.asyncio
 async def test_finalize_already_finalized(client):
     """POST /chargeback/reports/{id}/finalize returns 400 for already finalized report."""
-    finalized_row = _make_row({
-        **{k: _report_row[k] for k in _report_row.keys()},
-        "status": "finalized",
-        "finalized_at": "2024-01-02T00:00:00",
-    })
+    finalized_row = _make_row(
+        {
+            **{k: _report_row[k] for k in _report_row.keys()},
+            "status": "finalized",
+            "finalized_at": "2024-01-02T00:00:00",
+        }
+    )
     conn = _make_async_conn(fetchrow_return=finalized_row)
     deps.db_pool = _make_pool(conn)
 
@@ -359,19 +400,25 @@ async def test_list_forecasts(client):
 @pytest.mark.asyncio
 async def test_export_report_csv(client):
     """GET /chargeback/reports/{id}/export returns CSV content."""
-    report_with_breakdown = _make_row({
-        **{k: _report_row[k] for k in _report_row.keys()},
-        "breakdown": json.dumps([{
-            "team_id": "team-1",
-            "allocation_target": "eng-dept",
-            "allocation_type": "team",
-            "original_cost": 1500.50,
-            "allocated_cost": 1500.50,
-            "allocation_percent": 100.0,
-            "request_count": 200,
-            "total_tokens": 50000,
-        }]),
-    })
+    report_with_breakdown = _make_row(
+        {
+            **{k: _report_row[k] for k in _report_row.keys()},
+            "breakdown": json.dumps(
+                [
+                    {
+                        "team_id": "team-1",
+                        "allocation_target": "eng-dept",
+                        "allocation_type": "team",
+                        "original_cost": 1500.50,
+                        "allocated_cost": 1500.50,
+                        "allocation_percent": 100.0,
+                        "request_count": 200,
+                        "total_tokens": 50000,
+                    }
+                ]
+            ),
+        }
+    )
     conn = _make_async_conn(fetchrow_return=report_with_breakdown)
     deps.db_pool = _make_pool(conn)
 

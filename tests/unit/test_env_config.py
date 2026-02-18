@@ -23,6 +23,7 @@ DOCKER_COMPOSE = ROOT / "docker-compose.yaml"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_env_file(path: Path) -> list[tuple[str, str, int]]:
     """
     Parse a .env file and return a list of (key, value, line_number) tuples.
@@ -74,6 +75,7 @@ def _extract_host_ports(compose: dict) -> dict[str, list[tuple[str, str]]]:
 # .env File Tests
 # ===========================================================================
 
+
 class TestEnvFile:
     """Validate config/.env structure and content."""
 
@@ -89,9 +91,7 @@ class TestEnvFile:
 
     def test_contains_litellm_master_key(self):
         """LITELLM_MASTER_KEY must be defined."""
-        assert "LITELLM_MASTER_KEY" in self.env_dict, (
-            "LITELLM_MASTER_KEY not found in .env"
-        )
+        assert "LITELLM_MASTER_KEY" in self.env_dict, "LITELLM_MASTER_KEY not found in .env"
 
     def test_contains_postgres_user(self):
         assert "POSTGRES_USER" in self.env_dict
@@ -128,22 +128,19 @@ class TestEnvFile:
     def test_litellm_master_key_is_not_placeholder(self):
         """LITELLM_MASTER_KEY should not be a bare placeholder like 'changeme'."""
         val = self.env_dict.get("LITELLM_MASTER_KEY", "")
-        assert val.lower() not in ("changeme", "change-me", ""), (
-            "LITELLM_MASTER_KEY looks like a placeholder"
-        )
+        assert val.lower() not in ("changeme", "change-me", ""), "LITELLM_MASTER_KEY looks like a placeholder"
 
     def test_port_values_are_numeric(self):
         """Any variable ending in _PORT should have a numeric value."""
         for key, value, lineno in self.entries:
             if key.endswith("_PORT"):
-                assert value.isdigit(), (
-                    f"{key}={value} (line {lineno}) is not a numeric port"
-                )
+                assert value.isdigit(), f"{key}={value} (line {lineno}) is not a numeric port"
 
 
 # ===========================================================================
 # Port Assignment Tests
 # ===========================================================================
+
 
 class TestPortAssignments:
     """Validate port mappings extracted from docker-compose.yaml."""
@@ -164,10 +161,7 @@ class TestPortAssignments:
                 continue  # skip non-default-profile services
             for host_port, _ in pairs:
                 if host_port in seen:
-                    pytest.fail(
-                        f"Host port {host_port} conflict between "
-                        f"'{seen[host_port]}' and '{svc_name}'"
-                    )
+                    pytest.fail(f"Host port {host_port} conflict between '{seen[host_port]}' and '{svc_name}'")
                 seen[host_port] = svc_name
 
     def test_litellm_default_port_is_4000(self):
@@ -216,6 +210,7 @@ class TestPortAssignments:
 # Service URL Consistency Tests
 # ===========================================================================
 
+
 class TestServiceURLConsistency:
     """Cross-check URLs in .env against docker-compose port mappings."""
 
@@ -232,23 +227,17 @@ class TestServiceURLConsistency:
         """LITELLM_PORT in .env should match the default host port in compose."""
         env_port = self.env_dict.get("LITELLM_PORT", "4000")
         compose_ports = [hp for hp, _ in self.port_map.get("litellm", [])]
-        assert env_port in compose_ports, (
-            f"LITELLM_PORT={env_port} not in compose ports {compose_ports}"
-        )
+        assert env_port in compose_ports, f"LITELLM_PORT={env_port} not in compose ports {compose_ports}"
 
     def test_admin_api_port_matches_env(self):
         env_port = self.env_dict.get("ADMIN_API_PORT", "8086")
         compose_ports = [hp for hp, _ in self.port_map.get("admin-api", [])]
-        assert env_port in compose_ports, (
-            f"ADMIN_API_PORT={env_port} not in compose ports {compose_ports}"
-        )
+        assert env_port in compose_ports, f"ADMIN_API_PORT={env_port} not in compose ports {compose_ports}"
 
     def test_admin_ui_port_matches_env(self):
         env_port = self.env_dict.get("ADMIN_UI_PORT", "5173")
         compose_ports = [hp for hp, _ in self.port_map.get("admin-ui", [])]
-        assert env_port in compose_ports, (
-            f"ADMIN_UI_PORT={env_port} not in compose ports {compose_ports}"
-        )
+        assert env_port in compose_ports, f"ADMIN_UI_PORT={env_port} not in compose ports {compose_ports}"
 
     def test_litellm_url_in_admin_api_env(self):
         """admin-api service should reference litellm on the correct internal port."""

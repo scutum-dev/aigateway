@@ -44,9 +44,7 @@ sys.modules.setdefault("alembic.config", _alembic_mock)
 sys.modules.setdefault("alembic.command", _alembic_mock)
 
 if "admin_api_main" not in sys.modules:
-    _spec = importlib.util.spec_from_file_location(
-        "admin_api_main", os.path.join(_service_dir, "main.py")
-    )
+    _spec = importlib.util.spec_from_file_location("admin_api_main", os.path.join(_service_dir, "main.py"))
     _main_mod = importlib.util.module_from_spec(_spec)
     sys.modules["admin_api_main"] = _main_mod
     _spec.loader.exec_module(_main_mod)
@@ -298,9 +296,7 @@ class TestKeysRouter:
     @pytest.mark.asyncio
     async def test_update_key_success(self, client):
         """POST /keys/update updates a key via LiteLLM."""
-        mock_resp = _mock_http_response(
-            200, {"key": "sk-key-1", "max_budget": 200.0}
-        )
+        mock_resp = _mock_http_response(200, {"key": "sk-key-1", "max_budget": 200.0})
         deps.http_client = AsyncMock()
         deps.http_client.post = AsyncMock(return_value=mock_resp)
 

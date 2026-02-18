@@ -66,7 +66,9 @@ class BudgetForecast(BaseModel):
 
 
 class GenerateReportRequest(BaseModel):
-    period: str = Field(..., description="Billing period in YYYY-MM format")  # e.g. "2026-02" = Field(..., description="Billing period (YYYY-MM format)")
+    period: str = Field(
+        ..., description="Billing period in YYYY-MM format"
+    )  # e.g. "2026-02" = Field(..., description="Billing period (YYYY-MM format)")
 
 
 class GenerateForecastRequest(BaseModel):
@@ -211,7 +213,7 @@ async def update_rule(
 
     params.append(id)
     query = f"""
-        UPDATE cost_allocation_rules SET {', '.join(sets)}
+        UPDATE cost_allocation_rules SET {", ".join(sets)}
         WHERE id = ${idx}::uuid
         RETURNING *
     """
@@ -290,29 +292,33 @@ async def generate_report(
                 if rule_team and rule_team == team_id:
                     pct = Decimal(str(rule["allocation_percent"])) / Decimal("100")
                     allocated_cost = spend * pct
-                    breakdown.append({
-                        "team_id": team_id,
-                        "allocation_target": rule["allocation_target"],
-                        "allocation_type": rule["allocation_type"],
-                        "original_cost": float(spend),
-                        "allocated_cost": float(allocated_cost),
-                        "allocation_percent": float(rule["allocation_percent"]),
-                        "request_count": sr["request_count"],
-                        "total_tokens": sr["total_tokens"],
-                    })
+                    breakdown.append(
+                        {
+                            "team_id": team_id,
+                            "allocation_target": rule["allocation_target"],
+                            "allocation_type": rule["allocation_type"],
+                            "original_cost": float(spend),
+                            "allocated_cost": float(allocated_cost),
+                            "allocation_percent": float(rule["allocation_percent"]),
+                            "request_count": sr["request_count"],
+                            "total_tokens": sr["total_tokens"],
+                        }
+                    )
                     allocated = True
 
             if not allocated:
-                breakdown.append({
-                    "team_id": team_id,
-                    "allocation_target": "direct",
-                    "allocation_type": "direct",
-                    "original_cost": float(spend),
-                    "allocated_cost": float(spend),
-                    "allocation_percent": 100.0,
-                    "request_count": sr["request_count"],
-                    "total_tokens": sr["total_tokens"],
-                })
+                breakdown.append(
+                    {
+                        "team_id": team_id,
+                        "allocation_target": "direct",
+                        "allocation_type": "direct",
+                        "original_cost": float(spend),
+                        "allocated_cost": float(spend),
+                        "allocation_percent": 100.0,
+                        "request_count": sr["request_count"],
+                        "total_tokens": sr["total_tokens"],
+                    }
+                )
 
         # Store the report
         row = await conn.fetchrow(
@@ -386,18 +392,31 @@ async def export_report(
     # CSV export
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["team_id", "allocation_target", "allocation_type", "original_cost", "allocated_cost", "allocation_percent", "request_count", "total_tokens"])
+    writer.writerow(
+        [
+            "team_id",
+            "allocation_target",
+            "allocation_type",
+            "original_cost",
+            "allocated_cost",
+            "allocation_percent",
+            "request_count",
+            "total_tokens",
+        ]
+    )
     for item in report.breakdown:
-        writer.writerow([
-            item.get("team_id", ""),
-            item.get("allocation_target", ""),
-            item.get("allocation_type", ""),
-            item.get("original_cost", 0),
-            item.get("allocated_cost", 0),
-            item.get("allocation_percent", 0),
-            item.get("request_count", 0),
-            item.get("total_tokens", 0),
-        ])
+        writer.writerow(
+            [
+                item.get("team_id", ""),
+                item.get("allocation_target", ""),
+                item.get("allocation_type", ""),
+                item.get("original_cost", 0),
+                item.get("allocated_cost", 0),
+                item.get("allocation_percent", 0),
+                item.get("request_count", 0),
+                item.get("total_tokens", 0),
+            ]
+        )
 
     return StreamingResponse(
         io.BytesIO(output.getvalue().encode()),
@@ -413,9 +432,7 @@ async def finalize_report(id: str, user: UserInfo = Depends(require_admin)):
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with deps.db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT * FROM chargeback_reports WHERE id = $1::uuid", id
-        )
+        row = await conn.fetchrow("SELECT * FROM chargeback_reports WHERE id = $1::uuid", id)
         if not row:
             raise HTTPException(status_code=404, detail="Report not found")
         if row["status"] == "finalized":

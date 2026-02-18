@@ -18,13 +18,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -308,13 +314,16 @@ async def test_all_proxy_routers_forward_litellm_errors(client):
 @pytest.mark.asyncio
 async def test_models_get_filters_response(client):
     """GET /models/{model_id} filters the full model list to find a match."""
-    mock_resp = _mock_http_response(200, {
-        "data": [
-            {"model_name": "gpt-4o", "model_info": {"id": "m1"}},
-            {"model_name": "claude-3", "model_info": {"id": "m2"}},
-            {"model_name": "gemini-pro", "model_info": {"id": "m3"}},
-        ]
-    })
+    mock_resp = _mock_http_response(
+        200,
+        {
+            "data": [
+                {"model_name": "gpt-4o", "model_info": {"id": "m1"}},
+                {"model_name": "claude-3", "model_info": {"id": "m2"}},
+                {"model_name": "gemini-pro", "model_info": {"id": "m3"}},
+            ]
+        },
+    )
     deps.http_client = AsyncMock()
     deps.http_client.get = AsyncMock(return_value=mock_resp)
 
@@ -444,10 +453,13 @@ async def test_models_create_url(client):
     deps.http_client.post = AsyncMock(return_value=mock_resp)
 
     async with client:
-        resp = await client.post("/api/v1/models", json={
-            "model_name": "test-model",
-            "litellm_params": {"model": "gpt-4o"},
-        })
+        resp = await client.post(
+            "/api/v1/models",
+            json={
+                "model_name": "test-model",
+                "litellm_params": {"model": "gpt-4o"},
+            },
+        )
 
     assert resp.status_code == 200
     url_called = deps.http_client.post.call_args[0][0]
@@ -508,9 +520,13 @@ async def test_teams_update_url(client):
     deps.http_client.post = AsyncMock(return_value=mock_resp)
 
     async with client:
-        resp = await client.post("/api/v1/teams/update", json={
-            "team_id": "team-1", "team_alias": "new-name",
-        })
+        resp = await client.post(
+            "/api/v1/teams/update",
+            json={
+                "team_id": "team-1",
+                "team_alias": "new-name",
+            },
+        )
 
     assert resp.status_code == 200
     url_called = deps.http_client.post.call_args[0][0]

@@ -17,13 +17,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -48,6 +54,7 @@ from auth import UserInfo, get_current_user, require_admin  # noqa: E402
 
 def _fake_user():
     return UserInfo(user_id="test-admin", role="admin", is_admin=True)
+
 
 app.dependency_overrides[get_current_user] = _fake_user
 app.dependency_overrides[require_admin] = _fake_user
@@ -104,21 +111,43 @@ def client():
 # Shared mock data
 # ---------------------------------------------------------------------------
 
-_prompt_row = _make_row({
-    "id": "prompt-uuid-1", "name": "Summarizer", "slug": "summarizer",
-    "description": "Summarize text", "category": "utility",
-    "template_text": "Summarize: {{text}}", "variables": '[{"name":"text","type":"string","required":true}]',
-    "version": 1, "is_current": True, "status": "approved", "team_id": None,
-    "model_hint": "gpt-4o-mini", "tags": ["summarize"],
-    "created_by": "admin", "approved_by": "admin", "approved_at": "2024-01-01",
-    "is_active": True, "created_at": "2024-01-01T00:00:00", "updated_at": None,
-})
+_prompt_row = _make_row(
+    {
+        "id": "prompt-uuid-1",
+        "name": "Summarizer",
+        "slug": "summarizer",
+        "description": "Summarize text",
+        "category": "utility",
+        "template_text": "Summarize: {{text}}",
+        "variables": '[{"name":"text","type":"string","required":true}]',
+        "version": 1,
+        "is_current": True,
+        "status": "approved",
+        "team_id": None,
+        "model_hint": "gpt-4o-mini",
+        "tags": ["summarize"],
+        "created_by": "admin",
+        "approved_by": "admin",
+        "approved_at": "2024-01-01",
+        "is_active": True,
+        "created_at": "2024-01-01T00:00:00",
+        "updated_at": None,
+    }
+)
 
-_approval_row = _make_row({
-    "id": "appr-uuid-1", "template_id": "prompt-uuid-1", "template_version": 1,
-    "requested_by": "admin", "reviewer": None, "status": "pending",
-    "comment": None, "requested_at": "2024-01-01T00:00:00", "reviewed_at": None,
-})
+_approval_row = _make_row(
+    {
+        "id": "appr-uuid-1",
+        "template_id": "prompt-uuid-1",
+        "template_version": 1,
+        "requested_by": "admin",
+        "reviewer": None,
+        "status": "pending",
+        "comment": None,
+        "requested_at": "2024-01-01T00:00:00",
+        "reviewed_at": None,
+    }
+)
 
 
 # ============================================================================
@@ -162,14 +191,17 @@ async def test_create_prompt(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/prompts", json={
-            "name": "Summarizer",
-            "slug": "summarizer",
-            "template_text": "Summarize: {{text}}",
-            "variables": [{"name": "text", "type": "string", "required": True}],
-            "model_hint": "gpt-4o-mini",
-            "tags": ["summarize"],
-        })
+        resp = await client.post(
+            "/api/v1/prompts",
+            json={
+                "name": "Summarizer",
+                "slug": "summarizer",
+                "template_text": "Summarize: {{text}}",
+                "variables": [{"name": "text", "type": "string", "required": True}],
+                "model_hint": "gpt-4o-mini",
+                "tags": ["summarize"],
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -211,10 +243,14 @@ async def test_get_prompt_not_found(client):
 async def test_list_versions(client):
     """GET /prompts/{slug}/versions returns all versions for a slug."""
     v1 = _prompt_row
-    v2 = _make_row({
-        **{k: _prompt_row[k] for k in _prompt_row.keys()},
-        "id": "prompt-uuid-2", "version": 2, "is_current": True,
-    })
+    v2 = _make_row(
+        {
+            **{k: _prompt_row[k] for k in _prompt_row.keys()},
+            "id": "prompt-uuid-2",
+            "version": 2,
+            "is_current": True,
+        }
+    )
     conn = _make_async_conn(fetch_return=[v2, v1])
     deps.db_pool = _make_pool(conn)
 
@@ -230,18 +266,23 @@ async def test_list_versions(client):
 @pytest.mark.asyncio
 async def test_update_prompt(client):
     """PUT /prompts/{id} updates a prompt template."""
-    updated_row = _make_row({
-        **{k: _prompt_row[k] for k in _prompt_row.keys()},
-        "name": "Updated Summarizer",
-        "updated_at": "2024-01-02T00:00:00",
-    })
+    updated_row = _make_row(
+        {
+            **{k: _prompt_row[k] for k in _prompt_row.keys()},
+            "name": "Updated Summarizer",
+            "updated_at": "2024-01-02T00:00:00",
+        }
+    )
     conn = _make_async_conn(fetchrow_return=updated_row)
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.put("/api/v1/prompts/prompt-uuid-1", json={
-            "name": "Updated Summarizer",
-        })
+        resp = await client.put(
+            "/api/v1/prompts/prompt-uuid-1",
+            json={
+                "name": "Updated Summarizer",
+            },
+        )
 
     assert resp.status_code == 200
     assert resp.json()["name"] == "Updated Summarizer"
@@ -254,9 +295,12 @@ async def test_update_prompt_not_found(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.put("/api/v1/prompts/nonexistent-uuid", json={
-            "name": "Updated",
-        })
+        resp = await client.put(
+            "/api/v1/prompts/nonexistent-uuid",
+            json={
+                "name": "Updated",
+            },
+        )
 
     assert resp.status_code == 404
 
@@ -298,9 +342,12 @@ async def test_render_prompt(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/prompts/summarizer/render", json={
-            "variables": {"text": "Hello, world!"},
-        })
+        resp = await client.post(
+            "/api/v1/prompts/summarizer/render",
+            json={
+                "variables": {"text": "Hello, world!"},
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -316,9 +363,12 @@ async def test_render_prompt_not_found(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/prompts/nonexistent/render", json={
-            "variables": {"text": "Hello"},
-        })
+        resp = await client.post(
+            "/api/v1/prompts/nonexistent/render",
+            json={
+                "variables": {"text": "Hello"},
+            },
+        )
 
     assert resp.status_code == 404
 
@@ -370,9 +420,12 @@ async def test_approve_prompt(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/prompt-approvals/appr-uuid-1/approve", json={
-            "comment": "Looks good",
-        })
+        resp = await client.post(
+            "/api/v1/prompt-approvals/appr-uuid-1/approve",
+            json={
+                "comment": "Looks good",
+            },
+        )
 
     assert resp.status_code == 200
     assert resp.json()["status"] == "approved"
@@ -400,9 +453,12 @@ async def test_reject_prompt(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/prompt-approvals/appr-uuid-1/reject", json={
-            "comment": "Needs revision",
-        })
+        resp = await client.post(
+            "/api/v1/prompt-approvals/appr-uuid-1/reject",
+            json={
+                "comment": "Needs revision",
+            },
+        )
 
     assert resp.status_code == 200
     assert resp.json()["status"] == "rejected"
@@ -423,14 +479,26 @@ async def test_prompt_analytics(client):
         _make_row({"id": "prompt-uuid-2", "version": 2}),
     ]
     usage_rows = [
-        _make_row({
-            "version": 1, "total_uses": 50, "avg_latency_ms": 200.5,
-            "total_cost": 1.25, "total_input_tokens": 10000, "total_output_tokens": 5000,
-        }),
-        _make_row({
-            "version": 2, "total_uses": 30, "avg_latency_ms": 180.0,
-            "total_cost": 0.75, "total_input_tokens": 6000, "total_output_tokens": 3000,
-        }),
+        _make_row(
+            {
+                "version": 1,
+                "total_uses": 50,
+                "avg_latency_ms": 200.5,
+                "total_cost": 1.25,
+                "total_input_tokens": 10000,
+                "total_output_tokens": 5000,
+            }
+        ),
+        _make_row(
+            {
+                "version": 2,
+                "total_uses": 30,
+                "avg_latency_ms": 180.0,
+                "total_cost": 0.75,
+                "total_input_tokens": 6000,
+                "total_output_tokens": 3000,
+            }
+        ),
     ]
     conn = _make_async_conn()
     # First fetch: template IDs/versions; Second fetch: usage stats

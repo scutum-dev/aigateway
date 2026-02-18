@@ -200,9 +200,7 @@ async def _sync_rate_limit_to_litellm(
             if tpm_limit is not None:
                 update_data["tpm_limit"] = tpm_limit
             if burst_multiplier is not None and rpm_limit is not None:
-                update_data["max_parallel_requests"] = int(
-                    rpm_limit * burst_multiplier / 60
-                )
+                update_data["max_parallel_requests"] = int(rpm_limit * burst_multiplier / 60)
 
             resp = await deps.http_client.post(
                 f"{deps.LITELLM_URL}/team/update",
@@ -212,7 +210,10 @@ async def _sync_rate_limit_to_litellm(
             if resp.status_code == 200:
                 logger.info(
                     "Synced rate limits to LiteLLM team %s: rpm=%s tpm=%s max_parallel=%s",
-                    scope_value, rpm_limit, tpm_limit, update_data.get("max_parallel_requests"),
+                    scope_value,
+                    rpm_limit,
+                    tpm_limit,
+                    update_data.get("max_parallel_requests"),
                 )
             else:
                 logger.warning("LiteLLM /team/update returned %s: %s", resp.status_code, resp.text[:200])
@@ -224,9 +225,7 @@ async def _sync_rate_limit_to_litellm(
             if tpm_limit is not None:
                 update_data["tpm_limit"] = tpm_limit
             if burst_multiplier is not None and rpm_limit is not None:
-                update_data["max_parallel_requests"] = int(
-                    rpm_limit * burst_multiplier / 60
-                )
+                update_data["max_parallel_requests"] = int(rpm_limit * burst_multiplier / 60)
 
             resp = await deps.http_client.post(
                 f"{deps.LITELLM_URL}/key/update",
@@ -236,7 +235,10 @@ async def _sync_rate_limit_to_litellm(
             if resp.status_code == 200:
                 logger.info(
                     "Synced rate limits to LiteLLM key %s: rpm=%s tpm=%s max_parallel=%s",
-                    scope_value[:10], rpm_limit, tpm_limit, update_data.get("max_parallel_requests"),
+                    scope_value[:10],
+                    rpm_limit,
+                    tpm_limit,
+                    update_data.get("max_parallel_requests"),
                 )
             else:
                 logger.warning("LiteLLM /key/update returned %s: %s", resp.status_code, resp.text[:200])
@@ -263,7 +265,10 @@ async def _sync_rate_limit_to_litellm(
             if resp.status_code == 200:
                 logger.info(
                     "Synced model-scoped rate limits to LiteLLM team %s model %s: rpm=%s tpm=%s",
-                    team_id, model_name, rpm_limit, tpm_limit,
+                    team_id,
+                    model_name,
+                    rpm_limit,
+                    tpm_limit,
                 )
             else:
                 logger.warning("LiteLLM /team/update (team_model) returned %s: %s", resp.status_code, resp.text[:200])
@@ -686,7 +691,7 @@ async def update_policy(
     params.append(id)
 
     query = f"""
-        UPDATE rate_limit_policies SET {', '.join(sets)}
+        UPDATE rate_limit_policies SET {", ".join(sets)}
         WHERE id = ${idx}::uuid
         RETURNING *
     """
@@ -700,9 +705,7 @@ async def update_policy(
     if isinstance(burst, Decimal):
         burst = float(burst)
 
-    await _sync_rate_limit_to_litellm(
-        row["scope"], row["scope_value"], row["rpm_limit"], row["tpm_limit"], burst
-    )
+    await _sync_rate_limit_to_litellm(row["scope"], row["scope_value"], row["rpm_limit"], row["tpm_limit"], burst)
 
     return _row_to_policy(row)
 

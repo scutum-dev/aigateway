@@ -20,13 +20,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -97,11 +103,17 @@ def _make_pool(conn):
 # Mock rows
 # ---------------------------------------------------------------------------
 
-_dep_row = _make_row({
-    "id": "dep-1", "model_name": "gpt-3.5-turbo", "replacement_model": "gpt-4o-mini",
-    "deprecation_date": "2024-06-01", "sunset_date": "2024-12-01",
-    "message": "Use gpt-4o-mini", "created_at": "2024-01-01",
-})
+_dep_row = _make_row(
+    {
+        "id": "dep-1",
+        "model_name": "gpt-3.5-turbo",
+        "replacement_model": "gpt-4o-mini",
+        "deprecation_date": "2024-06-01",
+        "sunset_date": "2024-12-01",
+        "message": "Use gpt-4o-mini",
+        "created_at": "2024-01-01",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -179,13 +191,16 @@ class TestCreateDeprecation:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/model-deprecations", json={
-                "model_name": "gpt-3.5-turbo",
-                "replacement_model": "gpt-4o-mini",
-                "deprecation_date": "2024-06-01",
-                "sunset_date": "2024-12-01",
-                "message": "Use gpt-4o-mini",
-            })
+            resp = await client.post(
+                "/api/v1/model-deprecations",
+                json={
+                    "model_name": "gpt-3.5-turbo",
+                    "replacement_model": "gpt-4o-mini",
+                    "deprecation_date": "2024-06-01",
+                    "sunset_date": "2024-12-01",
+                    "message": "Use gpt-4o-mini",
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -199,10 +214,13 @@ class TestCreateDeprecation:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/model-deprecations", json={
-                "model_name": "gpt-3.5-turbo",
-                "replacement_model": "gpt-4o-mini",
-            })
+            resp = await client.post(
+                "/api/v1/model-deprecations",
+                json={
+                    "model_name": "gpt-3.5-turbo",
+                    "replacement_model": "gpt-4o-mini",
+                },
+            )
 
         assert resp.status_code == 409
         assert "already exists" in resp.json()["detail"]
@@ -285,21 +303,30 @@ class TestUpdateDeprecation:
 
     @pytest.mark.asyncio
     async def test_update_deprecation(self, client):
-        updated_row = _make_row({
-            "id": "dep-1", "model_name": "gpt-3.5-turbo", "replacement_model": "gpt-4o",
-            "deprecation_date": "2024-06-01", "sunset_date": "2024-12-01",
-            "message": "Use gpt-4o", "created_at": "2024-01-01",
-        })
+        updated_row = _make_row(
+            {
+                "id": "dep-1",
+                "model_name": "gpt-3.5-turbo",
+                "replacement_model": "gpt-4o",
+                "deprecation_date": "2024-06-01",
+                "sunset_date": "2024-12-01",
+                "message": "Use gpt-4o",
+                "created_at": "2024-01-01",
+            }
+        )
         # First fetchrow checks existing, second returns updated
         conn = _make_async_conn()
         conn.fetchrow.side_effect = [_dep_row, updated_row]
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.put("/api/v1/model-deprecations/dep-1", json={
-                "replacement_model": "gpt-4o",
-                "message": "Use gpt-4o",
-            })
+            resp = await client.put(
+                "/api/v1/model-deprecations/dep-1",
+                json={
+                    "replacement_model": "gpt-4o",
+                    "message": "Use gpt-4o",
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()

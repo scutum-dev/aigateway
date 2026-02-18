@@ -28,6 +28,7 @@ CEDAR_POLICIES_DIR = ROOT / "config" / "agentgateway" / "policies"
 # LiteLLM Config Tests
 # ===========================================================================
 
+
 class TestLiteLLMConfig:
     """Validate config/litellm/config.yaml structure and content."""
 
@@ -53,20 +54,14 @@ class TestLiteLLMConfig:
         """Each model entry must have a 'model_name' string."""
         for idx, entry in enumerate(self.config["model_list"]):
             assert "model_name" in entry, f"model_list[{idx}] missing 'model_name'"
-            assert isinstance(entry["model_name"], str), (
-                f"model_list[{idx}].model_name is not a string"
-            )
+            assert isinstance(entry["model_name"], str), f"model_list[{idx}].model_name is not a string"
 
     def test_every_model_has_litellm_params_with_model(self):
         """Each model entry must have 'litellm_params' containing a 'model' key."""
         for idx, entry in enumerate(self.config["model_list"]):
-            assert "litellm_params" in entry, (
-                f"model_list[{idx}] missing 'litellm_params'"
-            )
+            assert "litellm_params" in entry, f"model_list[{idx}] missing 'litellm_params'"
             params = entry["litellm_params"]
-            assert "model" in params, (
-                f"model_list[{idx}].litellm_params missing 'model' key"
-            )
+            assert "model" in params, f"model_list[{idx}].litellm_params missing 'model' key"
 
     def test_no_duplicate_model_names(self):
         """model_name values must be unique across the entire model_list."""
@@ -109,6 +104,7 @@ class TestLiteLLMConfig:
 # Docker Compose Tests
 # ===========================================================================
 
+
 class TestDockerCompose:
     """Validate docker-compose.yaml structure."""
 
@@ -131,18 +127,21 @@ class TestDockerCompose:
         for name, svc in self.compose["services"].items():
             has_image = "image" in svc
             has_build = "build" in svc
-            assert has_image or has_build, (
-                f"Service '{name}' has neither 'image' nor 'build'"
-            )
+            assert has_image or has_build, f"Service '{name}' has neither 'image' nor 'build'"
 
-    @pytest.mark.parametrize("service_name", [
-        "postgres", "redis", "litellm", "admin-api", "admin-ui",
-    ])
+    @pytest.mark.parametrize(
+        "service_name",
+        [
+            "postgres",
+            "redis",
+            "litellm",
+            "admin-api",
+            "admin-ui",
+        ],
+    )
     def test_required_service_exists(self, service_name):
         """Core services must be defined in docker-compose."""
-        assert service_name in self.compose["services"], (
-            f"Required service '{service_name}' not found"
-        )
+        assert service_name in self.compose["services"], f"Required service '{service_name}' not found"
 
     def test_no_duplicate_host_port_mappings(self):
         """No two services should map the same host port."""
@@ -170,10 +169,7 @@ class TestDockerCompose:
                         current_profiles = svc.get("profiles", [])
                         # Both have no profile = true conflict
                         if not other_profiles and not current_profiles:
-                            pytest.fail(
-                                f"Host port {host_port} is used by both "
-                                f"'{other}' and '{name}'"
-                            )
+                            pytest.fail(f"Host port {host_port} is used by both '{other}' and '{name}'")
                     host_ports[host_port] = name
 
     def test_services_have_valid_restart_policy(self):
@@ -182,9 +178,7 @@ class TestDockerCompose:
         for name, svc in self.compose["services"].items():
             restart = svc.get("restart")
             if restart is not None:
-                assert restart in valid_policies, (
-                    f"Service '{name}' has unknown restart policy: {restart}"
-                )
+                assert restart in valid_policies, f"Service '{name}' has unknown restart policy: {restart}"
 
     def test_networks_key_exists(self):
         """Top-level 'networks' key must be defined."""
@@ -211,13 +205,12 @@ class TestDockerCompose:
 # Feature Flags Tests
 # ===========================================================================
 
+
 class TestFeatureFlags:
     """Validate feature flag YAML files."""
 
     def test_feature_flags_directory_exists(self):
-        assert FEATURE_FLAGS_DIR.is_dir(), (
-            f"Feature flags directory not found: {FEATURE_FLAGS_DIR}"
-        )
+        assert FEATURE_FLAGS_DIR.is_dir(), f"Feature flags directory not found: {FEATURE_FLAGS_DIR}"
 
     def test_base_yaml_exists(self):
         base = FEATURE_FLAGS_DIR / "base.yaml"
@@ -254,6 +247,7 @@ class TestFeatureFlags:
 # ===========================================================================
 # Cedar Policies Tests
 # ===========================================================================
+
 
 class TestCedarPolicies:
     """Validate Cedar policy files if present."""

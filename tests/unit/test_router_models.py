@@ -44,9 +44,7 @@ sys.modules.setdefault("alembic.config", _alembic_mock)
 sys.modules.setdefault("alembic.command", _alembic_mock)
 
 if "admin_api_main" not in sys.modules:
-    _spec = importlib.util.spec_from_file_location(
-        "admin_api_main", os.path.join(_service_dir, "main.py")
-    )
+    _spec = importlib.util.spec_from_file_location("admin_api_main", os.path.join(_service_dir, "main.py"))
     _main_mod = importlib.util.module_from_spec(_spec)
     sys.modules["admin_api_main"] = _main_mod
     _spec.loader.exec_module(_main_mod)
@@ -278,9 +276,7 @@ class TestModelsRouter:
     @pytest.mark.asyncio
     async def test_create_model_success(self, client):
         """POST /models creates a model via LiteLLM."""
-        mock_resp = _mock_http_response(
-            200, {"model_name": "new-model", "status": "created"}
-        )
+        mock_resp = _mock_http_response(200, {"model_name": "new-model", "status": "created"})
         deps.http_client = AsyncMock()
         deps.http_client.post = AsyncMock(return_value=mock_resp)
 

@@ -57,8 +57,12 @@ def _row_to_test(row) -> dict:
         "variant_model": row["variant_model"],
         "traffic_split_percent": row["traffic_split_percent"],
         "success_metric": row["success_metric"],
-        "promotion_threshold": json.loads(row["promotion_threshold"]) if isinstance(row["promotion_threshold"], str) else row["promotion_threshold"],
-        "rollback_threshold": json.loads(row["rollback_threshold"]) if isinstance(row["rollback_threshold"], str) else row["rollback_threshold"],
+        "promotion_threshold": json.loads(row["promotion_threshold"])
+        if isinstance(row["promotion_threshold"], str)
+        else row["promotion_threshold"],
+        "rollback_threshold": json.loads(row["rollback_threshold"])
+        if isinstance(row["rollback_threshold"], str)
+        else row["rollback_threshold"],
         "auto_promote": row["auto_promote"],
         "auto_rollback": row["auto_rollback"],
         "started_at": str(row["started_at"]) if row["started_at"] else None,
@@ -73,8 +77,12 @@ def _row_to_snapshot(row) -> dict:
         "id": str(row["id"]),
         "test_id": str(row["test_id"]),
         "snapshot_at": str(row["snapshot_at"]) if row["snapshot_at"] else None,
-        "base_metrics": json.loads(row["base_metrics"]) if isinstance(row["base_metrics"], str) else row["base_metrics"],
-        "variant_metrics": json.loads(row["variant_metrics"]) if isinstance(row["variant_metrics"], str) else row["variant_metrics"],
+        "base_metrics": json.loads(row["base_metrics"])
+        if isinstance(row["base_metrics"], str)
+        else row["base_metrics"],
+        "variant_metrics": json.loads(row["variant_metrics"])
+        if isinstance(row["variant_metrics"], str)
+        else row["variant_metrics"],
         "recommendation": row["recommendation"],
     }
 
@@ -287,7 +295,7 @@ async def update_ab_test(
 
     params.append(test_id)
     query = f"""
-        UPDATE ab_tests SET {', '.join(sets)}
+        UPDATE ab_tests SET {", ".join(sets)}
         WHERE id = ${idx}::uuid
         RETURNING *
     """
@@ -545,7 +553,9 @@ async def collect_metrics(test_id: str, user: UserInfo = Depends(require_admin))
                 test_id,
             )
             await _remove_variant_from_litellm(test_id)
-            logger.info("A/B test %s auto-promoted: variant %s wins on %s", test_id, row["variant_model"], row["success_metric"])
+            logger.info(
+                "A/B test %s auto-promoted: variant %s wins on %s", test_id, row["variant_model"], row["success_metric"]
+            )
 
         # Auto-rollback if variant degrades
         if row["auto_rollback"] and recommendation == "rollback" and variant_metrics.get("request_count", 0) > 200:
@@ -554,13 +564,20 @@ async def collect_metrics(test_id: str, user: UserInfo = Depends(require_admin))
                 test_id,
             )
             await _remove_variant_from_litellm(test_id)
-            logger.info("A/B test %s auto-rolled-back: variant %s degraded on %s", test_id, row["variant_model"], row["success_metric"])
+            logger.info(
+                "A/B test %s auto-rolled-back: variant %s degraded on %s",
+                test_id,
+                row["variant_model"],
+                row["success_metric"],
+            )
 
         return _row_to_snapshot(snapshot_row)
 
 
 @router.get("/ab-tests/{test_id}/metrics")
-async def get_ab_test_metrics(test_id: str, limit: int = Query(default=20, le=100), user: UserInfo = Depends(get_current_user)):
+async def get_ab_test_metrics(
+    test_id: str, limit: int = Query(default=20, le=100), user: UserInfo = Depends(get_current_user)
+):
     """Get metric snapshots for an A/B test (for charting)."""
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")

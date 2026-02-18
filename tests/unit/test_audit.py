@@ -99,14 +99,14 @@ class TestAudit:
         conn.execute.assert_awaited_once()
         args = conn.execute.call_args[0]
         # Positional args after the SQL string
-        assert args[1] == "user-1"          # actor_id
+        assert args[1] == "user-1"  # actor_id
         assert args[2] == "admin@example.com"  # actor_email
-        assert args[3] == "10.0.0.1"        # actor_ip
-        assert args[4] == "org-abc"          # org_id
-        assert args[5] == "create"           # action
-        assert args[6] == "model"            # resource_type
-        assert args[7] == "model-42"         # resource_id
-        assert args[8] == "gpt-4o"           # resource_name
+        assert args[3] == "10.0.0.1"  # actor_ip
+        assert args[4] == "org-abc"  # org_id
+        assert args[5] == "create"  # action
+        assert args[6] == "model"  # resource_type
+        assert args[7] == "model-42"  # resource_id
+        assert args[8] == "gpt-4o"  # resource_name
         assert json.loads(args[9]) == {"field": "name", "old": "gpt-4", "new": "gpt-4o"}
         metadata = json.loads(args[10])
         assert metadata["method"] == "POST"
@@ -118,7 +118,9 @@ class TestAudit:
         """Verify method, path, user_agent and client IP are extracted from the request."""
         conn = _make_async_conn()
         deps.db_pool = _make_pool(conn)
-        req = _make_request(method="DELETE", path="/api/v1/keys/k1", user_agent="Mozilla/5.0", client_host="192.168.1.1")
+        req = _make_request(
+            method="DELETE", path="/api/v1/keys/k1", user_agent="Mozilla/5.0", client_host="192.168.1.1"
+        )
 
         await log_audit_event(
             actor_id="user-2",
@@ -263,7 +265,7 @@ class TestAudit:
         )
 
         args = conn.execute.call_args[0]
-        assert args[1] == "user-10"       # actor_id
+        assert args[1] == "user-10"  # actor_id
         assert args[2] == "alice@corp.com"  # actor_email
 
 

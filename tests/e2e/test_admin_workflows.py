@@ -45,9 +45,7 @@ sys.modules.setdefault("alembic.config", _alembic_mock)
 sys.modules.setdefault("alembic.command", _alembic_mock)
 
 if "admin_api_main" not in sys.modules:
-    _spec = importlib.util.spec_from_file_location(
-        "admin_api_main", os.path.join(_service_dir, "main.py")
-    )
+    _spec = importlib.util.spec_from_file_location("admin_api_main", os.path.join(_service_dir, "main.py"))
     _main_mod = importlib.util.module_from_spec(_spec)
     sys.modules["admin_api_main"] = _main_mod
     _spec.loader.exec_module(_main_mod)
@@ -143,21 +141,23 @@ class TestOrgSetupWorkflow:
     async def test_create_org_returns_200(self, client):
         """Create org -> verify 200 with correct fields."""
         pool, conn = _setup_db_pool()
-        conn.fetchrow.return_value = _make_mock_row({
-            "id": "org-001",
-            "name": "Acme Corp",
-            "slug": "acme-corp",
-            "description": "Test org",
-            "max_budget": 10000.0,
-            "allowed_models": ["gpt-4o"],
-            "metadata": "{}",
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-            "bu_count": 0,
-            "team_count": 0,
-            "member_count": 0,
-        })
+        conn.fetchrow.return_value = _make_mock_row(
+            {
+                "id": "org-001",
+                "name": "Acme Corp",
+                "slug": "acme-corp",
+                "description": "Test org",
+                "max_budget": 10000.0,
+                "allowed_models": ["gpt-4o"],
+                "metadata": "{}",
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+                "bu_count": 0,
+                "team_count": 0,
+                "member_count": 0,
+            }
+        )
         conn.execute.return_value = "INSERT 1"
 
         async with client:
@@ -183,34 +183,38 @@ class TestOrgSetupWorkflow:
         """Create org -> create BU under it -> verify both return 200."""
         pool, conn = _setup_db_pool()
 
-        org_row = _make_mock_row({
-            "id": "org-001",
-            "name": "Acme Corp",
-            "slug": "acme-corp",
-            "description": None,
-            "max_budget": None,
-            "allowed_models": None,
-            "metadata": "{}",
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-            "bu_count": 0,
-            "team_count": 0,
-            "member_count": 0,
-        })
+        org_row = _make_mock_row(
+            {
+                "id": "org-001",
+                "name": "Acme Corp",
+                "slug": "acme-corp",
+                "description": None,
+                "max_budget": None,
+                "allowed_models": None,
+                "metadata": "{}",
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+                "bu_count": 0,
+                "team_count": 0,
+                "member_count": 0,
+            }
+        )
 
-        bu_row = _make_mock_row({
-            "id": "bu-001",
-            "org_id": "org-001",
-            "name": "Engineering",
-            "slug": "engineering",
-            "description": "Engineering department",
-            "max_budget": 5000.0,
-            "allowed_models": None,
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-        })
+        bu_row = _make_mock_row(
+            {
+                "id": "bu-001",
+                "org_id": "org-001",
+                "name": "Engineering",
+                "slug": "engineering",
+                "description": "Engineering department",
+                "max_budget": 5000.0,
+                "allowed_models": None,
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+            }
+        )
 
         # fetchrow returns org row first, then bu row
         conn.fetchrow.side_effect = [org_row, bu_row]
@@ -243,32 +247,36 @@ class TestOrgSetupWorkflow:
         """Create org -> add team -> add member -> verify all return 200."""
         pool, conn = _setup_db_pool()
 
-        org_row = _make_mock_row({
-            "id": "org-001",
-            "name": "Acme Corp",
-            "slug": "acme-corp",
-            "description": None,
-            "max_budget": None,
-            "allowed_models": None,
-            "metadata": "{}",
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-            "bu_count": 0,
-            "team_count": 0,
-            "member_count": 0,
-        })
+        org_row = _make_mock_row(
+            {
+                "id": "org-001",
+                "name": "Acme Corp",
+                "slug": "acme-corp",
+                "description": None,
+                "max_budget": None,
+                "allowed_models": None,
+                "metadata": "{}",
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+                "bu_count": 0,
+                "team_count": 0,
+                "member_count": 0,
+            }
+        )
 
-        member_row = _make_mock_row({
-            "id": "mem-001",
-            "user_id": "user-42",
-            "email": None,
-            "display_name": None,
-            "org_id": "org-001",
-            "role": "member",
-            "bu_id": None,
-            "created_at": "2026-01-01T00:00:00",
-        })
+        member_row = _make_mock_row(
+            {
+                "id": "mem-001",
+                "user_id": "user-42",
+                "email": None,
+                "display_name": None,
+                "org_id": "org-001",
+                "role": "member",
+                "bu_id": None,
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
 
         # Step 1: create org (fetchrow), step 2: assign team (execute), step 3: add member (fetchrow)
         conn.fetchrow.side_effect = [org_row, member_row]
@@ -306,21 +314,23 @@ class TestOrgSetupWorkflow:
         """Create org -> verify audit log_audit_event was called."""
         pool, conn = _setup_db_pool()
 
-        org_row = _make_mock_row({
-            "id": "org-audit-001",
-            "name": "Audit Org",
-            "slug": "audit-org",
-            "description": None,
-            "max_budget": None,
-            "allowed_models": None,
-            "metadata": "{}",
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-            "bu_count": 0,
-            "team_count": 0,
-            "member_count": 0,
-        })
+        org_row = _make_mock_row(
+            {
+                "id": "org-audit-001",
+                "name": "Audit Org",
+                "slug": "audit-org",
+                "description": None,
+                "max_budget": None,
+                "allowed_models": None,
+                "metadata": "{}",
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+                "bu_count": 0,
+                "team_count": 0,
+                "member_count": 0,
+            }
+        )
         conn.fetchrow.return_value = org_row
         conn.execute.return_value = "INSERT 1"
 
@@ -343,21 +353,23 @@ class TestOrgSetupWorkflow:
         """Update org -> verify audit event records 'update' action."""
         pool, conn = _setup_db_pool()
 
-        updated_row = _make_mock_row({
-            "id": "org-001",
-            "name": "Acme Corp Updated",
-            "slug": "acme-corp",
-            "description": None,
-            "max_budget": 20000.0,
-            "allowed_models": None,
-            "metadata": "{}",
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": "2026-01-02T00:00:00",
-            "bu_count": 0,
-            "team_count": 0,
-            "member_count": 0,
-        })
+        updated_row = _make_mock_row(
+            {
+                "id": "org-001",
+                "name": "Acme Corp Updated",
+                "slug": "acme-corp",
+                "description": None,
+                "max_budget": 20000.0,
+                "allowed_models": None,
+                "metadata": "{}",
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": "2026-01-02T00:00:00",
+                "bu_count": 0,
+                "team_count": 0,
+                "member_count": 0,
+            }
+        )
         conn.fetchrow.return_value = updated_row
 
         with patch("routers.organizations.log_audit_event", new_callable=AsyncMock) as mock_audit:
@@ -403,16 +415,18 @@ class TestOrgSetupWorkflow:
         """Add org member -> verify audit records add_member action."""
         pool, conn = _setup_db_pool()
 
-        member_row = _make_mock_row({
-            "id": "mem-001",
-            "user_id": "user-99",
-            "email": None,
-            "display_name": None,
-            "org_id": "org-001",
-            "role": "admin",
-            "bu_id": None,
-            "created_at": "2026-01-01T00:00:00",
-        })
+        member_row = _make_mock_row(
+            {
+                "id": "mem-001",
+                "user_id": "user-99",
+                "email": None,
+                "display_name": None,
+                "org_id": "org-001",
+                "role": "admin",
+                "bu_id": None,
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
         conn.fetchrow.return_value = member_row
         conn.execute.return_value = "INSERT 1"
 
@@ -441,23 +455,25 @@ class TestABTestLifecycle:
         """Create an A/B test -> verify draft status."""
         pool, conn = _setup_db_pool()
 
-        ab_row = _make_mock_row({
-            "id": "ab-001",
-            "name": "GPT-4o vs Claude",
-            "status": "draft",
-            "base_model": "gpt-4o",
-            "variant_model": "claude-3-5-sonnet",
-            "traffic_split_percent": 10,
-            "success_metric": "cost_efficiency",
-            "promotion_threshold": None,
-            "rollback_threshold": None,
-            "auto_promote": False,
-            "auto_rollback": True,
-            "started_at": None,
-            "completed_at": None,
-            "created_by": "test-admin",
-            "created_at": "2026-01-01T00:00:00",
-        })
+        ab_row = _make_mock_row(
+            {
+                "id": "ab-001",
+                "name": "GPT-4o vs Claude",
+                "status": "draft",
+                "base_model": "gpt-4o",
+                "variant_model": "claude-3-5-sonnet",
+                "traffic_split_percent": 10,
+                "success_metric": "cost_efficiency",
+                "promotion_threshold": None,
+                "rollback_threshold": None,
+                "auto_promote": False,
+                "auto_rollback": True,
+                "started_at": None,
+                "completed_at": None,
+                "created_by": "test-admin",
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
         conn.fetchrow.return_value = ab_row
 
         async with client:
@@ -484,67 +500,73 @@ class TestABTestLifecycle:
         deps.http_client = AsyncMock()
 
         # Step 1: create (fetchrow for INSERT RETURNING)
-        draft_row = _make_mock_row({
-            "id": "ab-002",
-            "name": "Lifecycle Test",
-            "status": "draft",
-            "base_model": "gpt-4o",
-            "variant_model": "claude-3-5-sonnet",
-            "traffic_split_percent": 20,
-            "success_metric": "cost_efficiency",
-            "promotion_threshold": None,
-            "rollback_threshold": None,
-            "auto_promote": False,
-            "auto_rollback": True,
-            "started_at": None,
-            "completed_at": None,
-            "created_by": "test-admin",
-            "created_at": "2026-01-01T00:00:00",
-        })
+        draft_row = _make_mock_row(
+            {
+                "id": "ab-002",
+                "name": "Lifecycle Test",
+                "status": "draft",
+                "base_model": "gpt-4o",
+                "variant_model": "claude-3-5-sonnet",
+                "traffic_split_percent": 20,
+                "success_metric": "cost_efficiency",
+                "promotion_threshold": None,
+                "rollback_threshold": None,
+                "auto_promote": False,
+                "auto_rollback": True,
+                "started_at": None,
+                "completed_at": None,
+                "created_by": "test-admin",
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
 
         # Step 2: start - SELECT returns draft row, then UPDATE RETURNING returns running row
-        running_row = _make_mock_row({
-            "id": "ab-002",
-            "name": "Lifecycle Test",
-            "status": "running",
-            "base_model": "gpt-4o",
-            "variant_model": "claude-3-5-sonnet",
-            "traffic_split_percent": 20,
-            "success_metric": "cost_efficiency",
-            "promotion_threshold": None,
-            "rollback_threshold": None,
-            "auto_promote": False,
-            "auto_rollback": True,
-            "started_at": "2026-01-01T01:00:00",
-            "completed_at": None,
-            "created_by": "test-admin",
-            "created_at": "2026-01-01T00:00:00",
-        })
+        running_row = _make_mock_row(
+            {
+                "id": "ab-002",
+                "name": "Lifecycle Test",
+                "status": "running",
+                "base_model": "gpt-4o",
+                "variant_model": "claude-3-5-sonnet",
+                "traffic_split_percent": 20,
+                "success_metric": "cost_efficiency",
+                "promotion_threshold": None,
+                "rollback_threshold": None,
+                "auto_promote": False,
+                "auto_rollback": True,
+                "started_at": "2026-01-01T01:00:00",
+                "completed_at": None,
+                "created_by": "test-admin",
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
 
         # Step 3: stop - SELECT returns running row, UPDATE RETURNING returns completed row
-        completed_row = _make_mock_row({
-            "id": "ab-002",
-            "name": "Lifecycle Test",
-            "status": "completed",
-            "base_model": "gpt-4o",
-            "variant_model": "claude-3-5-sonnet",
-            "traffic_split_percent": 20,
-            "success_metric": "cost_efficiency",
-            "promotion_threshold": None,
-            "rollback_threshold": None,
-            "auto_promote": False,
-            "auto_rollback": True,
-            "started_at": "2026-01-01T01:00:00",
-            "completed_at": "2026-01-01T02:00:00",
-            "created_by": "test-admin",
-            "created_at": "2026-01-01T00:00:00",
-        })
+        completed_row = _make_mock_row(
+            {
+                "id": "ab-002",
+                "name": "Lifecycle Test",
+                "status": "completed",
+                "base_model": "gpt-4o",
+                "variant_model": "claude-3-5-sonnet",
+                "traffic_split_percent": 20,
+                "success_metric": "cost_efficiency",
+                "promotion_threshold": None,
+                "rollback_threshold": None,
+                "auto_promote": False,
+                "auto_rollback": True,
+                "started_at": "2026-01-01T01:00:00",
+                "completed_at": "2026-01-01T02:00:00",
+                "created_by": "test-admin",
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
 
         conn.fetchrow.side_effect = [
-            draft_row,      # create
-            draft_row,      # start: SELECT current status
-            running_row,    # start: UPDATE RETURNING
-            running_row,    # stop: SELECT current status
+            draft_row,  # create
+            draft_row,  # start: SELECT current status
+            running_row,  # start: UPDATE RETURNING
+            running_row,  # stop: SELECT current status
             completed_row,  # stop: UPDATE RETURNING
         ]
 
@@ -552,9 +574,7 @@ class TestABTestLifecycle:
         deps.http_client.post = AsyncMock(
             return_value=_mock_http_response(200, {"model_info": {"id": "litellm-variant-id"}})
         )
-        deps.http_client.get = AsyncMock(
-            return_value=_mock_http_response(200, {"data": []})
-        )
+        deps.http_client.get = AsyncMock(return_value=_mock_http_response(200, {"data": []}))
 
         async with client:
             # Create
@@ -586,75 +606,77 @@ class TestABTestLifecycle:
         pool, conn = _setup_db_pool()
         deps.http_client = AsyncMock()
 
-        draft_row = _make_mock_row({
-            "id": "ab-003",
-            "name": "Promote Test",
-            "status": "draft",
-            "base_model": "gpt-4o",
-            "variant_model": "claude-3-5-sonnet",
-            "traffic_split_percent": 10,
-            "success_metric": "cost_efficiency",
-            "promotion_threshold": None,
-            "rollback_threshold": None,
-            "auto_promote": False,
-            "auto_rollback": True,
-            "started_at": None,
-            "completed_at": None,
-            "created_by": "test-admin",
-            "created_at": "2026-01-01T00:00:00",
-        })
+        draft_row = _make_mock_row(
+            {
+                "id": "ab-003",
+                "name": "Promote Test",
+                "status": "draft",
+                "base_model": "gpt-4o",
+                "variant_model": "claude-3-5-sonnet",
+                "traffic_split_percent": 10,
+                "success_metric": "cost_efficiency",
+                "promotion_threshold": None,
+                "rollback_threshold": None,
+                "auto_promote": False,
+                "auto_rollback": True,
+                "started_at": None,
+                "completed_at": None,
+                "created_by": "test-admin",
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
 
-        running_row = _make_mock_row({
-            "id": "ab-003",
-            "name": "Promote Test",
-            "status": "running",
-            "base_model": "gpt-4o",
-            "variant_model": "claude-3-5-sonnet",
-            "traffic_split_percent": 10,
-            "success_metric": "cost_efficiency",
-            "promotion_threshold": None,
-            "rollback_threshold": None,
-            "auto_promote": False,
-            "auto_rollback": True,
-            "started_at": "2026-01-01T01:00:00",
-            "completed_at": None,
-            "created_by": "test-admin",
-            "created_at": "2026-01-01T00:00:00",
-        })
+        running_row = _make_mock_row(
+            {
+                "id": "ab-003",
+                "name": "Promote Test",
+                "status": "running",
+                "base_model": "gpt-4o",
+                "variant_model": "claude-3-5-sonnet",
+                "traffic_split_percent": 10,
+                "success_metric": "cost_efficiency",
+                "promotion_threshold": None,
+                "rollback_threshold": None,
+                "auto_promote": False,
+                "auto_rollback": True,
+                "started_at": "2026-01-01T01:00:00",
+                "completed_at": None,
+                "created_by": "test-admin",
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
 
-        promoted_row = _make_mock_row({
-            "id": "ab-003",
-            "name": "Promote Test",
-            "status": "completed",
-            "base_model": "gpt-4o",
-            "variant_model": "claude-3-5-sonnet",
-            "traffic_split_percent": 10,
-            "success_metric": "cost_efficiency",
-            "promotion_threshold": None,
-            "rollback_threshold": None,
-            "auto_promote": False,
-            "auto_rollback": True,
-            "started_at": "2026-01-01T01:00:00",
-            "completed_at": "2026-01-01T02:00:00",
-            "created_by": "test-admin",
-            "created_at": "2026-01-01T00:00:00",
-        })
+        promoted_row = _make_mock_row(
+            {
+                "id": "ab-003",
+                "name": "Promote Test",
+                "status": "completed",
+                "base_model": "gpt-4o",
+                "variant_model": "claude-3-5-sonnet",
+                "traffic_split_percent": 10,
+                "success_metric": "cost_efficiency",
+                "promotion_threshold": None,
+                "rollback_threshold": None,
+                "auto_promote": False,
+                "auto_rollback": True,
+                "started_at": "2026-01-01T01:00:00",
+                "completed_at": "2026-01-01T02:00:00",
+                "created_by": "test-admin",
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
 
         conn.fetchrow.side_effect = [
-            draft_row,      # create
-            draft_row,      # start: SELECT
-            running_row,    # start: UPDATE RETURNING
-            running_row,    # promote: SELECT
-            promoted_row,   # promote: UPDATE RETURNING
+            draft_row,  # create
+            draft_row,  # start: SELECT
+            running_row,  # start: UPDATE RETURNING
+            running_row,  # promote: SELECT
+            promoted_row,  # promote: UPDATE RETURNING
         ]
         conn.execute.return_value = "INSERT 1"
 
-        deps.http_client.post = AsyncMock(
-            return_value=_mock_http_response(200, {"model_info": {"id": "variant-id"}})
-        )
-        deps.http_client.get = AsyncMock(
-            return_value=_mock_http_response(200, {"data": []})
-        )
+        deps.http_client.post = AsyncMock(return_value=_mock_http_response(200, {"model_info": {"id": "variant-id"}}))
+        deps.http_client.get = AsyncMock(return_value=_mock_http_response(200, {"data": []}))
 
         async with client:
             resp1 = await client.post(
@@ -681,23 +703,25 @@ class TestABTestLifecycle:
         """Start a test that is already running -> 400 error."""
         pool, conn = _setup_db_pool()
 
-        running_row = _make_mock_row({
-            "id": "ab-004",
-            "name": "Already Running",
-            "status": "running",
-            "base_model": "gpt-4o",
-            "variant_model": "claude-3-5-sonnet",
-            "traffic_split_percent": 10,
-            "success_metric": "cost_efficiency",
-            "promotion_threshold": None,
-            "rollback_threshold": None,
-            "auto_promote": False,
-            "auto_rollback": True,
-            "started_at": "2026-01-01T01:00:00",
-            "completed_at": None,
-            "created_by": "test-admin",
-            "created_at": "2026-01-01T00:00:00",
-        })
+        running_row = _make_mock_row(
+            {
+                "id": "ab-004",
+                "name": "Already Running",
+                "status": "running",
+                "base_model": "gpt-4o",
+                "variant_model": "claude-3-5-sonnet",
+                "traffic_split_percent": 10,
+                "success_metric": "cost_efficiency",
+                "promotion_threshold": None,
+                "rollback_threshold": None,
+                "auto_promote": False,
+                "auto_rollback": True,
+                "started_at": "2026-01-01T01:00:00",
+                "completed_at": None,
+                "created_by": "test-admin",
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
         conn.fetchrow.return_value = running_row
 
         async with client:
@@ -711,23 +735,25 @@ class TestABTestLifecycle:
         """Stop a draft test -> 400 error."""
         pool, conn = _setup_db_pool()
 
-        draft_row = _make_mock_row({
-            "id": "ab-005",
-            "name": "Draft Test",
-            "status": "draft",
-            "base_model": "gpt-4o",
-            "variant_model": "claude-3-5-sonnet",
-            "traffic_split_percent": 10,
-            "success_metric": "cost_efficiency",
-            "promotion_threshold": None,
-            "rollback_threshold": None,
-            "auto_promote": False,
-            "auto_rollback": True,
-            "started_at": None,
-            "completed_at": None,
-            "created_by": "test-admin",
-            "created_at": "2026-01-01T00:00:00",
-        })
+        draft_row = _make_mock_row(
+            {
+                "id": "ab-005",
+                "name": "Draft Test",
+                "status": "draft",
+                "base_model": "gpt-4o",
+                "variant_model": "claude-3-5-sonnet",
+                "traffic_split_percent": 10,
+                "success_metric": "cost_efficiency",
+                "promotion_threshold": None,
+                "rollback_threshold": None,
+                "auto_promote": False,
+                "auto_rollback": True,
+                "started_at": None,
+                "completed_at": None,
+                "created_by": "test-admin",
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
         conn.fetchrow.return_value = draft_row
 
         async with client:
@@ -741,23 +767,25 @@ class TestABTestLifecycle:
         """Promote a draft test -> 400 error."""
         pool, conn = _setup_db_pool()
 
-        draft_row = _make_mock_row({
-            "id": "ab-006",
-            "name": "Draft Promote",
-            "status": "draft",
-            "base_model": "gpt-4o",
-            "variant_model": "claude-3-5-sonnet",
-            "traffic_split_percent": 10,
-            "success_metric": "cost_efficiency",
-            "promotion_threshold": None,
-            "rollback_threshold": None,
-            "auto_promote": False,
-            "auto_rollback": True,
-            "started_at": None,
-            "completed_at": None,
-            "created_by": "test-admin",
-            "created_at": "2026-01-01T00:00:00",
-        })
+        draft_row = _make_mock_row(
+            {
+                "id": "ab-006",
+                "name": "Draft Promote",
+                "status": "draft",
+                "base_model": "gpt-4o",
+                "variant_model": "claude-3-5-sonnet",
+                "traffic_split_percent": 10,
+                "success_metric": "cost_efficiency",
+                "promotion_threshold": None,
+                "rollback_threshold": None,
+                "auto_promote": False,
+                "auto_rollback": True,
+                "started_at": None,
+                "completed_at": None,
+                "created_by": "test-admin",
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
         conn.fetchrow.return_value = draft_row
 
         async with client:
@@ -780,27 +808,29 @@ class TestPromptWorkflow:
         """Create template -> get by slug -> verify fields match."""
         pool, conn = _setup_db_pool()
 
-        template_row = _make_mock_row({
-            "id": "tmpl-001",
-            "name": "Summarizer",
-            "slug": "summarizer",
-            "description": "Summarize text",
-            "category": "utility",
-            "template_text": "Summarize the following: {{text}}",
-            "variables": [{"name": "text", "type": "string", "required": True, "default": None}],
-            "version": 1,
-            "is_current": True,
-            "status": "draft",
-            "team_id": None,
-            "model_hint": "gpt-4o-mini",
-            "tags": ["summary", "utility"],
-            "created_by": "test-admin",
-            "approved_by": None,
-            "approved_at": None,
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-        })
+        template_row = _make_mock_row(
+            {
+                "id": "tmpl-001",
+                "name": "Summarizer",
+                "slug": "summarizer",
+                "description": "Summarize text",
+                "category": "utility",
+                "template_text": "Summarize the following: {{text}}",
+                "variables": [{"name": "text", "type": "string", "required": True, "default": None}],
+                "version": 1,
+                "is_current": True,
+                "status": "draft",
+                "team_id": None,
+                "model_hint": "gpt-4o-mini",
+                "tags": ["summary", "utility"],
+                "created_by": "test-admin",
+                "approved_by": None,
+                "approved_at": None,
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+            }
+        )
 
         conn.fetchrow.side_effect = [template_row, template_row]
 
@@ -832,30 +862,32 @@ class TestPromptWorkflow:
         """Create template -> render with variables -> verify substitution."""
         pool, conn = _setup_db_pool()
 
-        template_row = _make_mock_row({
-            "id": "tmpl-002",
-            "name": "Greeting",
-            "slug": "greeting",
-            "description": "Greeting template",
-            "category": "utility",
-            "template_text": "Hello {{name}}, welcome to {{company}}!",
-            "variables": [
-                {"name": "name", "type": "string", "required": True, "default": None},
-                {"name": "company", "type": "string", "required": True, "default": None},
-            ],
-            "version": 1,
-            "is_current": True,
-            "status": "draft",
-            "team_id": None,
-            "model_hint": None,
-            "tags": [],
-            "created_by": "test-admin",
-            "approved_by": None,
-            "approved_at": None,
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-        })
+        template_row = _make_mock_row(
+            {
+                "id": "tmpl-002",
+                "name": "Greeting",
+                "slug": "greeting",
+                "description": "Greeting template",
+                "category": "utility",
+                "template_text": "Hello {{name}}, welcome to {{company}}!",
+                "variables": [
+                    {"name": "name", "type": "string", "required": True, "default": None},
+                    {"name": "company", "type": "string", "required": True, "default": None},
+                ],
+                "version": 1,
+                "is_current": True,
+                "status": "draft",
+                "team_id": None,
+                "model_hint": None,
+                "tags": [],
+                "created_by": "test-admin",
+                "approved_by": None,
+                "approved_at": None,
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+            }
+        )
 
         # First fetchrow: create, second fetchrow: render (SELECT by slug)
         conn.fetchrow.side_effect = [template_row, template_row]
@@ -892,27 +924,29 @@ class TestPromptWorkflow:
         """Render template with missing variables -> unresolved list populated."""
         pool, conn = _setup_db_pool()
 
-        template_row = _make_mock_row({
-            "id": "tmpl-003",
-            "name": "Multi Var",
-            "slug": "multi-var",
-            "description": None,
-            "category": None,
-            "template_text": "{{greeting}} {{name}}, you have {{count}} items.",
-            "variables": [],
-            "version": 1,
-            "is_current": True,
-            "status": "draft",
-            "team_id": None,
-            "model_hint": None,
-            "tags": [],
-            "created_by": "test-admin",
-            "approved_by": None,
-            "approved_at": None,
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-        })
+        template_row = _make_mock_row(
+            {
+                "id": "tmpl-003",
+                "name": "Multi Var",
+                "slug": "multi-var",
+                "description": None,
+                "category": None,
+                "template_text": "{{greeting}} {{name}}, you have {{count}} items.",
+                "variables": [],
+                "version": 1,
+                "is_current": True,
+                "status": "draft",
+                "team_id": None,
+                "model_hint": None,
+                "tags": [],
+                "created_by": "test-admin",
+                "approved_by": None,
+                "approved_at": None,
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+            }
+        )
         conn.fetchrow.return_value = template_row
 
         async with client:
@@ -932,60 +966,66 @@ class TestPromptWorkflow:
         """Create -> submit for review -> approve -> verify status transitions."""
         pool, conn = _setup_db_pool()
 
-        template_row = _make_mock_row({
-            "id": "tmpl-004",
-            "name": "Review Me",
-            "slug": "review-me",
-            "description": None,
-            "category": None,
-            "template_text": "Test prompt",
-            "variables": "[]",
-            "version": 1,
-            "is_current": True,
-            "status": "draft",
-            "team_id": None,
-            "model_hint": None,
-            "tags": [],
-            "created_by": "test-admin",
-            "approved_by": None,
-            "approved_at": None,
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-        })
+        template_row = _make_mock_row(
+            {
+                "id": "tmpl-004",
+                "name": "Review Me",
+                "slug": "review-me",
+                "description": None,
+                "category": None,
+                "template_text": "Test prompt",
+                "variables": "[]",
+                "version": 1,
+                "is_current": True,
+                "status": "draft",
+                "team_id": None,
+                "model_hint": None,
+                "tags": [],
+                "created_by": "test-admin",
+                "approved_by": None,
+                "approved_at": None,
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+            }
+        )
 
-        approval_row = _make_mock_row({
-            "id": "approval-001",
-            "template_id": "tmpl-004",
-            "template_version": 1,
-            "requested_by": "test-admin",
-            "reviewer": None,
-            "status": "pending",
-            "comment": None,
-            "requested_at": "2026-01-01T00:00:00",
-            "reviewed_at": None,
-        })
+        approval_row = _make_mock_row(
+            {
+                "id": "approval-001",
+                "template_id": "tmpl-004",
+                "template_version": 1,
+                "requested_by": "test-admin",
+                "reviewer": None,
+                "status": "pending",
+                "comment": None,
+                "requested_at": "2026-01-01T00:00:00",
+                "reviewed_at": None,
+            }
+        )
 
-        pending_approval_row = _make_mock_row({
-            "id": "approval-001",
-            "template_id": "tmpl-004",
-            "template_version": 1,
-            "requested_by": "test-admin",
-            "reviewer": None,
-            "status": "pending",
-            "comment": None,
-            "requested_at": "2026-01-01T00:00:00",
-            "reviewed_at": None,
-        })
+        pending_approval_row = _make_mock_row(
+            {
+                "id": "approval-001",
+                "template_id": "tmpl-004",
+                "template_version": 1,
+                "requested_by": "test-admin",
+                "reviewer": None,
+                "status": "pending",
+                "comment": None,
+                "requested_at": "2026-01-01T00:00:00",
+                "reviewed_at": None,
+            }
+        )
 
         # Sequence:
         # 1. create template (fetchrow)
         # 2. submit-review: SELECT template (fetchrow), then execute UPDATE, then INSERT approval (fetchrow)
         # 3. approve: SELECT approval (fetchrow), then execute UPDATE approval, then execute UPDATE template
         conn.fetchrow.side_effect = [
-            template_row,        # create
-            template_row,        # submit-review: SELECT template
-            approval_row,        # submit-review: INSERT approval RETURNING
+            template_row,  # create
+            template_row,  # submit-review: SELECT template
+            approval_row,  # submit-review: INSERT approval RETURNING
             pending_approval_row,  # approve: SELECT approval
         ]
         conn.execute.return_value = "UPDATE 1"
@@ -1053,32 +1093,37 @@ class TestCrossFeatureFlows:
         pool, conn = _setup_db_pool()
         deps.http_client = AsyncMock()
 
-        deprecation_row = _make_mock_row({
-            "id": "dep-001",
-            "model_name": "gpt-3.5-turbo",
-            "replacement_model": "gpt-4o-mini",
-            "deprecation_date": "2025-12-01",
-            "sunset_date": "2026-06-01",
-            "message": "GPT-3.5-turbo is deprecated, use gpt-4o-mini",
-            "created_at": "2025-11-01T00:00:00",
-        })
+        deprecation_row = _make_mock_row(
+            {
+                "id": "dep-001",
+                "model_name": "gpt-3.5-turbo",
+                "replacement_model": "gpt-4o-mini",
+                "deprecation_date": "2025-12-01",
+                "sunset_date": "2026-06-01",
+                "message": "GPT-3.5-turbo is deprecated, use gpt-4o-mini",
+                "created_at": "2025-11-01T00:00:00",
+            }
+        )
 
         # Sequence:
         # 1. create: fetchrow for existing check (returns None), fetchrow for INSERT
         # 2. check: fetchrow for SELECT
         # 3. sync-alias: fetchrow for SELECT deprecation
         conn.fetchrow.side_effect = [
-            None,              # create: no existing deprecation
-            deprecation_row,   # create: INSERT RETURNING
-            deprecation_row,   # check: SELECT
-            deprecation_row,   # sync-alias: SELECT
+            None,  # create: no existing deprecation
+            deprecation_row,  # create: INSERT RETURNING
+            deprecation_row,  # check: SELECT
+            deprecation_row,  # sync-alias: SELECT
         ]
 
         deps.http_client.post = AsyncMock(
-            return_value=_mock_http_response(200, {
-                "model_name": "gpt-3.5-turbo",
-                "model_info": {"id": "alias-model-id"},
-            })
+            return_value=_mock_http_response(
+                200,
+                {
+                    "model_name": "gpt-3.5-turbo",
+                    "model_info": {"id": "alias-model-id"},
+                },
+            )
         )
 
         async with client:
@@ -1112,15 +1157,17 @@ class TestCrossFeatureFlows:
         """Sync alias with no replacement model -> 400."""
         pool, conn = _setup_db_pool()
 
-        dep_row = _make_mock_row({
-            "id": "dep-002",
-            "model_name": "old-model",
-            "replacement_model": None,
-            "deprecation_date": None,
-            "sunset_date": None,
-            "message": None,
-            "created_at": "2026-01-01T00:00:00",
-        })
+        dep_row = _make_mock_row(
+            {
+                "id": "dep-002",
+                "model_name": "old-model",
+                "replacement_model": None,
+                "deprecation_date": None,
+                "sunset_date": None,
+                "message": None,
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
         conn.fetchrow.return_value = dep_row
 
         async with client:
@@ -1155,20 +1202,20 @@ class TestCrossFeatureFlows:
         pool, conn = _setup_db_pool()
         deps.http_client = AsyncMock()
 
-        dep_row = _make_mock_row({
-            "id": "dep-003",
-            "model_name": "old-model",
-            "replacement_model": "new-model",
-            "deprecation_date": None,
-            "sunset_date": None,
-            "message": None,
-            "created_at": "2026-01-01T00:00:00",
-        })
+        dep_row = _make_mock_row(
+            {
+                "id": "dep-003",
+                "model_name": "old-model",
+                "replacement_model": "new-model",
+                "deprecation_date": None,
+                "sunset_date": None,
+                "message": None,
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
         conn.fetchrow.return_value = dep_row
 
-        deps.http_client.post = AsyncMock(
-            return_value=_mock_http_response(500, text="Internal Server Error")
-        )
+        deps.http_client.post = AsyncMock(return_value=_mock_http_response(500, text="Internal Server Error"))
 
         async with client:
             resp = await client.post("/api/v1/model-deprecations/dep-003/sync-alias")
@@ -1181,26 +1228,28 @@ class TestCrossFeatureFlows:
         pool, conn = _setup_db_pool()
         deps.http_client = AsyncMock()
 
-        sso_row = _make_mock_row({
-            "id": "sso-001",
-            "org_id": "org-001",
-            "provider_type": "oidc",
-            "provider_name": "Okta",
-            "client_id": "client-id-123",
-            "client_secret_encrypted": "encrypted-secret",
-            "issuer_url": "https://dev-123.okta.com",
-            "authorization_url": None,
-            "token_url": None,
-            "userinfo_url": None,
-            "jwks_uri": None,
-            "saml_metadata_url": None,
-            "scopes": "openid email profile",
-            "group_claim": "groups",
-            "group_to_org_mapping": "{}",
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-        })
+        sso_row = _make_mock_row(
+            {
+                "id": "sso-001",
+                "org_id": "org-001",
+                "provider_type": "oidc",
+                "provider_name": "Okta",
+                "client_id": "client-id-123",
+                "client_secret_encrypted": "encrypted-secret",
+                "issuer_url": "https://dev-123.okta.com",
+                "authorization_url": None,
+                "token_url": None,
+                "userinfo_url": None,
+                "jwks_uri": None,
+                "saml_metadata_url": None,
+                "scopes": "openid email profile",
+                "group_claim": "groups",
+                "group_to_org_mapping": "{}",
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+            }
+        )
 
         # create SSO: fetchrow for INSERT
         # test SSO: fetchrow for SELECT
@@ -1208,13 +1257,16 @@ class TestCrossFeatureFlows:
         conn.execute.return_value = "INSERT 1"
 
         # Mock OIDC discovery response
-        discovery_resp = _mock_http_response(200, {
-            "issuer": "https://dev-123.okta.com",
-            "authorization_endpoint": "https://dev-123.okta.com/authorize",
-            "token_endpoint": "https://dev-123.okta.com/token",
-            "userinfo_endpoint": "https://dev-123.okta.com/userinfo",
-            "scopes_supported": ["openid", "email", "profile"],
-        })
+        discovery_resp = _mock_http_response(
+            200,
+            {
+                "issuer": "https://dev-123.okta.com",
+                "authorization_endpoint": "https://dev-123.okta.com/authorize",
+                "token_endpoint": "https://dev-123.okta.com/token",
+                "userinfo_endpoint": "https://dev-123.okta.com/userinfo",
+                "scopes_supported": ["openid", "email", "profile"],
+            },
+        )
         deps.http_client.get = AsyncMock(return_value=discovery_resp)
 
         with patch("routers.sso.log_audit_event", new_callable=AsyncMock):
@@ -1256,29 +1308,29 @@ class TestRateLimitAndAudit:
         pool, conn = _setup_db_pool()
         deps.http_client = AsyncMock()
 
-        policy_row = _make_mock_row({
-            "id": "rl-001",
-            "name": "Team Alpha Rate Limit",
-            "description": "Rate limit for team alpha",
-            "scope": "team",
-            "scope_value": "team-alpha",
-            "rpm_limit": 100,
-            "tpm_limit": 50000,
-            "rpd_limit": 10000,
-            "tpd_limit": 5000000,
-            "burst_multiplier": 1.5,
-            "burst_window_seconds": 10,
-            "priority": 1,
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-        })
+        policy_row = _make_mock_row(
+            {
+                "id": "rl-001",
+                "name": "Team Alpha Rate Limit",
+                "description": "Rate limit for team alpha",
+                "scope": "team",
+                "scope_value": "team-alpha",
+                "rpm_limit": 100,
+                "tpm_limit": 50000,
+                "rpd_limit": 10000,
+                "tpd_limit": 5000000,
+                "burst_multiplier": 1.5,
+                "burst_window_seconds": 10,
+                "priority": 1,
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+            }
+        )
         conn.fetchrow.return_value = policy_row
 
         # Mock the LiteLLM sync call
-        deps.http_client.post = AsyncMock(
-            return_value=_mock_http_response(200, {})
-        )
+        deps.http_client.post = AsyncMock(return_value=_mock_http_response(200, {}))
 
         async with client:
             resp = await client.post(
@@ -1308,31 +1360,31 @@ class TestRateLimitAndAudit:
         deps.http_client = AsyncMock()
         deps.redis_client = None  # Force counters to be 0
 
-        policy_row = _make_mock_row({
-            "id": "rl-002",
-            "name": "User Rate Limit",
-            "description": None,
-            "scope": "user",
-            "scope_value": "user-42",
-            "rpm_limit": 60,
-            "tpm_limit": 10000,
-            "rpd_limit": None,
-            "tpd_limit": None,
-            "burst_multiplier": 1.5,
-            "burst_window_seconds": 10,
-            "priority": 0,
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-        })
+        policy_row = _make_mock_row(
+            {
+                "id": "rl-002",
+                "name": "User Rate Limit",
+                "description": None,
+                "scope": "user",
+                "scope_value": "user-42",
+                "rpm_limit": 60,
+                "tpm_limit": 10000,
+                "rpd_limit": None,
+                "tpd_limit": None,
+                "burst_multiplier": 1.5,
+                "burst_window_seconds": 10,
+                "priority": 0,
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+            }
+        )
 
         # create: fetchrow, status: fetch (returns list)
         conn.fetchrow.return_value = policy_row
         conn.fetch.return_value = [policy_row]
 
-        deps.http_client.post = AsyncMock(
-            return_value=_mock_http_response(200, {})
-        )
+        deps.http_client.post = AsyncMock(return_value=_mock_http_response(200, {}))
 
         async with client:
             # Create
@@ -1364,44 +1416,46 @@ class TestRateLimitAndAudit:
         pool, conn = _setup_db_pool()
         deps.http_client = AsyncMock()
 
-        policy_row = _make_mock_row({
-            "id": "rl-003",
-            "name": "Global Limit",
-            "description": None,
-            "scope": "global",
-            "scope_value": None,
-            "rpm_limit": 1000,
-            "tpm_limit": None,
-            "rpd_limit": None,
-            "tpd_limit": None,
-            "burst_multiplier": 2.0,
-            "burst_window_seconds": 15,
-            "priority": 10,
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-        })
+        policy_row = _make_mock_row(
+            {
+                "id": "rl-003",
+                "name": "Global Limit",
+                "description": None,
+                "scope": "global",
+                "scope_value": None,
+                "rpm_limit": 1000,
+                "tpm_limit": None,
+                "rpd_limit": None,
+                "tpd_limit": None,
+                "burst_multiplier": 2.0,
+                "burst_window_seconds": 15,
+                "priority": 10,
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+            }
+        )
 
-        event_row = _make_mock_row({
-            "id": "evt-001",
-            "policy_id": "rl-003",
-            "scope": "global",
-            "scope_value": None,
-            "limit_type": "rpm",
-            "current_value": 1100,
-            "limit_value": 1000,
-            "action": "rejected",
-            "created_at": "2026-01-01T01:00:00",
-        })
+        event_row = _make_mock_row(
+            {
+                "id": "evt-001",
+                "policy_id": "rl-003",
+                "scope": "global",
+                "scope_value": None,
+                "limit_type": "rpm",
+                "current_value": 1100,
+                "limit_value": 1000,
+                "action": "rejected",
+                "created_at": "2026-01-01T01:00:00",
+            }
+        )
 
         conn.fetchrow.return_value = policy_row
         # First fetch: for create (not used since create uses fetchrow)
         # Then fetch: for list events
         conn.fetch.return_value = [event_row]
 
-        deps.http_client.post = AsyncMock(
-            return_value=_mock_http_response(200, {})
-        )
+        deps.http_client.post = AsyncMock(return_value=_mock_http_response(200, {}))
 
         async with client:
             # Create policy
@@ -1449,18 +1503,18 @@ class TestRateLimitAndAudit:
         pool, conn = _setup_db_pool()
         deps.http_client = AsyncMock()
 
-        policy_row = _make_mock_row({
-            "scope": "team",
-            "scope_value": "team-beta",
-        })
+        policy_row = _make_mock_row(
+            {
+                "scope": "team",
+                "scope_value": "team-beta",
+            }
+        )
 
         # First fetchrow: SELECT to get scope info, then execute: DELETE
         conn.fetchrow.return_value = policy_row
         conn.execute.return_value = "DELETE 1"
 
-        deps.http_client.post = AsyncMock(
-            return_value=_mock_http_response(200, {})
-        )
+        deps.http_client.post = AsyncMock(return_value=_mock_http_response(200, {}))
 
         async with client:
             resp = await client.delete("/api/v1/rate-limits/rl-001")
@@ -1484,24 +1538,28 @@ class TestEventSystemWorkflow:
         """Create event subscription -> send test event -> list events."""
         pool, conn = _setup_db_pool()
 
-        subscription_row = _make_mock_row({
-            "id": "sub-001",
-            "name": "Slack Alerts",
-            "event_types": ["sla.violation", "budget.exceeded"],
-            "channel": "slack",
-            "config": json.dumps({"webhook_url": "https://hooks.slack.com/test"}),
-            "filters": None,
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-        })
+        subscription_row = _make_mock_row(
+            {
+                "id": "sub-001",
+                "name": "Slack Alerts",
+                "event_types": ["sla.violation", "budget.exceeded"],
+                "channel": "slack",
+                "config": json.dumps({"webhook_url": "https://hooks.slack.com/test"}),
+                "filters": None,
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
 
-        event_row = _make_mock_row({
-            "id": "ev-001",
-            "event_type": "sla.violation",
-            "payload": json.dumps({"provider": "openai", "violation": "p95_latency"}),
-            "source_service": "admin-api-test",
-            "created_at": "2026-01-01T01:00:00",
-        })
+        event_row = _make_mock_row(
+            {
+                "id": "ev-001",
+                "event_type": "sla.violation",
+                "payload": json.dumps({"provider": "openai", "violation": "p95_latency"}),
+                "source_service": "admin-api-test",
+                "created_at": "2026-01-01T01:00:00",
+            }
+        )
 
         # create subscription: fetchrow, send test event: fetchrow, list events: fetch
         conn.fetchrow.side_effect = [subscription_row, event_row]
@@ -1546,27 +1604,31 @@ class TestEventSystemWorkflow:
         """Full subscription lifecycle: create -> update -> delete."""
         pool, conn = _setup_db_pool()
 
-        sub_row = _make_mock_row({
-            "id": "sub-002",
-            "name": "Email Alerts",
-            "event_types": ["budget.exceeded"],
-            "channel": "email",
-            "config": json.dumps({"to": "admin@acme.com"}),
-            "filters": None,
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-        })
+        sub_row = _make_mock_row(
+            {
+                "id": "sub-002",
+                "name": "Email Alerts",
+                "event_types": ["budget.exceeded"],
+                "channel": "email",
+                "config": json.dumps({"to": "admin@acme.com"}),
+                "filters": None,
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
 
-        updated_row = _make_mock_row({
-            "id": "sub-002",
-            "name": "Email Alerts - Updated",
-            "event_types": ["budget.exceeded", "sla.violation"],
-            "channel": "email",
-            "config": json.dumps({"to": "team@acme.com"}),
-            "filters": None,
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-        })
+        updated_row = _make_mock_row(
+            {
+                "id": "sub-002",
+                "name": "Email Alerts - Updated",
+                "event_types": ["budget.exceeded", "sla.violation"],
+                "channel": "email",
+                "config": json.dumps({"to": "team@acme.com"}),
+                "filters": None,
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
 
         # create: fetchrow, update: fetchrow (existing check), fetchrow (updated), delete: execute
         conn.fetchrow.side_effect = [sub_row, sub_row, updated_row]
@@ -1616,21 +1678,23 @@ class TestAuditLogQuerying:
         """List audit logs with resource_type filter."""
         pool, conn = _setup_db_pool()
 
-        audit_row = _make_mock_row({
-            "id": "log-001",
-            "timestamp": "2026-01-01T00:00:00+00:00",
-            "actor_id": "test-admin",
-            "actor_email": "admin@acme.com",
-            "actor_ip": "127.0.0.1",
-            "org_id": None,
-            "action": "create",
-            "resource_type": "organization",
-            "resource_id": "org-001",
-            "resource_name": "Acme Corp",
-            "changes": "{}",
-            "request_metadata": "{}",
-            "created_at": "2026-01-01T00:00:00",
-        })
+        audit_row = _make_mock_row(
+            {
+                "id": "log-001",
+                "timestamp": "2026-01-01T00:00:00+00:00",
+                "actor_id": "test-admin",
+                "actor_email": "admin@acme.com",
+                "actor_ip": "127.0.0.1",
+                "org_id": None,
+                "action": "create",
+                "resource_type": "organization",
+                "resource_id": "org-001",
+                "resource_name": "Acme Corp",
+                "changes": "{}",
+                "request_metadata": "{}",
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
         conn.fetch.return_value = [audit_row]
 
         async with client:
@@ -1651,21 +1715,23 @@ class TestAuditLogQuerying:
         """Export audit logs as JSON."""
         pool, conn = _setup_db_pool()
 
-        audit_row = _make_mock_row({
-            "id": "log-002",
-            "timestamp": "2026-01-01T00:00:00+00:00",
-            "actor_id": "test-admin",
-            "actor_email": None,
-            "actor_ip": None,
-            "org_id": None,
-            "action": "delete",
-            "resource_type": "team",
-            "resource_id": "team-001",
-            "resource_name": "Team Alpha",
-            "changes": "{}",
-            "request_metadata": "{}",
-            "created_at": "2026-01-01T00:00:00",
-        })
+        audit_row = _make_mock_row(
+            {
+                "id": "log-002",
+                "timestamp": "2026-01-01T00:00:00+00:00",
+                "actor_id": "test-admin",
+                "actor_email": None,
+                "actor_ip": None,
+                "org_id": None,
+                "action": "delete",
+                "resource_type": "team",
+                "resource_id": "team-001",
+                "resource_name": "Team Alpha",
+                "changes": "{}",
+                "request_metadata": "{}",
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
         conn.fetch.return_value = [audit_row]
 
         async with client:

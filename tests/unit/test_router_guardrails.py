@@ -21,13 +21,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -98,31 +104,54 @@ def _make_pool(conn):
 # Mock rows
 # ---------------------------------------------------------------------------
 
-_guardrail_row = _make_row({
-    "id": "gr-1", "name": "Default Guardrail", "description": "Default config",
-    "enable_prompt_injection": True, "prompt_injection_threshold": 0.90,
-    "enable_pii_detection": True, "pii_action": "anonymize",
-    "pii_entities": ["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"],
-    "enable_toxicity": True, "toxicity_threshold": 0.70,
-    "banned_topics": [], "enable_secrets_detection": True,
-    "enable_invisible_text": True, "enable_malicious_urls": True,
-    "enable_sensitive_output": True, "mode": "block", "on_fail": "block",
-    "is_active": True, "created_at": "2024-01-01", "updated_at": None,
-})
+_guardrail_row = _make_row(
+    {
+        "id": "gr-1",
+        "name": "Default Guardrail",
+        "description": "Default config",
+        "enable_prompt_injection": True,
+        "prompt_injection_threshold": 0.90,
+        "enable_pii_detection": True,
+        "pii_action": "anonymize",
+        "pii_entities": ["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"],
+        "enable_toxicity": True,
+        "toxicity_threshold": 0.70,
+        "banned_topics": [],
+        "enable_secrets_detection": True,
+        "enable_invisible_text": True,
+        "enable_malicious_urls": True,
+        "enable_sensitive_output": True,
+        "mode": "block",
+        "on_fail": "block",
+        "is_active": True,
+        "created_at": "2024-01-01",
+        "updated_at": None,
+    }
+)
 
-_assignment_row = _make_row({
-    "team_id": "team-1", "guardrail_config_id": "gr-1",
-    "config_name": "Default Guardrail", "priority": 0,
-})
+_assignment_row = _make_row(
+    {
+        "team_id": "team-1",
+        "guardrail_config_id": "gr-1",
+        "config_name": "Default Guardrail",
+        "priority": 0,
+    }
+)
 
-_event_row = _make_row({
-    "id": "evt-1", "event_type": "prompt_injection",
-    "scanner_name": "llm_guard", "user_id": "user-1",
-    "team_id": "team-1", "model": "gpt-4o",
-    "risk_score": 0.95, "action_taken": "blocked",
-    "details": '{"scanner":"prompt_injection","score":0.95}',
-    "created_at": "2024-01-01",
-})
+_event_row = _make_row(
+    {
+        "id": "evt-1",
+        "event_type": "prompt_injection",
+        "scanner_name": "llm_guard",
+        "user_id": "user-1",
+        "team_id": "team-1",
+        "model": "gpt-4o",
+        "risk_score": 0.95,
+        "action_taken": "blocked",
+        "details": '{"scanner":"prompt_injection","score":0.95}',
+        "created_at": "2024-01-01",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -199,16 +228,19 @@ class TestCreateGuardrail:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/guardrails", json={
-                "name": "Default Guardrail",
-                "description": "Default config",
-                "enable_prompt_injection": True,
-                "prompt_injection_threshold": 0.90,
-                "enable_pii_detection": True,
-                "pii_action": "anonymize",
-                "mode": "block",
-                "on_fail": "block",
-            })
+            resp = await client.post(
+                "/api/v1/guardrails",
+                json={
+                    "name": "Default Guardrail",
+                    "description": "Default config",
+                    "enable_prompt_injection": True,
+                    "prompt_injection_threshold": 0.90,
+                    "enable_pii_detection": True,
+                    "pii_action": "anonymize",
+                    "mode": "block",
+                    "on_fail": "block",
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -261,25 +293,41 @@ class TestUpdateGuardrail:
 
     @pytest.mark.asyncio
     async def test_update_guardrail(self, client):
-        updated_row = _make_row({
-            "id": "gr-1", "name": "Updated Guardrail", "description": "Updated config",
-            "enable_prompt_injection": True, "prompt_injection_threshold": 0.95,
-            "enable_pii_detection": True, "pii_action": "block",
-            "pii_entities": ["PERSON", "EMAIL_ADDRESS"],
-            "enable_toxicity": True, "toxicity_threshold": 0.80,
-            "banned_topics": ["violence"], "enable_secrets_detection": True,
-            "enable_invisible_text": True, "enable_malicious_urls": True,
-            "enable_sensitive_output": True, "mode": "block", "on_fail": "block",
-            "is_active": True, "created_at": "2024-01-01", "updated_at": "2024-06-01",
-        })
+        updated_row = _make_row(
+            {
+                "id": "gr-1",
+                "name": "Updated Guardrail",
+                "description": "Updated config",
+                "enable_prompt_injection": True,
+                "prompt_injection_threshold": 0.95,
+                "enable_pii_detection": True,
+                "pii_action": "block",
+                "pii_entities": ["PERSON", "EMAIL_ADDRESS"],
+                "enable_toxicity": True,
+                "toxicity_threshold": 0.80,
+                "banned_topics": ["violence"],
+                "enable_secrets_detection": True,
+                "enable_invisible_text": True,
+                "enable_malicious_urls": True,
+                "enable_sensitive_output": True,
+                "mode": "block",
+                "on_fail": "block",
+                "is_active": True,
+                "created_at": "2024-01-01",
+                "updated_at": "2024-06-01",
+            }
+        )
         conn = _make_async_conn(fetchrow_return=updated_row)
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.put("/api/v1/guardrails/gr-1", json={
-                "name": "Updated Guardrail",
-                "prompt_injection_threshold": 0.95,
-            })
+            resp = await client.put(
+                "/api/v1/guardrails/gr-1",
+                json={
+                    "name": "Updated Guardrail",
+                    "prompt_injection_threshold": 0.95,
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -292,9 +340,12 @@ class TestUpdateGuardrail:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.put("/api/v1/guardrails/nonexistent", json={
-                "name": "Updated",
-            })
+            resp = await client.put(
+                "/api/v1/guardrails/nonexistent",
+                json={
+                    "name": "Updated",
+                },
+            )
 
         assert resp.status_code == 404
         assert "Guardrail config not found" in resp.json()["detail"]

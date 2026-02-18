@@ -21,13 +21,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -99,17 +105,28 @@ def _make_pool(conn):
 # Mock rows
 # ---------------------------------------------------------------------------
 
-_sub_row = _make_row({
-    "id": "sub-uuid-1", "name": "slack-alerts", "event_types": ["sla.violation"],
-    "channel": "slack", "config": '{"webhook_url": "https://hooks.slack.com/test"}',
-    "filters": None, "is_active": True, "created_at": "2024-01-01T00:00:00",
-})
+_sub_row = _make_row(
+    {
+        "id": "sub-uuid-1",
+        "name": "slack-alerts",
+        "event_types": ["sla.violation"],
+        "channel": "slack",
+        "config": '{"webhook_url": "https://hooks.slack.com/test"}',
+        "filters": None,
+        "is_active": True,
+        "created_at": "2024-01-01T00:00:00",
+    }
+)
 
-_event_row = _make_row({
-    "id": "evt-uuid-1", "event_type": "sla.violation",
-    "payload": '{"message": "test"}', "source_service": "admin-api",
-    "created_at": "2024-01-01T00:00:00",
-})
+_event_row = _make_row(
+    {
+        "id": "evt-uuid-1",
+        "event_type": "sla.violation",
+        "payload": '{"message": "test"}',
+        "source_service": "admin-api",
+        "created_at": "2024-01-01T00:00:00",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -180,12 +197,15 @@ class TestSubscriptions:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/events/subscriptions", json={
-                "name": "slack-alerts",
-                "event_types": ["sla.violation"],
-                "channel": "slack",
-                "config": {"webhook_url": "https://hooks.slack.com/test"},
-            })
+            resp = await client.post(
+                "/api/v1/events/subscriptions",
+                json={
+                    "name": "slack-alerts",
+                    "event_types": ["sla.violation"],
+                    "channel": "slack",
+                    "config": {"webhook_url": "https://hooks.slack.com/test"},
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -223,23 +243,31 @@ class TestSubscriptions:
     @pytest.mark.asyncio
     async def test_update_subscription(self, client):
         """PUT /events/subscriptions/{id} updates subscription."""
-        updated_sub = _make_row({
-            "id": "sub-uuid-1", "name": "slack-alerts-updated",
-            "event_types": ["sla.violation", "budget.exceeded"],
-            "channel": "slack",
-            "config": '{"webhook_url": "https://hooks.slack.com/updated"}',
-            "filters": None, "is_active": True, "created_at": "2024-01-01T00:00:00",
-        })
+        updated_sub = _make_row(
+            {
+                "id": "sub-uuid-1",
+                "name": "slack-alerts-updated",
+                "event_types": ["sla.violation", "budget.exceeded"],
+                "channel": "slack",
+                "config": '{"webhook_url": "https://hooks.slack.com/updated"}',
+                "filters": None,
+                "is_active": True,
+                "created_at": "2024-01-01T00:00:00",
+            }
+        )
         # First fetchrow returns existing, second returns updated
         conn = _make_async_conn()
         conn.fetchrow.side_effect = [_sub_row, updated_sub]
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.put("/api/v1/events/subscriptions/sub-uuid-1", json={
-                "name": "slack-alerts-updated",
-                "event_types": ["sla.violation", "budget.exceeded"],
-            })
+            resp = await client.put(
+                "/api/v1/events/subscriptions/sub-uuid-1",
+                json={
+                    "name": "slack-alerts-updated",
+                    "event_types": ["sla.violation", "budget.exceeded"],
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -252,9 +280,12 @@ class TestSubscriptions:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.put("/api/v1/events/subscriptions/nonexistent", json={
-                "name": "updated",
-            })
+            resp = await client.put(
+                "/api/v1/events/subscriptions/nonexistent",
+                json={
+                    "name": "updated",
+                },
+            )
 
         assert resp.status_code == 404
         assert "Subscription not found" in resp.json()["detail"]
@@ -352,10 +383,13 @@ class TestSendTestEvent:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/events/test", json={
-                "event_type": "sla.violation",
-                "payload": {"message": "test"},
-            })
+            resp = await client.post(
+                "/api/v1/events/test",
+                json={
+                    "event_type": "sla.violation",
+                    "payload": {"message": "test"},
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -370,10 +404,13 @@ class TestSendTestEvent:
         deps.db_pool = None
 
         async with client:
-            resp = await client.post("/api/v1/events/test", json={
-                "event_type": "sla.violation",
-                "payload": {"message": "test"},
-            })
+            resp = await client.post(
+                "/api/v1/events/test",
+                json={
+                    "event_type": "sla.violation",
+                    "payload": {"message": "test"},
+                },
+            )
 
         assert resp.status_code == 503
         assert "Database not available" in resp.json()["detail"]

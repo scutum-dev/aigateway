@@ -17,13 +17,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -48,6 +54,7 @@ from auth import UserInfo, get_current_user, require_admin  # noqa: E402
 
 def _fake_user():
     return UserInfo(user_id="test-admin", role="admin", is_admin=True)
+
 
 app.dependency_overrides[get_current_user] = _fake_user
 app.dependency_overrides[require_admin] = _fake_user
@@ -104,23 +111,36 @@ def client():
 # Shared mock data
 # ---------------------------------------------------------------------------
 
-_ab_test_row = _make_row({
-    "id": "test-uuid-1", "name": "GPT4o vs Claude", "status": "draft",
-    "base_model": "gpt-4o", "variant_model": "claude-3-5-sonnet",
-    "traffic_split_percent": 10, "success_metric": "cost_efficiency",
-    "promotion_threshold": None, "rollback_threshold": None,
-    "auto_promote": False, "auto_rollback": True,
-    "started_at": None, "completed_at": None, "created_by": "admin",
-    "created_at": "2024-01-01T00:00:00",
-})
+_ab_test_row = _make_row(
+    {
+        "id": "test-uuid-1",
+        "name": "GPT4o vs Claude",
+        "status": "draft",
+        "base_model": "gpt-4o",
+        "variant_model": "claude-3-5-sonnet",
+        "traffic_split_percent": 10,
+        "success_metric": "cost_efficiency",
+        "promotion_threshold": None,
+        "rollback_threshold": None,
+        "auto_promote": False,
+        "auto_rollback": True,
+        "started_at": None,
+        "completed_at": None,
+        "created_by": "admin",
+        "created_at": "2024-01-01T00:00:00",
+    }
+)
 
-_snapshot_row = _make_row({
-    "id": "snap-uuid-1", "test_id": "test-uuid-1",
-    "snapshot_at": "2024-01-02T00:00:00",
-    "base_metrics": '{"avg_latency_ms": 300, "avg_cost": 0.05}',
-    "variant_metrics": '{"avg_latency_ms": 250, "avg_cost": 0.04}',
-    "recommendation": "promote",
-})
+_snapshot_row = _make_row(
+    {
+        "id": "snap-uuid-1",
+        "test_id": "test-uuid-1",
+        "snapshot_at": "2024-01-02T00:00:00",
+        "base_metrics": '{"avg_latency_ms": 300, "avg_cost": 0.05}',
+        "variant_metrics": '{"avg_latency_ms": 250, "avg_cost": 0.04}',
+        "recommendation": "promote",
+    }
+)
 
 
 # ============================================================================
@@ -164,12 +184,15 @@ async def test_create_ab_test(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/ab-tests", json={
-            "name": "GPT4o vs Claude",
-            "base_model": "gpt-4o",
-            "variant_model": "claude-3-5-sonnet",
-            "traffic_split_percent": 10,
-        })
+        resp = await client.post(
+            "/api/v1/ab-tests",
+            json={
+                "name": "GPT4o vs Claude",
+                "base_model": "gpt-4o",
+                "variant_model": "claude-3-5-sonnet",
+                "traffic_split_percent": 10,
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -212,17 +235,22 @@ async def test_get_ab_test_not_found(client):
 @pytest.mark.asyncio
 async def test_update_ab_test(client):
     """PUT /ab-tests/{test_id} updates the test."""
-    updated_row = _make_row({
-        **{k: _ab_test_row[k] for k in _ab_test_row.keys()},
-        "name": "Updated Name",
-    })
+    updated_row = _make_row(
+        {
+            **{k: _ab_test_row[k] for k in _ab_test_row.keys()},
+            "name": "Updated Name",
+        }
+    )
     conn = _make_async_conn(fetchrow_return=updated_row)
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.put("/api/v1/ab-tests/test-uuid-1", json={
-            "name": "Updated Name",
-        })
+        resp = await client.put(
+            "/api/v1/ab-tests/test-uuid-1",
+            json={
+                "name": "Updated Name",
+            },
+        )
 
     assert resp.status_code == 200
     assert resp.json()["name"] == "Updated Name"
@@ -235,9 +263,12 @@ async def test_update_ab_test_not_found(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.put("/api/v1/ab-tests/nonexistent-uuid", json={
-            "name": "Updated Name",
-        })
+        resp = await client.put(
+            "/api/v1/ab-tests/nonexistent-uuid",
+            json={
+                "name": "Updated Name",
+            },
+        )
 
     assert resp.status_code == 404
 
@@ -275,11 +306,13 @@ async def test_delete_ab_test_not_found(client):
 @pytest.mark.asyncio
 async def test_start_ab_test(client):
     """POST /ab-tests/{test_id}/start transitions draft to running."""
-    running_row = _make_row({
-        **{k: _ab_test_row[k] for k in _ab_test_row.keys()},
-        "status": "running",
-        "started_at": "2024-01-02T00:00:00",
-    })
+    running_row = _make_row(
+        {
+            **{k: _ab_test_row[k] for k in _ab_test_row.keys()},
+            "status": "running",
+            "started_at": "2024-01-02T00:00:00",
+        }
+    )
     conn = _make_async_conn()
     # fetchrow: first call returns draft test, second returns updated running test
     conn.fetchrow.side_effect = [_ab_test_row, running_row]
@@ -304,10 +337,12 @@ async def test_start_ab_test(client):
 @pytest.mark.asyncio
 async def test_start_ab_test_invalid_status(client):
     """POST /ab-tests/{test_id}/start returns 400 when test is already running."""
-    running_test = _make_row({
-        **{k: _ab_test_row[k] for k in _ab_test_row.keys()},
-        "status": "running",
-    })
+    running_test = _make_row(
+        {
+            **{k: _ab_test_row[k] for k in _ab_test_row.keys()},
+            "status": "running",
+        }
+    )
     conn = _make_async_conn(fetchrow_return=running_test)
     deps.db_pool = _make_pool(conn)
 
@@ -321,15 +356,19 @@ async def test_start_ab_test_invalid_status(client):
 @pytest.mark.asyncio
 async def test_stop_ab_test(client):
     """POST /ab-tests/{test_id}/stop transitions running to completed."""
-    running_test = _make_row({
-        **{k: _ab_test_row[k] for k in _ab_test_row.keys()},
-        "status": "running",
-    })
-    completed_row = _make_row({
-        **{k: _ab_test_row[k] for k in _ab_test_row.keys()},
-        "status": "completed",
-        "completed_at": "2024-01-03T00:00:00",
-    })
+    running_test = _make_row(
+        {
+            **{k: _ab_test_row[k] for k in _ab_test_row.keys()},
+            "status": "running",
+        }
+    )
+    completed_row = _make_row(
+        {
+            **{k: _ab_test_row[k] for k in _ab_test_row.keys()},
+            "status": "completed",
+            "completed_at": "2024-01-03T00:00:00",
+        }
+    )
     conn = _make_async_conn()
     conn.fetchrow.side_effect = [running_test, completed_row]
     deps.db_pool = _make_pool(conn)
@@ -359,15 +398,19 @@ async def test_stop_ab_test_not_running(client):
 @pytest.mark.asyncio
 async def test_promote_ab_test(client):
     """POST /ab-tests/{test_id}/promote records promotion snapshot and completes test."""
-    running_test = _make_row({
-        **{k: _ab_test_row[k] for k in _ab_test_row.keys()},
-        "status": "running",
-    })
-    completed_row = _make_row({
-        **{k: _ab_test_row[k] for k in _ab_test_row.keys()},
-        "status": "completed",
-        "completed_at": "2024-01-03T00:00:00",
-    })
+    running_test = _make_row(
+        {
+            **{k: _ab_test_row[k] for k in _ab_test_row.keys()},
+            "status": "running",
+        }
+    )
+    completed_row = _make_row(
+        {
+            **{k: _ab_test_row[k] for k in _ab_test_row.keys()},
+            "status": "completed",
+            "completed_at": "2024-01-03T00:00:00",
+        }
+    )
     conn = _make_async_conn()
     conn.fetchrow.side_effect = [running_test, completed_row]
     deps.db_pool = _make_pool(conn)

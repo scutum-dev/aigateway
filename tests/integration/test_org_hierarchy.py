@@ -18,13 +18,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -187,9 +193,13 @@ async def test_create_org_returns_organization(client):
     deps.db_pool = _make_pool(conn)
 
     async with client:
-        resp = await client.post("/api/v1/organizations", json={
-            "name": "Acme Corp", "slug": "acme-corp",
-        })
+        resp = await client.post(
+            "/api/v1/organizations",
+            json={
+                "name": "Acme Corp",
+                "slug": "acme-corp",
+            },
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -212,9 +222,13 @@ async def test_create_org_triggers_audit(client):
 
     with patch("routers.organizations.log_audit_event", new_callable=AsyncMock) as mock_audit:
         async with client:
-            resp = await client.post("/api/v1/organizations", json={
-                "name": "Acme Corp", "slug": "acme-corp",
-            })
+            resp = await client.post(
+                "/api/v1/organizations",
+                json={
+                    "name": "Acme Corp",
+                    "slug": "acme-corp",
+                },
+            )
 
         assert resp.status_code == 200
         mock_audit.assert_called_once()
@@ -242,9 +256,13 @@ async def test_org_crud_lifecycle(client):
     with patch("routers.organizations.log_audit_event", new_callable=AsyncMock):
         async with client:
             # Create
-            r1 = await client.post("/api/v1/organizations", json={
-                "name": "Acme Corp", "slug": "acme-corp",
-            })
+            r1 = await client.post(
+                "/api/v1/organizations",
+                json={
+                    "name": "Acme Corp",
+                    "slug": "acme-corp",
+                },
+            )
             assert r1.status_code == 200
             assert r1.json()["name"] == "Acme Corp"
 
@@ -254,9 +272,12 @@ async def test_org_crud_lifecycle(client):
             assert r2.json()["bu_count"] == 2
 
             # Update
-            r3 = await client.put("/api/v1/organizations/org-001", json={
-                "name": "Acme Corp Updated",
-            })
+            r3 = await client.put(
+                "/api/v1/organizations/org-001",
+                json={
+                    "name": "Acme Corp Updated",
+                },
+            )
             assert r3.status_code == 200
             assert r3.json()["name"] == "Acme Corp Updated"
 
@@ -285,16 +306,23 @@ async def test_business_unit_lifecycle(client):
     with patch("routers.organizations.log_audit_event", new_callable=AsyncMock):
         async with client:
             # Create
-            r1 = await client.post("/api/v1/organizations/org-001/business-units", json={
-                "name": "Engineering", "slug": "engineering",
-            })
+            r1 = await client.post(
+                "/api/v1/organizations/org-001/business-units",
+                json={
+                    "name": "Engineering",
+                    "slug": "engineering",
+                },
+            )
             assert r1.status_code == 200
             assert r1.json()["name"] == "Engineering"
 
             # Update
-            r2 = await client.put("/api/v1/organizations/org-001/business-units/bu-001", json={
-                "name": "Engineering V2",
-            })
+            r2 = await client.put(
+                "/api/v1/organizations/org-001/business-units/bu-001",
+                json={
+                    "name": "Engineering V2",
+                },
+            )
             assert r2.status_code == 200
             assert r2.json()["name"] == "Engineering V2"
 
@@ -357,16 +385,23 @@ async def test_membership_lifecycle(client):
     with patch("routers.organizations.log_audit_event", new_callable=AsyncMock):
         async with client:
             # Add member
-            r1 = await client.post("/api/v1/organizations/org-001/members", json={
-                "user_id": "user-001", "role": "member",
-            })
+            r1 = await client.post(
+                "/api/v1/organizations/org-001/members",
+                json={
+                    "user_id": "user-001",
+                    "role": "member",
+                },
+            )
             assert r1.status_code == 200
             assert r1.json()["user_id"] == "user-001"
 
             # Update role
-            r2 = await client.put("/api/v1/organizations/org-001/members/user-001", json={
-                "role": "admin",
-            })
+            r2 = await client.put(
+                "/api/v1/organizations/org-001/members/user-001",
+                json={
+                    "role": "admin",
+                },
+            )
             assert r2.status_code == 200
             assert r2.json()["status"] == "updated"
 
@@ -409,9 +444,13 @@ async def test_create_bu_under_org(client):
 
     with patch("routers.organizations.log_audit_event", new_callable=AsyncMock):
         async with client:
-            resp = await client.post("/api/v1/organizations/org-xyz/business-units", json={
-                "name": "Data Science", "slug": "data-science",
-            })
+            resp = await client.post(
+                "/api/v1/organizations/org-xyz/business-units",
+                json={
+                    "name": "Data Science",
+                    "slug": "data-science",
+                },
+            )
 
     assert resp.status_code == 200
     assert resp.json()["org_id"] == "org-xyz"
@@ -582,9 +621,12 @@ async def test_update_member_role(client):
 
     with patch("routers.organizations.log_audit_event", new_callable=AsyncMock) as mock_audit:
         async with client:
-            resp = await client.put("/api/v1/organizations/org-001/members/user-001", json={
-                "role": "admin",
-            })
+            resp = await client.put(
+                "/api/v1/organizations/org-001/members/user-001",
+                json={
+                    "role": "admin",
+                },
+            )
 
     assert resp.status_code == 200
     assert resp.json()["status"] == "updated"
@@ -628,10 +670,13 @@ async def test_assign_team_with_budget_override(client):
 
     with patch("routers.organizations.log_audit_event", new_callable=AsyncMock):
         async with client:
-            resp = await client.post("/api/v1/organizations/org-001/teams/team-001", json={
-                "bu_id": "bu-001",
-                "max_budget_override": 2500.0,
-            })
+            resp = await client.post(
+                "/api/v1/organizations/org-001/teams/team-001",
+                json={
+                    "bu_id": "bu-001",
+                    "max_budget_override": 2500.0,
+                },
+            )
 
     assert resp.status_code == 200
     assert resp.json()["status"] == "assigned"

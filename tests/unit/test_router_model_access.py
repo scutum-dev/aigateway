@@ -20,13 +20,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -97,20 +103,35 @@ def _make_pool(conn):
 # Mock rows
 # ---------------------------------------------------------------------------
 
-_tier_row = _make_row({
-    "id": "tier-1", "name": "Standard", "description": "Standard access",
-    "requires_approval": False, "requires_justification": False,
-    "max_grant_duration_days": None, "models": ["gpt-4o-mini", "gpt-4o"],
-    "created_at": "2024-01-01",
-})
+_tier_row = _make_row(
+    {
+        "id": "tier-1",
+        "name": "Standard",
+        "description": "Standard access",
+        "requires_approval": False,
+        "requires_justification": False,
+        "max_grant_duration_days": None,
+        "models": ["gpt-4o-mini", "gpt-4o"],
+        "created_at": "2024-01-01",
+    }
+)
 
-_request_row = _make_row({
-    "id": "req-1", "user_id": "test-admin", "team_id": None,
-    "model_pattern": "claude-*", "tier_id": "tier-1",
-    "justification": "Need for project", "status": "pending",
-    "reviewer": None, "review_comment": None,
-    "granted_at": None, "expires_at": None, "created_at": "2024-01-01",
-})
+_request_row = _make_row(
+    {
+        "id": "req-1",
+        "user_id": "test-admin",
+        "team_id": None,
+        "model_pattern": "claude-*",
+        "tier_id": "tier-1",
+        "justification": "Need for project",
+        "status": "pending",
+        "reviewer": None,
+        "review_comment": None,
+        "granted_at": None,
+        "expires_at": None,
+        "created_at": "2024-01-01",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -186,12 +207,15 @@ class TestCreateTier:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/model-access/tiers", json={
-                "name": "Standard",
-                "description": "Standard access",
-                "requires_approval": False,
-                "models": ["gpt-4o-mini", "gpt-4o"],
-            })
+            resp = await client.post(
+                "/api/v1/model-access/tiers",
+                json={
+                    "name": "Standard",
+                    "description": "Standard access",
+                    "requires_approval": False,
+                    "models": ["gpt-4o-mini", "gpt-4o"],
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -214,9 +238,12 @@ class TestGetTier:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.put("/api/v1/model-access/tiers/tier-1", json={
-                "name": "Standard",
-            })
+            resp = await client.put(
+                "/api/v1/model-access/tiers/tier-1",
+                json={
+                    "name": "Standard",
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -229,9 +256,12 @@ class TestGetTier:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.put("/api/v1/model-access/tiers/nonexistent", json={
-                "name": "Updated",
-            })
+            resp = await client.put(
+                "/api/v1/model-access/tiers/nonexistent",
+                json={
+                    "name": "Updated",
+                },
+            )
 
         assert resp.status_code == 404
         assert "Tier not found" in resp.json()["detail"]
@@ -308,11 +338,14 @@ class TestCreateRequest:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/model-access/requests", json={
-                "model_pattern": "claude-*",
-                "tier_id": "tier-1",
-                "justification": "Need for project",
-            })
+            resp = await client.post(
+                "/api/v1/model-access/requests",
+                json={
+                    "model_pattern": "claude-*",
+                    "tier_id": "tier-1",
+                    "justification": "Need for project",
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -337,9 +370,12 @@ class TestApproveRequest:
         deps.http_client = None
 
         async with client:
-            resp = await client.post("/api/v1/model-access/requests/req-1/approve", json={
-                "comment": "Approved for Q1",
-            })
+            resp = await client.post(
+                "/api/v1/model-access/requests/req-1/approve",
+                json={
+                    "comment": "Approved for Q1",
+                },
+            )
 
         assert resp.status_code == 200
         assert resp.json()["status"] == "approved"
@@ -370,9 +406,12 @@ class TestRejectRequest:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/model-access/requests/req-1/reject", json={
-                "comment": "Insufficient justification",
-            })
+            resp = await client.post(
+                "/api/v1/model-access/requests/req-1/reject",
+                json={
+                    "comment": "Insufficient justification",
+                },
+            )
 
         assert resp.status_code == 200
         assert resp.json()["status"] == "rejected"

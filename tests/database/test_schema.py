@@ -24,6 +24,7 @@ ALEMBIC_DIR = ROOT / "src" / "admin-api" / "alembic" / "versions"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def sql_content() -> str:
     """Load the full init-db.sql content once per module."""
@@ -81,92 +82,96 @@ def _table_block(combined: str, table_name: str) -> str | None:
 # Table Existence Tests
 # ===========================================================================
 
+
 class TestTableExistence:
     """Verify expected CREATE TABLE statements exist in the combined SQL."""
 
     # Tables from init-db.sql
-    @pytest.mark.parametrize("table_name", [
-        "budget_alerts",
-        "workflow_definitions",
-        "workflow_executions",
-        "workflow_checkpoints",
-        "workflow_steps",
-        "mcp_servers",
-        "a2a_agents",
-        "platform_settings",
-        "guardrail_configs",
-        "team_guardrails",
-        "guardrail_events",
-    ])
+    @pytest.mark.parametrize(
+        "table_name",
+        [
+            "budget_alerts",
+            "workflow_definitions",
+            "workflow_executions",
+            "workflow_checkpoints",
+            "workflow_steps",
+            "mcp_servers",
+            "a2a_agents",
+            "platform_settings",
+            "guardrail_configs",
+            "team_guardrails",
+            "guardrail_events",
+        ],
+    )
     def test_init_db_table_exists(self, sql_content, table_name):
         pattern = re.compile(
             rf"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?{re.escape(table_name)}\b",
             re.IGNORECASE,
         )
-        assert pattern.search(sql_content), (
-            f"CREATE TABLE {table_name} not found in init-db.sql"
-        )
+        assert pattern.search(sql_content), f"CREATE TABLE {table_name} not found in init-db.sql"
 
     # Tables from Alembic migrations
-    @pytest.mark.parametrize("table_name", [
-        "model_routing_config",
-        "cost_tracking_daily",
-        "routing_policies",
-        "budgets",
-        "teams",
-        "team_members",
-        "organizations",
-        "business_units",
-        "sso_configs",
-        "audit_logs",
-        "rate_limit_policies",
-        "model_deprecations",
-        "prompt_templates",
-        "content_detectors",
-    ])
+    @pytest.mark.parametrize(
+        "table_name",
+        [
+            "model_routing_config",
+            "cost_tracking_daily",
+            "routing_policies",
+            "budgets",
+            "teams",
+            "team_members",
+            "organizations",
+            "business_units",
+            "sso_configs",
+            "audit_logs",
+            "rate_limit_policies",
+            "model_deprecations",
+            "prompt_templates",
+            "content_detectors",
+        ],
+    )
     def test_alembic_table_exists(self, alembic_sql, table_name):
         pattern = re.compile(
             rf"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?{re.escape(table_name)}\b",
             re.IGNORECASE,
         )
-        assert pattern.search(alembic_sql), (
-            f"CREATE TABLE {table_name} not found in Alembic migrations"
-        )
+        assert pattern.search(alembic_sql), f"CREATE TABLE {table_name} not found in Alembic migrations"
 
 
 # ===========================================================================
 # UUID Primary Key Tests
 # ===========================================================================
 
+
 class TestUUIDPrimaryKeys:
     """Tables should use UUID primary keys with gen_random_uuid()."""
 
-    @pytest.mark.parametrize("table_name", [
-        "budget_alerts",
-        "workflow_definitions",
-        "workflow_executions",
-        "workflow_checkpoints",
-        "workflow_steps",
-        "mcp_servers",
-        "a2a_agents",
-        "guardrail_configs",
-        "team_guardrails",
-        "guardrail_events",
-    ])
+    @pytest.mark.parametrize(
+        "table_name",
+        [
+            "budget_alerts",
+            "workflow_definitions",
+            "workflow_executions",
+            "workflow_checkpoints",
+            "workflow_steps",
+            "mcp_servers",
+            "a2a_agents",
+            "guardrail_configs",
+            "team_guardrails",
+            "guardrail_events",
+        ],
+    )
     def test_uuid_pk_with_gen_random_uuid(self, sql_content, table_name):
         block = _table_block(sql_content, table_name)
         assert block is not None, f"Table {table_name} not found"
-        assert "gen_random_uuid()" in block.lower(), (
-            f"{table_name} does not use gen_random_uuid() for its PK"
-        )
-        assert "primary key" in block.lower(), (
-            f"{table_name} does not declare a PRIMARY KEY"
-        )
+        assert "gen_random_uuid()" in block.lower(), f"{table_name} does not use gen_random_uuid() for its PK"
+        assert "primary key" in block.lower(), f"{table_name} does not declare a PRIMARY KEY"
 
 
 # ===========================================================================
 # Foreign Key Tests
 # ===========================================================================
+
 
 class TestForeignKeys:
     """Verify expected REFERENCES (foreign key) constraints."""
@@ -221,6 +226,7 @@ class TestForeignKeys:
 # UNIQUE Constraint Tests
 # ===========================================================================
 
+
 class TestUniqueConstraints:
     """Verify that expected UNIQUE constraints are present."""
 
@@ -264,16 +270,14 @@ class TestUniqueConstraints:
         assert block is not None
         assert "slug" in block.lower()
         # slug should have UNIQUE
-        slug_line = [
-            line for line in block.lower().split("\n")
-            if "slug" in line and "unique" in line
-        ]
+        slug_line = [line for line in block.lower().split("\n") if "slug" in line and "unique" in line]
         assert len(slug_line) > 0, "organizations.slug should have UNIQUE constraint"
 
 
 # ===========================================================================
 # DEFAULT Value Tests
 # ===========================================================================
+
 
 class TestDefaultValues:
     """Verify expected DEFAULT values in table definitions."""
@@ -323,53 +327,57 @@ class TestDefaultValues:
 # Index Tests
 # ===========================================================================
 
+
 class TestIndexes:
     """Verify expected CREATE INDEX statements exist."""
 
-    @pytest.mark.parametrize("index_name", [
-        "idx_budget_alerts_user",
-        "idx_budget_alerts_team",
-        "idx_budget_alerts_created",
-        "idx_executions_user",
-        "idx_executions_status",
-        "idx_executions_created",
-        "idx_checkpoints_thread",
-        "idx_steps_execution",
-        "idx_team_guardrails_team",
-        "idx_guardrail_events_created",
-        "idx_guardrail_events_team",
-        "idx_guardrail_events_type",
-    ])
+    @pytest.mark.parametrize(
+        "index_name",
+        [
+            "idx_budget_alerts_user",
+            "idx_budget_alerts_team",
+            "idx_budget_alerts_created",
+            "idx_executions_user",
+            "idx_executions_status",
+            "idx_executions_created",
+            "idx_checkpoints_thread",
+            "idx_steps_execution",
+            "idx_team_guardrails_team",
+            "idx_guardrail_events_created",
+            "idx_guardrail_events_team",
+            "idx_guardrail_events_type",
+        ],
+    )
     def test_index_exists_in_init_db(self, sql_content, index_name):
         pattern = re.compile(
             rf"CREATE\s+INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?{re.escape(index_name)}\b",
             re.IGNORECASE,
         )
-        assert pattern.search(sql_content), (
-            f"Index {index_name} not found in init-db.sql"
-        )
+        assert pattern.search(sql_content), f"Index {index_name} not found in init-db.sql"
 
-    @pytest.mark.parametrize("index_name", [
-        "idx_audit_logs_timestamp",
-        "idx_audit_logs_actor_id",
-        "idx_audit_logs_org_id",
-        "idx_audit_logs_resource",
-        "idx_audit_logs_action",
-        "idx_rate_limit_events_created",
-    ])
+    @pytest.mark.parametrize(
+        "index_name",
+        [
+            "idx_audit_logs_timestamp",
+            "idx_audit_logs_actor_id",
+            "idx_audit_logs_org_id",
+            "idx_audit_logs_resource",
+            "idx_audit_logs_action",
+            "idx_rate_limit_events_created",
+        ],
+    )
     def test_index_exists_in_alembic(self, alembic_sql, index_name):
         pattern = re.compile(
             rf"CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?{re.escape(index_name)}\b",
             re.IGNORECASE,
         )
-        assert pattern.search(alembic_sql), (
-            f"Index {index_name} not found in Alembic migrations"
-        )
+        assert pattern.search(alembic_sql), f"Index {index_name} not found in Alembic migrations"
 
 
 # ===========================================================================
 # Miscellaneous Schema Checks
 # ===========================================================================
+
 
 class TestSchemaExtras:
     """Additional schema integrity checks."""

@@ -196,7 +196,7 @@ async def update_session(
         values.append(session_id)
         query = f"""
             UPDATE playground_sessions
-            SET {', '.join(set_clauses)}
+            SET {", ".join(set_clauses)}
             WHERE id = ${len(values)}::uuid
             RETURNING *
         """

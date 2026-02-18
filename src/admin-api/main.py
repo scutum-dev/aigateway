@@ -307,7 +307,8 @@ async def _sla_health_collector():
 
                     for m in metrics:
                         # Insert health metric
-                        await conn.execute("""
+                        await conn.execute(
+                            """
                             INSERT INTO provider_health_metrics
                                 (provider, model, bucket_start, request_count, error_count,
                                  p50_latency_ms, p95_latency_ms, p99_latency_ms, avg_latency_ms,
@@ -323,16 +324,21 @@ async def _sla_health_collector():
                                 total_tokens = EXCLUDED.total_tokens,
                                 total_cost = EXCLUDED.total_cost
                         """,
-                            m["provider"], m["model"], bucket_start,
-                            m["request_count"], m["error_count"],
-                            m["p50_latency_ms"], m["p95_latency_ms"], m["p99_latency_ms"],
-                            m["avg_latency_ms"], m["total_tokens"], m["total_cost"],
+                            m["provider"],
+                            m["model"],
+                            bucket_start,
+                            m["request_count"],
+                            m["error_count"],
+                            m["p50_latency_ms"],
+                            m["p95_latency_ms"],
+                            m["p99_latency_ms"],
+                            m["avg_latency_ms"],
+                            m["total_tokens"],
+                            m["total_cost"],
                         )
 
                     # Check SLA definitions for violations
-                    sla_defs = await conn.fetch(
-                        "SELECT * FROM sla_definitions WHERE is_active = true"
-                    )
+                    sla_defs = await conn.fetch("SELECT * FROM sla_definitions WHERE is_active = true")
 
                     for sla in sla_defs:
                         # Find matching metrics
@@ -342,29 +348,44 @@ async def _sla_health_collector():
                                 or sla["model_pattern"] == "*"
                                 or m["model"].startswith(sla["model_pattern"].replace("*", ""))
                             )
-                            provider_match = (
-                                not sla["provider"]
-                                or m["provider"] == sla["provider"]
-                            )
+                            provider_match = not sla["provider"] or m["provider"] == sla["provider"]
                             if not (model_match and provider_match):
                                 continue
 
                             violations = []
-                            if sla["target_p95_ms"] and m["p95_latency_ms"] and m["p95_latency_ms"] > sla["target_p95_ms"]:
-                                violations.append(("latency_p95", float(sla["target_p95_ms"]), float(m["p95_latency_ms"])))
-                            if sla["target_p99_ms"] and m["p99_latency_ms"] and m["p99_latency_ms"] > sla["target_p99_ms"]:
-                                violations.append(("latency_p99", float(sla["target_p99_ms"]), float(m["p99_latency_ms"])))
+                            if (
+                                sla["target_p95_ms"]
+                                and m["p95_latency_ms"]
+                                and m["p95_latency_ms"] > sla["target_p95_ms"]
+                            ):
+                                violations.append(
+                                    ("latency_p95", float(sla["target_p95_ms"]), float(m["p95_latency_ms"]))
+                                )
+                            if (
+                                sla["target_p99_ms"]
+                                and m["p99_latency_ms"]
+                                and m["p99_latency_ms"] > sla["target_p99_ms"]
+                            ):
+                                violations.append(
+                                    ("latency_p99", float(sla["target_p99_ms"]), float(m["p99_latency_ms"]))
+                                )
 
                             error_rate = m["error_count"] / m["request_count"] if m["request_count"] > 0 else 0
                             if sla["target_error_rate"] and error_rate > float(sla["target_error_rate"]):
                                 violations.append(("error_rate", float(sla["target_error_rate"]), error_rate))
 
                             for v_type, threshold, actual in violations:
-                                await conn.execute("""
+                                await conn.execute(
+                                    """
                                     INSERT INTO sla_violations (sla_definition_id, provider, model, violation_type, threshold_value, actual_value)
                                     VALUES ($1, $2, $3, $4, $5, $6)
                                 """,
-                                    sla["id"], m["provider"], m["model"], v_type, threshold, actual,
+                                    sla["id"],
+                                    m["provider"],
+                                    m["model"],
+                                    v_type,
+                                    threshold,
+                                    actual,
                                 )
                                 # Publish event
                                 await publish_event(
@@ -496,29 +517,74 @@ def _run_migrations():
 
 
 openapi_tags = [
-    {"name": "MCP Servers", "description": "Manage MCP (Model Context Protocol) server backends and sync config to Agent Gateway."},
+    {
+        "name": "MCP Servers",
+        "description": "Manage MCP (Model Context Protocol) server backends and sync config to Agent Gateway.",
+    },
     {"name": "Agents", "description": "Manage A2A (Agent-to-Agent) agent registrations and lifecycle."},
-    {"name": "Workflows", "description": "LangGraph workflow templates (research, coding, data-analysis) and execution management."},
+    {
+        "name": "Workflows",
+        "description": "LangGraph workflow templates (research, coding, data-analysis) and execution management.",
+    },
     {"name": "Settings", "description": "Platform-wide settings: rate limits, feature flags, maintenance mode."},
-    {"name": "Guardrails", "description": "Content safety guardrails: PII detection (Presidio), input/output scanning (LLM Guard), per-team profiles."},
-    {"name": "Reports", "description": "FinOps cost reports, usage trends, and CSV/JSON export from LiteLLM spend logs."},
+    {
+        "name": "Guardrails",
+        "description": "Content safety guardrails: PII detection (Presidio), input/output scanning (LLM Guard), per-team profiles.",
+    },
+    {
+        "name": "Reports",
+        "description": "FinOps cost reports, usage trends, and CSV/JSON export from LiteLLM spend logs.",
+    },
     {"name": "API Keys", "description": "LiteLLM API key provisioning, rotation, and per-key spend tracking."},
     {"name": "Models", "description": "Model catalog, provider configuration, and deployment status."},
     {"name": "Teams", "description": "Team management: create teams, assign members, set budgets and model access."},
     {"name": "Budgets", "description": "Team and organization budget limits with soft/hard thresholds."},
-    {"name": "Organizations", "description": "Multi-tenancy: Organization → Business Unit → Team hierarchy, membership, and RBAC."},
+    {
+        "name": "Organizations",
+        "description": "Multi-tenancy: Organization → Business Unit → Team hierarchy, membership, and RBAC.",
+    },
     {"name": "SSO", "description": "Single sign-on configuration: OIDC/SAML providers per organization."},
     {"name": "Audit", "description": "Immutable audit trail of all administrative actions with filtering and export."},
-    {"name": "DLP", "description": "Data Loss Prevention: content detectors (regex, keyword, PII), team content policies."},
-    {"name": "Prompts", "description": "Versioned prompt template registry with approval workflows, rendering, and LLM execution."},
-    {"name": "Rate Limits", "description": "Granular rate limit policies per user/team/model with RPM, TPM, daily limits, and burst."},
-    {"name": "Model Access", "description": "Tiered model access governance with request/approval workflows and time-limited grants."},
-    {"name": "Chargeback", "description": "Cost allocation rules, monthly chargeback reports from real spend data, and budget forecasting."},
-    {"name": "SLA", "description": "SLA definitions, provider health metrics collection, violation detection, and failover rules."},
-    {"name": "A/B Tests", "description": "Model A/B testing: variant registration, traffic splitting, metric snapshots, promote/rollback."},
-    {"name": "Cache", "description": "Semantic cache management: stats, entry lookup, settings sync to LiteLLM Redis cache."},
-    {"name": "Events", "description": "Event subscription system: webhook, Slack, email, PagerDuty channels with event log."},
-    {"name": "Playground", "description": "Shareable playground sessions: prompt/model/settings persistence and sharing."},
+    {
+        "name": "DLP",
+        "description": "Data Loss Prevention: content detectors (regex, keyword, PII), team content policies.",
+    },
+    {
+        "name": "Prompts",
+        "description": "Versioned prompt template registry with approval workflows, rendering, and LLM execution.",
+    },
+    {
+        "name": "Rate Limits",
+        "description": "Granular rate limit policies per user/team/model with RPM, TPM, daily limits, and burst.",
+    },
+    {
+        "name": "Model Access",
+        "description": "Tiered model access governance with request/approval workflows and time-limited grants.",
+    },
+    {
+        "name": "Chargeback",
+        "description": "Cost allocation rules, monthly chargeback reports from real spend data, and budget forecasting.",
+    },
+    {
+        "name": "SLA",
+        "description": "SLA definitions, provider health metrics collection, violation detection, and failover rules.",
+    },
+    {
+        "name": "A/B Tests",
+        "description": "Model A/B testing: variant registration, traffic splitting, metric snapshots, promote/rollback.",
+    },
+    {
+        "name": "Cache",
+        "description": "Semantic cache management: stats, entry lookup, settings sync to LiteLLM Redis cache.",
+    },
+    {
+        "name": "Events",
+        "description": "Event subscription system: webhook, Slack, email, PagerDuty channels with event log.",
+    },
+    {
+        "name": "Playground",
+        "description": "Shareable playground sessions: prompt/model/settings persistence and sharing.",
+    },
     {"name": "Deprecations", "description": "Model deprecation notices with replacement suggestions and sunset dates."},
 ]
 

@@ -202,16 +202,37 @@ async def export_audit_logs(
     # CSV export
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([
-        "id", "timestamp", "actor_id", "actor_email", "actor_ip",
-        "org_id", "action", "resource_type", "resource_id", "resource_name", "changes",
-    ])
+    writer.writerow(
+        [
+            "id",
+            "timestamp",
+            "actor_id",
+            "actor_email",
+            "actor_ip",
+            "org_id",
+            "action",
+            "resource_type",
+            "resource_id",
+            "resource_name",
+            "changes",
+        ]
+    )
     for e in entries:
-        writer.writerow([
-            e.id, e.timestamp, e.actor_id, e.actor_email, e.actor_ip,
-            e.org_id, e.action, e.resource_type, e.resource_id, e.resource_name,
-            json.dumps(e.changes),
-        ])
+        writer.writerow(
+            [
+                e.id,
+                e.timestamp,
+                e.actor_id,
+                e.actor_email,
+                e.actor_ip,
+                e.org_id,
+                e.action,
+                e.resource_type,
+                e.resource_id,
+                e.resource_name,
+                json.dumps(e.changes),
+            ]
+        )
 
     return StreamingResponse(
         io.BytesIO(output.getvalue().encode()),

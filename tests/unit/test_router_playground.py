@@ -20,13 +20,19 @@ sys.path.insert(0, _service_dir)
 
 _otel_mock = MagicMock()
 for mod_name in [
-    "opentelemetry", "opentelemetry.trace", "opentelemetry.instrumentation",
-    "opentelemetry.instrumentation.fastapi", "opentelemetry.exporter",
-    "opentelemetry.exporter.otlp", "opentelemetry.exporter.otlp.proto",
+    "opentelemetry",
+    "opentelemetry.trace",
+    "opentelemetry.instrumentation",
+    "opentelemetry.instrumentation.fastapi",
+    "opentelemetry.exporter",
+    "opentelemetry.exporter.otlp",
+    "opentelemetry.exporter.otlp.proto",
     "opentelemetry.exporter.otlp.proto.grpc",
     "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
-    "opentelemetry.sdk", "opentelemetry.sdk.trace",
-    "opentelemetry.sdk.trace.export", "opentelemetry.sdk.resources",
+    "opentelemetry.sdk",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.sdk.resources",
 ]:
     sys.modules.setdefault(mod_name, _otel_mock)
 
@@ -97,12 +103,19 @@ def _make_pool(conn):
 # Mock rows
 # ---------------------------------------------------------------------------
 
-_session_row = _make_row({
-    "id": "sess-1", "name": "Test Session", "prompt": "Hello world",
-    "models": ["gpt-4o", "claude-3-5-sonnet"], "settings": '{"temperature":0.7}',
-    "results": '{}', "created_by": "test-admin", "is_public": False,
-    "created_at": "2024-01-01",
-})
+_session_row = _make_row(
+    {
+        "id": "sess-1",
+        "name": "Test Session",
+        "prompt": "Hello world",
+        "models": ["gpt-4o", "claude-3-5-sonnet"],
+        "settings": '{"temperature":0.7}',
+        "results": "{}",
+        "created_by": "test-admin",
+        "is_public": False,
+        "created_at": "2024-01-01",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -207,12 +220,15 @@ class TestCreateSession:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.post("/api/v1/playground/sessions", json={
-                "name": "Test Session",
-                "prompt": "Hello world",
-                "models": ["gpt-4o", "claude-3-5-sonnet"],
-                "settings": {"temperature": 0.7},
-            })
+            resp = await client.post(
+                "/api/v1/playground/sessions",
+                json={
+                    "name": "Test Session",
+                    "prompt": "Hello world",
+                    "models": ["gpt-4o", "claude-3-5-sonnet"],
+                    "settings": {"temperature": 0.7},
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -266,23 +282,33 @@ class TestUpdateSession:
 
     @pytest.mark.asyncio
     async def test_update_session(self, client):
-        updated_row = _make_row({
-            "id": "sess-1", "name": "Updated Session", "prompt": "Updated prompt",
-            "models": ["gpt-4o"], "settings": '{"temperature":0.5}',
-            "results": '{}', "created_by": "test-admin", "is_public": True,
-            "created_at": "2024-01-01",
-        })
+        updated_row = _make_row(
+            {
+                "id": "sess-1",
+                "name": "Updated Session",
+                "prompt": "Updated prompt",
+                "models": ["gpt-4o"],
+                "settings": '{"temperature":0.5}',
+                "results": "{}",
+                "created_by": "test-admin",
+                "is_public": True,
+                "created_at": "2024-01-01",
+            }
+        )
         # First fetchrow checks existing, second returns updated
         conn = _make_async_conn()
         conn.fetchrow.side_effect = [_session_row, updated_row]
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.put("/api/v1/playground/sessions/sess-1", json={
-                "name": "Updated Session",
-                "prompt": "Updated prompt",
-                "is_public": True,
-            })
+            resp = await client.put(
+                "/api/v1/playground/sessions/sess-1",
+                json={
+                    "name": "Updated Session",
+                    "prompt": "Updated prompt",
+                    "is_public": True,
+                },
+            )
 
         assert resp.status_code == 200
         data = resp.json()
@@ -292,12 +318,19 @@ class TestUpdateSession:
     @pytest.mark.asyncio
     async def test_update_session_not_owner_non_admin(self, client):
         """Non-admin, non-owner cannot update a session."""
-        other_user_row = _make_row({
-            "id": "sess-1", "name": "Test Session", "prompt": "Hello world",
-            "models": ["gpt-4o"], "settings": '{}',
-            "results": '{}', "created_by": "other-user", "is_public": False,
-            "created_at": "2024-01-01",
-        })
+        other_user_row = _make_row(
+            {
+                "id": "sess-1",
+                "name": "Test Session",
+                "prompt": "Hello world",
+                "models": ["gpt-4o"],
+                "settings": "{}",
+                "results": "{}",
+                "created_by": "other-user",
+                "is_public": False,
+                "created_at": "2024-01-01",
+            }
+        )
         conn = _make_async_conn(fetchrow_return=other_user_row)
         deps.db_pool = _make_pool(conn)
 
@@ -308,9 +341,12 @@ class TestUpdateSession:
         app.dependency_overrides[get_current_user] = _fake_non_admin
 
         async with client:
-            resp = await client.put("/api/v1/playground/sessions/sess-1", json={
-                "name": "Hacked Session",
-            })
+            resp = await client.put(
+                "/api/v1/playground/sessions/sess-1",
+                json={
+                    "name": "Hacked Session",
+                },
+            )
 
         assert resp.status_code == 403
         assert "Not authorized" in resp.json()["detail"]

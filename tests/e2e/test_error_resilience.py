@@ -45,9 +45,7 @@ sys.modules.setdefault("alembic.config", _alembic_mock)
 sys.modules.setdefault("alembic.command", _alembic_mock)
 
 if "admin_api_main" not in sys.modules:
-    _spec = importlib.util.spec_from_file_location(
-        "admin_api_main", os.path.join(_service_dir, "main.py")
-    )
+    _spec = importlib.util.spec_from_file_location("admin_api_main", os.path.join(_service_dir, "main.py"))
     _main_mod = importlib.util.module_from_spec(_spec)
     sys.modules["admin_api_main"] = _main_mod
     _spec.loader.exec_module(_main_mod)
@@ -297,15 +295,17 @@ class TestLiteLLMUnreachable:
         pool, conn = _setup_db_pool()
         deps.http_client = None
 
-        dep_row = _make_mock_row({
-            "id": "dep-001",
-            "model_name": "old-model",
-            "replacement_model": "new-model",
-            "deprecation_date": None,
-            "sunset_date": None,
-            "message": None,
-            "created_at": "2026-01-01T00:00:00",
-        })
+        dep_row = _make_mock_row(
+            {
+                "id": "dep-001",
+                "model_name": "old-model",
+                "replacement_model": "new-model",
+                "deprecation_date": None,
+                "sunset_date": None,
+                "message": None,
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
         conn.fetchrow.return_value = dep_row
 
         async with client:
@@ -486,21 +486,23 @@ class TestConcurrentState:
         """Two sequential requests: create org then list orgs - DB calls are sequenced."""
         pool, conn = _setup_db_pool()
 
-        org_row = _make_mock_row({
-            "id": "org-seq-001",
-            "name": "Sequential Org",
-            "slug": "sequential-org",
-            "description": None,
-            "max_budget": None,
-            "allowed_models": None,
-            "metadata": "{}",
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-            "bu_count": 0,
-            "team_count": 0,
-            "member_count": 0,
-        })
+        org_row = _make_mock_row(
+            {
+                "id": "org-seq-001",
+                "name": "Sequential Org",
+                "slug": "sequential-org",
+                "description": None,
+                "max_budget": None,
+                "allowed_models": None,
+                "metadata": "{}",
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+                "bu_count": 0,
+                "team_count": 0,
+                "member_count": 0,
+            }
+        )
 
         conn.fetchrow.return_value = org_row
         conn.fetch.return_value = [org_row]
@@ -529,46 +531,52 @@ class TestConcurrentState:
         """Two sequential A/B test reads use separate mock returns."""
         pool, conn = _setup_db_pool()
 
-        test1_row = _make_mock_row({
-            "id": "ab-seq-001",
-            "name": "Test A",
-            "status": "draft",
-            "base_model": "gpt-4o",
-            "variant_model": "claude-3-5-sonnet",
-            "traffic_split_percent": 10,
-            "success_metric": "cost_efficiency",
-            "promotion_threshold": None,
-            "rollback_threshold": None,
-            "auto_promote": False,
-            "auto_rollback": True,
-            "started_at": None,
-            "completed_at": None,
-            "created_by": "test-admin",
-            "created_at": "2026-01-01T00:00:00",
-        })
+        test1_row = _make_mock_row(
+            {
+                "id": "ab-seq-001",
+                "name": "Test A",
+                "status": "draft",
+                "base_model": "gpt-4o",
+                "variant_model": "claude-3-5-sonnet",
+                "traffic_split_percent": 10,
+                "success_metric": "cost_efficiency",
+                "promotion_threshold": None,
+                "rollback_threshold": None,
+                "auto_promote": False,
+                "auto_rollback": True,
+                "started_at": None,
+                "completed_at": None,
+                "created_by": "test-admin",
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
 
-        test2_row = _make_mock_row({
-            "id": "ab-seq-002",
-            "name": "Test B",
-            "status": "running",
-            "base_model": "gpt-4o",
-            "variant_model": "claude-3-5-sonnet",
-            "traffic_split_percent": 20,
-            "success_metric": "avg_latency_ms",
-            "promotion_threshold": None,
-            "rollback_threshold": None,
-            "auto_promote": False,
-            "auto_rollback": True,
-            "started_at": "2026-01-01T01:00:00",
-            "completed_at": None,
-            "created_by": "test-admin",
-            "created_at": "2026-01-01T00:00:00",
-        })
+        test2_row = _make_mock_row(
+            {
+                "id": "ab-seq-002",
+                "name": "Test B",
+                "status": "running",
+                "base_model": "gpt-4o",
+                "variant_model": "claude-3-5-sonnet",
+                "traffic_split_percent": 20,
+                "success_metric": "avg_latency_ms",
+                "promotion_threshold": None,
+                "rollback_threshold": None,
+                "auto_promote": False,
+                "auto_rollback": True,
+                "started_at": "2026-01-01T01:00:00",
+                "completed_at": None,
+                "created_by": "test-admin",
+                "created_at": "2026-01-01T00:00:00",
+            }
+        )
 
         # get_ab_test calls fetchrow twice: once for the test, once for snapshot
         conn.fetchrow.side_effect = [
-            test1_row, None,  # get test1: row + no snapshot
-            test2_row, None,  # get test2: row + no snapshot
+            test1_row,
+            None,  # get test1: row + no snapshot
+            test2_row,
+            None,  # get test2: row + no snapshot
         ]
 
         async with client:
@@ -664,21 +672,23 @@ class TestCrossRouterErrorPropagation:
         deps.http_client.get = AsyncMock(return_value=mock_resp)
 
         # Orgs endpoint: DB returns data
-        org_row = _make_mock_row({
-            "id": "org-001",
-            "name": "Acme",
-            "slug": "acme",
-            "description": None,
-            "max_budget": None,
-            "allowed_models": None,
-            "metadata": "{}",
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": None,
-            "bu_count": 0,
-            "team_count": 0,
-            "member_count": 0,
-        })
+        org_row = _make_mock_row(
+            {
+                "id": "org-001",
+                "name": "Acme",
+                "slug": "acme",
+                "description": None,
+                "max_budget": None,
+                "allowed_models": None,
+                "metadata": "{}",
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": None,
+                "bu_count": 0,
+                "team_count": 0,
+                "member_count": 0,
+            }
+        )
         conn.fetch.return_value = [org_row]
 
         async with client:
