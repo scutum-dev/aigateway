@@ -110,27 +110,9 @@ Policies are evaluated from highest to lowest priority. The first matching polic
 
 ## Cedar Policy Engine
 
-For advanced routing logic, the platform includes a dedicated **Policy Router** service (port 8084) powered by [Cedar](https://www.cedarpolicy.com/), Amazon's open-source authorization policy language. Cedar provides declarative, auditable policies that go beyond simple allow/deny rules.
+The platform ships with [Cedar](https://www.cedarpolicy.com/) routing policies in `config/agentgateway/policies/routing-rules.cedar`. Cedar is Amazon's open-source authorization policy language, providing declarative, auditable rules that go beyond simple allow/deny.
 
-Enable the Policy Router with the `experimental` profile:
-
-```bash
-docker compose --env-file config/.env --profile experimental up -d
-```
-
-### How It Works
-
-```
-Request → Policy Router (:8084)
-               │
-               ├── Load models from DB (with real-time Prometheus metrics)
-               ├── Evaluate each model against Cedar policies
-               ├── Filter out denied models
-               ├── Rank remaining models (cost, latency, load)
-               └── Return selected model + fallbacks
-```
-
-The Policy Router fetches live metrics from Prometheus (error rates, latency percentiles, RPM) and injects them into the Cedar evaluation context. This means policies react to real-time conditions -- a model experiencing high error rates is automatically routed around.
+These policies are used by the Agent Gateway for request-level authorization and routing decisions. See the [Agent Gateway Deep Dive](./agentgateway-integration.md) for integration details.
 
 ### Cedar Policy Syntax
 
@@ -195,7 +177,7 @@ The platform ships with routing policies in `config/agentgateway/policies/routin
 
 ### Writing Custom Cedar Policies
 
-Add `.cedar` files to `config/agentgateway/policies/` and hot-reload without restarting:
+Add `.cedar` files to `config/agentgateway/policies/`:
 
 ```cedar
 // Restrict the "interns" team to budget models only
@@ -213,99 +195,31 @@ when {
 };
 ```
 
-Then hot-reload:
+### Managing Routing Policies via Admin API
+
+The Admin API provides CRUD endpoints for routing policies stored in the database:
 
 ```bash
-curl -X POST http://localhost:8084/policies/reload
-# {"status": "ok", "policies_loaded": 5}
-```
+# List all routing policies
+curl http://localhost:8086/api/v1/routing-policies \
+  -H "Authorization: Bearer $TOKEN"
 
-### Policy Router Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/route` | Evaluate policies and select optimal model |
-| POST | `/evaluate` | Direct Cedar policy evaluation (for debugging) |
-| POST | `/policies/reload` | Hot-reload policies from disk |
-| GET | `/models` | List all models with real-time metrics |
-| GET | `/decisions` | Recent routing decisions (from database) |
-| GET | `/health` | Health check |
-
-### Routing a Request
-
-```bash
-curl -X POST http://localhost:8084/route \
+# Create a routing policy
+curl -X POST http://localhost:8086/api/v1/routing-policies \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{
-    "user_id": "user-123",
-    "team_id": "engineering",
-    "requested_model": "smart",
-    "budget_remaining": 45.00,
-    "latency_sla_ms": 5000,
-    "priority": "normal",
-    "messages": [
-      {"role": "user", "content": "Explain quantum computing"}
-    ],
-    "max_tokens": 500
+    "name": "Cost control for interns",
+    "description": "Restrict intern team to cost-effective models",
+    "priority": 10,
+    "condition": "team == intern",
+    "action": "permit",
+    "target_models": ["gpt-5-mini", "claude-haiku-4.5", "gemini-2.5-flash-lite"]
   }'
-```
 
-Response:
-
-```json
-{
-  "selected_model": "claude-sonnet-4.5",
-  "fallback_models": ["gpt-5", "gemini-3-pro"],
-  "decision_reason": "Selected based on cost efficiency within budget constraints",
-  "estimated_cost": 0.0045,
-  "estimated_latency_ms": 2100
-}
-```
-
-### Debugging Policy Decisions
-
-Use the `/evaluate` endpoint to test a specific policy evaluation without routing:
-
-```bash
-curl -X POST http://localhost:8084/evaluate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "principal": "user::user-123",
-    "action": "routing:select_model",
-    "resource": "model::gpt-5.2",
-    "context": {
-      "cost_budget_remaining": 3.0,
-      "latency_sla_ms": 5000,
-      "priority": "normal",
-      "tier": "premium",
-      "provider": "openai",
-      "current_error_rate": 0.02,
-      "current_latency_ms": 2500
-    }
-  }'
-```
-
-Response:
-
-```json
-{
-  "decision": "deny",
-  "reasons": ["cost-003: premium models forbidden when budget < $5"],
-  "errors": []
-}
-```
-
-### Viewing Routing History
-
-```bash
-# All recent decisions
-curl http://localhost:8084/decisions
-
-# Filter by team
-curl "http://localhost:8084/decisions?team_id=engineering&limit=50"
-
-# Filter by user
-curl "http://localhost:8084/decisions?user_id=user-123"
+# Delete a routing policy
+curl -X DELETE http://localhost:8086/api/v1/routing-policies/{policy_id} \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ## Usage-Based Ranking

@@ -1054,11 +1054,13 @@ general_settings:
 
   cache: true
   cache_params:
-    type: "redis"
+    type: "redis-semantic"
     host: "redis"
     port: 6379
     ttl: 3600
     namespace: "litellm"
+    similarity_threshold: 0.92
+    redis_semantic_cache_embedding_model: "text-embedding-3-small"
 
 # ===========================================
 # LiteLLM Settings

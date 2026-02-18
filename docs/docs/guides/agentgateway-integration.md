@@ -172,11 +172,12 @@ binds:
 
 ```yaml
 agentgateway:
-  image: ghcr.io/agentgateway/agentgateway:latest
+  build: ./config/agentgateway/Dockerfile
   profiles: ["full"]
   ports:
     - "9000:3000"    # MCP/A2A endpoint
     - "15000:15000"  # Built-in admin UI
+    - "15020:15020"  # Health/readiness probes
   volumes:
     - gateway-config:/app/gateway-config  # Shared with admin-api
   environment:
@@ -220,6 +221,135 @@ If you used CEL policies, you have two options:
 ### Keeping Non-Platform Features
 
 Features like CEL authorization, OAuth 2.0, rate limiting, and prompt guards can be added by extending the config template in `gateway_sync.py`. The generated config is standard Agent Gateway YAML — you can add any policy section.
+
+---
+
+## Integrating with an Existing Agent Gateway Instance
+
+If you already run Agent Gateway in production (standalone or via kgateway), you can connect the platform to it instead of using the bundled instance. The Admin UI becomes a config management layer that pushes changes to your existing gateway.
+
+### How Config Sync Works with External Instances
+
+The platform supports two sync methods:
+
+| Method | Environment Variable | When to Use |
+|--------|---------------------|-------------|
+| **Shared volume / file path** | `GATEWAY_CONFIG_PATH` | Docker Compose, same host |
+| **Kubernetes ConfigMap** | `GATEWAY_CONFIGMAP_NAME`, `GATEWAY_DEPLOYMENT_NAME` | Kubernetes, separate namespace |
+
+When you create or update MCP servers and A2A agents in the Admin UI and click "Deploy to Gateway", `gateway_sync.py` writes the config to your gateway via the configured method.
+
+### Option A: File-Based Sync (Docker Compose / Same Host)
+
+If your Agent Gateway reads config from a file and supports hot-reload (file watcher):
+
+#### Step 1: Mount the Same Config Path
+
+In `docker-compose.override.yaml`:
+
+```yaml
+services:
+  agentgateway:
+    profiles: ["disabled"]  # Don't start the bundled gateway
+
+  admin-api:
+    environment:
+      GATEWAY_CONFIG_PATH: /app/gateway-config/config.yaml
+    volumes:
+      - /path/to/your/gateway/config:/app/gateway-config
+```
+
+Replace `/path/to/your/gateway/config` with the directory your existing Agent Gateway reads its `config.yaml` from.
+
+#### Step 2: Verify
+
+```bash
+# Deploy from Admin UI, then check the file was written
+cat /path/to/your/gateway/config/config.yaml
+
+# Your gateway's file watcher picks up the change automatically
+```
+
+### Option B: Kubernetes ConfigMap Sync
+
+If your Agent Gateway runs in Kubernetes and reads config from a ConfigMap:
+
+#### Step 1: Configure the Admin API
+
+Set these environment variables on the Admin API deployment:
+
+```yaml
+# In your Admin API Kubernetes manifest or Helm values
+env:
+  - name: GATEWAY_CONFIGMAP_NAME
+    value: "your-agentgateway-configmap"   # Default: agentgateway-config
+  - name: GATEWAY_DEPLOYMENT_NAME
+    value: "your-agentgateway-deployment"  # Default: agentgateway
+  - name: K8S_NAMESPACE
+    value: "your-gateway-namespace"        # Default: auto-detected from service account
+```
+
+#### Step 2: Grant RBAC Permissions
+
+The Admin API's service account needs permission to patch the ConfigMap and trigger a rolling restart:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: admin-api-gateway-sync
+  namespace: your-gateway-namespace
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["your-agentgateway-configmap"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["your-agentgateway-deployment"]
+    verbs: ["get", "patch"]
+```
+
+#### Step 3: Deploy and Verify
+
+When you click "Deploy to Gateway" in the Admin UI, the platform:
+
+1. Reads all active MCP servers and A2A agents from Postgres
+2. Generates a `config.yaml`
+3. PATCHes the ConfigMap with the new config
+4. Triggers a rolling restart by annotating the Deployment with `admin-api/restartedAt`
+
+```bash
+# Verify the ConfigMap was updated
+kubectl get configmap your-agentgateway-configmap -n your-gateway-namespace -o yaml
+```
+
+### What Works
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| MCP server CRUD | Works | Config stored in Postgres, deployed to your gateway |
+| A2A agent CRUD | Works | Same pipeline as MCP servers |
+| Connectivity testing | Works | Admin API tests reachability of MCP/A2A targets directly |
+| Config preview | Works | Shows generated YAML before deploying |
+| Deploy to gateway | Works | Writes via file or ConfigMap, depending on config |
+| Gateway admin UI | Independent | Your gateway's built-in UI at port 15000 still works separately |
+
+### What Does Not Work
+
+- **Policy management**: The platform generates the `backends` section of the config but does not manage CEL policies, auth config, rate limiting, or other policy sections. These must be configured in your existing gateway setup.
+- **OTEL integration**: If your gateway already sends traces to a different collector, the platform's Jaeger/Grafana won't show Agent Gateway traces unless you reconfigure the exporter endpoint.
+
+### Preserving Your Existing Config
+
+The platform only manages the `backends` section (MCP targets + A2A targets) and CORS policies. If your existing config has additional sections (authentication, rate limiting, CEL policies), you can extend `gateway_sync.py`'s `build_gateway_config()` function to merge them:
+
+```python
+# In gateway_sync.py, after generating the base config:
+# Load your existing policy sections and merge them into the generated config
+```
+
+Alternatively, use Agent Gateway's support for multiple config sources — load the platform-generated config for backends and a separate file for policies.
 
 ---
 

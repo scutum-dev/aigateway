@@ -128,7 +128,7 @@ Navigate to **http://localhost:5173** in your browser.
 3. You will land on the **Dashboard** showing today's request count, cost, and model usage
 
 From the sidebar, explore:
-- **Models** -- see all 100+ configured models, filter by provider, edit routing tiers
+- **Models** -- see all 85+ configured models, filter by provider, edit routing tiers
 - **API Keys** -- generate and manage API keys with budgets and model restrictions
 - **Teams** -- organize users into teams with default models
 - **Budgets** -- create spending limits for teams or users

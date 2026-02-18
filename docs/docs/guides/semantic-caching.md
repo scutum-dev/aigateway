@@ -9,46 +9,54 @@ Traditional caching only works when requests are identical. Semantic caching use
 ### How It Works
 
 ```
-User Request ──▶ Generate Embedding ──▶ Search Redis Cache
-                                              │
-                                    ┌─────────┴─────────┐
-                                    │                    │
-                              Similarity ≥ 0.92    Similarity < 0.92
-                              (Cache Hit)          (Cache Miss)
-                                    │                    │
-                                    ▼                    ▼
-                              Return Cached        Call LLM Provider
-                              Response             Store in Cache
+User Request ──▶ LiteLLM Proxy (:4000)
+                       │
+                       ├── Generate Embedding (text-embedding-3-small)
+                       ├── Search Redis Cache (cosine similarity)
+                       │
+                 ┌─────┴─────────┐
+                 │                │
+           Similarity ≥ 0.92   Similarity < 0.92
+           (Cache Hit)          (Cache Miss)
+                 │                │
+                 ▼                ▼
+           Return Cached    Call LLM Provider
+           Response         Store in Redis Cache
 ```
 
-1. The incoming prompt is converted to a vector embedding via the configured embedding model.
-2. The embedding is compared (cosine similarity) against all cached embeddings for the same model.
-3. If any cached entry exceeds the similarity threshold (default 0.92), the cached response is returned.
-4. On a miss, the actual LLM call is made and the response is stored in Redis for future hits.
+Semantic caching is handled transparently by LiteLLM's built-in `redis-semantic` cache. Every request through `/v1/chat/completions` is automatically checked against the cache -- no client-side changes needed.
 
-## Enabling Semantic Caching
-
-The semantic cache runs as a separate service in the `experimental` profile:
-
-```bash
-docker compose --env-file config/.env --profile experimental up -d
-```
-
-This starts the semantic cache on **http://localhost:8083** alongside the policy router.
+1. The incoming prompt is converted to a vector embedding via `text-embedding-3-small`.
+2. The embedding is compared (cosine similarity) against cached embeddings in Redis.
+3. If any cached entry exceeds the similarity threshold (default 0.92), the cached response is returned immediately.
+4. On a miss, the LLM call proceeds normally and the response is stored in Redis for future hits.
 
 ## Configuration
 
-### Environment Variables
+Semantic caching is enabled by default in `config/litellm/config.yaml`:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `REDIS_URL` | `redis://localhost:6379` | Redis connection for cache storage |
-| `LITELLM_URL` | `http://localhost:4000` | LiteLLM endpoint for generating embeddings |
-| `LITELLM_API_KEY` | `""` | API key for embedding calls |
-| `EMBEDDING_MODEL` | `text-embedding-3-small` | Model used to generate embeddings |
-| `SIMILARITY_THRESHOLD` | `0.92` | Minimum cosine similarity for a cache hit (0.0 to 1.0) |
-| `CACHE_TTL_SECONDS` | `3600` | Time-to-live for cached entries (seconds) |
-| `MAX_CACHE_ENTRIES` | `10000` | Maximum number of cache entries |
+```yaml
+cache: true
+cache_params:
+  type: "redis-semantic"
+  host: "redis"
+  port: 6379
+  ttl: 3600
+  namespace: "litellm"
+  similarity_threshold: 0.92
+  redis_semantic_cache_embedding_model: "text-embedding-3-small"
+```
+
+### Key Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `type` | `redis-semantic` | Cache type. Use `redis` for exact-match only. |
+| `similarity_threshold` | `0.92` | Minimum cosine similarity for a cache hit (0.0 to 1.0) |
+| `redis_semantic_cache_embedding_model` | `text-embedding-3-small` | Model used to generate embeddings |
+| `ttl` | `3600` | Time-to-live for cached entries in seconds |
+| `host` | `redis` | Redis hostname |
+| `port` | `6379` | Redis port |
 
 ### Tuning the Similarity Threshold
 
@@ -61,140 +69,99 @@ The threshold controls the trade-off between cache hit rate and response accurac
 | `0.85-0.90` | Aggressive -- higher hit rate but may return responses for semantically different questions. |
 | `< 0.85` | Not recommended -- too many false positives. |
 
-The Docker Compose default is `0.90`. Adjust via the `SIMILARITY_THRESHOLD` environment variable.
+### Toggling via Admin UI
 
-## API Endpoints
+The Admin UI Settings page exposes `enable_caching` and `cache_ttl_seconds`. Changes are synced to LiteLLM at runtime without a restart.
 
-### Cache Lookup
+## Admin API Management Endpoints
 
-```bash
-curl -X POST http://localhost:8083/lookup \
-  -H "Content-Type: application/json" \
-  -d '{
-    "messages": [{"role": "user", "content": "What is the capital of France?"}],
-    "model": "gpt-5",
-    "user_id": "user-123"
-  }'
-```
+The Admin API (port 8086) provides endpoints for cache visibility and management, used by the Admin UI:
 
-Response (cache hit):
-```json
-{
-  "hit": true,
-  "response": {"choices": [{"message": {"content": "Paris is the capital of France."}}]},
-  "similarity": 0.97,
-  "cache_key": "abc123...",
-  "ttl_remaining": 2847
-}
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/cache/stats` | Cache statistics (entries, hit rate, size) |
+| `GET` | `/api/v1/cache/settings` | Current cache settings |
+| `PUT` | `/api/v1/cache/settings` | Update settings (syncs to LiteLLM) |
+| `GET` | `/api/v1/cache/entries` | List cached entries (paginated) |
+| `DELETE` | `/api/v1/cache/entries/{id}` | Delete a specific entry |
+| `POST` | `/api/v1/cache/clear` | Clear all cache entries |
 
-Response (cache miss):
-```json
-{
-  "hit": false,
-  "response": null,
-  "similarity": 0.0
-}
-```
-
-### Store Response
-
-After a cache miss and successful LLM call, store the result:
+### Example: View Cache Stats
 
 ```bash
-curl -X POST http://localhost:8083/store \
-  -H "Content-Type: application/json" \
-  -d '{
-    "messages": [{"role": "user", "content": "What is the capital of France?"}],
-    "model": "gpt-5",
-    "response": {"choices": [{"message": {"content": "Paris is the capital of France."}}]},
-    "user_id": "user-123",
-    "tokens_used": 42
-  }'
-```
+TOKEN="your-jwt-token"
 
-### Cache Statistics
-
-```bash
-curl http://localhost:8083/stats
+curl http://localhost:8086/api/v1/cache/stats \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ```json
 {
   "total_entries": 1523,
   "total_hits": 8934,
-  "total_misses": 4211,
-  "hit_rate": 0.68,
-  "memory_used_bytes": 4521984,
-  "tokens_saved": 189420,
-  "cost_saved": 3.79
+  "hit_rate": 68.0,
+  "cache_size_mb": 4.31,
+  "avg_token_savings": 142.5
 }
 ```
 
-### Cache Invalidation
+### Example: Update Settings
 
 ```bash
-# Invalidate a specific entry
-curl -X DELETE http://localhost:8083/invalidate/abc123
-
-# Invalidate all entries for a model
-curl -X DELETE http://localhost:8083/invalidate-model/gpt-5
-
-# Invalidate all entries for a user
-curl -X DELETE http://localhost:8083/invalidate-user/user-123
+curl -X PUT http://localhost:8086/api/v1/cache/settings \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "enabled": true,
+    "similarity_threshold": 0.90,
+    "ttl_seconds": 7200,
+    "max_entries": 20000
+  }'
 ```
 
-### Other Endpoints
+## Testing Semantic Caching
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | Health check with Redis status and config |
-| `POST` | `/warmup` | Bulk-store entries to warm the cache |
-| `GET` | `/entries` | List cache entries (debug, max 100) |
-| `POST` | `/similarity` | Compute similarity between two arbitrary texts |
+Send the same question phrased differently and observe the cached response:
 
-## Cache Isolation
+```bash
+# First request -- cache miss, calls the LLM
+curl http://localhost:4000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $LITELLM_KEY" \
+  -d '{"model": "gpt-5-mini", "messages": [{"role": "user", "content": "What is the capital of France?"}]}'
 
-### Per-Model Isolation
+# Second request -- paraphrased, should be a cache hit
+curl http://localhost:4000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $LITELLM_KEY" \
+  -d '{"model": "gpt-5-mini", "messages": [{"role": "user", "content": "Tell me the capital city of France"}]}'
+```
 
-Cache keys are namespaced by model (`semantic_cache:{model}:{hash}`). A cached GPT-5 response will never match a Claude query, even if the prompts are identical. This ensures model-specific responses are returned correctly.
+The second request should return faster with the cached response. Check the response headers or Grafana metrics to confirm cache hits.
 
-### Per-User Isolation
+## Disabling Semantic Caching
 
-When `user_id` is provided on lookup, entries belonging to a different user are skipped. This prevents users from seeing each other's cached responses -- important for multi-tenant deployments.
+To switch back to exact-match caching, change the config:
 
-## Redis Storage
+```yaml
+cache_params:
+  type: "redis"      # exact-match only
+  host: "redis"
+  port: 6379
+  ttl: 3600
+```
 
-Cache entries are stored in Redis with automatic TTL expiry:
-
-- **Key pattern:** `semantic_cache:{model}:{sha256_hash}`
-- **Value:** JSON blob containing the embedding vector, original response, metadata, and expiration timestamp
-- **TTL:** Configurable via `CACHE_TTL_SECONDS` (default 1 hour)
-
-The service requires the same Redis instance used by the core platform. No additional Redis setup is needed.
-
-## OpenTelemetry Integration
-
-The semantic cache emits detailed OTEL traces for every operation:
-
-| Span | Attributes |
-|------|------------|
-| `cache_lookup` | model, threshold, hit/miss, similarity score |
-| `cache_store` | model, cache_key, ttl |
-| `get_embedding` | model, embedding dimensions |
-| `find_similar_cached` | model, entries scanned, best similarity |
-
-When the observability profile is active, these traces appear in Jaeger under the `semantic-cache` service.
+Or disable caching entirely via the Admin UI Settings page (`enable_caching: false`).
 
 ## Production Considerations
 
-- **Scaling:** The current implementation scans all Redis keys per model for similarity. This works well for caches under a few thousand entries. For larger deployments, consider switching to Redis Vector Search (RediSearch) or pgvector.
-- **Stats persistence:** Hit/miss counters are stored in memory and reset on service restart. For persistent stats, the OTEL metrics exported to Prometheus provide durable tracking.
-- **Embedding costs:** Each cache lookup requires one embedding API call. Use a small, fast embedding model (like `text-embedding-3-small`) to minimize this overhead.
-- **TTL strategy:** Set TTL based on how frequently your data changes. For factual queries, longer TTLs (hours) work well. For time-sensitive data, use shorter TTLs (minutes).
+- **Embedding costs**: Each cache miss requires one embedding API call (`text-embedding-3-small` is ~$0.02 per 1M tokens). This overhead is negligible compared to the LLM call cost saved on cache hits.
+- **Redis memory**: Cached embeddings consume Redis memory. Monitor Redis usage and set `max_entries` to cap growth.
+- **TTL strategy**: Set TTL based on how frequently your data changes. Factual queries benefit from longer TTLs (hours). Time-sensitive data should use shorter TTLs (minutes).
+- **Model isolation**: Cache keys are namespaced by model. A cached GPT-5 response will not match a Claude query, even if the prompts are identical.
 
 ## Related Guides
 
 - [Observability Guide](./observability.md) -- monitor cache hit rates in Grafana
 - [Cost Management Guide](./cost-management.md) -- how caching reduces spend
-- [API Integration Guide](./api-integration.md) -- code examples for the LLM API
+- [LiteLLM Deep Dive](./litellm-integration.md) -- full LiteLLM configuration reference

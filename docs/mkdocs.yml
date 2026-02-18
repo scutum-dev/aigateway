@@ -1,5 +1,5 @@
 site_name: AI Control Plane Platform
-site_description: Unified AI infrastructure — 100+ models, 9 providers, intelligent routing, cost management
+site_description: Unified AI infrastructure — 85+ models, 9 providers, intelligent routing, cost management
 site_url: https://docs.aicontrolplane.dev
 
 theme:
@@ -40,6 +40,17 @@ nav:
   - Operations:
       - Admin Guide: guides/admin-guide.md
       - Observability: guides/observability.md
+      - Cloud Deployment: operations/cloud-deployment.md
+      - Demo Runbook: operations/demo-runbook.md
+  - Production:
+      - Production Readiness: production/production-readiness.md
+      - Sizing Guide: production/sizing-guide.md
+      - HA Patterns: production/ha-patterns.md
+  - Security:
+      - Threat Model: security/threat-model.md
+      - Secret Rotation: security/secret-rotation.md
+  - FinOps:
+      - KPI Definitions: finops/kpi-definitions.md
 
 markdown_extensions:
   - admonition

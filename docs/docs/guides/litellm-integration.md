@@ -10,11 +10,11 @@ LiteLLM v1.80+ has dozens of powerful features. Most deployments use less than 2
 
 | Feature | LiteLLM Config | Platform Value-Add |
 |---------|---------------|--------------------|
-| **100+ models across 9 providers** | `model_list` in config.yaml | Pre-configured with pricing, RPM/TPM limits, and cross-provider fallback chains |
+| **85+ models across 9 providers** | `model_list` in config.yaml | Pre-configured with pricing, RPM/TPM limits, and cross-provider fallback chains |
 | **Usage-based routing** | `router_settings.routing_strategy` | Pre-set with RPM/TPM limit checking and pre-call validation |
 | **Fallback chains** | `fallbacks` in config.yaml | Pre-built cross-provider chains (GPT-5 → Claude → Grok, etc.) |
-| **Model group aliases** | Model groups in config.yaml | 12 semantic aliases: `fast`, `smart`, `powerful`, `reasoning`, `coding`, `cost-effective` + per-provider |
-| **Redis caching** | `cache_params` | Pre-configured with 1-hour TTL and namespacing |
+| **Model group aliases** | Model groups in config.yaml | 15 semantic aliases: `fast`, `smart`, `powerful`, `reasoning`, `coding`, `cost-effective` + per-provider (`openai`, `anthropic`, `google`, `xai`, `deepseek`, `bedrock`, `vertex`, `azure`, `local`) |
+| **Redis semantic caching** | `cache_params` | Pre-configured with `redis-semantic` type, 0.92 similarity threshold, 1-hour TTL |
 | **OpenTelemetry + Prometheus** | `success_callback`, `failure_callback` | Pre-wired to OTEL collector + Prometheus, feeding pre-built Grafana dashboards |
 | **Guardrails** | `guardrails` in config.yaml | Custom pre-call guardrail handler, manageable via Admin UI |
 | **Budget defaults** | `budget_config` | Global soft/hard limits + per-key defaults, plus budget webhook for alerts |
@@ -65,19 +65,21 @@ LiteLLM emits OTEL traces and Prometheus metrics. We pre-wire:
 
 ### Caching
 
-LiteLLM supports Redis exact-match caching. Pre-configured with:
+LiteLLM supports multiple cache types. Pre-configured with semantic caching:
 
 ```yaml
 cache: true
 cache_params:
-  type: "redis"
+  type: "redis-semantic"
   host: "redis"
   port: 6379
   ttl: 3600
   namespace: "litellm"
+  similarity_threshold: 0.92
+  redis_semantic_cache_embedding_model: "text-embedding-3-small"
 ```
 
-Toggled on/off via Admin UI Settings page (`enable_caching`).
+This caches responses by embedding similarity, so paraphrased prompts return cached results. Toggled on/off via Admin UI Settings page (`enable_caching`). See the [Semantic Caching Guide](./semantic-caching.md) for details.
 
 ---
 
@@ -89,7 +91,7 @@ LiteLLM has features we haven't yet exposed in the platform. These are ready to 
 
 | Feature | Effort | Value |
 |---------|--------|-------|
-| **Semantic caching (Qdrant)** | Config change | Similar prompts return cached responses — significant cost savings |
+| **Semantic caching (Qdrant)** | Config change | Alternative to Redis semantic caching using Qdrant vector DB |
 | **Prompt Studio** | Use LiteLLM's built-in UI at `/ui` | Prompt versioning and testing without code changes |
 | **Slack/Discord alerting** | Config change | Real-time alerts for slow responses, error spikes, budget thresholds |
 | **Tag-based routing** | Config change | Route requests by metadata (production vs dev, priority tiers) |
@@ -175,7 +177,7 @@ If you're already running LiteLLM standalone:
 
 ### Step 1: Merge Your Config
 
-The platform's `config/litellm/config.yaml` uses the same format. Add your custom models alongside the 100+ pre-configured ones.
+The platform's `config/litellm/config.yaml` uses the same format. Add your custom models alongside the 85+ pre-configured ones.
 
 ### Step 2: Set Environment Variables
 
@@ -205,6 +207,113 @@ docker compose --profile observability up -d  # Grafana, Prometheus, Jaeger
 docker compose --profile finops up -d          # Cost predictor, budget webhook
 docker compose --profile workflows up -d       # Temporal, LangGraph
 ```
+
+---
+
+## Integrating with an Existing LiteLLM Instance
+
+If you already run LiteLLM in production and want to add the platform's governance, FinOps, and UI features without replacing your existing proxy, you can point the platform at your running instance instead of using the bundled one.
+
+### What Changes
+
+The bundled `litellm` container is replaced by your existing deployment. All platform services that talk to LiteLLM (Admin API, workflow engine, cost predictor, budget webhook, A2A runtime) are redirected to your instance via environment variables.
+
+### Step 1: Set Environment Variables
+
+In `config/.env`, point to your existing LiteLLM:
+
+```bash
+# Your existing LiteLLM instance
+LITELLM_URL=https://litellm.internal.example.com:4000
+LITELLM_MASTER_KEY=sk-your-existing-master-key
+```
+
+### Step 2: Disable the Bundled LiteLLM Service
+
+Create a `docker-compose.override.yaml` in the project root:
+
+```yaml
+services:
+  litellm:
+    profiles: ["disabled"]  # Prevents this service from starting
+
+  admin-api:
+    environment:
+      LITELLM_URL: ${LITELLM_URL}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      # Remove litellm dependency — the override replaces the entire depends_on
+
+  workflow-engine:
+    environment:
+      LITELLM_URL: ${LITELLM_URL}
+      LITELLM_API_KEY: ${LITELLM_MASTER_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # Remove litellm dependency
+
+  a2a-runtime:
+    environment:
+      LITELLM_URL: ${LITELLM_URL}
+
+  cost-predictor:
+    environment:
+      LITELLM_URL: ${LITELLM_URL}
+
+  budget-webhook:
+    environment:
+      LITELLM_URL: ${LITELLM_URL}
+```
+
+### Step 3: Ensure Network Connectivity
+
+Your existing LiteLLM must be reachable from the Docker network. Options:
+
+- **Same Docker network**: Add `external: true` to `gateway-network` and connect your LiteLLM container.
+- **Host network**: Use `host.docker.internal` (macOS/Windows) or `172.17.0.1` (Linux) if LiteLLM runs on the host.
+- **Remote**: Use the full URL (e.g., `https://litellm.internal.example.com:4000`). Ensure the Docker containers can reach it.
+
+### Step 4: Verify
+
+```bash
+docker compose --env-file config/.env up -d
+
+# Confirm Admin API can reach your LiteLLM
+curl http://localhost:8086/health
+# Should return {"status": "ok"}
+
+# Confirm models are visible through the Admin API
+TOKEN=$(curl -s http://localhost:8086/auth/login \
+  -d '{"api_key":"sk-your-existing-master-key"}' \
+  -H 'Content-Type: application/json' | jq -r .access_token)
+
+curl http://localhost:8086/api/v1/models \
+  -H "Authorization: Bearer $TOKEN" | jq length
+```
+
+### What Works
+
+All platform features work with an external LiteLLM instance:
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Admin UI dashboard | Works | Reads spend/metrics from LiteLLM's API |
+| Model/key/team management | Works | Proxies to your LiteLLM's `/model/*`, `/key/*`, `/team/*` |
+| Guardrails | Works | Configured via Admin API, applied via LiteLLM's guardrail hooks |
+| FinOps (cost prediction, budgets) | Works | Cost predictor calls your LiteLLM for model info |
+| Workflows | Works | Workflow engine sends LLM calls to your LiteLLM |
+| Semantic caching | Depends | Uses your LiteLLM's cache config — ensure `redis-semantic` is configured |
+| Observability | Partial | Platform dashboards work if your LiteLLM emits Prometheus metrics to the same endpoint |
+
+### What Does Not Work
+
+- **Config file management**: The platform cannot edit your LiteLLM's `config.yaml`. Model definitions, fallback chains, and router settings must be managed in your existing config.
+- **Health-gated startup**: The bundled setup waits for LiteLLM to be healthy before starting the Admin API. With an external instance, services start immediately — ensure your LiteLLM is already running.
 
 ---
 

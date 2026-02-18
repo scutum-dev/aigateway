@@ -1,6 +1,6 @@
 # AI Control Plane Platform
 
-Unified AI infrastructure for the enterprise. One API, 100+ models, 9 providers, intelligent routing, and complete cost visibility.
+Unified AI infrastructure for the enterprise. One API, 85+ models, 9 providers, intelligent routing, and complete cost visibility.
 
 ---
 

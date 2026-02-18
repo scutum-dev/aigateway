@@ -52,7 +52,7 @@ All platform services send telemetry to the OTEL Collector, which routes traces,
 
 ## Grafana Dashboards
 
-Grafana ships with two pre-built dashboards. Log in with username `admin` and password `admin` (configurable via `GRAFANA_ADMIN_PASSWORD` in `config/.env`).
+Grafana ships with five pre-built dashboards. Log in with username `admin` and password `admin` (configurable via `GRAFANA_ADMIN_PASSWORD` in `config/.env`).
 
 ### AI Control Plane Platform Overview
 
@@ -97,6 +97,24 @@ SQL-powered cost analytics dashboard querying LiteLLM's spend logs directly in P
 **Row 3 -- Model Breakdown:** Three pie charts showing top 10 models by spend, requests, and tokens
 
 **Row 4 -- Recent Requests:** Table of the last 50 requests with timestamp, model, user, spend, and token breakdown
+
+### LiteLLM Detailed
+
+**URL:** `http://localhost:3030/d/litellm-detailed`
+
+Deep-dive into LiteLLM proxy metrics including per-model request rates, latency distributions, and error breakdowns.
+
+### Agent Gateway
+
+**URL:** `http://localhost:3030/d/agent-gateway`
+
+Agent Gateway metrics including MCP/A2A request throughput, tool invocation counts, and per-backend latency.
+
+### Infrastructure
+
+**URL:** `http://localhost:3030/d/infrastructure`
+
+System-level metrics for all platform services: CPU, memory, disk, and network utilization.
 
 ## Prometheus Metrics
 
