@@ -862,3 +862,33 @@ export interface ModelDeprecationCreate {
   sunset_date?: string
   message?: string
 }
+
+// Routing Policies
+export interface RoutingPolicy {
+  id: string
+  name: string
+  description: string | null
+  policy_type: string
+  config: Record<string, unknown>
+  priority: number
+  is_active: boolean
+  synced_at: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface RoutingPolicyCreate {
+  name: string
+  description?: string
+  policy_type: string
+  config: Record<string, unknown>
+  priority?: number
+  is_active?: boolean
+}
+
+export interface LiteLLMRouterStatus {
+  routing_strategy: string | null
+  fallbacks: Record<string, string[]>[]
+  model_group_aliases: Record<string, string[]>
+  num_models: number
+}

@@ -80,6 +80,9 @@ import type {
   PlaygroundSessionCreate,
   ModelDeprecation,
   ModelDeprecationCreate,
+  RoutingPolicy,
+  RoutingPolicyCreate,
+  LiteLLMRouterStatus,
 } from '../types'
 
 // Use Vite's BASE_URL so API calls route through the admin-ui nginx proxy
@@ -857,6 +860,36 @@ export const deprecationsApi = {
   },
   check: async (modelName: string): Promise<{ deprecated: boolean; deprecation?: ModelDeprecation }> => {
     const response = await api.get(`/model-deprecations/check/${modelName}`)
+    return response.data
+  },
+}
+
+export const routingApi = {
+  list: async (params?: { policy_type?: string; is_active?: boolean }): Promise<RoutingPolicy[]> => {
+    const response = await api.get('/routing-policies', { params })
+    return response.data
+  },
+  create: async (data: RoutingPolicyCreate): Promise<RoutingPolicy> => {
+    const response = await api.post('/routing-policies', data)
+    return response.data
+  },
+  get: async (id: string): Promise<RoutingPolicy> => {
+    const response = await api.get(`/routing-policies/${id}`)
+    return response.data
+  },
+  update: async (id: string, data: RoutingPolicyCreate): Promise<RoutingPolicy> => {
+    const response = await api.put(`/routing-policies/${id}`, data)
+    return response.data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/routing-policies/${id}`)
+  },
+  syncAll: async (): Promise<{ status: string; synced: number; errors: unknown[] }> => {
+    const response = await api.post('/routing-policies/sync')
+    return response.data
+  },
+  getLiteLLMStatus: async (): Promise<LiteLLMRouterStatus> => {
+    const response = await api.get('/routing-policies/litellm-status')
     return response.data
   },
 }

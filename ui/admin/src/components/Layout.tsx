@@ -25,6 +25,7 @@ import {
   HeartIcon,
   BeakerIcon,
   BellAlertIcon,
+  ArrowsRightLeftIcon,
 } from '@heroicons/react/24/outline'
 import { BoltIcon } from '@heroicons/react/24/solid'
 import type { UserInfo } from '../types'
@@ -50,6 +51,7 @@ const navigation = [
   { name: 'SLA Monitor', href: '/sla', icon: HeartIcon },
   { name: 'A/B Tests', href: '/ab-tests', icon: BeakerIcon },
   { name: 'Events', href: '/events', icon: BellAlertIcon },
+  { name: 'Routing', href: '/routing', icon: ArrowsRightLeftIcon },
   { name: 'MCP Servers', href: '/mcp-servers', icon: ServerIcon },
   { name: 'A2A Agents', href: '/agents', icon: CpuChipIcon },
   { name: 'Guardrails', href: '/guardrails', icon: ShieldCheckIcon },
@@ -72,6 +74,7 @@ const routeLabels: Record<string, string> = {
   '/sla': 'SLA Monitor',
   '/ab-tests': 'A/B Tests',
   '/events': 'Events',
+  '/routing': 'Routing',
   '/mcp-servers': 'MCP Servers',
   '/agents': 'A2A Agents',
   '/guardrails': 'Guardrails',

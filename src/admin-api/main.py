@@ -57,6 +57,7 @@ from routers import playground as playground_router
 from routers import prompts as prompts_router
 from routers import rate_limits as rate_limits_router
 from routers import reports as reports_router
+from routers import routing as routing_router
 from routers import settings as settings_router
 from routers import sla as sla_router
 from routers import sso as sso_router
@@ -695,6 +696,7 @@ app.include_router(cache_router.router, prefix="/api/v1", tags=["Cache"])
 app.include_router(events_router.router, prefix="/api/v1", tags=["Events"])
 app.include_router(playground_router.router, prefix="/api/v1", tags=["Playground"])
 app.include_router(deprecations_router.router, prefix="/api/v1", tags=["Deprecations"])
+app.include_router(routing_router.router, prefix="/api/v1", tags=["Routing"])
 
 
 if __name__ == "__main__":

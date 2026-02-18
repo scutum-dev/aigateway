@@ -23,6 +23,7 @@ import {
   eventsApi,
   playgroundApi,
   deprecationsApi,
+  routingApi,
 } from './client'
 import type {
   GuardrailAssignment,
@@ -99,6 +100,9 @@ import type {
   PlaygroundSessionCreate,
   ModelDeprecation,
   ModelDeprecationCreate,
+  RoutingPolicy,
+  RoutingPolicyCreate,
+  LiteLLMRouterStatus,
 } from '../types'
 
 // MCP Servers hooks
@@ -1026,5 +1030,52 @@ export function useDeleteModelDeprecation() {
   return useMutation<void, Error, string>({
     mutationFn: deprecationsApi.delete,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['model-deprecations'] }) },
+  })
+}
+
+// Routing Policies hooks
+export function useRoutingPolicies(params?: { policy_type?: string; is_active?: boolean }) {
+  return useQuery<RoutingPolicy[]>({
+    queryKey: ['routing-policies', params],
+    queryFn: () => routingApi.list(params),
+  })
+}
+
+export function useCreateRoutingPolicy() {
+  const queryClient = useQueryClient()
+  return useMutation<RoutingPolicy, Error, RoutingPolicyCreate>({
+    mutationFn: routingApi.create,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['routing-policies'] }) },
+  })
+}
+
+export function useUpdateRoutingPolicy() {
+  const queryClient = useQueryClient()
+  return useMutation<RoutingPolicy, Error, { id: string; data: RoutingPolicyCreate }>({
+    mutationFn: ({ id, data }) => routingApi.update(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['routing-policies'] }) },
+  })
+}
+
+export function useDeleteRoutingPolicy() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: routingApi.delete,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['routing-policies'] }) },
+  })
+}
+
+export function useSyncRoutingPolicies() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: routingApi.syncAll,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['routing-policies'] }) },
+  })
+}
+
+export function useLiteLLMRouterStatus() {
+  return useQuery<LiteLLMRouterStatus>({
+    queryKey: ['litellm-router-status'],
+    queryFn: routingApi.getLiteLLMStatus,
   })
 }
