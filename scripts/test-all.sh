@@ -18,7 +18,7 @@ LITELLM_URL=${LITELLM_URL:-"http://localhost:4000"}
 VAULT_URL=${VAULT_URL:-"http://localhost:8200"}
 VAULT_TOKEN=${VAULT_TOKEN:-"root-token-for-dev"}
 COST_PREDICTOR_URL=${COST_PREDICTOR_URL:-"http://localhost:8080"}
-FINOPS_URL=${FINOPS_URL:-"http://localhost:8082"}
+ADMIN_API_URL=${ADMIN_API_URL:-"http://localhost:8086"}
 # Agent Gateway now serves all protocols on port 9000 (mapped to internal 3000)
 MCP_GATEWAY_URL=${MCP_GATEWAY_URL:-"http://localhost:9000"}
 A2A_GATEWAY_URL=${A2A_GATEWAY_URL:-"http://localhost:9000"}
@@ -78,9 +78,9 @@ run_test "Cost Predictor health" \
   "curl -sf ${COST_PREDICTOR_URL}/health | grep -q 'healthy'" || \
   skip_test "Cost Predictor health" "service not running"
 
-run_test "FinOps Reporter health" \
-  "curl -sf ${FINOPS_URL}/health | grep -q 'healthy'" || \
-  skip_test "FinOps Reporter health" "service not running"
+run_test "Admin API health" \
+  "curl -sf ${ADMIN_API_URL}/health | grep -q 'healthy'" || \
+  skip_test "Admin API health" "service not running"
 
 # Agent Gateway MCP returns "Not Acceptable" or "Session ID" when working
 run_test "Agent Gateway running" \
@@ -221,19 +221,19 @@ run_test "Streaming response" \
 echo ""
 
 # ===========================================
-# FinOps Reporter Tests
+# Admin API Tests
 # ===========================================
-echo -e "${BLUE}--- FinOps Reporter Tests ---${NC}"
+echo -e "${BLUE}--- Admin API Tests ---${NC}"
 
-if curl -sf ${FINOPS_URL}/health > /dev/null 2>&1; then
-  run_test "Summary stats endpoint" \
-    "curl -sf ${FINOPS_URL}/reports/summary | grep -q 'today'"
+if curl -sf ${ADMIN_API_URL}/health > /dev/null 2>&1; then
+  run_test "Admin API login" \
+    "curl -sf -X POST ${ADMIN_API_URL}/auth/login -H 'Content-Type: application/json' -d '{\"api_key\": \"${API_KEY}\"}' | grep -q 'access_token'"
 
-  run_test "Cost report endpoint" \
-    "curl -sf '${FINOPS_URL}/reports/cost?period=daily' | grep -q 'total_cost'"
+  run_test "Admin API reports summary" \
+    "TOKEN=\$(curl -sf -X POST ${ADMIN_API_URL}/auth/login -H 'Content-Type: application/json' -d '{\"api_key\": \"${API_KEY}\"}' | jq -r .access_token) && curl -sf ${ADMIN_API_URL}/api/v1/reports/summary -H \"Authorization: Bearer \$TOKEN\" | grep -qE '(today|total)'"
 else
-  skip_test "Summary stats endpoint" "service not running"
-  skip_test "Cost report endpoint" "service not running"
+  skip_test "Admin API login" "service not running"
+  skip_test "Admin API reports summary" "service not running"
 fi
 
 echo ""

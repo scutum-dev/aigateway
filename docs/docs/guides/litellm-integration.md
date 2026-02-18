@@ -83,40 +83,39 @@ This caches responses by embedding similarity, so paraphrased prompts return cac
 
 ---
 
-## Features Available for Adoption
+## Additional LiteLLM Features
 
-LiteLLM has features we haven't yet exposed in the platform. These are ready to enable:
+LiteLLM has additional native features beyond what we pre-configure. Some we already cover through the Admin API; others are available to enable directly.
 
-### High-Impact, Easy to Enable
+### Already Covered by the Admin API
+
+These LiteLLM features have equivalents built into the platform — no additional configuration or Enterprise license needed:
+
+| LiteLLM Feature | Our Equivalent (Admin API) |
+|---------|-------------|
+| **Prompt Studio** | Prompt registry with versioning, rendering, and approval workflows (`/api/v1/prompts`) |
+| **MCP permission management** | MCP server CRUD with connectivity testing and Agent Gateway deployment (`/api/v1/mcp-servers`) |
+| **Granular RBAC** (Enterprise) | Cedar policies + org member roles + model access tiers with approval workflows (`/api/v1/model-access/tiers`) |
+| **SSO** (Enterprise) | Full OIDC SSO per organization (`/api/v1/organizations/{org_id}/sso`) — Okta, Google, Azure AD |
+| **Per-team guardrails** (Enterprise) | Guardrail configs assigned per team (`/api/v1/guardrails/{id}/assign/{team_id}`) |
+| **Tag budgets** (Enterprise) | Team budgets + cost allocation rules with cost centers (`/api/v1/cost-allocation/rules`) |
+| **Audit logs** (Enterprise) | Filterable audit logs with CSV/JSON export (`/api/v1/audit-logs`) |
+| **Dynamic rate limiter** (Enterprise) | Per-user/team/model rate policies with burst multipliers and pre-flight checks (`/api/v1/rate-limits`) |
+
+### Available to Enable (LiteLLM native)
+
+These LiteLLM-native features are not yet exposed in the platform but can be enabled with minimal effort:
 
 | Feature | Effort | Value |
 |---------|--------|-------|
 | **Semantic caching (Qdrant)** | Config change | Alternative to Redis semantic caching using Qdrant vector DB |
-| **Prompt Studio** | Use LiteLLM's built-in UI at `/ui` | Prompt versioning and testing without code changes |
 | **Slack/Discord alerting** | Config change | Real-time alerts for slow responses, error spikes, budget thresholds |
 | **Tag-based routing** | Config change | Route requests by metadata (production vs dev, priority tiers) |
 | **Pass-through endpoints** | Config change | Direct provider API access with cost tracking |
-
-### Medium-Impact, Moderate Effort
-
-| Feature | Effort | Value |
-|---------|--------|-------|
 | **Langfuse integration** | Add callback + deploy Langfuse | Prompt tracing, evaluation, and analytics |
 | **Batch API** | Enable endpoint | 50% cost reduction for bulk processing |
 | **Traffic mirroring** | Config change | Shadow production traffic to evaluate new models |
 | **Key rotation** | Config + secret manager | Automatic credential rotation |
-| **MCP permission management** | Config change | Per-key/team/org control over which MCP tools are accessible |
-
-### Enterprise Tier (LiteLLM license required)
-
-| Feature | What It Adds |
-|---------|-------------|
-| **Granular RBAC** | Role-based permissions beyond admin/user |
-| **SSO (6+ users)** | Okta, Google, Azure AD integration |
-| **Per-team guardrails** | Different guardrail configs per team (native) |
-| **Tag budgets** | USD budgets on custom request tags |
-| **Audit logs** | Compliance-grade activity logging |
-| **Dynamic rate limiter** | Automatic throughput optimization |
 
 ---
 
