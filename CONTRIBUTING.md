@@ -18,7 +18,7 @@ Thank you for your interest in contributing! This guide covers development setup
 git clone <repo-url> && cd gateway
 make up
 
-# This starts: PostgreSQL, Redis, LiteLLM, Admin API, Admin UI, Landing UI
+# This starts: PostgreSQL, Redis, LiteLLM, Admin API, Admin UI, Landing UI, Deck, Docs Site, Playground
 # Admin UI: http://localhost:5173
 # Admin API: http://localhost:8086/docs (Swagger)
 # LiteLLM: http://localhost:4000
@@ -29,8 +29,8 @@ make up
 ```bash
 make up                          # Core services only
 make up PROFILE=observability    # + OTEL, Prometheus, Grafana, Jaeger
-make up PROFILE=workflows        # + Temporal, Workflow Engine, A2A Runtime
-make up PROFILE=finops           # + Cost Predictor, Budget Webhook, FinOps Reporter
+make up PROFILE=workflows        # + Temporal, Temporal UI, Workflow Engine, A2A Runtime
+make up PROFILE=finops           # + Cost Predictor, Budget Webhook
 make up PROFILE=full             # Everything
 ```
 
@@ -57,7 +57,6 @@ src/
   a2a-runtime/        # Temporal agent workflows (port 8087)
   cost-predictor/     # Token counting & pricing (port 8080)
   budget-webhook/     # Budget enforcement (port 8081)
-  finops-reporter/    # Cost reports (port 8082)
 ui/
   admin/              # React admin dashboard (port 5173)
   landing/            # Marketing page + playground (port 9999)

@@ -22,6 +22,7 @@ The AI Control Plane is a self-hosted platform that sits between your applicatio
 | [Model Routing](guides/model-routing.md) | How models are selected, fallback chains, and group aliases |
 | [Cost Management](guides/cost-management.md) | Budgets, alerts, FinOps reporting, and optimization tips |
 | [Admin Guide](guides/admin-guide.md) | Page-by-page walkthrough of the Admin Console |
+| [Hello World Examples](../examples/hello-world/README.md) | Step-by-step examples for organizations |
 
 ## Architecture Overview
 
@@ -29,14 +30,18 @@ The AI Control Plane is a self-hosted platform that sits between your applicatio
 Your App ──▶ AI Control Plane (LiteLLM) ──▶ OpenAI / Anthropic / Google / xAI / DeepSeek / Bedrock / Azure / Vertex / Ollama
                  │
                  ├── Agent Gateway (MCP + A2A protocols)
-                 ├── Policy Router (Cedar rules)
-                 ├── Semantic Cache (Redis + embeddings)
                  ├── Cost Predictor (per-request estimates)
                  ├── Budget Webhook (soft/hard limits)
-                 ├── FinOps Reporter (CSV/JSON exports)
                  ├── Workflow Engine (LangGraph templates)
                  ├── A2A Runtime (Temporal agent workflows)
-                 └── Admin API + UI (configuration & monitoring)
+                 └── Admin API + UI
+                      ├── Organizations & SSO (OIDC/SAML)
+                      ├── Audit Trail & Compliance
+                      ├── Prompt Registry & Approvals
+                      ├── Rate Limits & Model Access Governance
+                      ├── Chargeback & SLA Monitoring
+                      ├── A/B Testing & Event System
+                      └── Guardrails & DLP
 ```
 
 ## Default Services
@@ -47,17 +52,19 @@ Start the platform with `docker compose --env-file config/.env up -d`:
 |---------|-----|---------|
 | LiteLLM | [localhost:4000](http://localhost:4000) | OpenAI-compatible LLM proxy |
 | Admin UI | [localhost:5173](http://localhost:5173) | Web admin console |
-| Landing Page | [localhost:9999](http://localhost:9999) | Interactive demo & playground |
-| Docs Site | [localhost:8089](http://localhost:8089) | Developer documentation |
 | Admin API | [localhost:8086](http://localhost:8086) | REST management API |
+| Landing Page | [localhost:9999](http://localhost:9999) | Interactive demo & playground |
+| Playground | [localhost:6001](http://localhost:6001) | Multi-model comparison tool |
+| Deck | [localhost:6002](http://localhost:6002) | Product presentation |
+| Docs Site | [localhost:8089](http://localhost:8089) | Developer documentation |
 
 ### Production URLs
 
 | Service | URL |
 |---------|-----|
-| LLM API | `https://api.aicontrolplane.dev` |
-| Admin Console | `https://api.aicontrolplane.dev/admin` |
-| Developer Docs | `https://docs.aicontrolplane.dev` |
+| LLM API | `https://gateway.deos.dev` |
+| Admin Console | `https://gateway.deos.dev/admin` |
+| Developer Docs | `https://gateway.deos.dev/docs` |
 
 ## Model Groups
 

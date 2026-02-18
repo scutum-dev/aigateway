@@ -151,20 +151,20 @@ cp config/.env.example config/.env
 ### Start
 
 ```bash
-# Core services (LiteLLM, Admin API/UI, Postgres, Redis)
-docker compose up -d
+# Core services (LiteLLM, Admin API/UI, Postgres, Redis, Landing, Docs, Playground, Deck)
+docker compose --env-file config/.env up -d
 
 # Add observability (Grafana, Prometheus, Jaeger)
-docker compose --profile observability up -d
+docker compose --env-file config/.env --profile observability up -d
 
-# Add workflows (Temporal, LangGraph engine)
-docker compose --profile workflows up -d
+# Add workflows (Temporal, LangGraph engine, A2A runtime)
+docker compose --env-file config/.env --profile workflows up -d
 
 # Add FinOps (cost predictor, budget webhook)
-docker compose --profile finops up -d
+docker compose --env-file config/.env --profile finops up -d
 
 # Everything
-docker compose --profile full up -d
+docker compose --env-file config/.env --profile full up -d
 ```
 
 ### Access
@@ -219,10 +219,12 @@ curl http://localhost:4000/v1/chat/completions \
 
 | Profile | Services Added |
 |---------|----------------|
-| *(default)* | postgres, redis, litellm, admin-api, admin-ui |
+| *(default)* | postgres, redis, litellm, admin-api, admin-ui, landing-ui, deck-ui, docs-site, playground-ui |
 | `observability` | otel-collector, prometheus, grafana, jaeger |
-| `workflows` | temporal, workflow-engine |
+| `workflows` | temporal, temporal-ui, workflow-engine, a2a-runtime |
 | `finops` | cost-predictor, budget-webhook |
+| `local-models` | gpu-stub (Ollama compatibility) |
+| `infra` | vault, nginx |
 | `full` | everything above + agent gateway |
 
 ## Supported Models
