@@ -38,6 +38,13 @@ except ImportError:
 _service_dir = os.path.join(os.path.dirname(__file__), "../../src/a2a-runtime")
 _service_path = os.path.join(_service_dir, "main.py")
 sys.path.insert(0, _service_dir)
+
+# Remove any previously-cached ``config`` or ``routes`` modules (e.g. from
+# workflow-engine tests collected earlier) so the a2a-runtime versions are found.
+for _stale in list(sys.modules):
+    if _stale == "config" or _stale.startswith("config.") or _stale == "routes" or _stale.startswith("routes."):
+        sys.modules.pop(_stale)
+
 _spec = importlib.util.spec_from_file_location("a2a_runtime_integ", _service_path)
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["a2a_runtime_integ"] = _mod

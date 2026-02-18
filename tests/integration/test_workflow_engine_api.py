@@ -17,10 +17,16 @@ _service_dir = os.path.join(os.path.dirname(__file__), "../../src/workflow-engin
 _service_path = os.path.join(_service_dir, "main.py")
 sys.path.insert(0, _service_dir)
 
-# Remove any previously-cached ``models`` package (e.g. from gateway-abstraction
-# tests collected earlier) so that the workflow-engine ``models`` package is
-# found from ``_service_dir`` instead.
-_stashed_models = {k: sys.modules.pop(k) for k in list(sys.modules) if k == "models" or k.startswith("models.")}
+# Remove any previously-cached ``models``, ``config``, or ``routes`` packages
+# (e.g. from other service tests collected earlier) so that the workflow-engine
+# versions are found from ``_service_dir`` instead.
+for _stale in list(sys.modules):
+    if (
+        _stale == "models" or _stale.startswith("models.")
+        or _stale == "config" or _stale.startswith("config.")
+        or _stale == "routes" or _stale.startswith("routes.")
+    ):
+        sys.modules.pop(_stale)
 
 _spec = importlib.util.spec_from_file_location("workflow_engine_integ", _service_path)
 _mod = importlib.util.module_from_spec(_spec)
