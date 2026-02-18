@@ -87,7 +87,7 @@ describe('Login', () => {
 
   it('shows "Signing in..." while loading', async () => {
     // Create a promise we control to keep the loading state
-    let resolveLogin: (value: unknown) => void
+    let resolveLogin: (value: { access_token: string; expires_at: string; token_type: string }) => void
     mockedLogin.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveLogin = resolve

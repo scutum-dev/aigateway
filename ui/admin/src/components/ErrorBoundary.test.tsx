@@ -1,9 +1,10 @@
+import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ErrorBoundary from './ErrorBoundary'
 
 // A component that throws an error on render
-function ThrowingChild({ message }: { message: string }) {
+function ThrowingChild({ message }: { message: string }): React.ReactElement {
   throw new Error(message)
 }
 

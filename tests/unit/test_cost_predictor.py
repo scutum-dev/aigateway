@@ -19,7 +19,7 @@ count_message_tokens = _mod.count_message_tokens
 get_encoding = _mod.get_encoding
 get_model_pricing = _mod.get_model_pricing
 estimate_output_tokens = _mod.estimate_output_tokens
-MODEL_PRICING = _mod.MODEL_PRICING
+SELF_HOSTED_PRICING = _mod.SELF_HOSTED_PRICING
 
 
 # ============================================================================
