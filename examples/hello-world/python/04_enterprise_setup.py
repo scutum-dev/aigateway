@@ -12,7 +12,7 @@ This is the "control plane" — managing WHO can use WHAT and HOW MUCH.
 """
 
 import httpx
-import json
+from openai import OpenAI
 
 ADMIN_API = "http://localhost:8086"
 LITELLM = "http://localhost:4000"
@@ -28,9 +28,9 @@ def litellm_headers() -> dict:
 
 
 def step(n: int, title: str):
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  Step {n}: {title}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
 
 # --------------------------------------------------------------------------
@@ -130,8 +130,6 @@ for team_name, team_data in teams.items():
 # --------------------------------------------------------------------------
 step(5, "Developer Makes a Request with Team Key")
 
-from openai import OpenAI
-
 team_key = keys.get("acme-engineering")
 if team_key:
     client = OpenAI(base_url="http://localhost:4000", api_key=team_key)
@@ -145,7 +143,7 @@ if team_key:
     print(f"  Model: {response.model}")
     print(f"  Response: {response.choices[0].message.content}")
     print(f"  Tokens used: {response.usage.total_tokens}")
-    print(f"\n  This request was tracked against the acme-engineering team budget.")
+    print("\n  This request was tracked against the acme-engineering team budget.")
 else:
     print("  Skipped — no team key generated (check LiteLLM is running)")
 
@@ -159,28 +157,25 @@ guardrail = httpx.post(
     f"{ADMIN_API}/api/v1/guardrails",
     headers=admin_headers(token),
     json={
-        "guardrail_name": "block-pii-acme",
-        "mode": "pre_call",
-        "default_on": True,
-        "config": {
-            "type": "regex",
-            "rules": [
-                {"pattern": r"\b\d{3}-\d{2}-\d{4}\b", "action": "block", "description": "SSN pattern"},
-                {"pattern": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "action": "redact", "description": "Email address"},
-            ],
-        },
+        "name": "block-pii-acme",
+        "description": "Block PII in prompts (SSN, credit cards, emails)",
+        "enable_pii_detection": True,
+        "pii_action": "block",
+        "pii_entities": ["US_SSN", "CREDIT_CARD", "EMAIL_ADDRESS", "PERSON"],
+        "enable_prompt_injection": True,
+        "prompt_injection_threshold": 0.90,
     },
 ).json()
-print(f"  Created guardrail: {guardrail.get('guardrail_name', guardrail)}")
+print(f"  Created guardrail: {guardrail.get('name', guardrail)}")
 
 
 # --------------------------------------------------------------------------
 # Summary
 # --------------------------------------------------------------------------
-print(f"\n{'='*60}")
+print(f"\n{'=' * 60}")
 print("  Setup Complete!")
-print(f"{'='*60}")
-print(f"""
+print(f"{'=' * 60}")
+print("""
   Organization: Acme Corp
   Teams:        acme-engineering, acme-data-science
   API Keys:     1 per team, budget-capped

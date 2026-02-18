@@ -22,7 +22,7 @@ The AI Control Plane is a self-hosted platform that sits between your applicatio
 | [Model Routing](guides/model-routing.md) | How models are selected, fallback chains, and group aliases |
 | [Cost Management](guides/cost-management.md) | Budgets, alerts, FinOps reporting, and optimization tips |
 | [Admin Guide](guides/admin-guide.md) | Page-by-page walkthrough of the Admin Console |
-| [Hello World Examples](../examples/hello-world/README.md) | Step-by-step examples for organizations |
+| Hello World Examples | See `examples/hello-world/` in the repository |
 
 ## Architecture Overview
 

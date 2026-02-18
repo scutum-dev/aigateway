@@ -293,6 +293,75 @@ async def create_routing_policy(
         return policy
 
 
+@router.post("/routing-policies/sync", response_model=SyncResult)
+async def sync_all_policies(
+    request: Request,
+    user: UserInfo = Depends(require_admin),
+):
+    """Sync all active routing policies to LiteLLM."""
+    if not deps.db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    synced = 0
+    errors = []
+
+    async with deps.db_pool.acquire() as conn:
+        for policy_type, sync_fn in [
+            ("fallback", _sync_fallbacks_to_litellm),
+            ("model_group", _sync_model_groups_to_litellm),
+            ("routing_strategy", _sync_routing_strategy_to_litellm),
+        ]:
+            result = await sync_fn(conn)
+            if result.get("synced"):
+                synced += 1
+                await conn.execute(
+                    "UPDATE routing_policies SET synced_at = CURRENT_TIMESTAMP WHERE policy_type = $1 AND is_active = TRUE",
+                    policy_type,
+                )
+            elif result.get("error") or result.get("detail"):
+                errors.append({"type": policy_type, **result})
+
+    await log_audit_event(
+        actor_id=user.user_id,
+        action="sync_routing_policies",
+        resource_type="routing_policy",
+        request=request,
+    )
+    return SyncResult(
+        status="ok" if not errors else "partial",
+        synced=synced,
+        errors=errors,
+    )
+
+
+@router.get("/routing-policies/litellm-status", response_model=LiteLLMRouterStatus)
+async def get_litellm_router_status(
+    user: UserInfo = Depends(get_current_user),
+):
+    """Get current LiteLLM router configuration."""
+    if not deps.http_client:
+        raise HTTPException(status_code=503, detail="HTTP client not available")
+
+    try:
+        resp = await deps.http_client.get(
+            f"{deps.LITELLM_URL}/router/settings",
+            headers={"Authorization": f"Bearer {deps.LITELLM_MASTER_KEY}"},
+            timeout=10.0,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            return LiteLLMRouterStatus(
+                routing_strategy=data.get("routing_strategy"),
+                fallbacks=data.get("fallbacks", []),
+                model_group_aliases=data.get("model_group_alias", {}),
+                num_models=data.get("num_models", 0),
+            )
+        return LiteLLMRouterStatus()
+    except Exception as e:
+        logger.debug("Could not fetch LiteLLM router status: %s", e)
+        return LiteLLMRouterStatus()
+
+
 @router.get("/routing-policies/{policy_id}", response_model=RoutingPolicy)
 async def get_routing_policy(
     policy_id: str,
@@ -408,72 +477,3 @@ async def delete_routing_policy(
             request=request,
         )
         return {"status": "deleted"}
-
-
-@router.post("/routing-policies/sync", response_model=SyncResult)
-async def sync_all_policies(
-    request: Request,
-    user: UserInfo = Depends(require_admin),
-):
-    """Sync all active routing policies to LiteLLM."""
-    if not deps.db_pool:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    synced = 0
-    errors = []
-
-    async with deps.db_pool.acquire() as conn:
-        for policy_type, sync_fn in [
-            ("fallback", _sync_fallbacks_to_litellm),
-            ("model_group", _sync_model_groups_to_litellm),
-            ("routing_strategy", _sync_routing_strategy_to_litellm),
-        ]:
-            result = await sync_fn(conn)
-            if result.get("synced"):
-                synced += 1
-                await conn.execute(
-                    "UPDATE routing_policies SET synced_at = CURRENT_TIMESTAMP WHERE policy_type = $1 AND is_active = TRUE",
-                    policy_type,
-                )
-            elif result.get("error") or result.get("detail"):
-                errors.append({"type": policy_type, **result})
-
-    await log_audit_event(
-        actor_id=user.user_id,
-        action="sync_routing_policies",
-        resource_type="routing_policy",
-        request=request,
-    )
-    return SyncResult(
-        status="ok" if not errors else "partial",
-        synced=synced,
-        errors=errors,
-    )
-
-
-@router.get("/routing-policies/litellm-status", response_model=LiteLLMRouterStatus)
-async def get_litellm_router_status(
-    user: UserInfo = Depends(get_current_user),
-):
-    """Get current LiteLLM router configuration."""
-    if not deps.http_client:
-        raise HTTPException(status_code=503, detail="HTTP client not available")
-
-    try:
-        resp = await deps.http_client.get(
-            f"{deps.LITELLM_URL}/router/settings",
-            headers={"Authorization": f"Bearer {deps.LITELLM_MASTER_KEY}"},
-            timeout=10.0,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            return LiteLLMRouterStatus(
-                routing_strategy=data.get("routing_strategy"),
-                fallbacks=data.get("fallbacks", []),
-                model_group_aliases=data.get("model_group_alias", {}),
-                num_models=data.get("num_models", 0),
-            )
-        return LiteLLMRouterStatus()
-    except Exception as e:
-        logger.debug("Could not fetch LiteLLM router status: %s", e)
-        return LiteLLMRouterStatus()

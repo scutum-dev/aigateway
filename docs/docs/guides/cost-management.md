@@ -605,4 +605,4 @@ Then use the `local` provider alias or specific model names like `llama-3.1-70b`
 
 - [Admin Guide - Chargeback](./admin-guide.md#chargeback) -- detailed UI walkthrough
 - [Admin Guide - SLA Monitor](./admin-guide.md#sla-monitor) -- provider health dashboard
-- [Hello World Examples](../../examples/hello-world/README.md) -- cost tracking example scripts
+- Hello World Examples -- see `examples/hello-world/` in the repository for cost tracking scripts

@@ -68,7 +68,9 @@ cd typescript && npm install && cd ..
 | 4 | `python/04_enterprise_setup.py` | Admin provisions org → teams → API keys → budgets |
 | 5 | `python/05_cost_tracking.py` | Query spend by team, model, and time range |
 | 6 | `python/06_guardrails_and_cache.py` | Content filtering + semantic cache |
-| 7 | `typescript/basic_chat.ts` | TypeScript equivalent of example 1 |
+| 7 | `python/07_routing_and_ab_tests.py` | Routing policies (fallbacks, model groups) + A/B testing |
+| 8 | `python/08_prompts_and_workflows.py` | Prompt registry (templates, rendering, execution) + workflows |
+| 9 | `typescript/basic_chat.ts` | TypeScript equivalent of example 1 |
 
 ```bash
 python python/01_basic_chat.py
@@ -77,6 +79,8 @@ python python/03_streaming.py
 python python/04_enterprise_setup.py
 python python/05_cost_tracking.py
 python python/06_guardrails_and_cache.py
+python python/07_routing_and_ab_tests.py
+python python/08_prompts_and_workflows.py
 ```
 
 ---

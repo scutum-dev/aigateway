@@ -201,4 +201,4 @@ docker compose logs admin-api
 - [Model Routing Guide](./model-routing.md) -- understand how models are selected and routed
 - [Cost Management Guide](./cost-management.md) -- set up budgets, alerts, and cost optimization
 - [Admin UI Guide](./admin-guide.md) -- detailed walkthrough of every admin console page
-- [Hello World Examples](../../examples/hello-world/README.md) -- step-by-step examples showing how organizations use the platform
+- Hello World Examples -- see `examples/hello-world/` in the repository for step-by-step examples

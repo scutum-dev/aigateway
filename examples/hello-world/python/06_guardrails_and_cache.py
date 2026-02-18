@@ -6,6 +6,8 @@ Demonstrates two enterprise features:
   2. Semantic Cache — cache similar queries to save cost
 """
 
+import time
+
 import httpx
 from openai import OpenAI
 
@@ -14,9 +16,9 @@ MASTER_KEY = "$LITELLM_KEY"
 
 
 def print_section(title: str):
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"  {title}")
-    print(f"{'='*50}\n")
+    print(f"{'=' * 50}\n")
 
 
 # Authenticate
@@ -69,7 +71,7 @@ print_section("Semantic Cache")
 # Check cache stats
 cache_stats = httpx.get(f"{ADMIN_API}/api/v1/cache/stats", headers=headers).json()
 print(f"  Cache entries:  {cache_stats.get('total_entries', 0)}")
-print(f"  Hit rate:       {cache_stats.get('hit_rate', 0):.1%}")
+print(f"  Hit rate:       {cache_stats.get('hit_rate', 0):.1f}%")
 print(f"  Total hits:     {cache_stats.get('total_hits', 0)}")
 print(f"  Cost saved:     ${cache_stats.get('cost_saved', 0):.4f}")
 
@@ -77,8 +79,6 @@ print(f"  Cost saved:     ${cache_stats.get('cost_saved', 0):.4f}")
 print("\n  Sending same question twice to show caching...")
 
 client = OpenAI(base_url="http://localhost:4000", api_key=MASTER_KEY)
-
-import time
 
 question = "What are the three laws of thermodynamics?"
 
@@ -106,8 +106,8 @@ print(f"  Request 2: {t2}ms (tokens: {r2.usage.total_tokens})")
 if t2 < t1 * 0.5:
     print(f"\n  Cache hit! Second request was {t1 - t2}ms faster.")
 else:
-    print(f"\n  Semantic cache may not be enabled or threshold wasn't met.")
-    print(f"  Enable it in Admin UI: http://localhost:5173 → Settings")
+    print("\n  Semantic cache may not be enabled or threshold wasn't met.")
+    print("  Enable it in Admin UI: http://localhost:5173 → Settings")
 
 
 # --------------------------------------------------------------------------
@@ -132,4 +132,4 @@ if isinstance(audit, list) and audit:
 else:
     print("  No audit logs yet. Every Admin API mutation is logged.")
 
-print(f"\n  Full audit log: http://localhost:5173/audit-log\n")
+print("\n  Full audit log: http://localhost:5173/audit-log\n")
