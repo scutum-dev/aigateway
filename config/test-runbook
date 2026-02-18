@@ -1,0 +1,189 @@
+Prerequisites                                                                                      
+                                                                                                   
+  docker compose --env-file config/.env down -v   # clean slate                                      
+  make up-full                                      # or just: make up                             
+                                                                                                     
+  Wait for all services to be healthy, then open:
+  - Admin UI: http://localhost:5173                                                                  
+  - Admin API: http://localhost:8086                                                               
+
+  Login: use master key $LITELLM_KEY
+
+  ---
+  Phase 1: Foundation
+
+  1. Organizations
+
+  - Navigate to Organizations in sidebar
+  - Click Create Organization → name: "Acme Corp", slug: "acme-corp"
+  - Click into it → you'll see tabs: Overview, Business Units, Teams, Members, SSO
+  - Create a Business Unit: name "Engineering", slug "engineering"
+  - Assign a team (if any exist from LiteLLM seed data)
+
+  2. SSO Config
+
+  - In the org detail → SSO tab
+  - Configure an OIDC provider (provider_type: "oidc", provider_name: "okta", client_id:
+  "test-client")
+  - This is a stub — it stores config but doesn't do real OIDC yet
+
+  3. Audit Log
+
+  - Navigate to Audit Log
+  - You should already see entries from the org/BU you just created
+  - Try the filters (resource_type, action)
+  - Click Export CSV and Export JSON
+
+  4. Guardrails + DLP (extends existing)
+
+  - Navigate to Guardrails → create a guardrail config
+  - API test for DLP detectors:
+  curl -s http://localhost:8086/api/v1/detectors \
+    -H "Authorization: Bearer $(curl -s http://localhost:8086/auth/login -d
+  '{"api_key":"$LITELLM_KEY"}' -H 'Content-Type: application/json' | jq -r
+  .access_token)" | jq
+
+  ---
+  Phase 2: Governance
+
+  5. Prompts
+
+  - Navigate to Prompts
+  - Create a template: name "Summarize", slug "summarize", template text: Summarize the following:
+  {{text}}
+  - View it in the list, click to see details
+  - Submit for review → check the approvals section → approve it
+
+  6. Rate Limits
+
+  - Navigate to Rate Limits
+  - Create a policy: name "Default User RPM", scope "user", rpm_limit: 60
+  - Check the events table (will be empty until limits are hit)
+
+  7. Model Access
+
+  - Navigate to Model Access
+  - Tiers tab: you should see 3 seeded tiers (standard, premium, experimental)
+  - Create a new tier if you like
+  - Requests tab: submit an access request for a model
+  - Approve/reject it from the admin view
+
+  ---
+  Phase 3: FinOps
+
+  8. Chargeback
+
+  - Navigate to Chargeback
+  - Allocation Rules tab: create a rule (name: "Eng Team", allocation_type: "cost_center",
+  allocation_target: "CC-1001")
+  - Reports tab: click Generate Report for current month (e.g. "2026-02")
+  - Export as CSV
+  - Forecasts tab: click Generate Forecast (needs some spend data to be meaningful)
+
+  9. SLA Monitor
+
+  - Navigate to SLA Monitor
+  - Provider Health tab: shows cards per provider (may be empty without traffic)
+  - Create an SLA definition: name "GPT-4o SLA", target_p95_ms: 5000, target_error_rate: 0.01
+  - Failover Rules tab: create a rule (primary: "gpt-4o", fallback: "claude-sonnet-4-5")
+
+  ---
+  Phase 4: Intelligence
+
+  10. A/B Tests
+
+  - Navigate to A/B Tests
+  - Create a test: name "GPT vs Claude", base_model: "gpt-4o", variant_model: "claude-sonnet-4-5",
+  traffic_split: 20
+  - Click Start → status should change to "running"
+  - Click into the test to see detail view with snapshot history
+  - Click Stop or Promote
+
+  11. Semantic Cache (API only — no dedicated page)
+
+  # Get a token first
+  TOKEN=$(curl -s http://localhost:8086/auth/login \
+    -d '{"api_key":"$LITELLM_KEY"}' \
+    -H 'Content-Type: application/json' | jq -r .access_token)
+
+  # Check cache stats
+  curl -s http://localhost:8086/api/v1/cache/stats \
+    -H "Authorization: Bearer $TOKEN" | jq
+
+  # List cache entries
+  curl -s http://localhost:8086/api/v1/cache/entries \
+    -H "Authorization: Bearer $TOKEN" | jq
+
+  ---
+  Phase 5: Developer Experience
+
+  12. Events
+
+  - Navigate to Events
+  - Subscriptions tab: create a subscription (name: "Slack Alerts", channel: "webhook", event_types:
+  ["budget.exceeded", "guardrail.blocked"], config: {"url": "https://hooks.slack.com/test"})
+  - Event Log tab: click Send Test Event → pick an event type, enter a JSON payload
+  - Event should appear in the log table
+
+  13. Playground Sessions (API only)
+
+  # Save a session
+  curl -s http://localhost:8086/api/v1/playground/sessions \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"name":"Test Session","prompt":"Hello
+  world","models":["gpt-4o","claude-sonnet-4-5"],"is_public":true}' | jq
+
+  # List sessions
+  curl -s http://localhost:8086/api/v1/playground/sessions \
+    -H "Authorization: Bearer $TOKEN" | jq
+
+  14. Model Deprecations (API only)
+
+  # Create a deprecation notice
+  curl -s http://localhost:8086/api/v1/model-deprecations \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"model_name":"gpt-4","replacement_model":"gpt-4o","deprecation_date":"2026-03-01","sunset_da
+  te":"2026-06-01","message":"Please migrate to gpt-4o"}' | jq
+
+  # Check if a model is deprecated
+  curl -s http://localhost:8086/api/v1/model-deprecations/check/gpt-4 \
+    -H "Authorization: Bearer $TOKEN" | jq
+
+  # Check a non-deprecated model
+  curl -s http://localhost:8086/api/v1/model-deprecations/check/gpt-4o \
+    -H "Authorization: Bearer $TOKEN" | jq
+
+  ---
+  Quick Smoke Test (all APIs at once)
+
+  TOKEN=$(curl -s http://localhost:8086/auth/login \
+    -d '{"api_key":"$LITELLM_KEY"}' \
+    -H 'Content-Type: application/json' | jq -r .access_token)
+
+  echo "=== Health ===" && curl -s http://localhost:8086/health | jq .status
+  echo "=== Organizations ===" && curl -s http://localhost:8086/api/v1/organizations -H
+  "Authorization: Bearer $TOKEN" | jq length
+  echo "=== Audit Logs ===" && curl -s http://localhost:8086/api/v1/audit-logs -H "Authorization:
+  Bearer $TOKEN" | jq length
+  echo "=== Prompts ===" && curl -s http://localhost:8086/api/v1/prompts -H "Authorization: Bearer
+  $TOKEN" | jq length
+  echo "=== Rate Limits ===" && curl -s http://localhost:8086/api/v1/rate-limits -H "Authorization:
+  Bearer $TOKEN" | jq length
+  echo "=== Model Access Tiers ===" && curl -s http://localhost:8086/api/v1/model-access/tiers -H
+  "Authorization: Bearer $TOKEN" | jq length
+  echo "=== Chargeback Rules ===" && curl -s http://localhost:8086/api/v1/cost-allocation/rules -H
+  "Authorization: Bearer $TOKEN" | jq length
+  echo "=== SLA Definitions ===" && curl -s http://localhost:8086/api/v1/sla/definitions -H
+  "Authorization: Bearer $TOKEN" | jq length
+  echo "=== A/B Tests ===" && curl -s http://localhost:8086/api/v1/ab-tests -H "Authorization: Bearer
+   $TOKEN" | jq length
+  echo "=== Cache Stats ===" && curl -s http://localhost:8086/api/v1/cache/stats -H "Authorization:
+  Bearer $TOKEN" | jq
+  echo "=== Event Subscriptions ===" && curl -s http://localhost:8086/api/v1/events/subscriptions -H
+  "Authorization: Bearer $TOKEN" | jq length
+  echo "=== Deprecations ===" && curl -s http://localhost:8086/api/v1/model-deprecations -H
+  "Authorization: Bearer $TOKEN" | jq length
+
+  Every endpoint should return 200 with an empty array [] or 0 counts initially.

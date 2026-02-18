@@ -1,0 +1,17 @@
+{
+  "name": "ai-control-plane-hello-world",
+  "version": "1.0.0",
+  "description": "Hello World examples for AI Control Plane",
+  "type": "module",
+  "scripts": {
+    "chat": "npx tsx basic_chat.ts",
+    "admin": "npx tsx admin_setup.ts"
+  },
+  "dependencies": {
+    "openai": "^4.70.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
