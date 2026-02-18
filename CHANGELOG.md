@@ -7,9 +7,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Routing policies**: Fallback chains, model groups, routing strategy, and conditional rules — configured via Admin UI, synced to LiteLLM
+- Migration 023 for `routing_policies` table
+- New Admin UI page: Routing Policies with LiteLLM router status panel
 - OpenAPI tag descriptions for all 24 router groups in Swagger/ReDoc
 - Pydantic `Field()` descriptions across all enterprise router models
 - CHANGELOG.md and CONTRIBUTING.md project documentation
+
+### Changed
+- **SSO/OIDC rewrite**: Full Authorization Code + PKCE flow replacing stub implementation (auth_sso.py)
+- SSO test endpoint now performs real OIDC discovery against configured issuer
+- A/B testing: wired traffic splitting weights to LiteLLM `/model/new`, added metric collection and auto-promote/rollback
+- DLP: wired `scan_text_with_detectors()` utility and standalone `/scan` endpoint
+- Model deprecations: wired `check_model_deprecation()` utility and `/sync-alias` endpoint for LiteLLM model aliases
+- Prompt execution: integrated DLP scanning (blocks on match) and deprecation checks (blocks on sunset)
+
+### Fixed
+- Integration test module conflicts (config/routes/models) between services
+- Ruff lint and format compliance across all source and test files
+- Frontend TypeScript errors in test files (wrong property names, unused imports, void returns)
+- Added `python3-saml` to requirements.txt for SAML support
 
 ## [1.2.0] - 2026-02-18
 
