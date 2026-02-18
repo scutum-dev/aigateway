@@ -22,9 +22,12 @@ sys.path.insert(0, _service_dir)
 # versions are found from ``_service_dir`` instead.
 for _stale in list(sys.modules):
     if (
-        _stale == "models" or _stale.startswith("models.")
-        or _stale == "config" or _stale.startswith("config.")
-        or _stale == "routes" or _stale.startswith("routes.")
+        _stale == "models"
+        or _stale.startswith("models.")
+        or _stale == "config"
+        or _stale.startswith("config.")
+        or _stale == "routes"
+        or _stale.startswith("routes.")
     ):
         sys.modules.pop(_stale)
 
