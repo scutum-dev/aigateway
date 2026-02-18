@@ -149,7 +149,6 @@ describe('response interceptor – 401 handling', () => {
     localStorage.setItem('token_expires_at', '12345')
 
     // window.location is readonly in jsdom but href is settable
-    const originalHref = window.location.href
     const error = { response: { status: 401 } }
 
     await expect(interceptors.responseRejected(error)).rejects.toBe(error)
@@ -221,10 +220,10 @@ describe('mcpServersApi', () => {
   })
 
   it('test posts to /mcp-servers/:id/test', async () => {
-    mockPost.mockResolvedValue(fakeResponse({ success: true }))
+    mockPost.mockResolvedValue(fakeResponse({ status: 'ok', message: 'connected' }))
     const result = await mcpServersApi.test('1')
     expect(mockPost).toHaveBeenCalledWith('/mcp-servers/1/test')
-    expect(result.success).toBe(true)
+    expect(result.status).toBe('ok')
   })
 
   it('sync posts to /mcp-servers/sync', async () => {
@@ -424,10 +423,10 @@ describe('guardrailsApi', () => {
 // ===================================================================
 describe('settingsApi', () => {
   it('get calls GET /settings', async () => {
-    mockGet.mockResolvedValue(fakeResponse({ theme: 'dark' }))
+    mockGet.mockResolvedValue(fakeResponse({ default_model: 'gpt-4' }))
     const result = await settingsApi.get()
     expect(mockGet).toHaveBeenCalledWith('/settings')
-    expect(result.theme).toBe('dark')
+    expect(result.default_model).toBe('gpt-4')
   })
 
   it('update puts to /settings', async () => {

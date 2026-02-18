@@ -1530,10 +1530,10 @@ describe('Events hooks', () => {
     const { result } = renderHook(() => useUpdateEventSubscription(), { wrapper })
 
     await act(async () => {
-      result.current.mutate({ id: 'es1', data: { enabled: false } })
+      result.current.mutate({ id: 'es1', data: { name: 'updated-sub' } })
     })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(eventsApi.updateSubscription).toHaveBeenCalledWith('es1', { enabled: false })
+    expect(eventsApi.updateSubscription).toHaveBeenCalledWith('es1', { name: 'updated-sub' })
   })
 
   it('useDeleteEventSubscription calls deleteSubscription and invalidates event-subscriptions', async () => {
