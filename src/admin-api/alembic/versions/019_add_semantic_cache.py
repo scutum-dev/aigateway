@@ -8,6 +8,7 @@ Create Date: 2026-02-18
 
 from typing import Sequence, Union
 
+import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -18,37 +19,48 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # pgvector extension may not be available in all environments
-    try:
+    # Check if pgvector extension is available
+    conn = op.get_bind()
+    result = conn.execute(sa.text("SELECT COUNT(*) FROM pg_available_extensions WHERE name = 'vector'"))
+    has_pgvector = result.scalar() > 0
+
+    if has_pgvector:
         op.execute("CREATE EXTENSION IF NOT EXISTS vector")
-    except Exception:
-        pass
-
-    op.execute("""
-        CREATE TABLE IF NOT EXISTS semantic_cache (
-            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-            embedding vector(1536),
-            prompt_hash VARCHAR(64),
-            model VARCHAR(255),
-            request_body JSONB,
-            response_body JSONB,
-            token_count INTEGER,
-            hit_count INTEGER DEFAULT 0,
-            last_hit_at TIMESTAMPTZ,
-            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-            expires_at TIMESTAMPTZ
-        )
-    """)
-
-    # IVFFlat index for cosine similarity search
-    # This may fail if pgvector is not installed; wrap in try/except
-    try:
+        op.execute("""
+            CREATE TABLE IF NOT EXISTS semantic_cache (
+                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                embedding vector(1536),
+                prompt_hash VARCHAR(64),
+                model VARCHAR(255),
+                request_body JSONB,
+                response_body JSONB,
+                token_count INTEGER,
+                hit_count INTEGER DEFAULT 0,
+                last_hit_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMPTZ
+            )
+        """)
         op.execute("""
             CREATE INDEX IF NOT EXISTS idx_semantic_cache_embedding
             ON semantic_cache USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)
         """)
-    except Exception:
-        pass
+    else:
+        # Create table without vector column when pgvector is not available
+        op.execute("""
+            CREATE TABLE IF NOT EXISTS semantic_cache (
+                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                prompt_hash VARCHAR(64),
+                model VARCHAR(255),
+                request_body JSONB,
+                response_body JSONB,
+                token_count INTEGER,
+                hit_count INTEGER DEFAULT 0,
+                last_hit_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMPTZ
+            )
+        """)
 
     op.execute("""
         CREATE INDEX IF NOT EXISTS idx_semantic_cache_prompt_hash
