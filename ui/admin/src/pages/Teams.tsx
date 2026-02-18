@@ -5,64 +5,53 @@ import {
   useUpdateTeam,
   useDeleteTeam,
   useAddTeamMember,
-  useGuardrails,
+  useDeleteTeamMember,
   useGuardrailAssignments,
+  useGuardrails,
   useAssignGuardrail,
   useUnassignGuardrail,
 } from '../api/hooks'
-import { PlusIcon, UserPlusIcon, UserGroupIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, UserGroupIcon, TrashIcon, PencilIcon, UserPlusIcon } from '@heroicons/react/24/outline'
 import { SkeletonCard } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
-import type { Team } from '../types'
+import type { TeamInfo } from '../types'
 
 export default function Teams() {
   const { data: teams, isLoading, error } = useTeams()
-  const { data: guardrailConfigs } = useGuardrails()
-  const { data: assignments } = useGuardrailAssignments()
   const createTeam = useCreateTeam()
   const updateTeam = useUpdateTeam()
   const deleteTeam = useDeleteTeam()
   const addMember = useAddTeamMember()
+  const deleteMember = useDeleteTeamMember()
+  const { data: assignments } = useGuardrailAssignments()
+  const { data: guardrails } = useGuardrails()
   const assignGuardrail = useAssignGuardrail()
   const unassignGuardrail = useUnassignGuardrail()
   const toast = useToast()
 
   const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing] = useState<Team | null>(null)
-  const [form, setForm] = useState({
-    name: '',
-    description: '',
-    monthly_budget: '',
-    default_model: '',
-    guardrail_config_id: '',
-  })
+  const [editingTeam, setEditingTeam] = useState<TeamInfo | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [addMemberTeam, setAddMemberTeam] = useState<string | null>(null)
-  const [memberForm, setMemberForm] = useState({
-    user_id: '',
-    role: 'member' as 'member' | 'admin',
-  })
+  const [memberTeamId, setMemberTeamId] = useState<string | null>(null)
+  const [guardrailTeamId, setGuardrailTeamId] = useState<string | null>(null)
+  const [form, setForm] = useState({ team_alias: '', max_budget: '', models: '' })
+  const [memberForm, setMemberForm] = useState({ user_id: '', role: 'user' })
+  const [selectedGuardrailId, setSelectedGuardrailId] = useState('')
 
-  const getTeamAssignment = (teamId: string) =>
-    (assignments ?? []).find((a) => a.team_id === teamId)
-
-  const openCreate = () => {
-    setEditing(null)
-    setForm({ name: '', description: '', monthly_budget: '', default_model: '', guardrail_config_id: '' })
-    setShowForm(true)
+  const resetForm = () => {
+    setForm({ team_alias: '', max_budget: '', models: '' })
+    setEditingTeam(null)
+    setShowForm(false)
   }
 
-  const openEdit = (team: Team) => {
-    const assignment = getTeamAssignment(team.id)
-    setEditing(team)
+  const openEdit = (team: TeamInfo) => {
+    setEditingTeam(team)
     setForm({
-      name: team.name,
-      description: team.description || '',
-      monthly_budget: team.monthly_budget != null ? String(team.monthly_budget) : '',
-      default_model: team.default_model || '',
-      guardrail_config_id: assignment?.guardrail_config_id || '',
+      team_alias: team.team_alias || '',
+      max_budget: team.max_budget?.toString() || '',
+      models: team.models?.join(', ') || '',
     })
     setShowForm(true)
   }
@@ -72,7 +61,7 @@ export default function Teams() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Teams</h1>
-          <p className="text-gray-600">Manage teams and members</p>
+          <p className="text-gray-600">Manage teams and member access</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
@@ -82,107 +71,100 @@ export default function Teams() {
   }
 
   if (error) {
-    return (
-      <div className="bg-red-50 text-red-700 p-4 rounded-lg">
-        Failed to load teams
-      </div>
-    )
+    return <div className="bg-red-50 text-red-700 p-4 rounded-lg">Failed to load teams</div>
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const teamData = {
-      name: form.name,
-      description: form.description || null,
-      monthly_budget: form.monthly_budget ? parseFloat(form.monthly_budget) : null,
-      default_model: form.default_model || null,
-    }
-
     try {
-      if (editing) {
-        await updateTeam.mutateAsync({ id: editing.id, data: teamData })
+      const payload: Record<string, unknown> = { team_alias: form.team_alias }
+      if (form.max_budget) payload.max_budget = parseFloat(form.max_budget)
+      if (form.models) payload.models = form.models.split(',').map((m) => m.trim())
 
-        // Handle guardrail assignment changes
-        const currentAssignment = getTeamAssignment(editing.id)
-        const newConfigId = form.guardrail_config_id
-
-        if (currentAssignment && !newConfigId) {
-          await unassignGuardrail.mutateAsync({
-            configId: currentAssignment.guardrail_config_id,
-            teamId: editing.id,
-          })
-        } else if (newConfigId && currentAssignment?.guardrail_config_id !== newConfigId) {
-          if (currentAssignment) {
-            await unassignGuardrail.mutateAsync({
-              configId: currentAssignment.guardrail_config_id,
-              teamId: editing.id,
-            })
-          }
-          await assignGuardrail.mutateAsync({ configId: newConfigId, teamId: editing.id })
-        }
-
-        toast('success', 'Team updated successfully')
+      if (editingTeam) {
+        await updateTeam.mutateAsync({ team_id: editingTeam.team_id, ...payload } as any)
+        toast('success', 'Team updated')
       } else {
-        const created = await createTeam.mutateAsync({
-          name: teamData.name,
-          description: teamData.description ?? '',
-          monthly_budget: teamData.monthly_budget,
-          default_model: teamData.default_model ?? '',
-        })
-
-        if (form.guardrail_config_id && created.id) {
-          await assignGuardrail.mutateAsync({
-            configId: form.guardrail_config_id,
-            teamId: created.id,
-          })
-        }
-
-        toast('success', 'Team created successfully')
+        await createTeam.mutateAsync(payload as any)
+        toast('success', 'Team created')
       }
-      setShowForm(false)
-      setEditing(null)
+      resetForm()
     } catch {
-      toast('error', editing ? 'Failed to update team' : 'Failed to create team')
+      toast('error', editingTeam ? 'Failed to update team' : 'Failed to create team')
     }
   }
 
   const handleDelete = async () => {
     if (!deleteId) return
     try {
-      await deleteTeam.mutateAsync(deleteId)
-      toast('success', 'Team deleted successfully')
-      setDeleteId(null)
+      await deleteTeam.mutateAsync([deleteId])
+      toast('success', 'Team deleted')
     } catch {
       toast('error', 'Failed to delete team')
     }
+    setDeleteId(null)
   }
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!addMemberTeam) return
+    if (!memberTeamId) return
     try {
       await addMember.mutateAsync({
-        teamId: addMemberTeam,
-        data: memberForm,
+        teamId: memberTeamId,
+        member: { role: memberForm.role, user_id: memberForm.user_id },
       })
-      toast('success', 'Member added successfully')
-      setAddMemberTeam(null)
-      setMemberForm({ user_id: '', role: 'member' })
+      toast('success', 'Member added')
+      setMemberForm({ user_id: '', role: 'user' })
+      setMemberTeamId(null)
     } catch {
       toast('error', 'Failed to add member')
     }
   }
+
+  const handleRemoveMember = async (teamId: string, userId: string) => {
+    try {
+      await deleteMember.mutateAsync({ teamId, userId })
+      toast('success', 'Member removed')
+    } catch {
+      toast('error', 'Failed to remove member')
+    }
+  }
+
+  const handleAssignGuardrail = async () => {
+    if (!guardrailTeamId || !selectedGuardrailId) return
+    try {
+      await assignGuardrail.mutateAsync({ configId: selectedGuardrailId, teamId: guardrailTeamId })
+      toast('success', 'Guardrail assigned')
+      setSelectedGuardrailId('')
+      setGuardrailTeamId(null)
+    } catch {
+      toast('error', 'Failed to assign guardrail')
+    }
+  }
+
+  const handleUnassignGuardrail = async (configId: string, teamId: string) => {
+    try {
+      await unassignGuardrail.mutateAsync({ configId, teamId })
+      toast('success', 'Guardrail unassigned')
+    } catch {
+      toast('error', 'Failed to unassign guardrail')
+    }
+  }
+
+  const teamList = Array.isArray(teams) ? teams : []
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Teams</h1>
-          <p className="text-gray-600">Manage teams and members</p>
+          <p className="text-gray-600">
+            {teamList.length} team{teamList.length !== 1 ? 's' : ''}
+          </p>
         </div>
-        <button onClick={openCreate} className="btn btn-primary">
+        <button onClick={() => { resetForm(); setShowForm(true) }} className="btn btn-primary">
           <PlusIcon className="w-5 h-5 mr-2" />
-          Add Team
+          Create Team
         </button>
       </div>
 
@@ -191,100 +173,60 @@ export default function Teams() {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         title="Delete Team?"
-        message="This will permanently delete the team, remove all members, and unassign any guardrail profiles."
-        confirmLabel="Delete"
+        message="This will delete the team and disassociate all members. This action cannot be undone."
+        confirmLabel="Delete Team"
         confirmVariant="danger"
       />
 
       {showForm && (
-        <div className="card border-2 border-primary-200">
+        <div className="card">
           <h2 className="text-lg font-semibold mb-4">
-            {editing ? `Edit: ${editing.name}` : 'Create Team'}
+            {editingTeam ? 'Edit Team' : 'Create Team'}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label htmlFor="team-name" className="label">Name</label>
+                <label htmlFor="team-name" className="label">Team Name</label>
                 <input
                   id="team-name"
                   type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  value={form.team_alias}
+                  onChange={(e) => setForm({ ...form, team_alias: e.target.value })}
                   className="input"
                   required
+                  placeholder="e.g., Engineering"
                 />
               </div>
               <div>
-                <label htmlFor="team-budget" className="label">Monthly Budget ($)</label>
+                <label htmlFor="team-budget" className="label">Max Budget ($)</label>
                 <input
                   id="team-budget"
                   type="number"
+                  step="0.01"
                   min="0"
-                  value={form.monthly_budget}
-                  onChange={(e) =>
-                    setForm({ ...form, monthly_budget: e.target.value })
-                  }
+                  value={form.max_budget}
+                  onChange={(e) => setForm({ ...form, max_budget: e.target.value })}
                   className="input"
                   placeholder="Optional"
                 />
               </div>
-              <div className="col-span-2">
-                <label htmlFor="team-description" className="label">Description</label>
-                <textarea
-                  id="team-description"
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm({ ...form, description: e.target.value })
-                  }
-                  className="input"
-                  rows={2}
-                />
-              </div>
               <div>
-                <label htmlFor="team-default-model" className="label">Default Model</label>
+                <label htmlFor="team-models" className="label">Allowed Models (comma-separated)</label>
                 <input
-                  id="team-default-model"
+                  id="team-models"
                   type="text"
-                  value={form.default_model}
-                  onChange={(e) =>
-                    setForm({ ...form, default_model: e.target.value })
-                  }
+                  value={form.models}
+                  onChange={(e) => setForm({ ...form, models: e.target.value })}
                   className="input"
-                  placeholder="e.g., gpt-4o-mini"
+                  placeholder="e.g., gpt-4o, claude-3.5-sonnet"
                 />
-              </div>
-              <div>
-                <label htmlFor="team-guardrail" className="label">Guardrail Profile</label>
-                <select
-                  id="team-guardrail"
-                  value={form.guardrail_config_id}
-                  onChange={(e) =>
-                    setForm({ ...form, guardrail_config_id: e.target.value })
-                  }
-                  className="input"
-                >
-                  <option value="">None</option>
-                  {(guardrailConfigs ?? []).map((cfg) => (
-                    <option key={cfg.id} value={cfg.id}>
-                      {cfg.name}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
             <div className="flex space-x-3">
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={createTeam.isPending || updateTeam.isPending}
-              >
-                {editing ? 'Update' : 'Create Team'}
+              <button type="submit" className="btn btn-primary" disabled={createTeam.isPending || updateTeam.isPending}>
+                {editingTeam ? 'Update Team' : 'Create Team'}
               </button>
-              <button
-                type="button"
-                onClick={() => { setShowForm(false); setEditing(null) }}
-                className="btn btn-secondary"
-              >
+              <button type="button" onClick={resetForm} className="btn btn-secondary">
                 Cancel
               </button>
             </div>
@@ -292,22 +234,22 @@ export default function Teams() {
         </div>
       )}
 
-      {addMemberTeam && (
+      {/* Add Member Form */}
+      {memberTeamId && (
         <div className="card">
-          <h2 className="text-lg font-semibold mb-4">Add Team Member</h2>
+          <h2 className="text-lg font-semibold mb-4">Add Member</h2>
           <form onSubmit={handleAddMember} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="member-user-id" className="label">User ID</label>
                 <input
                   id="member-user-id"
                   type="text"
                   value={memberForm.user_id}
-                  onChange={(e) =>
-                    setMemberForm({ ...memberForm, user_id: e.target.value })
-                  }
+                  onChange={(e) => setMemberForm({ ...memberForm, user_id: e.target.value })}
                   className="input"
                   required
+                  placeholder="user@example.com"
                 />
               </div>
               <div>
@@ -315,25 +257,19 @@ export default function Teams() {
                 <select
                   id="member-role"
                   value={memberForm.role}
-                  onChange={(e) =>
-                    setMemberForm({ ...memberForm, role: e.target.value as 'member' | 'admin' })
-                  }
+                  onChange={(e) => setMemberForm({ ...memberForm, role: e.target.value })}
                   className="input"
                 >
-                  <option value="member">Member</option>
+                  <option value="user">User</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
             </div>
             <div className="flex space-x-3">
-              <button type="submit" className="btn btn-primary">
-                Add Member
+              <button type="submit" className="btn btn-primary" disabled={addMember.isPending}>
+                {addMember.isPending ? 'Adding...' : 'Add Member'}
               </button>
-              <button
-                type="button"
-                onClick={() => setAddMemberTeam(null)}
-                className="btn btn-secondary"
-              >
+              <button type="button" onClick={() => setMemberTeamId(null)} className="btn btn-secondary">
                 Cancel
               </button>
             </div>
@@ -341,107 +277,162 @@ export default function Teams() {
         </div>
       )}
 
-      {(!teams || teams.length === 0) ? (
+      {/* Assign Guardrail Form */}
+      {guardrailTeamId && (
+        <div className="card">
+          <h2 className="text-lg font-semibold mb-4">Assign Guardrail</h2>
+          <div className="flex items-end gap-4">
+            <div className="flex-1">
+              <label htmlFor="guardrail-select" className="label">Guardrail Config</label>
+              <select
+                id="guardrail-select"
+                value={selectedGuardrailId}
+                onChange={(e) => setSelectedGuardrailId(e.target.value)}
+                className="input"
+              >
+                <option value="">Select a guardrail...</option>
+                {guardrails?.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={handleAssignGuardrail}
+              className="btn btn-primary"
+              disabled={!selectedGuardrailId || assignGuardrail.isPending}
+            >
+              Assign
+            </button>
+            <button onClick={() => setGuardrailTeamId(null)} className="btn btn-secondary">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {teamList.length === 0 ? (
         <EmptyState
           icon={UserGroupIcon}
-          title="No teams yet"
+          title="No teams"
           description="Create teams to organize users and manage access."
           actionLabel="Create Team"
-          onAction={openCreate}
+          onAction={() => setShowForm(true)}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {teams.map((team) => {
-            const assignment = getTeamAssignment(team.id)
+          {teamList.map((team) => {
+            const teamAssignments = assignments?.filter((a) => a.team_id === team.team_id) || []
             return (
-              <div key={team.id} className="card">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="font-semibold">{team.name}</h3>
-                    {team.description && (
-                      <p className="text-sm text-gray-500">{team.description}</p>
-                    )}
+              <div key={team.team_id} className="card">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-indigo-100 rounded-lg mr-3">
+                      <UserGroupIcon className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">{team.team_alias || team.team_id}</h3>
+                      <code className="text-xs text-gray-400">{team.team_id}</code>
+                    </div>
                   </div>
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      team.is_active
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}
-                  >
-                    {team.is_active ? 'Active' : 'Inactive'}
-                  </span>
                 </div>
 
                 <div className="space-y-2 text-sm">
-                  {team.monthly_budget != null && (
-                    <p>
-                      <span className="text-gray-500">Budget:</span> $
-                      {team.monthly_budget.toFixed(2)}/mo
-                    </p>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Spend</span>
+                    <span className="font-medium">${(team.spend || 0).toFixed(4)}</span>
+                  </div>
+                  {team.max_budget !== null && team.max_budget !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Budget</span>
+                      <span className="font-medium">${team.max_budget.toFixed(2)}</span>
+                    </div>
                   )}
-                  {team.default_model && (
-                    <p>
-                      <span className="text-gray-500">Default Model:</span>{' '}
-                      {team.default_model}
-                    </p>
+
+                  {/* Members */}
+                  {team.members_with_roles && team.members_with_roles.length > 0 && (
+                    <div>
+                      <span className="text-gray-500 text-xs">Members:</span>
+                      <div className="space-y-1 mt-1">
+                        {team.members_with_roles.map((m) => (
+                          <div key={m.user_id} className="flex items-center justify-between">
+                            <span className="text-xs">
+                              {m.user_id}
+                              <span className="ml-1 text-gray-400">({m.role})</span>
+                            </span>
+                            <button
+                              onClick={() => handleRemoveMember(team.team_id, m.user_id)}
+                              className="text-red-400 hover:text-red-600"
+                              title="Remove member"
+                            >
+                              <TrashIcon className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                  <p>
-                    <span className="text-gray-500">Members:</span>{' '}
-                    {team.members?.length || 0}
-                  </p>
-                  {assignment && (
-                    <p>
-                      <span className="text-gray-500">Guardrail:</span>{' '}
-                      <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded text-xs">
-                        {assignment.config_name}
-                      </span>
-                    </p>
+
+                  {/* Models */}
+                  {team.models && team.models.length > 0 && (
+                    <div>
+                      <span className="text-gray-500 text-xs">Models:</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {team.models.map((m) => (
+                          <span key={m} className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">{m}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Guardrail Assignments */}
+                  {teamAssignments.length > 0 && (
+                    <div>
+                      <span className="text-gray-500 text-xs">Guardrails:</span>
+                      <div className="space-y-1 mt-1">
+                        {teamAssignments.map((a) => (
+                          <div key={a.guardrail_config_id} className="flex items-center justify-between">
+                            <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">{a.config_name}</span>
+                            <button
+                              onClick={() => handleUnassignGuardrail(a.guardrail_config_id, team.team_id)}
+                              className="text-red-400 hover:text-red-600"
+                              title="Unassign guardrail"
+                            >
+                              <TrashIcon className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                {team.members && team.members.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <p className="text-xs text-gray-500 mb-2">Members:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {team.members.slice(0, 5).map((member: string) => (
-                        <span
-                          key={member}
-                          className="px-2 py-1 bg-gray-100 rounded text-xs"
-                        >
-                          {member}
-                        </span>
-                      ))}
-                      {team.members.length > 5 && (
-                        <span className="px-2 py-1 text-gray-500 text-xs">
-                          +{team.members.length - 5} more
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-4 flex gap-2">
+                <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">
+                  <button
+                    onClick={() => setMemberTeamId(team.team_id)}
+                    className="btn btn-secondary text-xs flex-1"
+                  >
+                    <UserPlusIcon className="w-3.5 h-3.5 mr-1" />
+                    Add Member
+                  </button>
+                  <button
+                    onClick={() => setGuardrailTeamId(team.team_id)}
+                    className="btn btn-secondary text-xs flex-1"
+                  >
+                    Guardrail
+                  </button>
                   <button
                     onClick={() => openEdit(team)}
-                    className="btn btn-secondary flex-1 text-sm"
+                    className="btn btn-secondary text-xs flex-1"
                   >
-                    <PencilIcon className="w-4 h-4 mr-1" />
+                    <PencilIcon className="w-3.5 h-3.5 mr-1" />
                     Edit
                   </button>
                   <button
-                    onClick={() => setAddMemberTeam(team.id)}
-                    className="btn btn-secondary flex-1 text-sm"
+                    onClick={() => setDeleteId(team.team_id)}
+                    className="btn btn-secondary text-xs text-red-600 hover:text-red-800 flex-1"
                   >
-                    <UserPlusIcon className="w-4 h-4 mr-1" />
-                    Member
-                  </button>
-                  <button
-                    onClick={() => setDeleteId(team.id)}
-                    className="btn bg-red-50 text-red-600 hover:bg-red-100 text-sm px-3"
-                    aria-label={`Delete team ${team.name}`}
-                  >
-                    <TrashIcon className="w-4 h-4" />
+                    <TrashIcon className="w-3.5 h-3.5 mr-1" />
+                    Delete
                   </button>
                 </div>
               </div>

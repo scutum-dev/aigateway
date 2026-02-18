@@ -12,7 +12,7 @@ Every request that passes through the gateway is logged with:
 - **User ID** and **team ID** of the requester
 - **Timestamp** for time-based aggregation
 
-Costs are calculated using each model's configured pricing (stored in the `model_routing_config` database table) and recorded in LiteLLM's native `LiteLLM_SpendLogs` table. Daily aggregates are stored in the `cost_tracking_daily` table for efficient reporting.
+Costs are calculated using each model's configured pricing and recorded in LiteLLM's native `LiteLLM_SpendLogs` table. A `cost_tracking_daily` database view provides daily aggregates for reporting.
 
 Cost tracking is enabled by default. You can toggle it off in the Admin UI under **Settings > Features > Cost Tracking**.
 
@@ -213,11 +213,8 @@ Response:
 ### Model Pricing
 
 ```bash
-# Get all model pricing (cost per 1M tokens)
+# Get all model pricing (cost per 1M tokens) — auto-updated from litellm
 curl http://localhost:8080/pricing
-
-# Update pricing for a model
-curl -X POST "http://localhost:8080/pricing/update?model=gpt-5&input_cost=2.5&output_cost=10.0"
 ```
 
 ### Cost Predictor Endpoints
@@ -226,8 +223,7 @@ curl -X POST "http://localhost:8080/pricing/update?model=gpt-5&input_cost=2.5&ou
 |--------|----------|-------------|
 | POST | `/predict` | Predict cost of a request (with optional budget check) |
 | POST | `/budget/check` | Check if a cost fits within a key's budget |
-| GET | `/pricing` | Get all model pricing |
-| POST | `/pricing/update` | Update pricing for a model |
+| GET | `/pricing` | Get all model pricing (litellm auto-updated + self-hosted) |
 | GET | `/health` | Health check |
 
 ## Budget Webhook
@@ -236,10 +232,11 @@ The Budget Webhook service (port 8081) acts as a LiteLLM webhook that enforces b
 
 ### How It Works
 
-LiteLLM calls the webhook before and after each request:
+LiteLLM calls the webhook before each request:
 
-1. **Pre-request** (`/webhook/pre-request`): Checks the API key's budget, predicts the request cost, and blocks the request if it would exceed the hard limit.
-2. **Post-request** (`/webhook/post-request`): Records actual costs to the `cost_tracking_daily` table for FinOps reporting.
+- **Pre-request** (`/webhook/pre-request`): Checks the API key's budget, predicts the request cost, and blocks the request if it would exceed the hard limit.
+
+Actual costs are recorded automatically by LiteLLM in the `LiteLLM_SpendLogs` table.
 
 ### Enforcement Flow
 
@@ -253,10 +250,7 @@ Request arrives → Pre-request webhook
               │                 │                       │
               ▼                 ▼                       ▼
          Process request   Process request         Reject request
-              │                 │                  + Send alert
-              ▼                 ▼
-         Post-request webhook
-         (Record actual cost)
+                                                   + Send alert
 ```
 
 ### Configuration
@@ -294,39 +288,35 @@ curl "http://localhost:8081/alerts?user_id=user-123"
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/webhook/pre-request` | Pre-request budget validation (called by LiteLLM) |
-| POST | `/webhook/post-request` | Post-request cost recording (called by LiteLLM) |
 | GET | `/alerts` | List recent budget alerts |
 | GET | `/health` | Health check |
 
-## FinOps Reporter
+## FinOps Reports (Admin API)
 
-The FinOps Reporter service (port 8082) provides detailed cost analytics endpoints. Enable it with the `finops` profile:
-
-```bash
-docker compose --env-file config/.env --profile finops up -d
-```
+Cost reports are available through the Admin API (port 8086). These query LiteLLM's native `LiteLLM_SpendLogs` table directly — no separate service needed.
 
 ### Available Endpoints
 
-| Endpoint                          | Method | Description                              |
-|-----------------------------------|--------|------------------------------------------|
-| `/reports/cost`                   | GET    | Cost report by period (daily/weekly/monthly/custom) |
-| `/reports/trend`                  | GET    | Cost trend analysis over time            |
-| `/reports/budget-utilization`     | GET    | Budget utilization status                |
-| `/reports/export`                 | GET    | Export cost data as CSV or JSON          |
-| `/reports/summary`               | GET    | Dashboard summary statistics             |
+| Endpoint                              | Method | Description                              |
+|---------------------------------------|--------|------------------------------------------|
+| `/api/v1/reports/cost`                | GET    | Cost report by period (daily/weekly/monthly/custom) |
+| `/api/v1/reports/trend`               | GET    | Cost trend analysis over time            |
+| `/api/v1/reports/export`              | GET    | Export cost data as CSV or JSON          |
+| `/api/v1/reports/summary`             | GET    | Dashboard summary statistics             |
+
+All report endpoints require JWT authentication (same as other Admin API endpoints).
 
 ### Cost Report
 
 ```bash
 # Daily cost report
-curl "http://localhost:8082/reports/cost?period=daily"
+curl "http://localhost:8086/api/v1/reports/cost?period=daily" -H "Authorization: Bearer $TOKEN"
 
 # Monthly cost report for a specific team
-curl "http://localhost:8082/reports/cost?period=monthly&team_id=engineering"
+curl "http://localhost:8086/api/v1/reports/cost?period=monthly&team_id=engineering" -H "Authorization: Bearer $TOKEN"
 
 # Custom date range
-curl "http://localhost:8082/reports/cost?period=custom&start_date=2026-01-01&end_date=2026-01-31"
+curl "http://localhost:8086/api/v1/reports/cost?period=custom&start_date=2026-01-01&end_date=2026-01-31" -H "Authorization: Bearer $TOKEN"
 ```
 
 The response includes breakdowns by model, user, and team:
@@ -335,7 +325,7 @@ The response includes breakdowns by model, user, and team:
 {
   "period": "monthly",
   "start_date": "2026-02-01",
-  "end_date": "2026-02-16",
+  "end_date": "2026-02-17",
   "total_cost": 1247.53,
   "total_requests": 45230,
   "total_input_tokens": 12500000,
@@ -350,10 +340,10 @@ The response includes breakdowns by model, user, and team:
 
 ```bash
 # 30-day cost trend
-curl "http://localhost:8082/reports/trend?days=30"
+curl "http://localhost:8086/api/v1/reports/trend?days=30" -H "Authorization: Bearer $TOKEN"
 
 # Cost trend for a specific model
-curl "http://localhost:8082/reports/trend?days=30&model=claude-sonnet-4.5"
+curl "http://localhost:8086/api/v1/reports/trend?days=30&model=claude-sonnet-4.5" -H "Authorization: Bearer $TOKEN"
 ```
 
 The response includes a trend direction (`increasing`, `decreasing`, or `stable`) and percentage change.
@@ -362,16 +352,16 @@ The response includes a trend direction (`increasing`, `decreasing`, or `stable`
 
 ```bash
 # Export as CSV
-curl "http://localhost:8082/reports/export?format=csv&period=monthly" -o cost_report.csv
+curl "http://localhost:8086/api/v1/reports/export?format=csv&period=monthly" -H "Authorization: Bearer $TOKEN" -o cost_report.csv
 
 # Export as JSON
-curl "http://localhost:8082/reports/export?format=json&period=monthly" -o cost_report.json
+curl "http://localhost:8086/api/v1/reports/export?format=json&period=monthly" -H "Authorization: Bearer $TOKEN" -o cost_report.json
 ```
 
 ### Dashboard Summary
 
 ```bash
-curl http://localhost:8082/reports/summary
+curl "http://localhost:8086/api/v1/reports/summary" -H "Authorization: Bearer $TOKEN"
 ```
 
 Returns today's cost, this week's cost, this month's cost, and top 5 models by spend.
@@ -437,7 +427,7 @@ Match model power to task complexity:
 
 ### 5. Monitor and Act on Trends
 
-Check the FinOps Reporter trend endpoint weekly. If costs are trending upward, drill into the model and user breakdowns to find the source.
+Check the Admin API trend endpoint (`/api/v1/reports/trend`) weekly. If costs are trending upward, drill into the model and user breakdowns to find the source.
 
 ### 6. Set Per-Team Budgets
 

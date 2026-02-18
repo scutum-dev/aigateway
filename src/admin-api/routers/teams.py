@@ -1,133 +1,153 @@
-from typing import List
+"""Team management router — proxies to LiteLLM."""
+
+import logging
+from typing import Any, Dict, List, Optional
 
 import deps
 from auth import UserInfo, get_current_user, require_admin
 from fastapi import APIRouter, Depends, HTTPException
-from models import Team, TeamCreate, TeamMember, TeamUpdate
+from pydantic import BaseModel
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
-async def _row_to_team(conn, row) -> Team:
-    members = await conn.fetch("SELECT user_id FROM team_members WHERE team_id = $1", row["id"])
-    return Team(
-        id=str(row["id"]),
-        name=row["name"],
-        description=row["description"],
-        monthly_budget=float(row["monthly_budget"]) if row["monthly_budget"] else None,
-        default_model=row["default_model"],
-        members=[m["user_id"] for m in members],
-        is_active=row["is_active"],
-        created_at=row["created_at"],
-        updated_at=row["updated_at"],
-    )
+class TeamCreateRequest(BaseModel):
+    team_alias: str
+    max_budget: Optional[float] = None
+    models: Optional[List[str]] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
-@router.get("/teams", response_model=List[Team])
+class TeamUpdateRequest(BaseModel):
+    team_id: str
+    team_alias: Optional[str] = None
+    max_budget: Optional[float] = None
+    models: Optional[List[str]] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class TeamDeleteRequest(BaseModel):
+    team_ids: List[str]
+
+
+class TeamMemberAddRequest(BaseModel):
+    member: Dict[str, Any]  # {"role": "user", "user_id": "..."}
+
+
+class TeamMemberDeleteRequest(BaseModel):
+    user_id: str
+
+
+def _litellm_headers() -> dict:
+    return {"Authorization": f"Bearer {deps.LITELLM_MASTER_KEY}"}
+
+
+def _ensure_http():
+    if not deps.http_client:
+        raise HTTPException(status_code=503, detail="HTTP client not available")
+
+
+@router.get("/teams")
 async def list_teams(user: UserInfo = Depends(get_current_user)):
-    """List all teams."""
-    if not deps.db_pool:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    async with deps.db_pool.acquire() as conn:
-        rows = await conn.fetch("SELECT * FROM teams ORDER BY name")
-        return [await _row_to_team(conn, row) for row in rows]
-
-
-@router.post("/teams", response_model=Team)
-async def create_team(team: TeamCreate, user: UserInfo = Depends(require_admin)):
-    """Create a new team."""
-    if not deps.db_pool:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    async with deps.db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            """
-            INSERT INTO teams (name, description, monthly_budget, default_model)
-            VALUES ($1, $2, $3, $4)
-            RETURNING *
-        """,
-            team.name,
-            team.description,
-            team.monthly_budget,
-            team.default_model,
-        )
-
-        return await _row_to_team(conn, row)
+    """List all teams via LiteLLM."""
+    _ensure_http()
+    resp = await deps.http_client.get(
+        f"{deps.LITELLM_URL}/team/list",
+        headers=_litellm_headers(),
+    )
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+    return resp.json()
 
 
-@router.put("/teams/{team_id}", response_model=Team)
-async def update_team(
-    team_id: str,
-    update: TeamUpdate,
-    user: UserInfo = Depends(require_admin),
-):
-    """Update a team."""
-    if not deps.db_pool:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    fields = update.model_dump(exclude_none=True)
-    if not fields:
-        raise HTTPException(status_code=400, detail="No fields to update")
-
-    set_clauses = []
-    values = []
-    for i, (key, val) in enumerate(fields.items(), start=1):
-        set_clauses.append(f"{key} = ${i}")
-        values.append(val)
-
-    set_clauses.append("updated_at = CURRENT_TIMESTAMP")
-    values.append(team_id)
-
-    query = f"""
-        UPDATE teams
-        SET {", ".join(set_clauses)}
-        WHERE id = ${len(values)}
-        RETURNING *
-    """
-
-    async with deps.db_pool.acquire() as conn:
-        row = await conn.fetchrow(query, *values)
-        if not row:
-            raise HTTPException(status_code=404, detail="Team not found")
-        return await _row_to_team(conn, row)
+@router.post("/teams")
+async def create_team(request: TeamCreateRequest, user: UserInfo = Depends(require_admin)):
+    """Create a new team via LiteLLM."""
+    _ensure_http()
+    resp = await deps.http_client.post(
+        f"{deps.LITELLM_URL}/team/new",
+        json=request.model_dump(exclude_none=True),
+        headers=_litellm_headers(),
+    )
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+    return resp.json()
 
 
-@router.delete("/teams/{team_id}")
-async def delete_team(
-    team_id: str,
-    user: UserInfo = Depends(require_admin),
-):
-    """Delete a team and clean up guardrail assignments."""
-    if not deps.db_pool:
-        raise HTTPException(status_code=503, detail="Database not available")
+@router.get("/teams/{team_id}")
+async def get_team(team_id: str, user: UserInfo = Depends(get_current_user)):
+    """Get a specific team's info via LiteLLM."""
+    _ensure_http()
+    resp = await deps.http_client.get(
+        f"{deps.LITELLM_URL}/team/info",
+        params={"team_id": team_id},
+        headers=_litellm_headers(),
+    )
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+    return resp.json()
 
-    async with deps.db_pool.acquire() as conn:
-        await conn.execute("DELETE FROM team_guardrails WHERE team_id = $1", team_id)
-        await conn.execute("DELETE FROM team_members WHERE team_id = $1", team_id)
-        result = await conn.execute("DELETE FROM teams WHERE id = $1", team_id)
-        if result == "DELETE 0":
-            raise HTTPException(status_code=404, detail="Team not found")
 
-    return {"status": "deleted"}
+@router.post("/teams/update")
+async def update_team(request: TeamUpdateRequest, user: UserInfo = Depends(require_admin)):
+    """Update a team via LiteLLM."""
+    _ensure_http()
+    resp = await deps.http_client.post(
+        f"{deps.LITELLM_URL}/team/update",
+        json=request.model_dump(exclude_none=True),
+        headers=_litellm_headers(),
+    )
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+    return resp.json()
+
+
+@router.post("/teams/delete")
+async def delete_team(request: TeamDeleteRequest, user: UserInfo = Depends(require_admin)):
+    """Delete team(s) via LiteLLM."""
+    _ensure_http()
+    resp = await deps.http_client.post(
+        f"{deps.LITELLM_URL}/team/delete",
+        json=request.model_dump(),
+        headers=_litellm_headers(),
+    )
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+    return resp.json()
 
 
 @router.post("/teams/{team_id}/members")
-async def add_team_member(team_id: str, member: TeamMember, user: UserInfo = Depends(require_admin)):
-    """Add a member to a team."""
-    if not deps.db_pool:
-        raise HTTPException(status_code=503, detail="Database not available")
+async def add_team_member(
+    team_id: str,
+    request: TeamMemberAddRequest,
+    user: UserInfo = Depends(require_admin),
+):
+    """Add a member to a team via LiteLLM."""
+    _ensure_http()
+    resp = await deps.http_client.post(
+        f"{deps.LITELLM_URL}/team/member_add",
+        json={"team_id": team_id, "member": request.member},
+        headers=_litellm_headers(),
+    )
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+    return resp.json()
 
-    async with deps.db_pool.acquire() as conn:
-        await conn.execute(
-            """
-            INSERT INTO team_members (team_id, user_id, role)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (team_id, user_id) DO UPDATE SET role = $3
-        """,
-            team_id,
-            member.user_id,
-            member.role,
-        )
 
-    return {"status": "added"}
+@router.post("/teams/{team_id}/members/delete")
+async def delete_team_member(
+    team_id: str,
+    request: TeamMemberDeleteRequest,
+    user: UserInfo = Depends(require_admin),
+):
+    """Remove a member from a team via LiteLLM."""
+    _ensure_http()
+    resp = await deps.http_client.post(
+        f"{deps.LITELLM_URL}/team/member_delete",
+        json={"team_id": team_id, "user_id": request.user_id},
+        headers=_litellm_headers(),
+    )
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+    return resp.json()

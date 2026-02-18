@@ -1,14 +1,5 @@
 import axios from 'axios'
 import type {
-  ModelConfig,
-  ModelUpdate,
-  Budget,
-  BudgetCreate,
-  BudgetUpdate,
-  Team,
-  TeamCreate,
-  TeamUpdate,
-  TeamMemberAdd,
   GuardrailAssignment,
   MCPServerConfig,
   MCPServerCreate,
@@ -16,25 +7,34 @@ import type {
   MCPTestResult,
   GatewaySyncResult,
   GatewayConfigPreview,
+  A2AAgentConfig,
+  A2AAgentCreate,
+  A2AAgentUpdate,
+  A2ATestResult,
   WorkflowSummary,
   WorkflowCreate,
   WorkflowExecuteRequest,
   WorkflowExecutionSummary,
   WorkflowExecutionDetail,
-  KeyGenerateRequest,
-  KeyGenerateResponse,
-  KeyUpdateRequest,
-  KeyDeleteRequest,
-  RealtimeMetrics,
   PlatformSettings,
   LoginResponse,
-  RoutingPolicy,
-  RoutingPolicyCreate,
   UserInfo,
   GuardrailConfig,
   GuardrailConfigCreate,
   GuardrailConfigUpdate,
   GuardrailEvent,
+  ReportsSummary,
+  ModelInfo,
+  ModelCreateRequest,
+  KeyInfo,
+  KeyGenerateRequest,
+  KeyGenerateResponse,
+  TeamInfo,
+  TeamCreateRequest,
+  TeamUpdateRequest,
+  BudgetInfo,
+  BudgetCreateRequest,
+  BudgetUpdateRequest,
 } from '../types'
 
 // Use Vite's BASE_URL so API calls route through the admin-ui nginx proxy
@@ -85,73 +85,6 @@ export const authApi = {
   },
 }
 
-// Models API
-export const modelsApi = {
-  list: async (): Promise<ModelConfig[]> => {
-    const response = await api.get('/models')
-    return response.data
-  },
-  update: async (modelId: string, data: ModelUpdate): Promise<ModelConfig> => {
-    const response = await api.put(`/models/${modelId}`, data)
-    return response.data
-  },
-}
-
-// Routing Policies API
-export const policiesApi = {
-  list: async (): Promise<RoutingPolicy[]> => {
-    const response = await api.get('/routing-policies')
-    return response.data
-  },
-  create: async (data: RoutingPolicyCreate): Promise<RoutingPolicy> => {
-    const response = await api.post('/routing-policies', data)
-    return response.data
-  },
-  delete: async (id: string): Promise<void> => {
-    const response = await api.delete(`/routing-policies/${id}`)
-    return response.data
-  },
-}
-
-// Budgets API
-export const budgetsApi = {
-  list: async (): Promise<Budget[]> => {
-    const response = await api.get('/budgets')
-    return response.data
-  },
-  create: async (data: BudgetCreate): Promise<Budget> => {
-    const response = await api.post('/budgets', data)
-    return response.data
-  },
-  update: async (id: string, data: BudgetUpdate): Promise<Budget> => {
-    const response = await api.put(`/budgets/${id}`, data)
-    return response.data
-  },
-}
-
-// Teams API
-export const teamsApi = {
-  list: async (): Promise<Team[]> => {
-    const response = await api.get('/teams')
-    return response.data
-  },
-  create: async (data: TeamCreate): Promise<Team> => {
-    const response = await api.post('/teams', data)
-    return response.data
-  },
-  update: async (id: string, data: TeamUpdate): Promise<Team> => {
-    const response = await api.put(`/teams/${id}`, data)
-    return response.data
-  },
-  delete: async (id: string): Promise<void> => {
-    await api.delete(`/teams/${id}`)
-  },
-  addMember: async (teamId: string, data: TeamMemberAdd): Promise<{ status: string }> => {
-    const response = await api.post(`/teams/${teamId}/members`, data)
-    return response.data
-  },
-}
-
 // MCP Servers API
 export const mcpServersApi = {
   list: async (): Promise<MCPServerConfig[]> => {
@@ -183,26 +116,29 @@ export const mcpServersApi = {
   },
 }
 
-// API Keys API (proxy to LiteLLM)
-export const keysApi = {
-  list: async (): Promise<unknown> => {
-    const response = await api.get('/keys')
+// A2A Agents API
+export const agentsApi = {
+  list: async (): Promise<A2AAgentConfig[]> => {
+    const response = await api.get('/agents')
     return response.data
   },
-  generate: async (data: KeyGenerateRequest): Promise<KeyGenerateResponse> => {
-    const response = await api.post('/keys/generate', data)
+  create: async (data: A2AAgentCreate): Promise<A2AAgentConfig> => {
+    const response = await api.post('/agents', data)
     return response.data
   },
-  getInfo: async (key: string): Promise<unknown> => {
-    const response = await api.get(`/keys/${encodeURIComponent(key)}`)
+  get: async (id: string): Promise<A2AAgentConfig> => {
+    const response = await api.get(`/agents/${id}`)
     return response.data
   },
-  update: async (data: KeyUpdateRequest): Promise<unknown> => {
-    const response = await api.post('/keys/update', data)
+  update: async (id: string, data: A2AAgentUpdate): Promise<A2AAgentConfig> => {
+    const response = await api.put(`/agents/${id}`, data)
     return response.data
   },
-  delete: async (data: KeyDeleteRequest): Promise<unknown> => {
-    const response = await api.post('/keys/delete', data)
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/agents/${id}`)
+  },
+  test: async (id: string): Promise<A2ATestResult> => {
+    const response = await api.post(`/agents/${id}/test`)
     return response.data
   },
 }
@@ -235,10 +171,10 @@ export const workflowsApi = {
   },
 }
 
-// Metrics API
-export const metricsApi = {
-  realtime: async (): Promise<RealtimeMetrics> => {
-    const response = await api.get('/metrics/realtime')
+// Reports API
+export const reportsApi = {
+  summary: async (): Promise<ReportsSummary> => {
+    const response = await api.get('/reports/summary')
     return response.data
   },
 }
@@ -291,5 +227,100 @@ export const settingsApi = {
   update: async (data: PlatformSettings): Promise<PlatformSettings> => {
     const response = await api.put('/settings', data)
     return response.data
+  },
+}
+
+// Models API
+export const modelsApi = {
+  list: async (): Promise<{ data: ModelInfo[] }> => {
+    const response = await api.get('/models')
+    return response.data
+  },
+  get: async (modelId: string): Promise<ModelInfo> => {
+    const response = await api.get(`/models/${modelId}`)
+    return response.data
+  },
+  create: async (data: ModelCreateRequest): Promise<unknown> => {
+    const response = await api.post('/models', data)
+    return response.data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.post('/models/delete', { id })
+  },
+}
+
+// API Keys API
+export const keysApi = {
+  list: async (): Promise<KeyInfo[]> => {
+    const response = await api.get('/keys')
+    return response.data
+  },
+  get: async (key: string): Promise<unknown> => {
+    const response = await api.get(`/keys/${key}`)
+    return response.data
+  },
+  generate: async (data: KeyGenerateRequest): Promise<KeyGenerateResponse> => {
+    const response = await api.post('/keys/generate', data)
+    return response.data
+  },
+  update: async (data: { key: string } & Partial<KeyGenerateRequest>): Promise<unknown> => {
+    const response = await api.post('/keys/update', data)
+    return response.data
+  },
+  delete: async (keys: string[]): Promise<void> => {
+    await api.post('/keys/delete', { keys })
+  },
+}
+
+// Teams API
+export const teamsApi = {
+  list: async (): Promise<TeamInfo[]> => {
+    const response = await api.get('/teams')
+    return response.data
+  },
+  get: async (teamId: string): Promise<TeamInfo> => {
+    const response = await api.get(`/teams/${teamId}`)
+    return response.data
+  },
+  create: async (data: TeamCreateRequest): Promise<TeamInfo> => {
+    const response = await api.post('/teams', data)
+    return response.data
+  },
+  update: async (data: TeamUpdateRequest): Promise<TeamInfo> => {
+    const response = await api.post('/teams/update', data)
+    return response.data
+  },
+  delete: async (teamIds: string[]): Promise<void> => {
+    await api.post('/teams/delete', { team_ids: teamIds })
+  },
+  addMember: async (teamId: string, member: { role: string; user_id: string }): Promise<unknown> => {
+    const response = await api.post(`/teams/${teamId}/members`, { member })
+    return response.data
+  },
+  deleteMember: async (teamId: string, userId: string): Promise<void> => {
+    await api.post(`/teams/${teamId}/members/delete`, { user_id: userId })
+  },
+}
+
+// Budgets API
+export const budgetsApi = {
+  list: async (): Promise<BudgetInfo[]> => {
+    const response = await api.get('/budgets')
+    return response.data
+  },
+  get: async (budgetId: string): Promise<BudgetInfo> => {
+    const response = await api.get(`/budgets/${budgetId}`)
+    return response.data
+  },
+  create: async (data: BudgetCreateRequest): Promise<BudgetInfo> => {
+    const response = await api.post('/budgets', data)
+    return response.data
+  },
+  update: async (data: BudgetUpdateRequest): Promise<BudgetInfo> => {
+    const response = await api.post('/budgets/update', data)
+    return response.data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.post('/budgets/delete', { id })
   },
 }

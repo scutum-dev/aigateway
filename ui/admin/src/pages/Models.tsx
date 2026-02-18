@@ -1,411 +1,259 @@
 import { useState, useMemo } from 'react'
-import { useModels, useUpdateModel } from '../api/hooks'
-import {
-  PencilIcon,
-  CheckIcon,
-  XMarkIcon,
-  MagnifyingGlassIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
-} from '@heroicons/react/24/outline'
+import { useModels, useCreateModel, useDeleteModel } from '../api/hooks'
+import { PlusIcon, CubeIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { SkeletonTable } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
-import { CubeIcon } from '@heroicons/react/24/outline'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { useToast } from '../components/Toast'
-import type { ModelConfig, ModelUpdate } from '../types'
+import type { ModelInfo } from '../types'
 
-type SortKey = 'model_id' | 'provider' | 'tier' | 'cost_per_1k_input' | 'default_latency_sla_ms'
-type SortDir = 'asc' | 'desc'
+function extractProvider(model: ModelInfo): string {
+  const params = model.litellm_params || {}
+  const litellmModel = (params.model as string) || ''
+  if (litellmModel.includes('/')) {
+    return litellmModel.split('/')[0]
+  }
+  const customProvider = params.custom_llm_provider as string
+  if (customProvider) return customProvider
+  if (litellmModel.startsWith('gpt-') || litellmModel.startsWith('o1') || litellmModel.startsWith('o3')) return 'openai'
+  if (litellmModel.startsWith('claude-')) return 'anthropic'
+  if (litellmModel.startsWith('gemini')) return 'google'
+  return 'unknown'
+}
 
 export default function Models() {
-  const { data: models, isLoading, error } = useModels()
-  const updateModel = useUpdateModel()
+  const { data, isLoading, error } = useModels()
+  const createModel = useCreateModel()
+  const deleteModel = useDeleteModel()
   const toast = useToast()
-  const [editingModel, setEditingModel] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<ModelUpdate>({})
+
   const [search, setSearch] = useState('')
-  const [providerFilter, setProviderFilter] = useState<string | null>(null)
-  const [sortKey, setSortKey] = useState<SortKey>('model_id')
-  const [sortDir, setSortDir] = useState<SortDir>('asc')
-  const [currentPage, setCurrentPage] = useState(1)
-  const pageSize = 20
+  const [providerFilter, setProviderFilter] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [form, setForm] = useState({ model_name: '', model: '', custom_llm_provider: '' })
+
+  const models = data?.data || []
 
   const providers = useMemo(() => {
-    if (!models) return []
-    return [...new Set(models.map((m) => m.provider))].sort()
+    const set = new Set(models.map(extractProvider))
+    return Array.from(set).sort()
   }, [models])
 
   const filtered = useMemo(() => {
-    if (!models) return []
-    let result = models
-
-    if (search) {
-      const q = search.toLowerCase()
-      result = result.filter(
-        (m) =>
-          m.model_id.toLowerCase().includes(q) ||
-          m.provider.toLowerCase().includes(q)
-      )
-    }
-
-    if (providerFilter) {
-      result = result.filter((m) => m.provider === providerFilter)
-    }
-
-    result = [...result].sort((a, b) => {
-      const aVal = a[sortKey]
-      const bVal = b[sortKey]
-      if (typeof aVal === 'string' && typeof bVal === 'string') {
-        return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
-      }
-      return sortDir === 'asc'
-        ? (aVal as number) - (bVal as number)
-        : (bVal as number) - (aVal as number)
+    return models.filter((m) => {
+      const matchesSearch = !search || m.model_name.toLowerCase().includes(search.toLowerCase())
+      const matchesProvider = !providerFilter || extractProvider(m) === providerFilter
+      return matchesSearch && matchesProvider
     })
-
-    return result
-  }, [models, search, providerFilter, sortKey, sortDir])
-
-  const totalFiltered = filtered.length
-  const totalPages = Math.ceil(totalFiltered / pageSize)
-  const startIdx = (currentPage - 1) * pageSize
-  const endIdx = startIdx + pageSize
-  const paginatedModels = filtered.slice(startIdx, endIdx)
-
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortKey(key)
-      setSortDir('asc')
-    }
-  }
-
-  const SortIcon = ({ col }: { col: SortKey }) => {
-    if (sortKey !== col) return null
-    return sortDir === 'asc' ? (
-      <ChevronUpIcon className="w-3 h-3 inline ml-1" />
-    ) : (
-      <ChevronDownIcon className="w-3 h-3 inline ml-1" />
-    )
-  }
+  }, [models, search, providerFilter])
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Models</h1>
-          <p className="text-gray-600">Configure model routing and pricing</p>
+          <p className="text-gray-600">Manage LLM model configurations</p>
         </div>
-        <SkeletonTable rows={8} cols={6} />
+        <SkeletonTable rows={8} cols={4} />
       </div>
     )
   }
 
   if (error) {
-    return (
-      <div className="bg-red-50 text-red-700 p-4 rounded-lg">
-        Failed to load models
-      </div>
-    )
+    return <div className="bg-red-50 text-red-700 p-4 rounded-lg">Failed to load models</div>
   }
 
-  const handleEdit = (model: ModelConfig) => {
-    setEditingModel(model.model_id)
-    setEditForm({
-      tier: model.tier,
-      cost_per_1k_input: model.cost_per_1k_input,
-      cost_per_1k_output: model.cost_per_1k_output,
-      default_latency_sla_ms: model.default_latency_sla_ms,
-    })
-  }
-
-  const handleSave = async (modelId: string) => {
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
     try {
-      await updateModel.mutateAsync({ modelId, data: editForm })
-      toast('success', 'Model updated successfully')
-      setEditingModel(null)
+      const litellm_params: Record<string, unknown> = { model: form.model }
+      if (form.custom_llm_provider) {
+        litellm_params.custom_llm_provider = form.custom_llm_provider
+      }
+      await createModel.mutateAsync({ model_name: form.model_name, litellm_params })
+      toast('success', 'Model added')
+      setForm({ model_name: '', model: '', custom_llm_provider: '' })
+      setShowForm(false)
     } catch {
-      toast('error', 'Failed to update model')
+      toast('error', 'Failed to add model')
     }
   }
 
-  const handleCancel = () => {
-    setEditingModel(null)
-    setEditForm({})
-  }
-
-  if (!models || models.length === 0) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Models</h1>
-          <p className="text-gray-600">Configure model routing and pricing</p>
-        </div>
-        <EmptyState
-          icon={CubeIcon}
-          title="No models configured"
-          description="Models will appear here once they are added to your LiteLLM configuration."
-        />
-      </div>
-    )
+  const handleDelete = async () => {
+    if (!deleteId) return
+    try {
+      await deleteModel.mutateAsync(deleteId)
+      toast('success', 'Model deleted')
+    } catch {
+      toast('error', 'Failed to delete model')
+    }
+    setDeleteId(null)
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Models</h1>
-        <p className="text-gray-600">Configure model routing and pricing</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Models</h1>
+          <p className="text-gray-600">
+            {models.length} model{models.length !== 1 ? 's' : ''} configured
+          </p>
+        </div>
+        <button onClick={() => setShowForm(true)} className="btn btn-primary">
+          <PlusIcon className="w-5 h-5 mr-2" />
+          Add Model
+        </button>
       </div>
 
-      {/* Search + Filter */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search models..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
-            className="input pl-10"
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setProviderFilter(null)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              !providerFilter
-                ? 'bg-primary-100 text-primary-700'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            All
-          </button>
-          {providers.map((p) => (
-            <button
-              key={p}
-              onClick={() => setProviderFilter(providerFilter === p ? null : p)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${
-                providerFilter === p
-                  ? 'bg-primary-100 text-primary-700'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-      </div>
+      <ConfirmDialog
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Delete Model?"
+        message="This will remove the model from LiteLLM. Existing keys referencing this model may stop working."
+        confirmLabel="Delete Model"
+        confirmVariant="danger"
+      />
 
-      <p className="text-sm text-gray-500">
-        Showing {Math.min(startIdx + 1, totalFiltered)}–{Math.min(endIdx, totalFiltered)} of {totalFiltered} models
-        {totalFiltered !== models.length && ` (filtered from ${models.length})`}
-      </p>
-
-      <div className="card overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700"
-                onClick={() => handleSort('model_id')}
-              >
-                Model <SortIcon col="model_id" />
-              </th>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700"
-                onClick={() => handleSort('provider')}
-              >
-                Provider <SortIcon col="provider" />
-              </th>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700"
-                onClick={() => handleSort('tier')}
-              >
-                Tier <SortIcon col="tier" />
-              </th>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700"
-                onClick={() => handleSort('cost_per_1k_input')}
-              >
-                Cost/1K (In/Out) <SortIcon col="cost_per_1k_input" />
-              </th>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700"
-                onClick={() => handleSort('default_latency_sla_ms')}
-              >
-                Latency SLA <SortIcon col="default_latency_sla_ms" />
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Features
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {paginatedModels.map((model) => (
-              <tr key={model.model_id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="font-mono text-sm">{model.model_id}</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="capitalize">{model.provider}</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {editingModel === model.model_id ? (
-                    <select
-                      value={editForm.tier}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, tier: e.target.value })
-                      }
-                      className="input text-sm py-1"
-                    >
-                      <option value="free">Free</option>
-                      <option value="budget">Budget</option>
-                      <option value="standard">Standard</option>
-                      <option value="premium">Premium</option>
-                    </select>
-                  ) : (
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        model.tier === 'premium'
-                          ? 'bg-purple-100 text-purple-700'
-                          : model.tier === 'budget'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {model.tier}
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {editingModel === model.model_id ? (
-                    <div className="flex space-x-2">
-                      <input
-                        type="number"
-                        step="0.0001"
-                        value={editForm.cost_per_1k_input}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            cost_per_1k_input: parseFloat(e.target.value),
-                          })
-                        }
-                        className="input text-sm py-1 w-24"
-                      />
-                      <input
-                        type="number"
-                        step="0.0001"
-                        value={editForm.cost_per_1k_output}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            cost_per_1k_output: parseFloat(e.target.value),
-                          })
-                        }
-                        className="input text-sm py-1 w-24"
-                      />
-                    </div>
-                  ) : (
-                    <span className="text-sm">
-                      ${model.cost_per_1k_input} / ${model.cost_per_1k_output}
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {editingModel === model.model_id ? (
-                    <input
-                      type="number"
-                      value={editForm.default_latency_sla_ms}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          default_latency_sla_ms: parseInt(e.target.value),
-                        })
-                      }
-                      className="input text-sm py-1 w-24"
-                    />
-                  ) : (
-                    <span className="text-sm">
-                      {model.default_latency_sla_ms}ms
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex space-x-1">
-                    {model.supports_streaming && (
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
-                        Stream
-                      </span>
-                    )}
-                    {model.supports_function_calling && (
-                      <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">
-                        Tools
-                      </span>
-                    )}
-                    {model.supports_vision && (
-                      <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded">
-                        Vision
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  {editingModel === model.model_id ? (
-                    <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={() => handleSave(model.model_id)}
-                        className="p-1 text-green-600 hover:text-green-800"
-                      >
-                        <CheckIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={handleCancel}
-                        className="p-1 text-red-600 hover:text-red-800"
-                      >
-                        <XMarkIcon className="w-5 h-5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => handleEdit(model)}
-                      className="p-1 text-gray-400 hover:text-gray-600"
-                    >
-                      <PencilIcon className="w-5 h-5" />
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200">
-            <span className="text-sm text-gray-500">
-              Page {currentPage} of {totalPages}
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 text-sm border rounded disabled:opacity-50"
-              >
-                Previous
+      {showForm && (
+        <div className="card">
+          <h2 className="text-lg font-semibold mb-4">Add Model</h2>
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="model-name" className="label">Model Name (alias)</label>
+                <input
+                  id="model-name"
+                  type="text"
+                  value={form.model_name}
+                  onChange={(e) => setForm({ ...form, model_name: e.target.value })}
+                  className="input"
+                  required
+                  placeholder="e.g., gpt-4o"
+                />
+              </div>
+              <div>
+                <label htmlFor="model-id" className="label">Provider Model ID</label>
+                <input
+                  id="model-id"
+                  type="text"
+                  value={form.model}
+                  onChange={(e) => setForm({ ...form, model: e.target.value })}
+                  className="input"
+                  required
+                  placeholder="e.g., openai/gpt-4o"
+                />
+              </div>
+              <div>
+                <label htmlFor="model-provider" className="label">Custom Provider (optional)</label>
+                <input
+                  id="model-provider"
+                  type="text"
+                  value={form.custom_llm_provider}
+                  onChange={(e) => setForm({ ...form, custom_llm_provider: e.target.value })}
+                  className="input"
+                  placeholder="e.g., openai"
+                />
+              </div>
+            </div>
+            <div className="flex space-x-3">
+              <button type="submit" className="btn btn-primary" disabled={createModel.isPending}>
+                {createModel.isPending ? 'Adding...' : 'Add Model'}
               </button>
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage >= totalPages}
-                className="px-3 py-1 text-sm border rounded disabled:opacity-50"
-              >
-                Next
+              <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary">
+                Cancel
               </button>
             </div>
+          </form>
+        </div>
+      )}
+
+      {models.length === 0 ? (
+        <EmptyState
+          icon={CubeIcon}
+          title="No models configured"
+          description="Add models to route LLM requests through the gateway."
+          actionLabel="Add Model"
+          onAction={() => setShowForm(true)}
+        />
+      ) : (
+        <>
+          {/* Search and filter */}
+          <div className="flex gap-4">
+            <div className="relative flex-1">
+              <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="input pl-10"
+                placeholder="Search models..."
+              />
+            </div>
+            <select
+              value={providerFilter}
+              onChange={(e) => setProviderFilter(e.target.value)}
+              className="input w-48"
+            >
+              <option value="">All providers</option>
+              {providers.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
           </div>
-        )}
-      </div>
+
+          {/* Table */}
+          <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider Model</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mode</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filtered.map((model) => {
+                    const provider = extractProvider(model)
+                    const modelId = (model.model_info as Record<string, unknown>)?.id as string || ''
+                    const mode = (model.model_info as Record<string, unknown>)?.mode as string || 'chat'
+                    return (
+                      <tr key={modelId || model.model_name} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="font-medium text-gray-900">{model.model_name}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">{provider}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {(model.litellm_params?.model as string) || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{mode}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <button
+                            onClick={() => setDeleteId(modelId)}
+                            className="text-red-500 hover:text-red-700"
+                            title="Delete model"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {filtered.length === 0 && (
+              <p className="text-center text-gray-500 py-8">No models match your search</p>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }

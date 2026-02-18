@@ -5,12 +5,11 @@ A FastAPI service providing administrative endpoints for the AI Control Plane pl
 
 Features:
 - JWT authentication (validates against LiteLLM API keys)
-- Model routing policy management
-- Budget configuration and monitoring
-- Team and user management
+- Guardrail configuration and monitoring
+- FinOps cost reporting
 - MCP server configuration
 - Workflow template management
-- Real-time metrics
+- Platform settings
 """
 
 import asyncio
@@ -37,13 +36,13 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from routers import agents as agents_router
 from routers import budgets as budgets_router
 from routers import guardrails as guardrails_router
 from routers import keys as keys_router
 from routers import mcp_servers as mcp_servers_router
-from routers import metrics as metrics_router
 from routers import models as models_router
-from routers import policies as policies_router
+from routers import reports as reports_router
 from routers import settings as settings_router
 from routers import teams as teams_router
 from routers import workflows as workflows_router
@@ -213,6 +212,39 @@ active_requests: int = 0
 SHUTDOWN_TIMEOUT = int(os.getenv("SHUTDOWN_TIMEOUT_SECONDS", 30))
 
 
+async def _sync_gateway_config_on_startup():
+    """Write gateway config from DB to shared volume so agentgateway can start."""
+    from gateway_sync import GATEWAY_CONFIG_PATH, build_gateway_config
+
+    if not GATEWAY_CONFIG_PATH or not deps.db_pool:
+        return
+    try:
+        async with deps.db_pool.acquire() as conn:
+            rows = await conn.fetch("SELECT * FROM mcp_servers WHERE is_active = true ORDER BY name")
+            servers = [
+                {
+                    "name": row["name"],
+                    "server_type": row["server_type"],
+                    "command": row["command"],
+                    "url": row["url"],
+                    "args": row["args"] or [],
+                    "env": json.loads(row["env"]) if isinstance(row["env"], str) else (row["env"] or {}),
+                }
+                for row in rows
+            ]
+
+            agent_rows = await conn.fetch("SELECT * FROM a2a_agents WHERE is_active = true ORDER BY name")
+            agents = [{"name": r["name"], "url": r["url"]} for r in agent_rows]
+
+        config_yaml = build_gateway_config(servers, agents)
+        os.makedirs(os.path.dirname(GATEWAY_CONFIG_PATH), exist_ok=True)
+        with open(GATEWAY_CONFIG_PATH, "w") as f:
+            f.write(config_yaml)
+        logger.info("Wrote initial gateway config (%d MCP servers, %d A2A agents)", len(servers), len(agents))
+    except Exception as e:
+        logger.warning("Could not sync gateway config on startup: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager with graceful shutdown."""
@@ -249,6 +281,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Could not connect to Redis: {e} (rate limiting will use in-memory fallback)")
         deps.redis_client = None
+
+    # Sync gateway config from DB to shared volume (so agentgateway can start)
+    await _sync_gateway_config_on_startup()
 
     logger.info("Admin API service started")
     yield
@@ -362,16 +397,16 @@ async def get_me(user: UserInfo = Depends(get_current_user)):
 # Include Routers
 # =============================================================================
 
-app.include_router(models_router.router, prefix="/api/v1", tags=["Models"])
-app.include_router(policies_router.router, prefix="/api/v1", tags=["Routing Policies"])
-app.include_router(budgets_router.router, prefix="/api/v1", tags=["Budgets"])
-app.include_router(teams_router.router, prefix="/api/v1", tags=["Teams"])
 app.include_router(mcp_servers_router.router, prefix="/api/v1", tags=["MCP Servers"])
-app.include_router(keys_router.router, prefix="/api/v1", tags=["API Keys"])
+app.include_router(agents_router.router, prefix="/api/v1", tags=["Agents"])
 app.include_router(workflows_router.router, prefix="/api/v1", tags=["Workflows"])
-app.include_router(metrics_router.router, prefix="/api/v1", tags=["Metrics"])
 app.include_router(settings_router.router, prefix="/api/v1", tags=["Settings"])
 app.include_router(guardrails_router.router, prefix="/api/v1", tags=["Guardrails"])
+app.include_router(reports_router.router, prefix="/api/v1", tags=["Reports"])
+app.include_router(keys_router.router, prefix="/api/v1", tags=["API Keys"])
+app.include_router(models_router.router, prefix="/api/v1", tags=["Models"])
+app.include_router(teams_router.router, prefix="/api/v1", tags=["Teams"])
+app.include_router(budgets_router.router, prefix="/api/v1", tags=["Budgets"])
 
 
 if __name__ == "__main__":

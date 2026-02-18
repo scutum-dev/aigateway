@@ -1,475 +1,229 @@
 # AI Control Plane Platform
 
-A unified AI infrastructure platform with 100+ models across 9 providers. Features intelligent routing, workflow orchestration, semantic caching, and enterprise-grade cost management.
+A unified management layer for [LiteLLM](https://docs.litellm.ai) and [Agent Gateway](https://agentgateway.dev) — providing a single admin UI, DB-backed configuration, atomic deployments, workflow orchestration, and FinOps governance across both systems.
 
-**Supported Providers:** OpenAI, Anthropic, Google, xAI, DeepSeek, AWS Bedrock, Google Vertex AI, Azure OpenAI, Ollama
+**Core idea:** LiteLLM and Agent Gateway are powerful standalone tools. This platform is the cockpit that ties them together with one UI, one database, and one deployment pipeline.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              CLIENTS / APPS                                  │
-└─────────────────────────────────┬───────────────────────────────────────────┘
-                                  │
-┌─────────────────────────────────▼───────────────────────────────────────────┐
-│                         Nginx Ingress (Port 80/443)                          │
-│  /v1/* → LiteLLM  |  /mcp/* → Agent Gateway  |  /admin-ui/* → Admin UI      │
-└────────┬──────────────────────────┬──────────────────────────┬──────────────┘
-         │                          │                          │
-┌────────▼────────┐    ┌───────────▼───────────┐    ┌────────▼────────┐
-│   LiteLLM       │    │    Agent Gateway      │    │   Admin UI      │
-│   Port 4000     │◄───│    Port 9000          │    │   Port 5173     │
-│                 │    │  MCP + A2A Protocols  │    │   (React/Vite)  │
-└────────┬────────┘    └───────────┬───────────┘    └────────┬────────┘
-         │                         │                          │
-         ▼                         ▼                          ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           PLATFORM SERVICES                                  │
-├─────────────────┬─────────────────┬─────────────────┬───────────────────────┤
-│ Policy Router   │ Workflow Engine │ Gateway         │ Admin API             │
-│ Port 8084       │ Port 8085       │ Abstraction     │ Port 8086             │
-│                 │                 │ (Python Module) │                       │
-│ • Cedar eval    │ • LangGraph     │ • AbstractGW    │ • Model config        │
-│ • Model select  │ • Templates     │ • Adapters      │ • Budget mgmt         │
-│ • Metrics cache │ • Checkpoints   │ • Registry      │ • Team mgmt           │
-│ • Routing rules │ • MCP binding   │ • Plugin disc.  │ • MCP config          │
-└────────┬────────┴────────┬────────┴────────┬────────┴──────────┬────────────┘
-         │                 │                 │                   │
-         └────────────────┬┴─────────────────┴┬──────────────────┘
-                          │                   │
-               ┌──────────▼──────────┐  ┌────▼────┐
-               │     PostgreSQL      │  │  Redis  │
-               │  • routing_decisions│  │ Cache   │
-               │  • workflow_*       │  │         │
-               │  • budgets/teams    │  │         │
-               └─────────────────────┘  └─────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            CLIENTS / APPS                               │
+└────────────────────────────────┬────────────────────────────────────────┘
+                                 │
+┌────────────────────────────────▼────────────────────────────────────────┐
+│                      Nginx Ingress (Port 80/443)                        │
+│  /v1/* → LiteLLM  |  /mcp/* → Agent Gateway  |  /admin/* → Admin UI    │
+└───────┬──────────────────────┬──────────────────────────┬──────────────┘
+        │                      │                          │
+┌───────▼───────┐    ┌────────▼────────┐        ┌───────▼────────┐
+│   LiteLLM     │    │  Agent Gateway  │        │   Admin UI     │
+│   Port 4000   │    │  Port 9000      │        │   Port 5173    │
+│               │    │                 │        │   (React/Vite) │
+│ • 100+ models │    │ • MCP backends  │        │                │
+│ • 9 providers │    │ • A2A backends  │        │ • Models       │
+│ • Cost track  │    │ • Hot-reload    │        │ • Keys/Teams   │
+│ • Guardrails  │    │                 │        │ • MCP Servers  │
+└───────┬───────┘    └────────▲────────┘        │ • A2A Agents   │
+        │                     │ config sync      │ • Guardrails   │
+        │              ┌──────┴───────┐         │ • Budgets      │
+        │              │ Shared Volume│         │ • Workflows    │
+        │              │ (config.yaml)│         │ • Settings     │
+        │              └──────▲───────┘         └───────┬────────┘
+        │                     │                         │
+        │              ┌──────┴───────────────────────────┐
+        │              │          Admin API               │
+        │              │          Port 8086               │
+        └──────────────┤                                  │
+                       │ • JWT auth                       │
+                       │ • CRUD for all config            │
+                       │ • Gateway sync (MCP + A2A)       │
+                       │ • Alembic migrations             │
+                       └──────┬───────────────────────────┘
+                              │
+               ┌──────────────┼──────────────┐
+               │              │              │
+        ┌──────▼──────┐ ┌────▼────┐  ┌──────▼──────┐
+        │ PostgreSQL  │ │  Redis  │  │  Workflow   │
+        │             │ │         │  │  Engine     │
+        │ • mcp_servers│ │ Cache   │  │  Port 8085  │
+        │ • a2a_agents │ │ Rate    │  │  LangGraph  │
+        │ • guardrails │ │ limit   │  │  + Temporal  │
+        │ • settings  │ │         │  │             │
+        └─────────────┘ └─────────┘  └─────────────┘
 ```
 
-## Documentation
+### Key Deployment Flow
 
-| Guide | Description |
-|-------|-------------|
-| **[Quickstart](docs/docs/guides/quickstart.md)** | Get running in 5 minutes with Docker |
-| **[API Integration](docs/docs/guides/api-integration.md)** | Code examples in Python, TypeScript, Go, and curl |
-| **[Model Routing](docs/docs/guides/model-routing.md)** | How intelligent model selection works |
-| **[Cost Management](docs/docs/guides/cost-management.md)** | Budgets, alerts, and FinOps reporting |
-| **[Admin UI Guide](docs/docs/guides/admin-guide.md)** | Page-by-page walkthrough of the Admin Console |
+```
+Admin UI → Admin API → PostgreSQL (source of truth)
+                    ↓
+              gateway_sync.py
+                    ↓
+            Shared Volume (config.yaml)
+                    ↓
+         Agent Gateway (hot-reload)
+              ├── MCP backends
+              └── A2A backends
+```
+
+## Why This Platform?
+
+### Before This Platform (LiteLLM + Agent Gateway separately)
+
+| Task | What you do |
+|------|-------------|
+| Add an MCP server | Edit `config.yaml`, restart Agent Gateway |
+| Add an A2A agent | Edit `config.yaml`, restart Agent Gateway |
+| Change MCP + A2A together | Edit `config.yaml` carefully, restart |
+| See which MCP servers are deployed | Read the YAML file |
+| Track who changed what | Hope someone committed the diff |
+| Run a multi-step AI workflow | Build it yourself |
+| See combined LLM + agent costs | Check two dashboards separately |
+
+### With This Platform
+
+| Task | What you do |
+|------|-------------|
+| Add an MCP server | Click "Add Server" in Admin UI, Deploy to Gateway |
+| Add an A2A agent | Click "Add Agent" in Admin UI, Deploy to Gateway |
+| Change MCP + A2A together | Atomic deploy — both pushed to gateway config at once |
+| See which servers/agents are deployed | Preview Config button shows exact YAML |
+| Track who changed what | All config in Postgres with timestamps |
+| Run a multi-step AI workflow | Pick a template (research/coding/data-analysis), click Run |
+| See combined LLM + agent costs | Single Grafana dashboard |
+
+## What This Platform Adds
+
+Neither LiteLLM nor Agent Gateway provides these features alone:
+
+| Feature | Description |
+|---------|-------------|
+| **Unified Admin UI** | One React app managing models, keys, teams, budgets, MCP servers, A2A agents, guardrails, workflows, and settings |
+| **DB-Backed Gateway Config** | MCP servers and A2A agents stored in Postgres — survives config file loss, queryable, auditable |
+| **Atomic Deploy** | MCP + A2A backends deployed together with one button click via `gateway_sync.py` |
+| **Workflow Orchestration** | LangGraph templates + Temporal for durable multi-step AI workflows (research, coding, data-analysis) |
+| **FinOps Suite** | Cost predictor, budget webhook (soft/hard limits), FinOps reporter with CSV/JSON export |
+| **Pre-Built Dashboards** | Grafana dashboards combining LiteLLM spend data + Agent Gateway metrics |
+| **Unified Auth** | Single JWT login across all admin operations |
+| **Production K8s** | Kustomize manifests + Terraform (GCP GKE) for the full stack |
+
+### What LiteLLM Already Handles (we don't duplicate)
+
+LiteLLM v1.80+ has native support for: Admin UI, model management, API keys, teams/orgs, budgets, cost tracking, guardrails, MCP registry, A2A agent hub, prompt studio, and SSO. Our Admin API proxies LiteLLM's APIs for keys, teams, budgets, and models — providing a unified interface rather than reimplementing these features.
+
+### What Agent Gateway Already Handles (we don't duplicate)
+
+Agent Gateway v0.12+ has: MCP federation, A2A routing, LLM inference proxy, built-in admin UI (port 15000), JWT/OAuth/mTLS auth, CEL-based authorization, prompt guards, tool poisoning protection, and hot-reload. We use its file-watcher for config hot-reload and its MCP/A2A protocol handling.
 
 ## Components
 
 | Component | Port | Description |
 |-----------|------|-------------|
-| **Agent Gateway** | 9000 | Rust-based data plane for MCP/A2A protocols, LLM routing |
-| **LiteLLM** | 4000 | Cost tracking, budgets, provider routing |
-| **Policy Router** | 8084 | Cedar policy-based intelligent model routing |
-| **Workflow Engine** | 8085 | LangGraph-based workflow orchestration |
-| **Admin API** | 8086 | REST API for platform configuration |
-| **Admin UI** | 5173 | React-based administration dashboard |
-| **Semantic Cache** | 8083 | Embedding-based prompt caching for cost savings |
-| **A2A Runtime** | 8087 | Temporal-based agent orchestration |
-| **Temporal** | 7233 | Durable workflow execution engine |
-| **Temporal UI** | 8088 | Workflow monitoring dashboard |
-| **vLLM** | - | Self-hosted LLM inference (optional) |
-| **PostgreSQL** | 5432 | Spend tracking, workflows, configuration |
-| **Redis** | 6379 | Caching, semantic vectors, metrics |
-| **Prometheus** | 9090 | Metrics collection and alerting |
+| **LiteLLM** | 4000 | LLM proxy — 100+ models, cost tracking, provider routing |
+| **Agent Gateway** | 9000 | MCP + A2A protocol proxy, tool federation, hot-reload |
+| **Admin API** | 8086 | FastAPI — JWT auth, CRUD, gateway sync |
+| **Admin UI** | 5173 | React — unified management dashboard |
+| **Workflow Engine** | 8085 | LangGraph + Temporal — multi-step AI workflows |
+| **Cost Predictor** | 8080 | Per-request cost estimation |
+| **Budget Webhook** | 8081 | Soft/hard budget enforcement with alerts |
+| **PostgreSQL** | 5432 | Source of truth for all config |
+| **Redis** | 6379 | Caching, rate limiting |
+| **Prometheus** | 9090 | Metrics collection |
 | **Grafana** | 3030 | Dashboards and visualization |
 | **Jaeger** | 16686 | Distributed tracing |
-
-## Features
-
-### Cedar Policy-Driven Model Routing
-Intelligent model selection based on:
-- **Cost thresholds** - Route to budget-friendly models when spend limits approach
-- **Latency SLAs** - Ensure models meet response time requirements
-- **Team quotas** - Enforce per-team model access and budgets
-- **Circuit breaking** - Automatic failover when error rates spike
-- **Provider preferences** - Route to preferred providers by use case
-
-### LangGraph Workflow Engine
-Pre-built templates for common AI workflows:
-- **Research Agent** - Web search, analysis, report generation
-- **Coding Agent** - Code understanding, generation, review (with iteration)
-- **Data Analysis Agent** - SQL generation, data analysis, visualization
-
-Features:
-- PostgreSQL checkpointing for resumable workflows
-- WebSocket streaming for real-time updates
-- Per-workflow cost tracking
-- MCP tool integration
-
-### Gateway Abstraction Layer
-Pluggable interface for AI gateways with 8 adapters:
-- **LiteLLM** - Primary gateway with full feature support
-- **OpenAI** - Direct OpenAI API access
-- **Anthropic** - Direct Anthropic Claude API
-- **Azure OpenAI** - Azure-hosted OpenAI models
-- **AWS Bedrock** - Claude, Llama, Titan on AWS
-- **Google Vertex AI** - Gemini and PaLM models
-- **Ollama** - Local open-source models
-- **Custom** - Template for custom backends
-
-Features:
-- Unified request/response models
-- Configuration-based gateway selection
-- Automatic capability discovery
-- Model-to-gateway routing rules
-
-### Semantic Caching
-Intelligent prompt-level caching for cost savings:
-- **Embedding-based similarity** - Find similar prompts using vector search
-- **Configurable thresholds** - Set similarity threshold (default: 0.92)
-- **TTL-based expiration** - Automatic cache cleanup
-- **Per-model isolation** - Separate caches per model
-- **Cache statistics** - Track hits, misses, tokens saved
-
-### A2A Runtime (Temporal)
-Durable agent-to-agent orchestration:
-- **Single Agent** - Simple agent invocation with retries
-- **Sequential Pipeline** - Chain agents in sequence
-- **Parallel Execution** - Run multiple agents concurrently
-- **Supervisor Pattern** - Coordinator agent managing workers
-- **Human-in-Loop** - Approval workflows with timeout
-
-Features:
-- Automatic retries with backoff
-- Execution history and audit logging
-- Agent registry with capability discovery
-- Message routing between agents
-
-### Admin Configuration UI
-Web-based platform management:
-- Model routing policy editor
-- Budget management with spend tracking
-- Team and user management
-- MCP server configuration
-- Real-time metrics dashboard
-- Platform settings
 
 ## Quick Start
 
 ### Prerequisites
 
 - Docker & Docker Compose
-- Kubernetes cluster (for production)
-- kubectl & kustomize
-- API keys for OpenAI/Anthropic (optional)
+- API keys for at least one provider (OpenAI, Anthropic, etc.)
 
-### Local Development
-
-1. **Clone and setup:**
-   ```bash
-   cd gateway
-   cp config/.env.example config/.env
-   ```
-
-2. **Set environment variables in `config/.env`:**
-   ```bash
-   OPENAI_API_KEY=sk-...
-   ANTHROPIC_API_KEY=sk-ant-...
-   XAI_API_KEY=xai-...
-   ```
-
-3. **Start with Docker Compose:**
-   ```bash
-   docker-compose up -d
-   ```
-
-4. **Access the services:**
-   - Admin UI: http://localhost:5173
-   - Agent Gateway: http://localhost:9000
-   - Grafana: http://localhost:3030 (admin/admin)
-   - Jaeger: http://localhost:16686
-
-5. **Test the API:**
-   ```bash
-   # Test LLM API via Agent Gateway
-   curl http://localhost:9000/v1/chat/completions \
-     -H "Authorization: Bearer $LITELLM_KEY" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "model": "gpt-4o-mini",
-       "messages": [{"role": "user", "content": "Hello!"}]
-     }'
-
-   # Test Policy Router
-   curl http://localhost:8084/route \
-     -H "Content-Type: application/json" \
-     -d '{
-       "user_id": "test-user",
-       "team_id": "engineering",
-       "requested_model": "smart",
-       "budget_remaining": 100.0,
-       "latency_sla_ms": 5000
-     }'
-
-   # Start a workflow
-   curl http://localhost:8085/api/v1/executions \
-     -H "Content-Type: application/json" \
-     -d '{
-       "template": "research",
-       "input": {"query": "AI gateway architectures"},
-       "user_id": "test-user"
-     }'
-
-   # Login to Admin API
-   curl http://localhost:8086/auth/login \
-     -H "Content-Type: application/json" \
-     -d '{"api_key": "$LITELLM_KEY"}'
-   ```
-
-### Cloud Deployment (GCP)
-
-Single-command deployment using Terraform:
+### Setup
 
 ```bash
-make demo           # Deploy demo environment
-make staging        # Deploy staging environment
-make prod           # Deploy production (requires confirmation)
-make demo-destroy   # Tear down demo
+cd gateway
+cp config/.env.example config/.env
+# Edit config/.env — add your API keys
 ```
 
-See [Cloud Deployment Guide](docs/CLOUD_DEPLOYMENT.md) for full documentation.
-
-### Local Kubernetes Deployment
+### Start
 
 ```bash
-kubectl apply -k kubernetes/overlays/dev        # Development
-kubectl apply -k kubernetes/overlays/staging    # Staging
-kubectl apply -k kubernetes/overlays/production # Production
+# Core services (LiteLLM, Admin API/UI, Postgres, Redis)
+docker compose up -d
+
+# Add observability (Grafana, Prometheus, Jaeger)
+docker compose --profile observability up -d
+
+# Add workflows (Temporal, LangGraph engine)
+docker compose --profile workflows up -d
+
+# Add FinOps (cost predictor, budget webhook)
+docker compose --profile finops up -d
+
+# Everything
+docker compose --profile full up -d
 ```
 
-## API Reference
+### Access
 
-### LLM API (Port 9000)
+| Service | URL |
+|---------|-----|
+| Admin UI | http://localhost:5173 |
+| LiteLLM API | http://localhost:4000 |
+| Agent Gateway | http://localhost:9000 |
+| Agent Gateway UI | http://localhost:15000 |
+| Grafana | http://localhost:3030 |
+| Jaeger | http://localhost:16686 |
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/v1/chat/completions` | Chat completion (OpenAI-compatible) |
-| POST | `/v1/embeddings` | Text embeddings |
-| GET | `/v1/models` | List available models |
-| GET | `/health` | Health check |
+### Test
 
-### Policy Router (Port 8084)
+```bash
+# Login to Admin API
+curl http://localhost:8086/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "$LITELLM_KEY"}'
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/route` | Get routing decision for a request |
-| POST | `/evaluate` | Direct Cedar policy evaluation |
-| POST | `/policies/reload` | Hot-reload Cedar policies |
-| GET | `/models` | List models with current metrics |
-| GET | `/health` | Health check |
+# LLM request via LiteLLM
+curl http://localhost:4000/v1/chat/completions \
+  -H "Authorization: Bearer $LITELLM_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
 
-### Workflow Engine (Port 8085)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1/templates` | List workflow templates |
-| POST | `/api/v1/workflows` | Create workflow definition |
-| GET | `/api/v1/workflows` | List workflows |
-| POST | `/api/v1/executions` | Start workflow execution |
-| GET | `/api/v1/executions/{id}` | Get execution status |
-| GET | `/api/v1/executions/{id}/steps` | Get step details |
-| POST | `/api/v1/executions/{id}/pause` | Pause execution |
-| POST | `/api/v1/executions/{id}/resume` | Resume execution |
-| GET | `/api/v1/costs/summary` | Cost summary |
-| WS | `/ws/executions/{id}` | Stream execution updates |
-
-### Admin API (Port 8086)
+## Admin API Reference
 
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/auth/login` | Authenticate with API key |
-| GET | `/api/v1/models` | List model configurations |
-| GET/PUT | `/api/v1/routing-policies` | Routing policy CRUD |
-| GET/POST | `/api/v1/budgets` | Budget management |
-| GET/POST | `/api/v1/teams` | Team management |
-| PUT/DELETE | `/api/v1/teams/{team_id}` | Update/delete a team |
-| GET | `/api/v1/guardrail-assignments` | List guardrail-to-team assignments |
-| GET/POST | `/api/v1/mcp-servers` | MCP server configuration |
-| GET/POST | `/api/v1/workflows` | Workflow templates |
-| GET | `/api/v1/metrics/realtime` | Real-time metrics |
+| GET/POST | `/api/v1/mcp-servers` | MCP server CRUD |
+| PUT/DELETE | `/api/v1/mcp-servers/{id}` | Update/delete MCP server |
+| POST | `/api/v1/mcp-servers/{id}/test` | Test MCP server connectivity |
+| POST | `/api/v1/mcp-servers/sync` | Deploy MCP + A2A config to gateway |
+| GET | `/api/v1/mcp-servers/sync/preview` | Preview gateway config YAML |
+| GET/POST | `/api/v1/agents` | A2A agent CRUD |
+| PUT/DELETE | `/api/v1/agents/{id}` | Update/delete A2A agent |
+| POST | `/api/v1/agents/{id}/test` | Test A2A agent connectivity |
+| GET/POST | `/api/v1/models` | Model management (proxied to LiteLLM) |
+| GET/POST | `/api/v1/keys` | API key management (proxied to LiteLLM) |
+| GET/POST | `/api/v1/teams` | Team management (proxied to LiteLLM) |
+| GET/POST | `/api/v1/budgets` | Budget management (proxied to LiteLLM) |
+| GET/POST | `/api/v1/guardrails` | Guardrail config CRUD |
 | GET/PUT | `/api/v1/settings` | Platform settings |
+| GET | `/api/v1/reports/summary` | Cost dashboard data |
+| GET/POST | `/api/v1/workflows` | Workflow templates |
 
-### Semantic Cache (Port 8083)
+## Docker Compose Profiles
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/lookup` | Look up cached response by semantic similarity |
-| POST | `/store` | Store response in cache |
-| DELETE | `/invalidate/{cache_key}` | Invalidate specific cache entry |
-| DELETE | `/invalidate-model/{model}` | Invalidate all entries for a model |
-| DELETE | `/invalidate-user/{user_id}` | Invalidate all entries for a user |
-| GET | `/stats` | Get cache statistics (hits, misses, savings) |
-| POST | `/warmup` | Warm up cache with pre-computed entries |
-| POST | `/similarity` | Compute semantic similarity between texts |
-| GET | `/health` | Health check |
-
-### A2A Runtime (Port 8087)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/agents/register` | Register an agent |
-| DELETE | `/agents/{agent_id}` | Unregister an agent |
-| POST | `/agents/{agent_id}/heartbeat` | Update agent heartbeat |
-| GET | `/agents` | List registered agents |
-| GET | `/capabilities` | List all capabilities |
-| POST | `/workflows/start` | Start A2A workflow |
-| GET | `/workflows/{workflow_id}` | Get workflow status |
-| POST | `/workflows/{workflow_id}/cancel` | Cancel workflow |
-| GET | `/workflows/{workflow_id}/history` | Get execution history |
-| POST | `/approvals` | Submit human approval |
-| GET | `/approvals/pending` | List pending approvals |
-| POST | `/messages` | Send message between agents |
-| GET | `/health` | Health check |
-
-## Configuration
-
-### Cedar Routing Policies
-
-Located in `config/agentgateway/policies/routing-rules.cedar`:
-
-```cedar
-// Prefer self-hosted when budget is low
-@priority(100)
-permit (principal, action == "routing:select_model", resource)
-when {
-    context.cost_budget_remaining < 10.0 &&
-    resource.provider == "vllm"
-};
-
-// Forbid slow models for tight latency SLAs
-@priority(85)
-forbid (principal, action == "routing:select_model", resource)
-when {
-    context.latency_sla_ms < 500 &&
-    resource.average_latency_ms > context.latency_sla_ms
-};
-
-// Circuit breaker for high error rates
-forbid (principal, action == "routing:select_model", resource)
-when { resource.current_error_rate > 0.05 };
-```
-
-### Gateway Abstraction
-
-Located in `config/gateway-abstraction/gateways.yaml`:
-
-```yaml
-default_gateway: litellm
-
-gateways:
-  - type: litellm
-    name: primary-litellm
-    base_url: http://litellm:4000
-    api_key: ${LITELLM_MASTER_KEY}
-
-  - type: openai
-    name: direct-openai
-    base_url: https://api.openai.com/v1
-    api_key: ${OPENAI_API_KEY}
-
-routing:
-  strategy: priority
-  model_routing:
-    "gpt-*": [primary-litellm, direct-openai]
-    "claude-*": [primary-litellm]
-    "*": [primary-litellm]
-```
-
-### LiteLLM Configuration
-
-See `config/litellm/config.yaml` for model routing, pricing, and budget configuration.
-
-### Agent Gateway Configuration
-
-See `config/agentgateway/config.yaml` for backend configuration, auth, and policies.
-
-## Directory Structure
-
-```
-gateway/
-├── kubernetes/
-│   ├── base/                    # Base Kubernetes manifests
-│   │   ├── agentgateway/        # Agent Gateway deployment
-│   │   ├── litellm/             # LiteLLM deployment
-│   │   ├── vllm/                # vLLM Helm values
-│   │   ├── observability/       # OTEL, Prometheus, Grafana
-│   │   └── database/            # PostgreSQL
-│   └── overlays/
-│       ├── dev/                 # Development overrides
-│       ├── staging/             # Staging overrides
-│       └── production/          # Production overrides
-├── config/
-│   ├── litellm/config.yaml      # LiteLLM configuration
-│   ├── agentgateway/
-│   │   ├── config.yaml          # Agent Gateway configuration
-│   │   └── policies/            # Cedar routing policies
-│   ├── gateway-abstraction/     # Gateway abstraction config
-│   ├── otel/                    # OpenTelemetry configuration
-│   └── nginx/                   # Nginx reverse proxy config
-├── src/
-│   ├── cost-predictor/          # Cost prediction service
-│   ├── budget-webhook/          # Budget enforcement webhook
-│   ├── finops-reporter/         # FinOps reporting service
-│   ├── policy-router/           # Cedar policy-based routing
-│   ├── workflow-engine/         # LangGraph workflow orchestration
-│   ├── admin-api/               # Admin REST API
-│   └── gateway-abstraction/     # Gateway abstraction module
-├── ui/
-│   └── admin/                   # Admin UI (React + Vite)
-├── tests/
-│   ├── integration/             # Integration tests
-│   ├── load/k6/                 # k6 load tests
-│   └── e2e/                     # End-to-end tests
-├── docker-compose.yaml          # Local development setup
-└── README.md
-```
-
-## Testing
-
-### Integration Tests
-
-```bash
-# Run all integration tests
-cd tests
-pip install -r requirements.txt
-pytest integration/ -v
-
-# Run specific service tests
-pytest integration/test_policy_router.py -v
-pytest integration/test_workflow_engine.py -v
-pytest integration/test_admin_api.py -v
-pytest integration/test_gateway_abstraction.py -v
-```
-
-### Load Tests
-
-```bash
-cd tests/load/k6
-k6 run load_test.js
-```
-
-### E2E Tests
-
-```bash
-cd tests
-pytest e2e/ -v
-```
-
-## Monitoring
-
-### Grafana Dashboards
-- **AI Control Plane Overview** - Request rates, latencies, costs
-- **vLLM Performance** - GPU utilization, queue depth
-- **Budget Alerts** - Budget utilization by user/team
-- **Workflow Metrics** - Execution counts, durations, costs
-
-### Prometheus Alerts
-- `HighErrorRate` - Error rate > 5%
-- `HighLatency` - P95 latency > 2s
-- `BudgetExhausted` - Budget limit reached
-- `WorkflowFailed` - Workflow execution failed
+| Profile | Services Added |
+|---------|----------------|
+| *(default)* | postgres, redis, litellm, admin-api, admin-ui |
+| `observability` | otel-collector, prometheus, grafana, jaeger |
+| `workflows` | temporal, workflow-engine |
+| `finops` | cost-predictor, budget-webhook |
+| `full` | everything above + agent gateway |
 
 ## Supported Models
 
@@ -485,46 +239,60 @@ pytest e2e/ -v
 ### Cloud Platforms
 | Provider | Models |
 |----------|--------|
-| **AWS Bedrock** | Claude 4.5, Llama 4 (405b/70b), Llama 3.3/3.2/3.1, Mistral Large 3, Nova Pro/Lite/Micro, Titan, DeepSeek R1, Cohere Command R+, AI21 Jamba |
-| **Google Vertex AI** | Gemini 3/2.5 Pro/Flash, Claude Opus/Haiku 4.5, DeepSeek V3.2 |
-| **Azure OpenAI** | GPT-5.2/5.1, GPT-4.1, o4-mini, o3, o3-mini, o1, GPT-4o, embeddings, audio models |
+| **AWS Bedrock** | Claude 4.5, Llama 4, Llama 3.x, Mistral, Nova, Titan, DeepSeek, Cohere, AI21 |
+| **Google Vertex AI** | Gemini 3/2.5, Claude on Vertex, DeepSeek on Vertex |
+| **Azure OpenAI** | GPT-5.x, GPT-4.1, o-series, GPT-4o, embeddings, audio |
+| **Ollama** | Llama 3.1 (70B/8B), Mistral, CodeLlama |
 
-### Local Models (Ollama)
-| Model | Requirements |
-|-------|--------------|
-| Llama 3.1 70B/8B | GPU with 48GB+ / 8GB+ VRAM |
-| Mistral, CodeLlama | GPU with 8GB+ VRAM |
+### Model Groups
 
-## Model Groups
+Semantic aliases for capability-based routing:
+- `fast` — GPT-5-mini, Claude Haiku 4.5, Gemini 3 Flash, Grok 3 Mini
+- `smart` — GPT-5, Claude Sonnet 4.5, Gemini 3 Pro, Grok 4
+- `powerful` — GPT-5.2, Claude Opus 4.5, o3-pro, Grok 4 Heavy
+- `reasoning` — o3, o3-pro, DeepSeek R1
+- `coding` — Claude Sonnet 4.5, DeepSeek Coder, CodeLlama
+- `cost-effective` — GPT-5-mini, Claude Haiku 4.5, Gemini 2.5 Flash-Lite, DeepSeek V3
 
-Use model aliases for semantic routing:
-- `fast` - GPT-5-mini, Claude Haiku 4.5, Gemini 3 Flash, Grok 3 Mini
-- `smart` - GPT-5, Claude Sonnet 4.5, Gemini 3 Pro, Grok 4
-- `powerful` - GPT-5.2, Claude Opus 4.5, o3-pro, Grok 4 Heavy
-- `reasoning` - o3, o3-pro, DeepSeek R1
-- `coding` - Claude Sonnet 4.5, DeepSeek Coder, CodeLlama
-- `cost-effective` - GPT-5-mini, Claude Haiku 4.5, Gemini 2.5 Flash-Lite, DeepSeek V3
-- `bedrock` - All AWS Bedrock models
-- `vertex` - All Google Vertex AI models
-- `azure` - All Azure OpenAI models
-- `local` - Ollama models (Llama, Mistral, CodeLlama)
+## Cloud Deployment
 
-## Contributing
+### GCP (Terraform)
 
-1. Fork the repository
-2. Create a feature branch
-3. Make changes and add tests
-4. Submit a pull request
+```bash
+make demo           # Deploy demo environment
+make staging        # Deploy staging environment
+make prod           # Deploy production (requires confirmation)
+make demo-destroy   # Tear down demo
+```
+
+### Kubernetes (Kustomize)
+
+```bash
+kubectl apply -k kubernetes/overlays/dev
+kubectl apply -k kubernetes/overlays/staging
+kubectl apply -k kubernetes/overlays/production
+```
+
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Quickstart](docs/docs/guides/quickstart.md) | Get running in 5 minutes |
+| [API Integration](docs/docs/guides/api-integration.md) | Python, TypeScript, Go, curl examples |
+| [Cost Management](docs/docs/guides/cost-management.md) | Budgets, alerts, FinOps |
+| [Comparison](docs/docs/guides/comparison.md) | How we compare to alternatives |
+| [LiteLLM Deep Dive](docs/docs/guides/litellm-integration.md) | What we use, what we don't |
+| [Agent Gateway Deep Dive](docs/docs/guides/agentgateway-integration.md) | Integration details |
+| [Admin Guide](docs/docs/guides/admin-guide.md) | UI walkthrough |
+
+## References
+
+- [Agent Gateway](https://agentgateway.dev) — Linux Foundation project for agentic AI connectivity
+- [LiteLLM](https://docs.litellm.ai) — Open-source LLM proxy
+- [LangGraph](https://langchain-ai.github.io/langgraph/) — Workflow orchestration
+- [Temporal](https://temporal.io) — Durable execution engine
+- [OpenTelemetry](https://opentelemetry.io) — Observability framework
 
 ## License
 
 MIT License
-
-## References
-
-- [Agent Gateway](https://agentgateway.dev)
-- [LiteLLM Documentation](https://docs.litellm.ai)
-- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
-- [Cedar Policy Language](https://www.cedarpolicy.com/)
-- [vLLM Production Stack](https://docs.vllm.ai/projects/production-stack)
-- [OpenTelemetry](https://opentelemetry.io)

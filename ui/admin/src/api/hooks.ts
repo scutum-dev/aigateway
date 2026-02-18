@@ -1,26 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  modelsApi,
-  policiesApi,
-  budgetsApi,
-  teamsApi,
   mcpServersApi,
-  keysApi,
+  agentsApi,
   workflowsApi,
-  metricsApi,
+  reportsApi,
   settingsApi,
   guardrailsApi,
+  modelsApi,
+  keysApi,
+  teamsApi,
+  budgetsApi,
 } from './client'
 import type {
-  ModelConfig,
-  ModelUpdate,
-  Budget,
-  BudgetCreate,
-  BudgetUpdate,
-  Team,
-  TeamCreate,
-  TeamUpdate,
-  TeamMemberAdd,
   GuardrailAssignment,
   MCPServerConfig,
   MCPServerCreate,
@@ -28,147 +19,33 @@ import type {
   MCPTestResult,
   GatewaySyncResult,
   GatewayConfigPreview,
+  A2AAgentConfig,
+  A2AAgentCreate,
+  A2AAgentUpdate,
+  A2ATestResult,
   WorkflowSummary,
   WorkflowCreate,
   WorkflowExecuteRequest,
   WorkflowExecutionSummary,
   WorkflowExecutionDetail,
-  KeyGenerateRequest,
-  KeyGenerateResponse,
-  KeyUpdateRequest,
-  KeyDeleteRequest,
-  RealtimeMetrics,
   PlatformSettings,
-  RoutingPolicy,
-  RoutingPolicyCreate,
   GuardrailConfig,
   GuardrailConfigCreate,
   GuardrailConfigUpdate,
   GuardrailEvent,
+  ReportsSummary,
+  ModelInfo,
+  ModelCreateRequest,
+  KeyInfo,
+  KeyGenerateRequest,
+  KeyGenerateResponse,
+  TeamInfo,
+  TeamCreateRequest,
+  TeamUpdateRequest,
+  BudgetInfo,
+  BudgetCreateRequest,
+  BudgetUpdateRequest,
 } from '../types'
-
-// Models hooks
-export function useModels() {
-  return useQuery<ModelConfig[]>({
-    queryKey: ['models'],
-    queryFn: modelsApi.list,
-  })
-}
-
-export function useUpdateModel() {
-  const queryClient = useQueryClient()
-  return useMutation<ModelConfig, Error, { modelId: string; data: ModelUpdate }>({
-    mutationFn: ({ modelId, data }) => modelsApi.update(modelId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['models'] })
-    },
-  })
-}
-
-// Routing Policies hooks
-export function useRoutingPolicies() {
-  return useQuery<RoutingPolicy[]>({
-    queryKey: ['routing-policies'],
-    queryFn: policiesApi.list,
-  })
-}
-
-export function useCreatePolicy() {
-  const queryClient = useQueryClient()
-  return useMutation<RoutingPolicy, Error, RoutingPolicyCreate>({
-    mutationFn: policiesApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routing-policies'] })
-    },
-  })
-}
-
-export function useDeletePolicy() {
-  const queryClient = useQueryClient()
-  return useMutation<void, Error, string>({
-    mutationFn: policiesApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routing-policies'] })
-    },
-  })
-}
-
-// Budgets hooks
-export function useBudgets() {
-  return useQuery<Budget[]>({
-    queryKey: ['budgets'],
-    queryFn: budgetsApi.list,
-  })
-}
-
-export function useCreateBudget() {
-  const queryClient = useQueryClient()
-  return useMutation<Budget, Error, BudgetCreate>({
-    mutationFn: budgetsApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['budgets'] })
-    },
-  })
-}
-
-export function useUpdateBudget() {
-  const queryClient = useQueryClient()
-  return useMutation<Budget, Error, { id: string; data: BudgetUpdate }>({
-    mutationFn: ({ id, data }) => budgetsApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['budgets'] })
-    },
-  })
-}
-
-// Teams hooks
-export function useTeams() {
-  return useQuery<Team[]>({
-    queryKey: ['teams'],
-    queryFn: teamsApi.list,
-  })
-}
-
-export function useCreateTeam() {
-  const queryClient = useQueryClient()
-  return useMutation<Team, Error, TeamCreate>({
-    mutationFn: teamsApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teams'] })
-    },
-  })
-}
-
-export function useUpdateTeam() {
-  const queryClient = useQueryClient()
-  return useMutation<Team, Error, { id: string; data: TeamUpdate }>({
-    mutationFn: ({ id, data }) => teamsApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teams'] })
-    },
-  })
-}
-
-export function useDeleteTeam() {
-  const queryClient = useQueryClient()
-  return useMutation<void, Error, string>({
-    mutationFn: teamsApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teams'] })
-      queryClient.invalidateQueries({ queryKey: ['guardrail-assignments'] })
-    },
-  })
-}
-
-export function useAddTeamMember() {
-  const queryClient = useQueryClient()
-  return useMutation<{ status: string }, Error, { teamId: string; data: TeamMemberAdd }>({
-    mutationFn: ({ teamId, data }) => teamsApi.addMember(teamId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teams'] })
-    },
-  })
-}
 
 // MCP Servers hooks
 export function useMCPServers() {
@@ -232,41 +109,47 @@ export function useGatewayConfigPreview() {
   })
 }
 
-// API Keys hooks
-export function useAPIKeys() {
-  return useQuery<unknown>({
-    queryKey: ['api-keys'],
-    queryFn: keysApi.list,
+// A2A Agents hooks
+export function useAgents() {
+  return useQuery<A2AAgentConfig[]>({
+    queryKey: ['agents'],
+    queryFn: agentsApi.list,
   })
 }
 
-export function useGenerateKey() {
+export function useCreateAgent() {
   const queryClient = useQueryClient()
-  return useMutation<KeyGenerateResponse, Error, KeyGenerateRequest>({
-    mutationFn: keysApi.generate,
+  return useMutation<A2AAgentConfig, Error, A2AAgentCreate>({
+    mutationFn: agentsApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['api-keys'] })
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
     },
   })
 }
 
-export function useUpdateKey() {
+export function useUpdateAgent() {
   const queryClient = useQueryClient()
-  return useMutation<unknown, Error, KeyUpdateRequest>({
-    mutationFn: keysApi.update,
+  return useMutation<A2AAgentConfig, Error, { id: string; data: A2AAgentUpdate }>({
+    mutationFn: ({ id, data }) => agentsApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['api-keys'] })
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
     },
   })
 }
 
-export function useDeleteKey() {
+export function useDeleteAgent() {
   const queryClient = useQueryClient()
-  return useMutation<unknown, Error, KeyDeleteRequest>({
-    mutationFn: keysApi.delete,
+  return useMutation<void, Error, string>({
+    mutationFn: agentsApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['api-keys'] })
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
     },
+  })
+}
+
+export function useTestAgent() {
+  return useMutation<A2ATestResult, Error, string>({
+    mutationFn: agentsApi.test,
   })
 }
 
@@ -318,11 +201,11 @@ export function useExecuteWorkflow() {
   })
 }
 
-// Metrics hooks
-export function useRealtimeMetrics() {
-  return useQuery<RealtimeMetrics>({
-    queryKey: ['metrics', 'realtime'],
-    queryFn: metricsApi.realtime,
+// Reports hooks
+export function useReportsSummary() {
+  return useQuery<ReportsSummary>({
+    queryKey: ['reports', 'summary'],
+    queryFn: reportsApi.summary,
     refetchInterval: 30000,
   })
 }
@@ -415,6 +298,158 @@ export function useUpdateSettings() {
     mutationFn: settingsApi.update,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] })
+    },
+  })
+}
+
+// Models hooks
+export function useModels() {
+  return useQuery<{ data: ModelInfo[] }>({
+    queryKey: ['models'],
+    queryFn: modelsApi.list,
+  })
+}
+
+export function useCreateModel() {
+  const queryClient = useQueryClient()
+  return useMutation<unknown, Error, ModelCreateRequest>({
+    mutationFn: modelsApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['models'] })
+    },
+  })
+}
+
+export function useDeleteModel() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: modelsApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['models'] })
+    },
+  })
+}
+
+// API Keys hooks
+export function useAPIKeys() {
+  return useQuery<KeyInfo[]>({
+    queryKey: ['keys'],
+    queryFn: keysApi.list,
+  })
+}
+
+export function useGenerateKey() {
+  const queryClient = useQueryClient()
+  return useMutation<KeyGenerateResponse, Error, KeyGenerateRequest>({
+    mutationFn: keysApi.generate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['keys'] })
+    },
+  })
+}
+
+export function useDeleteKey() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string[]>({
+    mutationFn: keysApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['keys'] })
+    },
+  })
+}
+
+// Teams hooks
+export function useTeams() {
+  return useQuery<TeamInfo[]>({
+    queryKey: ['teams'],
+    queryFn: teamsApi.list,
+  })
+}
+
+export function useCreateTeam() {
+  const queryClient = useQueryClient()
+  return useMutation<TeamInfo, Error, TeamCreateRequest>({
+    mutationFn: teamsApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
+    },
+  })
+}
+
+export function useUpdateTeam() {
+  const queryClient = useQueryClient()
+  return useMutation<TeamInfo, Error, TeamUpdateRequest>({
+    mutationFn: teamsApi.update,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
+    },
+  })
+}
+
+export function useDeleteTeam() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string[]>({
+    mutationFn: teamsApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
+    },
+  })
+}
+
+export function useAddTeamMember() {
+  const queryClient = useQueryClient()
+  return useMutation<unknown, Error, { teamId: string; member: { role: string; user_id: string } }>({
+    mutationFn: ({ teamId, member }) => teamsApi.addMember(teamId, member),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
+    },
+  })
+}
+
+export function useDeleteTeamMember() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, { teamId: string; userId: string }>({
+    mutationFn: ({ teamId, userId }) => teamsApi.deleteMember(teamId, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
+    },
+  })
+}
+
+// Budgets hooks
+export function useBudgets() {
+  return useQuery<BudgetInfo[]>({
+    queryKey: ['budgets'],
+    queryFn: budgetsApi.list,
+  })
+}
+
+export function useCreateBudget() {
+  const queryClient = useQueryClient()
+  return useMutation<BudgetInfo, Error, BudgetCreateRequest>({
+    mutationFn: budgetsApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budgets'] })
+    },
+  })
+}
+
+export function useUpdateBudget() {
+  const queryClient = useQueryClient()
+  return useMutation<BudgetInfo, Error, BudgetUpdateRequest>({
+    mutationFn: budgetsApi.update,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budgets'] })
+    },
+  })
+}
+
+export function useDeleteBudget() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: budgetsApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budgets'] })
     },
   })
 }

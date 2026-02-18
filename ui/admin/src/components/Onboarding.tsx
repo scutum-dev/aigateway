@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useModels, useBudgets, useTeams, useRealtimeMetrics } from '../api/hooks'
+import { useReportsSummary, useMCPServers, useGuardrails, useSettings } from '../api/hooks'
 import {
   CheckCircleIcon,
   XMarkIcon,
@@ -12,25 +12,23 @@ export default function Onboarding() {
   const [dismissed, setDismissed] = useState(
     () => localStorage.getItem(DISMISS_KEY) === '1'
   )
-  const { data: models } = useModels()
-  const { data: budgets } = useBudgets()
-  const { data: teams } = useTeams()
-  const { data: metrics } = useRealtimeMetrics()
+  const { data: summary } = useReportsSummary()
+  const { data: mcpServers } = useMCPServers()
+  const { data: guardrails } = useGuardrails()
+  const { data: settings } = useSettings()
 
   if (dismissed) return null
 
-  const providerStatus = metrics?.provider_status || {}
-  const hasApiKeys = Object.values(providerStatus).some(Boolean)
-  const hasModels = (models?.length || 0) > 0
-  const hasBudget = (budgets?.length || 0) > 0
-  const hasTeam = (teams?.length || 0) > 0
+  const hasTraffic = (summary?.requests_today || 0) > 0
+  const hasMCPServer = (mcpServers?.length || 0) > 0
+  const hasGuardrail = (guardrails?.length || 0) > 0
+  const hasSettings = !!settings
 
   const steps = [
-    { label: 'API keys configured', done: hasApiKeys, href: '/api-keys' },
-    { label: 'Models available', done: hasModels, href: '/models' },
-    { label: 'First budget set', done: hasBudget, href: '/budgets' },
-    { label: 'Team created', done: hasTeam, href: '/teams' },
-    { label: 'Settings reviewed', done: false, href: '/settings' },
+    { label: 'LiteLLM receiving traffic', done: hasTraffic, href: '/' },
+    { label: 'MCP server configured', done: hasMCPServer, href: '/mcp-servers' },
+    { label: 'Guardrail profile created', done: hasGuardrail, href: '/guardrails' },
+    { label: 'Settings reviewed', done: hasSettings, href: '/settings' },
   ]
 
   const completed = steps.filter((s) => s.done).length

@@ -16,7 +16,6 @@ export default function Settings() {
     cache_ttl_seconds: 3600,
     enable_cost_tracking: true,
     enable_budget_enforcement: true,
-    enable_routing_policies: true,
     enable_guardrails: true,
     maintenance_mode: false,
   })
@@ -233,40 +232,6 @@ export default function Settings() {
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                     form.enable_budget_enforcement
-                      ? 'translate-x-6'
-                      : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <label id="routing-policies-label" className="font-medium">Routing Policies</label>
-                <p className="text-sm text-gray-500">
-                  Enable Cedar policy-based routing
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={form.enable_routing_policies}
-                aria-labelledby="routing-policies-label"
-                onClick={() =>
-                  setForm({
-                    ...form,
-                    enable_routing_policies: !form.enable_routing_policies,
-                  })
-                }
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  form.enable_routing_policies
-                    ? 'bg-primary-600'
-                    : 'bg-gray-300'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    form.enable_routing_policies
                       ? 'translate-x-6'
                       : 'translate-x-1'
                   }`}

@@ -91,7 +91,7 @@ class GuardrailConfig(BaseModel):
 
 class GuardrailAssignment(BaseModel):
     team_id: str
-    team_name: str
+    team_name: Optional[str] = None
     guardrail_config_id: str
     config_name: str
     priority: int = 0
@@ -329,18 +329,17 @@ async def list_guardrail_assignments(
 
     async with deps.db_pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT tg.team_id, t.name AS team_name,
+            SELECT tg.team_id,
                    tg.guardrail_config_id, gc.name AS config_name,
                    tg.priority
             FROM team_guardrails tg
-            JOIN teams t ON t.id = tg.team_id
             JOIN guardrail_configs gc ON gc.id = tg.guardrail_config_id
-            ORDER BY t.name, gc.name
+            ORDER BY gc.name
         """)
         return [
             GuardrailAssignment(
                 team_id=str(row["team_id"]),
-                team_name=row["team_name"],
+                team_name=None,
                 guardrail_config_id=str(row["guardrail_config_id"]),
                 config_name=row["config_name"],
                 priority=row["priority"],

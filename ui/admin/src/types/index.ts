@@ -1,98 +1,8 @@
 // TypeScript interfaces mirroring backend Pydantic models
 
-export interface ModelConfig {
-  model_id: string
-  provider: string
-  litellm_model_name: string
-  tier: 'free' | 'budget' | 'standard' | 'premium'
-  cost_per_1k_input: number
-  cost_per_1k_output: number
-  default_latency_sla_ms: number
-  max_tokens: number | null
-  supports_streaming: boolean
-  supports_function_calling: boolean
-  supports_vision: boolean
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface ModelUpdate {
-  tier?: string
-  cost_per_1k_input?: number
-  cost_per_1k_output?: number
-  default_latency_sla_ms?: number
-}
-
-export interface Budget {
-  id: string
-  name: string
-  entity_type: 'global' | 'team' | 'user'
-  entity_id: string | null
-  monthly_limit: number
-  current_spend: number
-  soft_limit_percent: number
-  hard_limit_percent: number
-  alert_email: string | null
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface BudgetCreate {
-  name: string
-  entity_type: string
-  entity_id: string
-  monthly_limit: number
-  soft_limit_percent: number
-  hard_limit_percent: number
-  alert_email: string
-}
-
-export interface BudgetUpdate {
-  name?: string
-  monthly_limit?: number
-  soft_limit_percent?: number
-  hard_limit_percent?: number
-  alert_email?: string | null
-  is_active?: boolean
-}
-
-export interface Team {
-  id: string
-  name: string
-  description: string | null
-  monthly_budget: number | null
-  default_model: string | null
-  is_active: boolean
-  members: string[]
-  created_at: string
-  updated_at: string
-}
-
-export interface TeamCreate {
-  name: string
-  description: string
-  monthly_budget: number | null
-  default_model: string
-}
-
-export interface TeamUpdate {
-  name?: string
-  description?: string | null
-  monthly_budget?: number | null
-  default_model?: string | null
-  is_active?: boolean
-}
-
-export interface TeamMemberAdd {
-  user_id: string
-  role: 'member' | 'admin'
-}
-
 export interface GuardrailAssignment {
   team_id: string
-  team_name: string
+  team_name: string | null
   guardrail_config_id: string
   config_name: string
   priority: number
@@ -144,47 +54,38 @@ export interface GatewaySyncResult {
 
 export interface GatewayConfigPreview {
   active_servers: number
+  active_agents?: number
   config_yaml: string
 }
 
-export interface APIKeyInfo {
-  token: string | null
-  key_alias: string | null
-  key_name: string | null
-  spend: number
-  max_budget: number | null
-  models: string[] | null
-  team_id: string | null
-  expires: string | null
-  created_at: string | null
+// A2A Agents
+export interface A2AAgentConfig {
+  id: string
+  name: string
+  description: string | null
+  url: string
+  skills: string[]
+  is_active: boolean
 }
 
-export interface KeyGenerateRequest {
-  key_alias?: string
-  max_budget?: number
-  models?: string[]
-  team_id?: string
-  duration?: string
-  metadata?: Record<string, unknown>
+export interface A2AAgentCreate {
+  name: string
+  description?: string
+  url: string
+  skills: string[]
 }
 
-export interface KeyGenerateResponse {
-  key: string
-  key_name: string
-  expires: string | null
-  [key: string]: unknown
+export interface A2AAgentUpdate {
+  name?: string
+  description?: string
+  url?: string
+  skills?: string[]
+  is_active?: boolean
 }
 
-export interface KeyUpdateRequest {
-  key: string
-  key_alias?: string
-  max_budget?: number
-  models?: string[]
-  duration?: string
-}
-
-export interface KeyDeleteRequest {
-  keys: string[]
+export interface A2ATestResult {
+  status: 'ok' | 'error'
+  message: string
 }
 
 export interface WorkflowSummary {
@@ -254,12 +155,13 @@ export interface WorkflowTemplate {
   description: string
 }
 
-export interface RealtimeMetrics {
-  requests_per_minute: number
-  total_cost_today: number
-  total_tokens_today: number
-  error_rate: number
-  provider_status: Record<string, boolean>
+export interface ReportsSummary {
+  today: { cost: number; requests: number }
+  this_week: { cost: number; requests: number }
+  this_month: { cost: number; requests: number }
+  top_models: { model: string; cost: number }[]
+  requests_today: number
+  tokens_today: number
   model_usage: Record<string, number>
 }
 
@@ -270,7 +172,6 @@ export interface PlatformSettings {
   cache_ttl_seconds: number
   enable_cost_tracking: boolean
   enable_budget_enforcement: boolean
-  enable_routing_policies: boolean
   enable_guardrails: boolean
   maintenance_mode: boolean
 }
@@ -279,35 +180,6 @@ export interface LoginResponse {
   access_token: string
   expires_at: string
   token_type: string
-}
-
-export interface RoutingPolicy {
-  id: string
-  name: string
-  description: string
-  priority: number
-  condition: PolicyCondition
-  action: 'permit' | 'deny'
-  targetModels: string[]
-  isActive: boolean
-}
-
-export interface PolicyCondition {
-  type: 'and' | 'or' | 'comparison'
-  field?: string
-  operator?: '<' | '>' | '<=' | '>=' | '==' | '!='
-  value?: string | number | boolean
-  children?: PolicyCondition[]
-}
-
-export interface RoutingPolicyCreate {
-  name: string
-  description: string
-  priority: number
-  condition: PolicyCondition
-  action: 'permit' | 'deny'
-  targetModels: string[]
-  isActive: boolean
 }
 
 export interface UserInfo {
@@ -374,3 +246,93 @@ export interface GuardrailEvent {
   created_at: string | null
 }
 
+// Models (from LiteLLM /model/info response)
+export interface ModelInfo {
+  model_name: string
+  litellm_params: Record<string, unknown>
+  model_info: Record<string, unknown>
+}
+
+export interface ModelCreateRequest {
+  model_name: string
+  litellm_params: Record<string, unknown>
+  model_info?: Record<string, unknown>
+}
+
+// API Keys
+export interface KeyInfo {
+  token: string
+  key_alias: string | null
+  key_name: string | null
+  spend: number
+  max_budget: number | null
+  models: string[] | null
+  team_id: string | null
+  expires: string | null
+  created_at: string | null
+}
+
+export interface KeyGenerateRequest {
+  key_alias?: string
+  max_budget?: number
+  models?: string[]
+  team_id?: string
+  duration?: string
+}
+
+export interface KeyGenerateResponse {
+  key: string
+  key_name: string | null
+  expires: string | null
+}
+
+// Teams (from LiteLLM)
+export interface TeamInfo {
+  team_id: string
+  team_alias: string | null
+  members_with_roles: Array<{ role: string; user_id: string }>
+  max_budget: number | null
+  spend: number
+  models: string[]
+}
+
+export interface TeamCreateRequest {
+  team_alias: string
+  max_budget?: number
+  models?: string[]
+}
+
+export interface TeamUpdateRequest {
+  team_id: string
+  team_alias?: string
+  max_budget?: number
+  models?: string[]
+}
+
+// Budgets (from LiteLLM)
+export interface BudgetInfo {
+  budget_id: string
+  max_budget: number | null
+  soft_budget: number | null
+  max_parallel_requests: number | null
+  tpm_limit: number | null
+  rpm_limit: number | null
+  budget_reset_at: string | null
+}
+
+export interface BudgetCreateRequest {
+  max_budget?: number
+  soft_budget?: number
+  max_parallel_requests?: number
+  tpm_limit?: number
+  rpm_limit?: number
+}
+
+export interface BudgetUpdateRequest {
+  budget_id: string
+  max_budget?: number
+  soft_budget?: number
+  max_parallel_requests?: number
+  tpm_limit?: number
+  rpm_limit?: number
+}

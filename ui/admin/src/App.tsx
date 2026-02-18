@@ -6,11 +6,12 @@ import Layout from './components/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
-import APIKeys from './pages/APIKeys'
 import Models from './pages/Models'
-import Budgets from './pages/Budgets'
+import APIKeys from './pages/APIKeys'
 import Teams from './pages/Teams'
+import Budgets from './pages/Budgets'
 import MCPServers from './pages/MCPServers'
+import Agents from './pages/Agents'
 import Guardrails from './pages/Guardrails'
 import Workflows from './pages/Workflows'
 import Settings from './pages/Settings'
@@ -66,11 +67,12 @@ function App() {
       <ErrorBoundary>
       <Routes>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/api-keys" element={<APIKeys />} />
         <Route path="/models" element={<Models />} />
-        <Route path="/budgets" element={<Budgets />} />
+        <Route path="/api-keys" element={<APIKeys />} />
         <Route path="/teams" element={<Teams />} />
+        <Route path="/budgets" element={<Budgets />} />
         <Route path="/mcp-servers" element={<MCPServers />} />
+        <Route path="/agents" element={<Agents />} />
         <Route path="/guardrails" element={<Guardrails />} />
         <Route path="/workflows" element={<Workflows />} />
         <Route path="/settings" element={<Settings />} />

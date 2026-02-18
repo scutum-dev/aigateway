@@ -763,48 +763,6 @@ resource "kubernetes_ingress_v1" "cost_predictor" {
   }
 }
 
-# Policy Router Ingress (Cedar policy-based routing)
-resource "kubernetes_ingress_v1" "policy_router" {
-  depends_on = [
-    null_resource.deploy_services,
-    helm_release.nginx_ingress,
-    null_resource.cluster_issuer
-  ]
-
-  metadata {
-    name      = "policy-router-ingress"
-    namespace = local.namespace
-    annotations = {
-      "cert-manager.io/cluster-issuer"                    = "letsencrypt-prod"
-      "nginx.ingress.kubernetes.io/rewrite-target"        = "/$2"
-      "nginx.ingress.kubernetes.io/use-regex"             = "true"
-    }
-  }
-
-  spec {
-    ingress_class_name = "nginx"
-    tls {
-      hosts       = [local.full_domain]
-      secret_name = "gateway-tls"
-    }
-    rule {
-      host = local.full_domain
-      http {
-        path {
-          path      = "/policy-router(/|$)(.*)"
-          path_type = "ImplementationSpecific"
-          backend {
-            service {
-              name = "policy-router"
-              port { number = 8084 }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
 # Workflow Engine Ingress (LangGraph workflows)
 resource "kubernetes_ingress_v1" "workflow_engine" {
   depends_on = [
@@ -881,48 +839,6 @@ resource "kubernetes_ingress_v1" "agentgateway" {
             service {
               name = "agentgateway"
               port { number = 9000 }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-# Semantic Cache Ingress
-resource "kubernetes_ingress_v1" "semantic_cache" {
-  depends_on = [
-    null_resource.deploy_services,
-    helm_release.nginx_ingress,
-    null_resource.cluster_issuer
-  ]
-
-  metadata {
-    name      = "semantic-cache-ingress"
-    namespace = local.namespace
-    annotations = {
-      "cert-manager.io/cluster-issuer"                    = "letsencrypt-prod"
-      "nginx.ingress.kubernetes.io/rewrite-target"        = "/$2"
-      "nginx.ingress.kubernetes.io/use-regex"             = "true"
-    }
-  }
-
-  spec {
-    ingress_class_name = "nginx"
-    tls {
-      hosts       = [local.full_domain]
-      secret_name = "gateway-tls"
-    }
-    rule {
-      host = local.full_domain
-      http {
-        path {
-          path      = "/cache(/|$)(.*)"
-          path_type = "ImplementationSpecific"
-          backend {
-            service {
-              name = "semantic-cache"
-              port { number = 8083 }
             }
           }
         }
@@ -1184,52 +1100,6 @@ resource "kubernetes_ingress_v1" "budget_webhook" {
               name = "budget-webhook"
               port {
                 number = 8081
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-# FinOps Reporter Ingress (Cost reports at /finops)
-resource "kubernetes_ingress_v1" "finops_reporter" {
-  depends_on = [
-    null_resource.deploy_services,
-    helm_release.nginx_ingress,
-    null_resource.cluster_issuer
-  ]
-
-  metadata {
-    name      = "finops-reporter-ingress"
-    namespace = local.namespace
-    annotations = {
-      "cert-manager.io/cluster-issuer"                    = "letsencrypt-prod"
-      "nginx.ingress.kubernetes.io/rewrite-target"        = "/$2"
-      "nginx.ingress.kubernetes.io/use-regex"             = "true"
-    }
-  }
-
-  spec {
-    ingress_class_name = "nginx"
-
-    tls {
-      hosts       = [local.full_domain]
-      secret_name = "gateway-tls"
-    }
-
-    rule {
-      host = local.full_domain
-      http {
-        path {
-          path      = "/finops(/|$)(.*)"
-          path_type = "ImplementationSpecific"
-          backend {
-            service {
-              name = "finops-reporter"
-              port {
-                number = 8082
               }
             }
           }

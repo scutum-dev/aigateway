@@ -16,7 +16,7 @@
 #   - full           : All platform services
 #   - local-models   : GPU stub / Ollama support
 #   - workflows      : Temporal + workflow engine
-#   - experimental   : Policy router, semantic cache
+#   - experimental   : (reserved for future features)
 # =============================================================================
 
 services:
@@ -122,6 +122,9 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       REDIS_URL: redis://redis:6379
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
+      GATEWAY_CONFIG_PATH: /app/gateway-config/config.yaml
+    volumes:
+      - gateway-config:/app/gateway-config
     depends_on:
       postgres:
         condition: service_healthy
@@ -209,7 +212,8 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./kubernetes/base/observability/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - ./config/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
     ports:
       - "${GRAFANA_PORT:-3030}:3000"
@@ -247,16 +251,20 @@ services:
   # ===========================================================================
 
   agentgateway:
-    image: ghcr.io/agentgateway/agentgateway:0.11.0-alpha.18e45de0f30a108df129aeb08d49453ea0527db3
+    build:
+      context: ./config/agentgateway
+      dockerfile: Dockerfile
+    image: ai-gateway/agentgateway:latest
     container_name: agentgateway
     profiles: ["full"]
     ports:
       - "9000:3000"
       - "15000:15000"
+      - "15020:15020"
     volumes:
-      - ./config/agentgateway/config.yaml:/app/config.yaml:ro
+      - gateway-config:/app/config
       - ./data:/workspace:rw
-    command: ["-f", "/app/config.yaml"]
+    command: ["-f", "/app/config/config.yaml"]
     environment:
       RUST_LOG: info,agentgateway=debug
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
@@ -265,9 +273,7 @@ services:
       BRAVE_API_KEY: ${BRAVE_API_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     depends_on:
-      litellm:
-        condition: service_healthy
-      postgres:
+      admin-api:
         condition: service_healthy
     networks:
       - gateway-network
@@ -398,72 +404,6 @@ services:
     restart: unless-stopped
 
   # ===========================================================================
-  # EXPERIMENTAL SERVICES (Profile: experimental)
-  # ===========================================================================
-
-  policy-router:
-    build:
-      context: ./src/policy-router
-      dockerfile: Dockerfile
-      additional_contexts:
-        shared: ./src/shared
-    container_name: policy-router
-    profiles: ["experimental", "full"]
-    ports:
-      - "8084:8084"
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
-      REDIS_URL: redis://redis:6379
-      PROMETHEUS_URL: http://prometheus:9090
-      CEDAR_POLICIES_PATH: /etc/cedar/policies
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
-    volumes:
-      - ./config/agentgateway/policies:/etc/cedar/policies:ro
-    depends_on:
-      - postgres
-      - redis
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8084/health', timeout=5)"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-    networks:
-      - gateway-network
-    restart: unless-stopped
-
-  semantic-cache:
-    build:
-      context: ./src/semantic-cache
-      dockerfile: Dockerfile
-      additional_contexts:
-        shared: ./src/shared
-    container_name: semantic-cache
-    profiles: ["experimental", "full"]
-    ports:
-      - "8083:8083"
-    environment:
-      REDIS_URL: redis://redis:6379
-      LITELLM_URL: http://litellm:4000
-      LITELLM_API_KEY: ${LITELLM_MASTER_KEY:-$LITELLM_KEY}
-      EMBEDDING_MODEL: text-embedding-3-small
-      SIMILARITY_THRESHOLD: "0.90"
-      CACHE_TTL_SECONDS: "3600"
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
-    depends_on:
-      - redis
-      - litellm
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8083/health', timeout=5)"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-    networks:
-      - gateway-network
-    restart: unless-stopped
-
-  # ===========================================================================
   # FINOPS SERVICES (Profile: finops)
   # ===========================================================================
 
@@ -512,26 +452,6 @@ services:
     depends_on:
       - postgres
       - cost-predictor
-    networks:
-      - gateway-network
-    restart: unless-stopped
-
-  finops-reporter:
-    build:
-      context: ./src/finops-reporter
-      dockerfile: Dockerfile
-      additional_contexts:
-        shared: ./src/shared
-    container_name: finops-reporter
-    profiles: ["finops", "full"]
-    ports:
-      - "8082:8082"
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
-    depends_on:
-      - postgres
     networks:
       - gateway-network
     restart: unless-stopped
@@ -662,3 +582,9 @@ volumes:
   prometheus-data:
   grafana-data:
   vault-data:
+  gateway-config:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: "uid=1000,gid=1000,mode=0777"

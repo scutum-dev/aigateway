@@ -67,7 +67,7 @@ env-check: ## Verify environment configuration
 # =============================================================================
 
 up: ## Start core services (postgres, redis, litellm, admin, landing, deck, docs, playground)
-	$(DOCKER_COMPOSE) up -d
+	$(DOCKER_COMPOSE) up -d --build
 	@echo "$(GREEN)Core services started$(RESET)"
 	@echo "  Landing:    http://localhost:$${LANDING_UI_PORT:-9999}"
 	@echo "  Deck:       http://localhost:$${DECK_UI_PORT:-6002}"
@@ -88,31 +88,31 @@ restart: ## Restart all running services
 # =============================================================================
 
 up-full: ## Start ALL services (full stack)
-	$(DOCKER_COMPOSE) --profile full up -d
+	$(DOCKER_COMPOSE) --profile full up -d --build
 	@echo "$(GREEN)Full stack started$(RESET)"
 
 up-observability: ## Start core + observability (Prometheus, Grafana, Jaeger)
-	$(DOCKER_COMPOSE) --profile observability up -d
+	$(DOCKER_COMPOSE) --profile observability up -d --build
 	@echo "$(GREEN)Observability stack started$(RESET)"
 	@echo "  Grafana:    http://localhost:$${GRAFANA_PORT:-3030}"
 	@echo "  Prometheus: http://localhost:$${PROMETHEUS_PORT:-9090}"
 	@echo "  Jaeger:     http://localhost:$${JAEGER_PORT:-16686}"
 
 up-workflows: ## Start core + workflow engine (Temporal)
-	$(DOCKER_COMPOSE) --profile workflows up -d
+	$(DOCKER_COMPOSE) --profile workflows up -d --build
 	@echo "$(GREEN)Workflow stack started$(RESET)"
 	@echo "  Temporal UI: http://localhost:8088"
 
 up-local-models: ## Start core + local model support (GPU stub)
-	$(DOCKER_COMPOSE) --profile local-models up -d
+	$(DOCKER_COMPOSE) --profile local-models up -d --build
 	@echo "$(GREEN)Local models support started$(RESET)"
 
 up-finops: ## Start core + FinOps services
-	$(DOCKER_COMPOSE) --profile finops up -d
+	$(DOCKER_COMPOSE) --profile finops up -d --build
 	@echo "$(GREEN)FinOps stack started$(RESET)"
 
 up-experimental: ## Start core + experimental features
-	$(DOCKER_COMPOSE) --profile experimental up -d
+	$(DOCKER_COMPOSE) --profile experimental up -d --build
 	@echo "$(GREEN)Experimental features started$(RESET)"
 
 # =============================================================================
@@ -127,7 +127,7 @@ build-no-cache: ## Build all images without cache
 	$(DOCKER_COMPOSE) --profile full build --no-cache
 
 build-admin: ## Build all custom services
-	$(DOCKER_COMPOSE) build admin-api admin-ui landing-ui deck-ui docs-site playground-ui budget-webhook finops-reporter
+	$(DOCKER_COMPOSE) build admin-api admin-ui landing-ui deck-ui docs-site playground-ui budget-webhook
 
 # =============================================================================
 # LOGS & STATUS
@@ -180,7 +180,7 @@ test-unit: ## Run unit tests (no running services needed)
 	python -m pytest tests/unit/ -v
 
 test-coverage: ## Run unit + integration tests with coverage report
-	python -m pytest tests/unit/ tests/integration/test_cost_predictor_api.py tests/integration/test_budget_webhook_api.py tests/integration/test_finops_reporter_api.py tests/integration/test_semantic_cache_api.py -v --cov --cov-report=term-missing --cov-report=html
+	python -m pytest tests/unit/ tests/integration/test_cost_predictor_api.py tests/integration/test_budget_webhook_api.py -v --cov --cov-report=term-missing --cov-report=html
 
 test-frontend: ## Run frontend tests
 	cd ui/admin && npm test
@@ -189,13 +189,13 @@ test-all: ## Run all tests (Python unit + integration + frontend)
 	@echo "$(CYAN)Running Python unit tests...$(RESET)"
 	python -m pytest tests/unit/ -v --cov --cov-report=term-missing
 	@echo "$(CYAN)Running Python integration tests...$(RESET)"
-	python -m pytest tests/integration/test_cost_predictor_api.py tests/integration/test_budget_webhook_api.py tests/integration/test_finops_reporter_api.py tests/integration/test_semantic_cache_api.py -v --cov --cov-append --cov-report=term-missing
+	python -m pytest tests/integration/test_cost_predictor_api.py tests/integration/test_budget_webhook_api.py -v --cov --cov-append --cov-report=term-missing
 	@echo "$(CYAN)Running frontend tests...$(RESET)"
 	cd ui/admin && npm test
 	@echo "$(GREEN)All tests passed$(RESET)"
 
 test-integration: ## Run integration tests (API endpoints with mocked backends)
-	python -m pytest tests/integration/test_cost_predictor_api.py tests/integration/test_budget_webhook_api.py tests/integration/test_finops_reporter_api.py tests/integration/test_semantic_cache_api.py -v
+	python -m pytest tests/integration/test_cost_predictor_api.py tests/integration/test_budget_webhook_api.py -v
 
 test-api: ## Test API endpoints
 	@echo "$(CYAN)Testing LiteLLM health...$(RESET)"
@@ -312,15 +312,9 @@ _build: ## Build and push Docker images to Artifact Registry
 	echo "Building cost-predictor..." && \
 	docker build $$PLATFORM_FLAG $$SHARED -t $$REPO/cost-predictor:latest ./src/cost-predictor && \
 	docker push $$REPO/cost-predictor:latest && \
-	echo "Building policy-router..." && \
-	docker build $$PLATFORM_FLAG $$SHARED -t $$REPO/policy-router:latest ./src/policy-router && \
-	docker push $$REPO/policy-router:latest && \
 	echo "Building workflow-engine..." && \
 	docker build $$PLATFORM_FLAG $$SHARED -t $$REPO/workflow-engine:latest ./src/workflow-engine && \
 	docker push $$REPO/workflow-engine:latest && \
-	echo "Building semantic-cache..." && \
-	docker build $$PLATFORM_FLAG $$SHARED -t $$REPO/semantic-cache:latest ./src/semantic-cache && \
-	docker push $$REPO/semantic-cache:latest && \
 	echo "Building landing-ui..." && \
 	docker build $$PLATFORM_FLAG -t $$REPO/landing-ui:latest ./ui/landing && \
 	docker push $$REPO/landing-ui:latest && \
@@ -330,9 +324,6 @@ _build: ## Build and push Docker images to Artifact Registry
 	echo "Building budget-webhook..." && \
 	docker build $$PLATFORM_FLAG $$SHARED -t $$REPO/budget-webhook:latest ./src/budget-webhook && \
 	docker push $$REPO/budget-webhook:latest && \
-	echo "Building finops-reporter..." && \
-	docker build $$PLATFORM_FLAG $$SHARED -t $$REPO/finops-reporter:latest ./src/finops-reporter && \
-	docker push $$REPO/finops-reporter:latest && \
 	echo "Building playground-ui..." && \
 	docker build $$PLATFORM_FLAG -t $$REPO/playground-ui:latest ./ui/playground && \
 	docker push $$REPO/playground-ui:latest && \
@@ -359,11 +350,8 @@ _wait: ## Wait for services to be ready (after images are built)
 	kubectl -n $$NAMESPACE set image deployment/admin-api admin-api=$$REPO/admin-api:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/admin-ui admin-ui=$$REPO/admin-ui:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/cost-predictor cost-predictor=$$REPO/cost-predictor:latest || true && \
-	kubectl -n $$NAMESPACE set image deployment/policy-router policy-router=$$REPO/policy-router:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/workflow-engine workflow-engine=$$REPO/workflow-engine:latest || true && \
-	kubectl -n $$NAMESPACE set image deployment/semantic-cache semantic-cache=$$REPO/semantic-cache:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/budget-webhook budget-webhook=$$REPO/budget-webhook:latest || true && \
-	kubectl -n $$NAMESPACE set image deployment/finops-reporter finops-reporter=$$REPO/finops-reporter:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/landing-ui landing-ui=$$REPO/landing-ui:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/deck-ui deck-ui=$$REPO/deck-ui:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/playground-ui playground-ui=$$REPO/playground-ui:latest || true && \
@@ -371,7 +359,7 @@ _wait: ## Wait for services to be ready (after images are built)
 	echo "Restarting landing-ui to pick up ConfigMap..." && \
 	kubectl -n $$NAMESPACE rollout restart deployment/landing-ui && \
 	echo "Restarting other deployments..." && \
-	kubectl -n $$NAMESPACE rollout restart deployment/litellm deployment/admin-api deployment/admin-ui deployment/deck-ui deployment/playground-ui deployment/docs-site deployment/cost-predictor deployment/policy-router deployment/workflow-engine deployment/semantic-cache deployment/budget-webhook deployment/finops-reporter || true && \
+	kubectl -n $$NAMESPACE rollout restart deployment/litellm deployment/admin-api deployment/admin-ui deployment/deck-ui deployment/playground-ui deployment/docs-site deployment/cost-predictor deployment/workflow-engine deployment/budget-webhook || true && \
 	echo "Waiting for core pods..." && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=postgresql --timeout=300s && \
 	kubectl -n $$NAMESPACE wait --for=condition=ready pod -l app=redis --timeout=300s && \
@@ -420,16 +408,13 @@ redeploy-k8s: ## Force re-apply Kubernetes manifests (ENV=demo|staging|prod)
 	kubectl -n $$NAMESPACE set image deployment/admin-api admin-api=$$REPO/admin-api:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/admin-ui admin-ui=$$REPO/admin-ui:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/cost-predictor cost-predictor=$$REPO/cost-predictor:latest || true && \
-	kubectl -n $$NAMESPACE set image deployment/policy-router policy-router=$$REPO/policy-router:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/workflow-engine workflow-engine=$$REPO/workflow-engine:latest || true && \
-	kubectl -n $$NAMESPACE set image deployment/semantic-cache semantic-cache=$$REPO/semantic-cache:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/budget-webhook budget-webhook=$$REPO/budget-webhook:latest || true && \
-	kubectl -n $$NAMESPACE set image deployment/finops-reporter finops-reporter=$$REPO/finops-reporter:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/landing-ui landing-ui=$$REPO/landing-ui:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/deck-ui deck-ui=$$REPO/deck-ui:latest || true && \
 	kubectl -n $$NAMESPACE set image deployment/playground-ui playground-ui=$$REPO/playground-ui:latest || true && \
 	echo "Restarting custom deployments..." && \
-	kubectl -n $$NAMESPACE rollout restart deployment/litellm deployment/admin-api deployment/admin-ui deployment/landing-ui deployment/deck-ui deployment/playground-ui deployment/cost-predictor deployment/policy-router deployment/workflow-engine deployment/semantic-cache deployment/budget-webhook deployment/finops-reporter || true && \
+	kubectl -n $$NAMESPACE rollout restart deployment/litellm deployment/admin-api deployment/admin-ui deployment/landing-ui deployment/deck-ui deployment/playground-ui deployment/cost-predictor deployment/workflow-engine deployment/budget-webhook || true && \
 	echo "Waiting for core services..." && \
 	kubectl -n $$NAMESPACE rollout status deployment/admin-api --timeout=120s && \
 	kubectl -n $$NAMESPACE rollout status deployment/admin-ui --timeout=120s && \

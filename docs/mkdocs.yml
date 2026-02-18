@@ -34,6 +34,9 @@ nav:
       - MCP Servers: guides/mcp-servers.md
       - Workflows: guides/workflows.md
       - Cost Management: guides/cost-management.md
+  - Integration:
+      - LiteLLM Deep Dive: guides/litellm-integration.md
+      - Agent Gateway Deep Dive: guides/agentgateway-integration.md
   - Operations:
       - Admin Guide: guides/admin-guide.md
       - Observability: guides/observability.md

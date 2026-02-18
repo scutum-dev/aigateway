@@ -93,16 +93,20 @@ async def preview_gateway_config(user: UserInfo = Depends(get_current_user)):
             for row in rows
         ]
 
-    config_yaml = build_gateway_config(servers)
+        agent_rows = await conn.fetch("SELECT * FROM a2a_agents WHERE is_active = true ORDER BY name")
+        agents = [{"name": r["name"], "url": r["url"]} for r in agent_rows]
+
+    config_yaml = build_gateway_config(servers, agents)
     return {
         "active_servers": len(servers),
+        "active_agents": len(agents),
         "config_yaml": config_yaml,
     }
 
 
 @router.post("/mcp-servers/sync")
 async def sync_mcp_to_gateway(user: UserInfo = Depends(require_admin)):
-    """Deploy active MCP server configs to the Agent Gateway ConfigMap and restart."""
+    """Deploy active MCP server and A2A agent configs to the Agent Gateway."""
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
 
@@ -120,7 +124,10 @@ async def sync_mcp_to_gateway(user: UserInfo = Depends(require_admin)):
             for row in rows
         ]
 
-    cm_result = await sync_configmap(servers)
+        agent_rows = await conn.fetch("SELECT * FROM a2a_agents WHERE is_active = true ORDER BY name")
+        agents = [{"name": r["name"], "url": r["url"]} for r in agent_rows]
+
+    cm_result = await sync_configmap(servers, agents)
     if cm_result["status"] == "error":
         return {
             "status": "error",

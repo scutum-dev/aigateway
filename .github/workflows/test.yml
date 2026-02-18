@@ -43,9 +43,6 @@ jobs:
           pip install -r src/admin-api/requirements.txt
           pip install -r src/cost-predictor/requirements.txt
           pip install -r src/budget-webhook/requirements.txt
-          pip install -r src/finops-reporter/requirements.txt
-          pip install -r src/semantic-cache/requirements.txt
-          pip install -r src/policy-router/requirements.txt
           pip install -r src/workflow-engine/requirements.txt
           pip install -r src/a2a-runtime/requirements.txt
 
@@ -107,9 +104,6 @@ jobs:
           pip install -r src/admin-api/requirements.txt
           pip install -r src/cost-predictor/requirements.txt
           pip install -r src/budget-webhook/requirements.txt
-          pip install -r src/finops-reporter/requirements.txt
-          pip install -r src/semantic-cache/requirements.txt
-          pip install -r src/policy-router/requirements.txt
           pip install -r src/workflow-engine/requirements.txt
           pip install -r src/a2a-runtime/requirements.txt
 
@@ -119,9 +113,6 @@ jobs:
           tests/integration/test_admin_api_endpoints.py
           tests/integration/test_cost_predictor_api.py
           tests/integration/test_budget_webhook_api.py
-          tests/integration/test_finops_reporter_api.py
-          tests/integration/test_semantic_cache_api.py
-          tests/integration/test_policy_router_api.py
           tests/integration/test_workflow_engine_api.py
           tests/integration/test_a2a_runtime_api.py
           -v --tb=short
@@ -134,11 +125,8 @@ jobs:
         service:
           - { name: admin-api, context: ./src/admin-api }
           - { name: admin-ui, context: ./ui/admin }
-          - { name: policy-router, context: ./src/policy-router }
-          - { name: semantic-cache, context: ./src/semantic-cache }
           - { name: cost-predictor, context: ./src/cost-predictor }
           - { name: budget-webhook, context: ./src/budget-webhook }
-          - { name: finops-reporter, context: ./src/finops-reporter }
           - { name: workflow-engine, context: ./src/workflow-engine }
           - { name: a2a-runtime, context: ./src/a2a-runtime }
     steps:

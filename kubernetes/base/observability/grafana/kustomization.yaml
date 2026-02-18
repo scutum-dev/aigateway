@@ -15,6 +15,9 @@ configMapGenerator:
     files:
       - ai-gateway-overview.json=dashboards/ai-gateway-overview.json
       - finops-cost-tracking.json=dashboards/finops-cost-tracking.json
+      - litellm-detailed.json=dashboards/litellm-detailed.json
+      - agent-gateway.json=dashboards/agent-gateway.json
+      - infrastructure.json=dashboards/infrastructure.json
 
 generatorOptions:
   disableNameSuffixHash: true

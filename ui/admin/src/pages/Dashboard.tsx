@@ -1,10 +1,9 @@
 import { useMemo } from 'react'
-import { useRealtimeMetrics } from '../api/hooks'
+import { useReportsSummary } from '../api/hooks'
 import {
   ChartBarIcon,
   CurrencyDollarIcon,
   BoltIcon,
-  ExclamationCircleIcon,
 } from '@heroicons/react/24/outline'
 import { SkeletonStatCard } from '../components/Skeleton'
 import Onboarding from '../components/Onboarding'
@@ -33,11 +32,11 @@ ChartJS.register(
 )
 
 export default function Dashboard() {
-  const { data: metrics, isLoading, error } = useRealtimeMetrics()
+  const { data: summary, isLoading, error } = useReportsSummary()
 
   // Cost chart: cumulative linear approximation until hourly tracking is available
   const costChartData = useMemo(() => {
-    const totalCost = metrics?.total_cost_today || 0
+    const totalCost = summary?.today?.cost || 0
     const hours = Array.from({ length: 12 }, (_, i) => `${(i * 2).toString().padStart(2, '0')}:00`)
     const now = new Date().getHours()
     const values = hours.map((_, i) => {
@@ -62,10 +61,10 @@ export default function Dashboard() {
         },
       ],
     }
-  }, [metrics?.total_cost_today])
+  }, [summary?.today?.cost])
 
   const usageChartData = useMemo(() => {
-    const usage = metrics?.model_usage || {}
+    const usage = summary?.model_usage || {}
     const entries = Object.entries(usage)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 6)
@@ -82,7 +81,7 @@ export default function Dashboard() {
         },
       ],
     }
-  }, [metrics?.model_usage])
+  }, [summary?.model_usage])
 
   if (error) {
     return (
@@ -94,28 +93,28 @@ export default function Dashboard() {
 
   const stats = [
     {
-      name: 'Requests/min',
-      value: metrics?.requests_per_minute || 0,
+      name: 'Requests Today',
+      value: (summary?.requests_today || 0).toLocaleString(),
       icon: ChartBarIcon,
       gradient: 'from-blue-500 to-blue-600',
     },
     {
       name: 'Cost Today',
-      value: `$${(metrics?.total_cost_today || 0).toFixed(2)}`,
+      value: `$${(summary?.today?.cost || 0).toFixed(2)}`,
       icon: CurrencyDollarIcon,
       gradient: 'from-green-500 to-emerald-600',
     },
     {
       name: 'Tokens Today',
-      value: (metrics?.total_tokens_today || 0).toLocaleString(),
+      value: (summary?.tokens_today || 0).toLocaleString(),
       icon: BoltIcon,
       gradient: 'from-purple-500 to-violet-600',
     },
     {
-      name: 'Error Rate',
-      value: `${((metrics?.error_rate || 0) * 100).toFixed(1)}%`,
-      icon: ExclamationCircleIcon,
-      gradient: 'from-red-500 to-rose-600',
+      name: 'Cost This Month',
+      value: `$${(summary?.this_month?.cost || 0).toFixed(2)}`,
+      icon: CurrencyDollarIcon,
+      gradient: 'from-amber-500 to-orange-600',
     },
   ]
 
@@ -123,7 +122,7 @@ export default function Dashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">Platform overview and real-time metrics</p>
+        <p className="text-gray-600">Platform overview and cost metrics</p>
       </div>
 
       <Onboarding />
@@ -190,26 +189,17 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Provider Status */}
-      {!isLoading && (
+      {/* Top Models */}
+      {!isLoading && summary?.top_models && summary.top_models.length > 0 && (
         <div className="card">
-          <h2 className="text-lg font-semibold mb-4">Provider Status</h2>
+          <h2 className="text-lg font-semibold mb-4">Top Models (This Month)</h2>
           <div className="space-y-3">
-            {metrics?.provider_status &&
-              Object.entries(metrics.provider_status).map(([provider, status]) => (
-                <div key={provider} className="flex items-center justify-between">
-                  <span className="font-medium capitalize">{provider}</span>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm ${
-                      status
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
-                    }`}
-                  >
-                    {status ? 'Online' : 'Offline'}
-                  </span>
-                </div>
-              ))}
+            {summary.top_models.map((item) => (
+              <div key={item.model} className="flex items-center justify-between">
+                <span className="font-medium">{item.model}</span>
+                <span className="text-sm text-gray-600">${item.cost.toFixed(4)}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}

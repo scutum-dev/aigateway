@@ -3,10 +3,6 @@ import { Link, useLocation } from 'react-router-dom'
 import { Dialog, Transition } from '@headlessui/react'
 import {
   HomeIcon,
-  KeyIcon,
-  CubeIcon,
-  CurrencyDollarIcon,
-  UserGroupIcon,
   ServerIcon,
   CircleStackIcon,
   ShieldCheckIcon,
@@ -15,6 +11,11 @@ import {
   ChevronRightIcon,
   Bars3Icon,
   ChevronLeftIcon,
+  CubeIcon,
+  KeyIcon,
+  UserGroupIcon,
+  CurrencyDollarIcon,
+  CpuChipIcon,
 } from '@heroicons/react/24/outline'
 import { BoltIcon } from '@heroicons/react/24/solid'
 import type { UserInfo } from '../types'
@@ -27,11 +28,12 @@ interface LayoutProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
-  { name: 'API Keys', href: '/api-keys', icon: KeyIcon },
   { name: 'Models', href: '/models', icon: CubeIcon },
-  { name: 'Budgets', href: '/budgets', icon: CurrencyDollarIcon },
+  { name: 'API Keys', href: '/api-keys', icon: KeyIcon },
   { name: 'Teams', href: '/teams', icon: UserGroupIcon },
+  { name: 'Budgets', href: '/budgets', icon: CurrencyDollarIcon },
   { name: 'MCP Servers', href: '/mcp-servers', icon: ServerIcon },
+  { name: 'A2A Agents', href: '/agents', icon: CpuChipIcon },
   { name: 'Guardrails', href: '/guardrails', icon: ShieldCheckIcon },
   { name: 'Workflows', href: '/workflows', icon: CircleStackIcon },
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
@@ -39,11 +41,12 @@ const navigation = [
 
 const routeLabels: Record<string, string> = {
   '/': 'Dashboard',
-  '/api-keys': 'API Keys',
   '/models': 'Models',
-  '/budgets': 'Budgets',
+  '/api-keys': 'API Keys',
   '/teams': 'Teams',
+  '/budgets': 'Budgets',
   '/mcp-servers': 'MCP Servers',
+  '/agents': 'A2A Agents',
   '/guardrails': 'Guardrails',
   '/workflows': 'Workflows',
   '/settings': 'Settings',

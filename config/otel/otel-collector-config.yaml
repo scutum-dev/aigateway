@@ -28,11 +28,8 @@ receivers:
         - job_name: 'agentgateway'
           scrape_interval: 15s
           static_configs:
-            - targets: ['localhost:9090']
-          metric_relabel_configs:
-            - source_labels: [__name__]
-              regex: 'agentgateway_.*'
-              action: keep
+            - targets: ['agentgateway:15020']
+          metrics_path: /stats/prometheus
 
         - job_name: 'litellm'
           scrape_interval: 15s

@@ -3,9 +3,6 @@ source =
     src/admin-api
     src/cost-predictor
     src/budget-webhook
-    src/semantic-cache
-    src/finops-reporter
-    src/policy-router
     src/workflow-engine
     src/a2a-runtime
 

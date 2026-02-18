@@ -6,8 +6,8 @@
 #     - observability → prometheus, grafana, jaeger, otel
 #     - workflows     → temporal, workflow-engine, a2a-runtime
 #     - local-models  → gpu-stub, ollama integration
-#     - finops        → cost-predictor, budget-webhook, finops-reporter
-#     - experimental  → policy-router, semantic-cache
+#     - finops        → cost-predictor, budget-webhook
+#     - experimental  → (reserved for future features)
 #     - infra         → nginx, vault, landing-ui
 #     - full          → all of the above
 
@@ -55,13 +55,13 @@ features:
     enabled: false
     cost_predictor: true
     budget_webhook: true
-    finops_reporter: true
+    finops_reporter: false  # Removed — reports moved to admin-api
 
   # Experimental (profile: experimental) --------------------------------------
+  # Policy Router and Semantic Cache have been removed; their capabilities
+  # are covered by Agent Gateway (Cedar policies) and LiteLLM (native caching).
   experimental:
     enabled: false
-    policy_router: true   # Cedar policy-based routing
-    semantic_cache: true  # Embedding-based caching
 
   # Infrastructure (profile: infra) -------------------------------------------
   infrastructure:
@@ -141,11 +141,6 @@ services:
     replicas: 1
     hot_reload: true
     source_maps: true
-
-  policy_router:
-    replicas: 1
-    metrics_cache_ttl: 5    # Short TTL for testing
-    cedar_policy_reload_interval: 10
 
   workflow_engine:
     replicas: 1

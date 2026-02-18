@@ -47,6 +47,7 @@ dist/
 build/
 *.egg
 ui/admin/dist/
+docs/site/
 
 # Kubernetes secrets (encrypted ok, raw not ok)
 *-secrets.yaml

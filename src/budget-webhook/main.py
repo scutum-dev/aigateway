@@ -14,7 +14,6 @@ Features:
 import logging
 import os
 from contextlib import asynccontextmanager
-from decimal import Decimal
 from typing import Optional
 
 import asyncpg
@@ -113,7 +112,7 @@ app = FastAPI(
 # Add service auth middleware (webhook paths are unauthenticated for LiteLLM callbacks)
 app.add_middleware(
     ServiceAuthMiddleware,
-    unauthenticated_paths={"/health", "/ready", "/live", "/healthz", "/webhook/pre-request", "/webhook/post-request"},
+    unauthenticated_paths={"/health", "/ready", "/live", "/healthz", "/webhook/pre-request"},
 )
 
 # Add CORS middleware
@@ -328,58 +327,6 @@ async def pre_request_webhook(request: WebhookRequest):
             )
 
         return WebhookResponse(allow=True)
-
-
-@app.post("/webhook/post-request")
-async def post_request_webhook(request: WebhookRequest):
-    """
-    Post-request webhook called by LiteLLM after processing a request.
-
-    This records actual costs and updates tracking.
-    """
-    with tracer.start_as_current_span("post_request_record") as span:
-        data = request.data
-
-        user_id = data.get("user", "")
-        team_id = data.get("team_id", "")
-        model = data.get("model", "")
-        usage = data.get("usage", {})
-        cost = data.get("cost", 0)
-
-        span.set_attribute("model", model)
-        span.set_attribute("user_id", user_id)
-        span.set_attribute("cost", cost)
-        span.set_attribute("input_tokens", usage.get("prompt_tokens", 0))
-        span.set_attribute("output_tokens", usage.get("completion_tokens", 0))
-
-        # Record to database for FinOps reporting
-        if db_pool:
-            try:
-                async with db_pool.acquire() as conn:
-                    await conn.execute(
-                        """
-                        INSERT INTO cost_tracking_daily
-                        (date, user_id, team_id, model, request_count, input_tokens, output_tokens, total_cost)
-                        VALUES (CURRENT_DATE, $1, $2, $3, 1, $4, $5, $6)
-                        ON CONFLICT (date, user_id, team_id, model)
-                        DO UPDATE SET
-                            request_count = cost_tracking_daily.request_count + 1,
-                            input_tokens = cost_tracking_daily.input_tokens + $4,
-                            output_tokens = cost_tracking_daily.output_tokens + $5,
-                            total_cost = cost_tracking_daily.total_cost + $6,
-                            updated_at = CURRENT_TIMESTAMP
-                    """,
-                        user_id,
-                        team_id,
-                        model,
-                        usage.get("prompt_tokens", 0),
-                        usage.get("completion_tokens", 0),
-                        Decimal(str(cost)),
-                    )
-            except Exception as e:
-                logger.error(f"Failed to record cost: {e}")
-
-        return {"status": "recorded"}
 
 
 @app.get("/alerts")

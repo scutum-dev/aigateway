@@ -19,6 +19,7 @@ from decimal import Decimal
 from typing import Optional
 
 import httpx
+import litellm
 import tiktoken
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,39 +38,12 @@ from shared.middleware import RequestSizeLimitMiddleware, ServiceAuthMiddleware
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Model pricing (cost per 1M tokens)
-# These should be synced with LiteLLM configuration
-MODEL_PRICING = {
-    # Self-hosted models (infrastructure cost)
+# Self-hosted model pricing (cost per 1M tokens) — infrastructure costs not tracked by litellm
+SELF_HOSTED_PRICING = {
     "llama-3.1-70b": {"input": Decimal("0.10"), "output": Decimal("0.30")},
     "llama-3.1-8b": {"input": Decimal("0.05"), "output": Decimal("0.15")},
-    # OpenAI models
-    "gpt-5-mini": {"input": Decimal("0.15"), "output": Decimal("0.60")},
-    "gpt-4o-mini": {"input": Decimal("0.15"), "output": Decimal("0.60")},
-    "gpt-5": {"input": Decimal("2.50"), "output": Decimal("10.00")},
-    "gpt-4o": {"input": Decimal("2.50"), "output": Decimal("10.00")},
-    "gpt-5.2": {"input": Decimal("5.00"), "output": Decimal("15.00")},
-    "gpt-4-turbo": {"input": Decimal("10.00"), "output": Decimal("30.00")},
-    "o3": {"input": Decimal("10.00"), "output": Decimal("40.00")},
-    "o3-pro": {"input": Decimal("12.00"), "output": Decimal("48.00")},
-    "o4-mini": {"input": Decimal("1.10"), "output": Decimal("4.40")},
-    # Anthropic models
-    "claude-haiku-4.5": {"input": Decimal("0.80"), "output": Decimal("4.00")},
-    "claude-sonnet-4.5": {"input": Decimal("3.00"), "output": Decimal("15.00")},
-    "claude-sonnet-4": {"input": Decimal("3.00"), "output": Decimal("15.00")},
-    "claude-opus-4.5": {"input": Decimal("15.00"), "output": Decimal("75.00")},
-    "claude-opus-4": {"input": Decimal("15.00"), "output": Decimal("75.00")},
-    "claude-3-5-sonnet": {"input": Decimal("3.00"), "output": Decimal("15.00")},
-    "claude-3-opus": {"input": Decimal("15.00"), "output": Decimal("75.00")},
-    "claude-3-haiku": {"input": Decimal("0.25"), "output": Decimal("1.25")},
-    # xAI models
-    "grok-3-mini": {"input": Decimal("0.30"), "output": Decimal("0.50")},
-    "grok-3": {"input": Decimal("2.00"), "output": Decimal("10.00")},
-    "grok-4": {"input": Decimal("3.00"), "output": Decimal("15.00")},
-    "grok-4-heavy": {"input": Decimal("5.00"), "output": Decimal("25.00")},
-    # DeepSeek models
-    "deepseek-chat": {"input": Decimal("0.27"), "output": Decimal("1.10")},
-    "deepseek-coder": {"input": Decimal("0.14"), "output": Decimal("0.28")},
+    "mistral": {"input": Decimal("0.05"), "output": Decimal("0.15")},
+    "codellama": {"input": Decimal("0.05"), "output": Decimal("0.15")},
 }
 
 # Token encoding cache
@@ -249,20 +223,35 @@ tracer = trace.get_tracer(__name__)
 
 
 def get_model_pricing(model: str) -> dict[str, Decimal]:
-    """Get pricing for a model, with fallback to defaults."""
-    # Normalize model name
+    """Get pricing for a model from self-hosted overrides, litellm.model_cost, or fallback."""
     model_lower = model.lower()
 
-    # Direct match
-    if model_lower in MODEL_PRICING:
-        return MODEL_PRICING[model_lower]
-
-    # Partial match
-    for key, pricing in MODEL_PRICING.items():
+    # 1. Self-hosted overrides (infrastructure costs not in litellm)
+    if model_lower in SELF_HOSTED_PRICING:
+        return SELF_HOSTED_PRICING[model_lower]
+    for key, pricing in SELF_HOSTED_PRICING.items():
         if key in model_lower or model_lower in key:
             return pricing
 
-    # Default pricing (conservative estimate)
+    # 2. litellm's auto-updated pricing database (per-token → per-million)
+    litellm_costs = litellm.model_cost or {}
+    for candidate in [model, model_lower]:
+        if candidate in litellm_costs:
+            info = litellm_costs[candidate]
+            return {
+                "input": Decimal(str(info.get("input_cost_per_token", 0))) * Decimal("1000000"),
+                "output": Decimal(str(info.get("output_cost_per_token", 0))) * Decimal("1000000"),
+            }
+
+    # Partial match in litellm
+    for key, info in litellm_costs.items():
+        if model_lower in key or key in model_lower:
+            return {
+                "input": Decimal(str(info.get("input_cost_per_token", 0))) * Decimal("1000000"),
+                "output": Decimal(str(info.get("output_cost_per_token", 0))) * Decimal("1000000"),
+            }
+
+    # 3. Conservative fallback
     logger.warning(f"No pricing found for model {model}, using default")
     return {"input": Decimal("1.00"), "output": Decimal("3.00")}
 
@@ -443,24 +432,27 @@ async def check_budget_internal(api_key: str, estimated_cost: float) -> BudgetCh
 
 @app.get("/pricing")
 async def get_pricing():
-    """Get current model pricing information."""
-    return {
-        model: {
+    """Get combined model pricing from litellm + self-hosted overrides."""
+    result = {}
+
+    # litellm's auto-updated pricing (per-token → per-million)
+    for model, info in (litellm.model_cost or {}).items():
+        input_per_token = info.get("input_cost_per_token", 0)
+        output_per_token = info.get("output_cost_per_token", 0)
+        if input_per_token or output_per_token:
+            result[model] = {
+                "input_cost_per_million": float(Decimal(str(input_per_token)) * Decimal("1000000")),
+                "output_cost_per_million": float(Decimal(str(output_per_token)) * Decimal("1000000")),
+            }
+
+    # Self-hosted overrides
+    for model, pricing in SELF_HOSTED_PRICING.items():
+        result[model] = {
             "input_cost_per_million": float(pricing["input"]),
             "output_cost_per_million": float(pricing["output"]),
         }
-        for model, pricing in MODEL_PRICING.items()
-    }
 
-
-@app.post("/pricing/update")
-async def update_pricing(model: str, input_cost: float, output_cost: float):
-    """Update pricing for a model (admin only)."""
-    MODEL_PRICING[model.lower()] = {
-        "input": Decimal(str(input_cost)),
-        "output": Decimal(str(output_cost)),
-    }
-    return {"status": "updated", "model": model}
+    return result
 
 
 if __name__ == "__main__":

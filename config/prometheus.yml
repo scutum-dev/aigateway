@@ -24,3 +24,10 @@ scrape_configs:
     # LiteLLM returns 307 redirect, adding trailing slash avoids it
     scrape_timeout: 10s
     honor_labels: true
+
+  # Agent Gateway metrics (stats port)
+  - job_name: 'agentgateway'
+    static_configs:
+      - targets: ['agentgateway:15020']
+    metrics_path: /stats/prometheus
+    scrape_interval: 15s
