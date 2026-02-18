@@ -112,8 +112,8 @@ def _reset_deps():
     original_redis = deps.redis_client
 
     # Reset the rate-limit cache so it doesn't bleed across tests
-    _main_mod._rate_limit_cache["value"] = None
-    _main_mod._rate_limit_cache["expires_at"] = 0.0
+    _main_mod._rate_limit_cache["value"] = 0
+    _main_mod._rate_limit_cache["expires_at"] = 9999999999.0
     _main_mod._inmemory_requests.clear()
 
     yield
