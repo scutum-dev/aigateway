@@ -47,7 +47,6 @@ import type {
   ContentDetectorCreate,
   TeamContentPolicy,
   SSOConfig,
-  SSOProvider,
   PromptTemplate,
   PromptTemplateCreate,
   PromptApproval,
