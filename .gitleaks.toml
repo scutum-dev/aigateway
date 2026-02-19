@@ -1,0 +1,20 @@
+# Gitleaks configuration
+# Allowlist known non-secret dev keys used in documentation and examples
+
+[allowlist]
+description = "Local development keys used in docs and examples"
+
+regexTarget = "match"
+
+regexes = [
+  '''$LITELLM_KEY''',
+  '''sk-generated-key-\d+''',
+]
+
+paths = [
+  '''docs/''',
+  '''examples/''',
+  '''ui/landing/index\.html''',
+  '''tests/''',
+  '''scripts/''',
+]
