@@ -23,17 +23,30 @@ LiteLLM v1.80+ has dozens of powerful features. Most deployments use less than 2
 
 ### What the Admin UI Exposes
 
-These LiteLLM features are fully manageable through our React dashboard:
+The React dashboard exposes 20 pages — some proxy to LiteLLM, others are powered entirely by the Admin API:
 
-| Admin UI Page | LiteLLM Feature | What You Can Do |
-|---------------|-----------------|-----------------|
-| **Models** | `/model/info`, `/model/new`, `/model/delete` | View all models, add new ones, delete unused |
-| **API Keys** | `/key/generate`, `/key/info`, `/key/delete` | Create keys with budgets, rate limits, model restrictions, expiry |
-| **Teams** | `/team/new`, `/team/update`, `/team/delete` | Create teams with isolated budgets and model access |
-| **Budgets** | `/budget/new`, `/budget/info` | Create reusable budget profiles |
-| **Guardrails** | Custom CRUD in Admin API | Toggle PII detection, prompt injection, toxicity per configuration |
-| **Settings** | Platform settings table | Default model, global rate limit, caching, maintenance mode |
-| **Dashboard** | `/spend/report` | Today/week/month spend, top models, request counts |
+| Admin UI Page | Backend | What You Can Do |
+|---------------|---------|-----------------|
+| **Dashboard** | LiteLLM `/spend/report` | Today/week/month spend, top models, request counts |
+| **Models** | LiteLLM `/model/*` | View all models, add new ones, delete unused |
+| **API Keys** | LiteLLM `/key/*` | Create keys with budgets, rate limits, model restrictions, expiry |
+| **Teams** | LiteLLM `/team/*` | Create teams with isolated budgets and model access |
+| **Budgets** | LiteLLM `/budget/*` | Create reusable budget profiles |
+| **Organizations** | Admin API | Multi-tenant org hierarchy with business units, SSO, member roles |
+| **Audit Log** | Admin API | Filterable activity logs with CSV/JSON export |
+| **Prompts** | Admin API | Versioned prompt templates with rendering, approval workflows |
+| **Rate Limits** | Admin API | Per-user/team/model rate policies with burst control |
+| **Model Access** | Admin API | Tiered access with approval workflows and grant durations |
+| **Chargeback** | Admin API | Cost allocation rules, chargeback reports, budget forecasting |
+| **SLA Monitor** | Admin API | Provider health, SLA definitions, violations, failover rules |
+| **A/B Tests** | Admin API | Model comparison with traffic splitting and metric collection |
+| **Events** | Admin API | Event subscriptions with webhook/Slack/email delivery |
+| **Routing** | Admin API + LiteLLM sync | Fallback chains, model groups, routing strategies |
+| **MCP Servers** | Admin API + Agent Gateway | MCP server config, connectivity testing, deployment |
+| **A2A Agents** | Admin API | Agent-to-Agent endpoint configuration |
+| **Guardrails** | Admin API | PII detection, toxicity, prompt injection, DLP detectors |
+| **Workflows** | Admin API + Workflow Engine | LangGraph workflow templates and executions |
+| **Settings** | Admin API | Default model, global rate limit, caching, maintenance mode |
 
 ## LiteLLM Features We Surface
 
