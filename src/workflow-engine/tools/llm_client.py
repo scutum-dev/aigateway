@@ -20,7 +20,7 @@ class LLMClient:
     def __init__(
         self,
         base_url: str = "http://localhost:4000",
-        api_key: str = "$LITELLM_KEY",
+        api_key: str = "",
         timeout: float = 60.0,
     ):
         """

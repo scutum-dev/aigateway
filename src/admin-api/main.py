@@ -73,7 +73,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://litellm:litellm@localhost:5432/litellm")
 LITELLM_URL = os.getenv("LITELLM_URL", "http://localhost:4000")
-LITELLM_MASTER_KEY = os.getenv("LITELLM_MASTER_KEY", "$LITELLM_KEY")
+LITELLM_MASTER_KEY = os.getenv("LITELLM_MASTER_KEY", "")
 OTEL_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")

@@ -37,7 +37,7 @@ if _environment == "production" and JWT_SECRET_KEY == "change-in-production-plea
 
 # LiteLLM configuration
 LITELLM_URL = os.getenv("LITELLM_URL", "http://localhost:4000")
-LITELLM_MASTER_KEY = os.getenv("LITELLM_MASTER_KEY", "$LITELLM_KEY")
+LITELLM_MASTER_KEY = os.getenv("LITELLM_MASTER_KEY", "")
 
 
 class LoginRequest(BaseModel):

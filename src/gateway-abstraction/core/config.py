@@ -123,7 +123,7 @@ def _default_config() -> GatewayConfig:
                 type="litellm",
                 name="primary-litellm",
                 base_url=os.environ.get("LITELLM_URL", "http://localhost:4000"),
-                api_key=os.environ.get("LITELLM_MASTER_KEY", "$LITELLM_KEY"),
+                api_key=os.environ.get("LITELLM_MASTER_KEY", ""),
             ),
         ],
         routing=RoutingConfig(

@@ -15,7 +15,7 @@ class Config:
 
     # LiteLLM
     litellm_url: str = os.getenv("LITELLM_URL", "http://localhost:4000")
-    litellm_api_key: str = os.getenv("LITELLM_API_KEY", "$LITELLM_KEY")
+    litellm_api_key: str = os.getenv("LITELLM_API_KEY", "")
 
     # Agent Gateway (for MCP)
     agent_gateway_url: str = os.getenv("AGENT_GATEWAY_URL", "http://localhost:3000")

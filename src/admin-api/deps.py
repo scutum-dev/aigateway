@@ -20,7 +20,7 @@ redis_client: Optional[aioredis.Redis] = None
 
 # Configuration
 LITELLM_URL = os.getenv("LITELLM_URL", "http://localhost:4000")
-LITELLM_MASTER_KEY = os.getenv("LITELLM_MASTER_KEY", "$LITELLM_KEY")
+LITELLM_MASTER_KEY = os.getenv("LITELLM_MASTER_KEY", "")
 WORKFLOW_ENGINE_URL = os.getenv("WORKFLOW_ENGINE_URL", "http://localhost:8085")
 INTERNAL_SERVICE_KEY = os.getenv("INTERNAL_SERVICE_KEY", "")
 
