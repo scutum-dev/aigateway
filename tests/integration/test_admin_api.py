@@ -5,6 +5,7 @@ Tests authentication, MCP server configuration, workflow templates,
 and platform settings.
 """
 
+import os
 import uuid
 from typing import Generator
 
@@ -13,7 +14,7 @@ import pytest
 
 # Test configuration
 ADMIN_API_URL = "http://localhost:8086"
-TEST_API_KEY = "$LITELLM_KEY"
+TEST_API_KEY = os.getenv("LITELLM_KEY") or os.getenv("LITELLM_MASTER_KEY", "")
 
 
 @pytest.fixture(scope="module")

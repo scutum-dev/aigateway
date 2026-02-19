@@ -50,7 +50,7 @@ const healthErrors    = new Rate('endpoint_health_errors');
 // Configuration
 // ---------------------------------------------------------------------------
 const ADMIN_API_URL = __ENV.ADMIN_API_URL || 'http://localhost:8086';
-const API_KEY       = __ENV.API_KEY       || '$LITELLM_KEY';
+const API_KEY       = __ENV.API_KEY       || '';
 
 // ---------------------------------------------------------------------------
 // k6 options

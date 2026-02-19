@@ -5,11 +5,13 @@ Streaming works identically to the OpenAI SDK — the AI Control Plane proxies
 Server-Sent Events transparently. Cost tracking still works.
 """
 
+import os
+
 from openai import OpenAI
 
 client = OpenAI(
     base_url="http://localhost:4000",
-    api_key="$LITELLM_KEY",
+    api_key=os.getenv("LITELLM_KEY") or os.getenv("LITELLM_MASTER_KEY", ""),
 )
 
 print("Streaming from claude-haiku-4.5 via the AI Control Plane:\n")

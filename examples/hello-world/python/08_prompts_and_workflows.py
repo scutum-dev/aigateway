@@ -6,10 +6,12 @@ Demonstrates two developer experience features:
   2. Workflows — trigger LangGraph research/coding/data-analysis pipelines
 """
 
+import os
+
 import httpx
 
 ADMIN_API = "http://localhost:8086"
-MASTER_KEY = "$LITELLM_KEY"
+MASTER_KEY = os.getenv("LITELLM_KEY") or os.getenv("LITELLM_MASTER_KEY", "")
 
 # Authenticate
 resp = httpx.post(f"{ADMIN_API}/auth/login", json={"api_key": MASTER_KEY})

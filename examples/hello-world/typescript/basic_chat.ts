@@ -11,7 +11,7 @@ import OpenAI from "openai";
 
 const client = new OpenAI({
   baseURL: "http://localhost:4000",
-  apiKey: "$LITELLM_KEY",
+  apiKey: process.env.LITELLM_KEY || process.env.LITELLM_MASTER_KEY || "",
 });
 
 async function main() {

@@ -6,13 +6,14 @@ Demonstrates two enterprise features:
   2. Semantic Cache — cache similar queries to save cost
 """
 
+import os
 import time
 
 import httpx
 from openai import OpenAI
 
 ADMIN_API = "http://localhost:8086"
-MASTER_KEY = "$LITELLM_KEY"
+MASTER_KEY = os.getenv("LITELLM_KEY") or os.getenv("LITELLM_MASTER_KEY", "")
 
 
 def print_section(title: str):

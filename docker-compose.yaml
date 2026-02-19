@@ -512,6 +512,8 @@ services:
     container_name: landing-ui
     ports:
       - "${LANDING_UI_PORT:-9999}:80"
+    environment:
+      LITELLM_KEY: ${LITELLM_MASTER_KEY}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
       interval: 10s
@@ -559,6 +561,8 @@ services:
     container_name: playground-ui
     ports:
       - "${PLAYGROUND_UI_PORT:-6001}:80"
+    environment:
+      LITELLM_KEY: ${LITELLM_MASTER_KEY}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
       interval: 10s

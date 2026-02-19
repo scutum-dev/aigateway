@@ -10,7 +10,7 @@
 
 const ADMIN_API = "http://localhost:8086";
 const LITELLM = "http://localhost:4000";
-const MASTER_KEY = "$LITELLM_KEY";
+const MASTER_KEY = process.env.LITELLM_KEY || process.env.LITELLM_MASTER_KEY || "";
 
 async function main() {
   // --- Authenticate ---

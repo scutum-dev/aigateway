@@ -5,13 +5,15 @@ This is the simplest possible example. It shows that you use the standard
 OpenAI SDK — the only difference is `base_url` points to the control plane.
 """
 
+import os
+
 from openai import OpenAI
 
 # Connect to the AI Control Plane instead of OpenAI directly.
 # The master key works for testing; in production, use team-scoped keys.
 client = OpenAI(
     base_url="http://localhost:4000",
-    api_key="$LITELLM_KEY",
+    api_key=os.getenv("LITELLM_KEY") or os.getenv("LITELLM_MASTER_KEY", ""),
 )
 
 # Make a chat completion — works with any of 100+ models

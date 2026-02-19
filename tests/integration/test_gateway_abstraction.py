@@ -262,7 +262,7 @@ class TestLiteLLMAdapter:
         adapter = LiteLLMAdapter(
             name="litellm-primary",
             base_url="http://localhost:4000",
-            api_key="$LITELLM_KEY",
+            api_key=os.getenv("LITELLM_KEY") or os.getenv("LITELLM_MASTER_KEY", ""),
         )
         try:
             models = await adapter.list_models()

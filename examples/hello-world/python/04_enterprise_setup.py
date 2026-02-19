@@ -11,12 +11,14 @@ This shows what a platform admin does on Day 1:
 This is the "control plane" — managing WHO can use WHAT and HOW MUCH.
 """
 
+import os
+
 import httpx
 from openai import OpenAI
 
 ADMIN_API = "http://localhost:8086"
 LITELLM = "http://localhost:4000"
-MASTER_KEY = "$LITELLM_KEY"
+MASTER_KEY = os.getenv("LITELLM_KEY") or os.getenv("LITELLM_MASTER_KEY", "")
 
 
 def admin_headers(token: str) -> dict:

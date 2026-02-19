@@ -23,7 +23,7 @@ ADMIN_API_URL=${ADMIN_API_URL:-"http://localhost:8086"}
 MCP_GATEWAY_URL=${MCP_GATEWAY_URL:-"http://localhost:9000"}
 A2A_GATEWAY_URL=${A2A_GATEWAY_URL:-"http://localhost:9000"}
 AGENTGATEWAY_URL=${AGENTGATEWAY_URL:-"http://localhost:9000"}
-API_KEY=${API_KEY:-"$LITELLM_KEY"}
+API_KEY=${API_KEY:-"${LITELLM_MASTER_KEY}"}
 
 # Test counters
 PASSED=0

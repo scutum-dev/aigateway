@@ -45,7 +45,7 @@ WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
 # Config
-LITELLM_KEY="${LITELLM_KEY:-$LITELLM_KEY}"
+LITELLM_KEY="${LITELLM_KEY:-${LITELLM_MASTER_KEY}}"
 VAULT_TOKEN="${VAULT_TOKEN:-root-token-for-dev}"
 ADMIN_API="http://localhost:8086"
 LITELLM_API="http://localhost:4000"

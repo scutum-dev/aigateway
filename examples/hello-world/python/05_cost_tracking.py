@@ -5,10 +5,12 @@ Shows how FinOps teams query spending data through the Admin API.
 The AI Control Plane tracks cost for every request automatically via LiteLLM.
 """
 
+import os
+
 import httpx
 
 ADMIN_API = "http://localhost:8086"
-MASTER_KEY = "$LITELLM_KEY"
+MASTER_KEY = os.getenv("LITELLM_KEY") or os.getenv("LITELLM_MASTER_KEY", "")
 
 # Authenticate
 resp = httpx.post(f"{ADMIN_API}/auth/login", json={"api_key": MASTER_KEY})

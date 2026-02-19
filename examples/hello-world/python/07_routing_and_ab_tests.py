@@ -6,11 +6,13 @@ Demonstrates two intelligence features:
   2. A/B Testing — compare two models with traffic splitting
 """
 
+import os
+
 import httpx
 
 ADMIN_API = "http://localhost:8086"
 LITELLM = "http://localhost:4000"
-MASTER_KEY = "$LITELLM_KEY"
+MASTER_KEY = os.getenv("LITELLM_KEY") or os.getenv("LITELLM_MASTER_KEY", "")
 
 # Authenticate
 resp = httpx.post(f"{ADMIN_API}/auth/login", json={"api_key": MASTER_KEY})

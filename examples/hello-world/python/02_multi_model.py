@@ -5,18 +5,20 @@ Send the same prompt to models from different providers through one control plan
 Compare response quality, latency, and cost — without managing multiple SDKs.
 """
 
+import os
 import time
+
 from openai import OpenAI
 
 client = OpenAI(
     base_url="http://localhost:4000",
-    api_key="$LITELLM_KEY",
+    api_key=os.getenv("LITELLM_KEY") or os.getenv("LITELLM_MASTER_KEY", ""),
 )
 
 MODELS = [
-    "gpt-4o-mini",          # OpenAI
-    "claude-haiku-4.5",     # Anthropic
-    "gemini-2.5-flash",     # Google
+    "gpt-4o-mini",  # OpenAI
+    "claude-haiku-4.5",  # Anthropic
+    "gemini-2.5-flash",  # Google
 ]
 
 PROMPT = "Explain microservices vs monolith in exactly 2 sentences."
