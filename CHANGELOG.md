@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the AI Control Plane platform are documented in this file.
+All notable changes to the Scutum platform are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 

@@ -4,8 +4,14 @@ Revision ID: 007
 Revises: 006
 Create Date: 2026-02-17
 
+The view depends on `"LiteLLM_SpendLogs"`, which LiteLLM creates at runtime
+via Prisma. On a fresh deploy admin-api may run migrations before LiteLLM
+has booted, so the table does not yet exist. We skip view creation in that
+case rather than crash the migration; admin-api retries via a startup
+background task (see `_ensure_cost_view` in main.py).
 """
 
+import logging
 from typing import Sequence, Union
 
 from alembic import op
@@ -15,9 +21,29 @@ down_revision: Union[str, None] = "006"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
+logger = logging.getLogger("alembic.runtime.migration")
+
+
+COST_VIEW_SQL = """
+CREATE OR REPLACE VIEW cost_tracking_daily AS
+SELECT
+    "startTime"::date  AS date,
+    COALESCE("user", '')  AS user_id,
+    COALESCE(team_id, '') AS team_id,
+    model,
+    custom_llm_provider   AS provider,
+    COUNT(*)              AS request_count,
+    CAST(SUM(prompt_tokens) AS BIGINT)     AS input_tokens,
+    CAST(SUM(completion_tokens) AS BIGINT)  AS output_tokens,
+    SUM(spend)            AS total_cost
+FROM "LiteLLM_SpendLogs"
+GROUP BY "startTime"::date, "user", team_id, model, custom_llm_provider
+"""
+
 
 def upgrade() -> None:
-    # Drop as view first (in case a previous run created it), then as table
+    bind = op.get_bind()
+
     op.execute("DROP VIEW IF EXISTS cost_tracking_daily CASCADE")
     op.execute("DROP TABLE IF EXISTS cost_tracking_daily CASCADE")
     op.execute("DROP INDEX IF EXISTS idx_cost_tracking_date")
@@ -25,21 +51,26 @@ def upgrade() -> None:
     op.execute("DROP INDEX IF EXISTS idx_cost_tracking_team")
     op.execute("DROP INDEX IF EXISTS idx_cost_tracking_model")
 
-    op.execute("""
-        CREATE OR REPLACE VIEW cost_tracking_daily AS
-        SELECT
-            "startTime"::date  AS date,
-            COALESCE("user", '')  AS user_id,
-            COALESCE(team_id, '') AS team_id,
-            model,
-            custom_llm_provider   AS provider,
-            COUNT(*)              AS request_count,
-            CAST(SUM(prompt_tokens) AS BIGINT)     AS input_tokens,
-            CAST(SUM(completion_tokens) AS BIGINT)  AS output_tokens,
-            SUM(spend)            AS total_cost
-        FROM "LiteLLM_SpendLogs"
-        GROUP BY "startTime"::date, "user", team_id, model, custom_llm_provider
-    """)
+    spendlogs_exists = bind.exec_driver_sql("SELECT to_regclass('public.\"LiteLLM_SpendLogs\"') IS NOT NULL").scalar()
+
+    if not spendlogs_exists:
+        logger.warning(
+            'Skipping cost_tracking_daily view: "LiteLLM_SpendLogs" not yet created. '
+            "Admin-api will create it once LiteLLM has initialised the table."
+        )
+        return
+
+    # Savepoint isolates a column-mismatch (LiteLLM schema drift across versions)
+    # so it doesn't abort the migration's outer transaction and stall alembic_version.
+    try:
+        with bind.begin_nested():
+            bind.exec_driver_sql(COST_VIEW_SQL)
+    except Exception as e:
+        logger.warning(
+            "Skipping cost_tracking_daily view (LiteLLM_SpendLogs schema mismatch?): %s. "
+            "Admin-api will retry on startup.",
+            e,
+        )
 
 
 def downgrade() -> None:

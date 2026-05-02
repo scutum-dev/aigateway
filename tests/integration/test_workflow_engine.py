@@ -3,9 +3,15 @@ Integration tests for Workflow Engine Service.
 
 Tests workflow execution, templates, WebSocket streaming,
 checkpointing, and cost tracking.
+
+The workflow-engine sits behind ServiceAuthMiddleware — when
+INTERNAL_SERVICE_KEY is set in the environment, requests must include the
+X-Service-Key header. The api_headers fixture below adds it when present.
 """
 
 import json
+import os
+from pathlib import Path
 from typing import Generator
 
 import httpx
@@ -17,20 +23,41 @@ WORKFLOW_ENGINE_URL = "http://localhost:8085"
 WORKFLOW_ENGINE_WS_URL = "ws://localhost:8085"
 
 
+def _internal_service_key() -> str:
+    """Read INTERNAL_SERVICE_KEY from env or config/.env (in that order)."""
+    key = os.getenv("INTERNAL_SERVICE_KEY", "")
+    if key:
+        return key
+    env_path = Path(__file__).resolve().parents[2] / "config" / ".env"
+    if env_path.exists():
+        for line in env_path.read_text().splitlines():
+            if line.startswith("INTERNAL_SERVICE_KEY="):
+                return line.split("=", 1)[1].strip()
+    return ""
+
+
 @pytest.fixture(scope="module")
 def http_client() -> Generator[httpx.Client, None, None]:
     """Create HTTP client for tests."""
-    with httpx.Client(base_url=WORKFLOW_ENGINE_URL, timeout=60.0) as client:
+    headers: dict = {}
+    key = _internal_service_key()
+    if key:
+        headers["X-Service-Key"] = key
+    with httpx.Client(base_url=WORKFLOW_ENGINE_URL, timeout=60.0, headers=headers) as client:
         yield client
 
 
 @pytest.fixture(scope="module")
 def api_headers() -> dict:
-    """Standard API headers."""
-    return {
+    """Standard API headers, including X-Service-Key when configured."""
+    headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
+    key = _internal_service_key()
+    if key:
+        headers["X-Service-Key"] = key
+    return headers
 
 
 class TestHealthCheck:

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Control Plane - Multi-Model Playground</title>
+    <title>Scutum - Multi-Model Playground</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
@@ -1438,7 +1438,7 @@
     <nav class="nav">
         <a href="http://localhost:9999" class="logo">
             <div class="logo-icon"><i class="fas fa-bolt"></i></div>
-            AI Control Plane
+            Scutum
         </a>
         <div class="nav-links">
             <a href="http://localhost:9999">Home</a>
@@ -1623,9 +1623,9 @@
     <div id="cache-panel" class="tab-panel">
         <div class="service-unavailable" id="cacheUnavailable">
             <i class="fas fa-plug"></i>
-            <h3>Semantic Cache Service Unavailable</h3>
-            <p>This feature requires the experimental profile services to be running.</p>
-            <code>docker compose --env-file config/.env --profile experimental up -d</code>
+            <h3>Semantic Cache Unavailable</h3>
+            <p>Semantic caching is a built-in LiteLLM proxy feature. Ensure LiteLLM is running with caching enabled in config.</p>
+            <code>docker compose --env-file config/.env up -d litellm</code>
         </div>
         <div class="cache-container" id="cacheContent">
             <div class="tab-header">
@@ -1798,9 +1798,9 @@
     <div id="finops-panel" class="tab-panel">
         <div class="service-unavailable" id="finopsUnavailable">
             <i class="fas fa-plug"></i>
-            <h3>FinOps Reporter Service Unavailable</h3>
-            <p>This feature requires the finops profile services to be running.</p>
-            <code>docker compose --env-file config/.env --profile finops up -d</code>
+            <h3>FinOps Dashboard Unavailable</h3>
+            <p>FinOps reports are served by the Admin API. Ensure it is running, and enable the finops profile for cost prediction and budget enforcement.</p>
+            <code>docker compose --env-file config/.env up -d admin-api</code>
         </div>
         <div class="finops-container" id="finopsContent">
             <div class="tab-header">
@@ -1873,7 +1873,7 @@
 
     <!-- Footer -->
     <footer class="footer">
-        <span class="footer-text">AI Control Plane Platform</span>
+        <span class="footer-text">Scutum Platform</span>
         <div class="footer-links">
             <a href="http://localhost:9999">Home</a>
             <a href="http://localhost:8089">Docs</a>
@@ -1889,24 +1889,20 @@
         const CONFIG = window.GATEWAY_CONFIG || {
             apiKey: '$LITELLM_KEY',
             apiUrl: 'http://localhost:4000',
-            routerUrl: 'http://localhost:8084',
             landingUrl: 'http://localhost:9999',
             docsUrl: 'http://localhost:8089',
             adminUrl: 'http://localhost:5173',
-            cacheUrl: 'http://localhost:8083',
-            costPredictorUrl: 'http://localhost:8080',
-            finopsUrl: 'http://localhost:8082'
+            adminApiUrl: 'http://localhost:8086',
+            costPredictorUrl: 'http://localhost:8080'
         };
 
         const API_KEY = isLocal ? '$LITELLM_KEY' : CONFIG.apiKey;
         const API_URL = isLocal ? 'http://localhost:4000' : CONFIG.apiUrl;
-        const ROUTER_URL = isLocal ? 'http://localhost:8084' : (CONFIG.routerUrl || '/router');
         const LANDING_URL = isLocal ? 'http://localhost:9999' : (CONFIG.landingUrl || '/');
         const DOCS_URL = isLocal ? 'http://localhost:8089' : (CONFIG.docsUrl || '/docs');
         const ADMIN_URL = isLocal ? 'http://localhost:5173' : (CONFIG.adminUrl || '/admin');
-        const CACHE_URL = isLocal ? 'http://localhost:8083' : (CONFIG.cacheUrl || '/cache');
+        const ADMIN_API_URL = isLocal ? 'http://localhost:8086' : (CONFIG.adminApiUrl || '/api');
         const COST_URL = isLocal ? 'http://localhost:8080' : (CONFIG.costPredictorUrl || '/cost');
-        const FINOPS_URL = isLocal ? 'http://localhost:8082' : (CONFIG.finopsUrl || '/finops');
 
         // Update nav links
         document.addEventListener('DOMContentLoaded', () => {
@@ -2276,12 +2272,15 @@
             document.getElementById('routingDecision').classList.remove('visible');
             document.getElementById('routingResponse').classList.remove('visible');
 
-            // Step 1: Try real Policy Router, fall back to simulation
+            // Step 1: Try Admin API routing policies, fall back to simulation
             let decision;
             try {
-                const routeResp = await fetch(`${ROUTER_URL}/route`, {
+                const routeResp = await fetch(`${ADMIN_API_URL}/api/v1/routing-policies/evaluate`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
                     body: JSON.stringify({
                         requested_model: group,
                         budget_remaining: budget
@@ -2293,7 +2292,7 @@
                     decision = simulateRoutingDecision(group, budget);
                 }
             } catch (e) {
-                // Policy Router not running, simulate
+                // Admin API not reachable, simulate routing locally
                 decision = simulateRoutingDecision(group, budget);
             }
 
@@ -2425,7 +2424,7 @@
 
             populateModelSelect('cacheModel');
 
-            const healthy = await checkServiceHealth(CACHE_URL);
+            const healthy = await checkServiceHealth(API_URL);
             if (!healthy) {
                 document.getElementById('cacheContent').style.display = 'none';
                 document.getElementById('cacheUnavailable').classList.add('visible');
@@ -2443,7 +2442,7 @@
             if (!text1 || !text2) return;
 
             try {
-                const resp = await fetch(`${CACHE_URL}/similarity?text1=${encodeURIComponent(text1)}&text2=${encodeURIComponent(text2)}`, {
+                const resp = await fetch(`${API_URL}/cache/similarity?text1=${encodeURIComponent(text1)}&text2=${encodeURIComponent(text2)}`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${API_KEY}` }
                 });
@@ -2475,7 +2474,7 @@
             if (!prompt) return;
 
             try {
-                const resp = await fetch(`${CACHE_URL}/lookup`, {
+                const resp = await fetch(`${API_URL}/cache/lookup`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2548,7 +2547,7 @@
                 const llmData = await llmResp.json();
 
                 // 2. Store in cache
-                await fetch(`${CACHE_URL}/store`, {
+                await fetch(`${API_URL}/cache/store`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2583,7 +2582,7 @@
 
         async function loadCacheStats() {
             try {
-                const resp = await fetch(`${CACHE_URL}/stats`);
+                const resp = await fetch(`${API_URL}/cache/stats`);
                 const data = await resp.json();
 
                 document.getElementById('csTotalEntries').textContent = data.total_entries || 0;
@@ -2767,7 +2766,7 @@
                 });
             });
 
-            const healthy = await checkServiceHealth(FINOPS_URL);
+            const healthy = await checkServiceHealth(ADMIN_API_URL);
             if (!healthy) {
                 document.getElementById('finopsContent').style.display = 'none';
                 document.getElementById('finopsUnavailable').classList.add('visible');
@@ -2782,7 +2781,7 @@
 
         async function loadFinOpsSummary() {
             try {
-                const resp = await fetch(`${FINOPS_URL}/reports/summary`);
+                const resp = await fetch(`${ADMIN_API_URL}/api/v1/reports/summary`);
                 const data = await resp.json();
 
                 document.getElementById('foTodayCost').textContent = `$${(data.today?.cost || 0).toFixed(2)}`;
@@ -2810,7 +2809,7 @@
 
         async function loadFinOpsTrend(days) {
             try {
-                const resp = await fetch(`${FINOPS_URL}/reports/trend?days=${days}`);
+                const resp = await fetch(`${ADMIN_API_URL}/api/v1/reports/trend?days=${days}`);
                 const data = await resp.json();
 
                 drawTrendChart(data.data_points || []);
@@ -2949,7 +2948,7 @@
         }
 
         function exportReport(format) {
-            window.open(`${FINOPS_URL}/reports/export?format=${format}&period=monthly`, '_blank');
+            window.open(`${ADMIN_API_URL}/api/v1/reports/export?format=${format}&period=monthly`, '_blank');
         }
     </script>
 </body>

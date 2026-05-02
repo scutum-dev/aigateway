@@ -49,6 +49,7 @@ from routers import dlp as dlp_router
 from routers import events as events_router
 from routers import guardrails as guardrails_router
 from routers import keys as keys_router
+from routers import leads as leads_router
 from routers import mcp_servers as mcp_servers_router
 from routers import model_access as model_access_router
 from routers import models as models_router
@@ -60,6 +61,7 @@ from routers import reports as reports_router
 from routers import routing as routing_router
 from routers import settings as settings_router
 from routers import sla as sla_router
+from routers import sre as sre_router
 from routers import sso as sso_router
 from routers import teams as teams_router
 from routers import workflows as workflows_router
@@ -404,6 +406,26 @@ async def _sla_health_collector():
                                     http_client=deps.http_client,
                                 )
 
+                    # Emit provider.unhealthy when error rate exceeds 25% in a bucket — fires
+                    # earlier than SLA-target violations and feeds the SRE agent's trigger set.
+                    for m in metrics:
+                        rc = m["request_count"] or 0
+                        ec = m["error_count"] or 0
+                        if rc >= 5 and ec / rc >= 0.25:
+                            await publish_event(
+                                deps.db_pool,
+                                "provider.unhealthy",
+                                {
+                                    "provider": m["provider"],
+                                    "model": m["model"],
+                                    "request_count": rc,
+                                    "error_count": ec,
+                                    "error_rate": ec / rc,
+                                },
+                                source_service="sla-health-collector",
+                                http_client=deps.http_client,
+                            )
+
                     if metrics:
                         logger.info("SLA health collected: %d provider/model combos", len(metrics))
 
@@ -411,6 +433,54 @@ async def _sla_health_collector():
             logger.warning("SLA health collector error: %s", e)
 
         await asyncio.sleep(300)  # 5 minutes
+
+
+_COST_VIEW_SQL = """
+CREATE OR REPLACE VIEW cost_tracking_daily AS
+SELECT
+    "startTime"::date  AS date,
+    COALESCE("user", '')  AS user_id,
+    COALESCE(team_id, '') AS team_id,
+    model,
+    custom_llm_provider   AS provider,
+    COUNT(*)              AS request_count,
+    CAST(SUM(prompt_tokens) AS BIGINT)     AS input_tokens,
+    CAST(SUM(completion_tokens) AS BIGINT)  AS output_tokens,
+    SUM(spend)            AS total_cost
+FROM "LiteLLM_SpendLogs"
+GROUP BY "startTime"::date, "user", team_id, model, custom_llm_provider
+"""
+
+
+async def _ensure_cost_view():
+    """Recovery for migration 007 when LiteLLM_SpendLogs wasn't yet created.
+
+    Migration 007 skips view creation if `LiteLLM_SpendLogs` doesn't exist yet
+    (LiteLLM creates that table at runtime via Prisma — there's a startup race
+    on fresh deploys). This task polls and creates the view as soon as the
+    table appears, then exits.
+    """
+    while not shutdown_event.is_set():
+        try:
+            if deps.db_pool:
+                async with deps.db_pool.acquire() as conn:
+                    view_exists = await conn.fetchval("SELECT to_regclass('public.cost_tracking_daily') IS NOT NULL")
+                    if view_exists:
+                        return
+                    spendlogs_exists = await conn.fetchval(
+                        "SELECT to_regclass('public.\"LiteLLM_SpendLogs\"') IS NOT NULL"
+                    )
+                    if spendlogs_exists:
+                        await conn.execute(_COST_VIEW_SQL)
+                        logger.info("cost_tracking_daily view created (LiteLLM_SpendLogs is now available)")
+                        return
+        except Exception as e:
+            logger.warning("cost_tracking_daily view recovery failed: %s", e)
+
+        try:
+            await asyncio.wait_for(shutdown_event.wait(), timeout=30)
+        except asyncio.TimeoutError:
+            pass
 
 
 @asynccontextmanager
@@ -433,7 +503,7 @@ async def lifespan(app: FastAPI):
 
     # Create database pool
     try:
-        deps.db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
+        deps.db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=10, max_size=50)
         logger.info("Database connection established")
     except Exception as e:
         logger.warning(f"Could not connect to database: {e}")
@@ -456,7 +526,8 @@ async def lifespan(app: FastAPI):
     # Start background tasks
     _bg_tasks = []
     _bg_tasks.append(asyncio.create_task(_sla_health_collector()))
-    logger.info("Background tasks started (SLA health collector)")
+    _bg_tasks.append(asyncio.create_task(_ensure_cost_view()))
+    logger.info("Background tasks started (SLA health collector, cost view recovery)")
 
     logger.info("Admin API service started")
     yield
@@ -587,6 +658,14 @@ openapi_tags = [
         "description": "Shareable playground sessions: prompt/model/settings persistence and sharing.",
     },
     {"name": "Deprecations", "description": "Model deprecation notices with replacement suggestions and sunset dates."},
+    {
+        "name": "SRE Agent",
+        "description": "LLM-driven SRE incident response: subscribes to incident events, proposes remediations, gates execution through human approval.",
+    },
+    {
+        "name": "Leads",
+        "description": "Demo requests captured from the public landing page Book-a-Demo flow.",
+    },
 ]
 
 app = FastAPI(
@@ -697,6 +776,8 @@ app.include_router(events_router.router, prefix="/api/v1", tags=["Events"])
 app.include_router(playground_router.router, prefix="/api/v1", tags=["Playground"])
 app.include_router(deprecations_router.router, prefix="/api/v1", tags=["Deprecations"])
 app.include_router(routing_router.router, prefix="/api/v1", tags=["Routing"])
+app.include_router(sre_router.router, prefix="/api/v1", tags=["SRE Agent"])
+app.include_router(leads_router.router, prefix="/api/v1", tags=["Leads"])
 
 
 if __name__ == "__main__":

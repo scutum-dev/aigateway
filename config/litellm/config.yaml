@@ -97,7 +97,7 @@ model_list:
   # Claude 4.5 Series (Latest)
   - model_name: "claude-opus-4.5"
     litellm_params:
-      model: "claude-opus-4-5-20251101"
+      model: "anthropic/claude-opus-4-5-20251101"
       timeout: 600
     model_info:
       id: "claude-opus-4.5"
@@ -105,7 +105,7 @@ model_list:
 
   - model_name: "claude-sonnet-4.5"
     litellm_params:
-      model: "claude-sonnet-4-5-20251101"
+      model: "anthropic/claude-sonnet-4-5-20251101"
       timeout: 300
     model_info:
       id: "claude-sonnet-4.5"
@@ -113,7 +113,7 @@ model_list:
 
   - model_name: "claude-haiku-4.5"
     litellm_params:
-      model: "claude-haiku-4-5-20251101"
+      model: "anthropic/claude-haiku-4-5-20251101"
       timeout: 120
     model_info:
       id: "claude-haiku-4.5"
@@ -122,7 +122,7 @@ model_list:
   # Claude 4 Series
   - model_name: "claude-opus-4"
     litellm_params:
-      model: "claude-opus-4-20250514"
+      model: "anthropic/claude-opus-4-20250514"
       timeout: 600
     model_info:
       id: "claude-opus-4"
@@ -130,7 +130,7 @@ model_list:
 
   - model_name: "claude-sonnet-4"
     litellm_params:
-      model: "claude-sonnet-4-20250514"
+      model: "anthropic/claude-sonnet-4-20250514"
       timeout: 300
     model_info:
       id: "claude-sonnet-4"
@@ -139,7 +139,7 @@ model_list:
   # Legacy aliases
   - model_name: "claude-3-5-sonnet"
     litellm_params:
-      model: "claude-sonnet-4-5-20251101"
+      model: "anthropic/claude-sonnet-4-5-20251101"
       timeout: 300
     model_info:
       id: "claude-3-5-sonnet"
@@ -147,7 +147,7 @@ model_list:
 
   - model_name: "claude-3-haiku"
     litellm_params:
-      model: "claude-haiku-4-5-20251101"
+      model: "anthropic/claude-haiku-4-5-20251101"
       timeout: 120
     model_info:
       id: "claude-3-haiku"

@@ -1,6 +1,10 @@
 """Integration tests for the Cost Predictor API.
 
 Tests HTTP endpoints and ServiceAuthMiddleware via ASGI test client.
+
+After the shared.middleware refactor, INTERNAL_SERVICE_KEY is read from the
+environment by ServiceAuthMiddleware at request time — fixtures use monkeypatch
+of the env var, not module-level patching.
 """
 
 import importlib.util
@@ -22,25 +26,24 @@ SERVICE_KEY = "test-integration-key"
 
 
 @pytest.fixture(autouse=True)
-def _clear_service_key():
-    """Reset INTERNAL_SERVICE_KEY for each test."""
-    original = _mod.INTERNAL_SERVICE_KEY
+def _clear_service_key(monkeypatch):
+    """Clear INTERNAL_SERVICE_KEY env var by default; per-test fixtures override."""
+    monkeypatch.delenv("INTERNAL_SERVICE_KEY", raising=False)
     yield
-    _mod.INTERNAL_SERVICE_KEY = original
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
     """ASGI test client with no auth required (dev mode)."""
-    _mod.INTERNAL_SERVICE_KEY = ""
+    monkeypatch.delenv("INTERNAL_SERVICE_KEY", raising=False)
     transport = httpx.ASGITransport(app=app)
     return httpx.AsyncClient(transport=transport, base_url="http://test")
 
 
 @pytest.fixture
-def authed_client():
+def authed_client(monkeypatch):
     """ASGI test client with auth required."""
-    _mod.INTERNAL_SERVICE_KEY = SERVICE_KEY
+    monkeypatch.setenv("INTERNAL_SERVICE_KEY", SERVICE_KEY)
     transport = httpx.ASGITransport(app=app)
     return httpx.AsyncClient(transport=transport, base_url="http://test")
 
@@ -187,6 +190,7 @@ class TestPricingEndpoint:
         assert "input_cost_per_million" in data["gpt-4o"]
         assert "output_cost_per_million" in data["gpt-4o"]
 
+    @pytest.mark.skip(reason="POST /pricing/update was removed from the service; only GET /pricing remains")
     @pytest.mark.asyncio
     async def test_update_pricing(self, client):
         """Should update pricing for a model."""

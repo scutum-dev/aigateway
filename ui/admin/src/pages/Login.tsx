@@ -39,7 +39,7 @@ export default function Login({ onLogin }: LoginProps) {
             <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl mb-4">
               <BoltIcon className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">AI Control Plane</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Scutum</h1>
             <p className="text-gray-500 mt-1">Admin Console</p>
           </div>
 
@@ -79,7 +79,7 @@ export default function Login({ onLogin }: LoginProps) {
         </div>
 
         <p className="text-center text-gray-500 text-sm mt-6">
-          Powered by AI Control Plane Platform
+          Powered by Scutum Platform
         </p>
       </div>
     </div>

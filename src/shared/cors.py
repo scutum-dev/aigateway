@@ -9,7 +9,7 @@ def get_cors_origins() -> list[str]:
     if environment == "production":
         origins = os.getenv("CORS_ORIGINS", "").split(",")
         configured = [o.strip() for o in origins if o.strip()]
-        return configured or ["https://gateway.deos.dev"]
+        return configured or ["https://aicontrolplane.dev"]
     return [
         "http://localhost:5173",
         "http://localhost:3000",

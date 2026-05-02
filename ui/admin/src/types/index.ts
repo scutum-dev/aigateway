@@ -892,3 +892,90 @@ export interface LiteLLMRouterStatus {
   model_group_aliases: Record<string, string[]>
   num_models: number
 }
+
+export type SREIncidentStatus =
+  | 'open'
+  | 'diagnosing'
+  | 'awaiting_approval'
+  | 'executing'
+  | 'closed_success'
+  | 'closed_failed'
+  | 'closed_rejected'
+
+export interface SREProposedAction {
+  action: string
+  params: Record<string, unknown>
+  risk_score: number
+  decision: 'auto' | 'human'
+  risk_class?: string
+}
+
+export interface SREActionDecision {
+  id: string
+  action: string
+  params: Record<string, unknown>
+  risk_score: number | null
+  decision: string | null
+  approved_by: string | null
+  executed_at: string | null
+  success: boolean | null
+  error: string | null
+}
+
+export interface SREIncidentSummary {
+  id: string
+  trigger_event: string
+  status: SREIncidentStatus
+  outcome_summary: string | null
+  opened_at: string | null
+  closed_at: string | null
+  plan_count: number
+  executed_count: number
+}
+
+export interface SREIncidentDetail extends SREIncidentSummary {
+  trigger_payload: Record<string, unknown>
+  correlation_id: string | null
+  workflow_id: string | null
+  diagnosis: Record<string, unknown> | null
+  proposed_plan: SREProposedAction[] | null
+  executed_actions: Array<Record<string, unknown>> | null
+  decisions: SREActionDecision[]
+}
+
+export interface SREStats {
+  by_status: Record<string, number>
+  mttr_seconds: number | null
+  agent_reachable?: boolean
+  error?: string
+}
+
+export interface SRETriggerRequest {
+  event_type: string
+  payload: Record<string, unknown>
+}
+
+export type LeadStatus = 'new' | 'scheduled' | 'contacted' | 'closed'
+
+export interface Lead {
+  id: string
+  name: string
+  work_email: string
+  company: string | null
+  role: string | null
+  team_size: string | null
+  use_case: string | null
+  preferred_window: Record<string, unknown> | null
+  calcom_booking_id: string | null
+  calcom_meeting_url: string | null
+  source_ip: string | null
+  user_agent: string | null
+  status: LeadStatus
+  notes: string | null
+  created_at: string | null
+}
+
+export interface LeadUpdate {
+  status?: LeadStatus
+  notes?: string
+}

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Scutum lockup: refined italic-serif S extracted from Instrument Serif,
+  paired with the wordmark text. Use this as the primary brand asset for
+  decks, contracts, and dark-on-light marketing surfaces.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="320" height="80" role="img" aria-label="Scutum">
+  <g transform="translate(0,8)">
+    <rect width="64" height="64" rx="9" fill="#0A0A0A"/>
+    <g transform="translate(15.82 57.96) scale(0.072 -0.072)" fill="#FFFFFF">
+      <path d="M173 -9Q145 -9 113.5 -3.0Q82 3 54.5 13.5Q27 24 11 38Q6 43 4.5 48.0Q3 53 5 63L33 220Q36 238 49 238Q61 238 61 218L62 179Q64 95 91.0 58.0Q118 21 179 21Q235 21 272.0 61.5Q309 102 309 170Q309 214 285.0 262.0Q261 310 218 358Q167 415 142.5 462.0Q118 509 118 561Q118 602 138.0 640.5Q158 679 198.5 704.5Q239 730 302 730Q389 730 435 691Q449 680 445 658L417 512Q414 497 403 497Q392 497 390 514L389 535Q385 616 366.5 658.5Q348 701 293 701Q253 701 229.0 683.0Q205 665 194.0 638.5Q183 612 183 586Q183 557 191.0 530.5Q199 504 218.5 474.5Q238 445 272 403Q320 346 347.0 294.0Q374 242 374 193Q374 134 347.5 88.5Q321 43 276.0 17.0Q231 -9 173 -9Z"/>
+    </g>
+  </g>
+  <text x="84" y="58"
+        font-family="'Instrument Serif', 'Iowan Old Style', Georgia, serif"
+        font-size="52" font-style="italic" font-weight="400"
+        fill="#0A0A0A" letter-spacing="-0.5">Scutum</text>
+</svg>

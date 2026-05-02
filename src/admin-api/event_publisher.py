@@ -2,11 +2,15 @@
 
 import json
 import logging
+import os
 from typing import Optional
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+SRE_AGENT_URL = os.getenv("SRE_AGENT_URL", "http://sre-agent:8092")
+INTERNAL_SERVICE_KEY = os.getenv("INTERNAL_SERVICE_KEY", "")
 
 
 async def publish_event(
@@ -71,6 +75,20 @@ async def publish_event(
                             timeout=10.0,
                         )
                         logger.info("Dispatched %s to Slack %s", event_type, sub["name"])
+                    elif channel == "sre_workflow" and http_client:
+                        # Hand off to the sre-agent webhook. Agent opens an incident,
+                        # runs diagnose+propose, and persists status='awaiting_approval'.
+                        sre_url = config.get("url") or f"{SRE_AGENT_URL}/webhook"
+                        headers = {}
+                        if INTERNAL_SERVICE_KEY:
+                            headers["X-Service-Key"] = INTERNAL_SERVICE_KEY
+                        await http_client.post(
+                            sre_url,
+                            json={"event_type": event_type, "payload": payload},
+                            headers=headers,
+                            timeout=10.0,
+                        )
+                        logger.info("Dispatched %s to SRE agent (%s)", event_type, sub["name"])
                     else:
                         logger.debug("Channel %s not dispatched (no handler or missing config)", channel)
                 except Exception as e:

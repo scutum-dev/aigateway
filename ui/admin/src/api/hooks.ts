@@ -24,6 +24,8 @@ import {
   playgroundApi,
   deprecationsApi,
   routingApi,
+  sreApi,
+  leadsApi,
 } from './client'
 import type {
   GuardrailAssignment,
@@ -103,6 +105,13 @@ import type {
   RoutingPolicy,
   RoutingPolicyCreate,
   LiteLLMRouterStatus,
+  SREIncidentSummary,
+  SREIncidentDetail,
+  SREStats,
+  SRETriggerRequest,
+  Lead,
+  LeadStatus,
+  LeadUpdate,
 } from '../types'
 
 // MCP Servers hooks
@@ -1077,5 +1086,93 @@ export function useLiteLLMRouterStatus() {
   return useQuery<LiteLLMRouterStatus>({
     queryKey: ['litellm-router-status'],
     queryFn: routingApi.getLiteLLMStatus,
+  })
+}
+
+// SRE Agent hooks
+export function useSREIncidents(params?: { status?: string; limit?: number }) {
+  return useQuery<SREIncidentSummary[]>({
+    queryKey: ['sre-incidents', params],
+    queryFn: () => sreApi.listIncidents(params),
+    refetchInterval: 15000,
+  })
+}
+
+export function useSREIncident(id: string | null) {
+  return useQuery<SREIncidentDetail>({
+    queryKey: ['sre-incident', id],
+    queryFn: () => sreApi.getIncident(id as string),
+    enabled: !!id,
+    refetchInterval: 5000,
+  })
+}
+
+export function useApproveSREIncident() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => sreApi.approve(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sre-incidents'] })
+      queryClient.invalidateQueries({ queryKey: ['sre-incident'] })
+      queryClient.invalidateQueries({ queryKey: ['sre-stats'] })
+    },
+  })
+}
+
+export function useRejectSREIncident() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) => sreApi.reject(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sre-incidents'] })
+      queryClient.invalidateQueries({ queryKey: ['sre-incident'] })
+      queryClient.invalidateQueries({ queryKey: ['sre-stats'] })
+    },
+  })
+}
+
+export function useTriggerSREIncident() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: SRETriggerRequest) => sreApi.trigger(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sre-incidents'] })
+    },
+  })
+}
+
+export function useSREStats() {
+  return useQuery<SREStats>({
+    queryKey: ['sre-stats'],
+    queryFn: sreApi.stats,
+    refetchInterval: 60000,
+  })
+}
+
+// Leads hooks
+export function useLeads(params?: { status?: LeadStatus; limit?: number }) {
+  return useQuery<Lead[]>({
+    queryKey: ['leads', params],
+    queryFn: () => leadsApi.list(params),
+    refetchInterval: 30000,
+  })
+}
+
+export function useLead(id: string | null) {
+  return useQuery<Lead>({
+    queryKey: ['lead', id],
+    queryFn: () => leadsApi.get(id as string),
+    enabled: !!id,
+  })
+}
+
+export function useUpdateLead() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: LeadUpdate }) => leadsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] })
+      queryClient.invalidateQueries({ queryKey: ['lead'] })
+    },
   })
 }
