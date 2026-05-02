@@ -95,7 +95,10 @@ terraform/environments/demo-ephemeral/terraform.tfvars
 
 # Override: allow the license PUBLIC key (matches *.pem above). It's
 # intentionally bundled so admin-api can validate signed license JWTs.
+# Two locations: the source-of-truth in config/ and the published copy
+# under ui/landing/release/ that customers download from scutum.dev.
 !config/license-public.pem
+!ui/landing/release/**/license-public.pem
 
 # Override: allow .env.example templates (matches .env.* above). Templates
 # are public; only the actual .env (with secrets) stays gitignored.
