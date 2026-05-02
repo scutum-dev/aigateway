@@ -39,7 +39,8 @@ Your apps ──► Scutum ──► OpenAI · Anthropic · Google · xAI · Dee
                 ├─ Routing & failover   model groups, fallback chains, A/B tests
                 ├─ MCP & A2A            agent gateway with allowlists
                 ├─ Observability        OpenTelemetry, Prometheus, Jaeger
-                └─ Workflows            LangGraph templates, Temporal agents
+                ├─ Workflows            LangGraph templates, Temporal agents
+                └─ SRE agent            LLM-driven incident remediation, human-in-loop
 ```
 
 ## Sections
@@ -55,6 +56,7 @@ Your apps ──► Scutum ──► OpenAI · Anthropic · Google · xAI · Dee
 - [Semantic Caching](guides/semantic-caching.md) — embedding-keyed cache
 - [MCP Servers](guides/mcp-servers.md) — Model Context Protocol setup
 - [Workflows](guides/workflows.md) — LangGraph + Temporal agents
+- [SRE Agent](guides/sre-agent.md) — LLM-driven incident remediation, human-in-loop
 - [Cost Management](guides/cost-management.md) — budgets, alerts, FinOps
 
 ### Operations
