@@ -1,10 +1,10 @@
 # API Integration Guide
 
-The AI Control Plane exposes an OpenAI-compatible API on port 4000. Any application that works with the OpenAI API can connect to the gateway by changing the base URL and API key -- no other code changes required.
+Scutum exposes an OpenAI-compatible LLM endpoint on port 4000. Any application that works with the OpenAI API can connect by changing the base URL and API key — no other code changes required.
 
 ## Authentication
 
-All requests to the gateway require a Bearer token in the `Authorization` header. Use the `LITELLM_MASTER_KEY` from your `config/.env` file:
+All requests to the Scutum proxy require a Bearer token in the `Authorization` header. Use the API key from your `config/.env` file (variable named `LITELLM_MASTER_KEY` for historical reasons):
 
 ```
 Authorization: Bearer $LITELLM_KEY
