@@ -1,201 +1,184 @@
-# Quickstart Guide
+# Quickstart
 
-Get the AI Control Plane platform running locally in under 5 minutes.
+Get Scutum running on a Linux server (cloud VM, on-prem, k8s host) in under 5 minutes.
 
 ## Prerequisites
 
-- **Docker Desktop** (v4.0+) with Docker Compose v2
-- At least one AI provider API key (OpenAI, Anthropic, Google, xAI, or DeepSeek)
+- **Docker Engine 20.10+** with the compose plugin, **or** **Podman 4.4+** with `podman-compose`. No Docker Desktop required — your install runs entirely on Apache 2.0 components, no Docker Inc commercial license needed.
+- A **license JWT** from us. Trial keys are free for 30 days — email [hello@scutum.dev](mailto:hello@scutum.dev) or [book a demo](https://scutum.dev/) and we'll send you one.
+- At least one provider API key (OpenAI, Anthropic, Google, xAI, DeepSeek, Bedrock, Azure, or Vertex).
 
-No other dependencies are required. Everything runs inside containers.
-
-## 1. Clone the Repository
-
-```bash
-git clone https://github.com/deo-labs/gateway.git
-cd gateway
-```
-
-## 2. Configure API Keys
-
-Open the environment file at `config/.env` and add your provider API keys:
+## 1. Install
 
 ```bash
-# config/.env
-
-# Required: At least one provider key
-OPENAI_API_KEY=sk-proj-your-openai-key
-ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
-
-# Optional: Additional providers
-XAI_API_KEY=xai-your-xai-key
-GOOGLE_API_KEY=your-google-key
-DEEPSEEK_API_KEY=your-deepseek-key
+curl -fsSL https://scutum.dev/install.sh | sh
+cd scutum
 ```
 
-The file already contains a default API key for local development. You will use this key to authenticate all requests to the Scutum proxy. (The variable is named `LITELLM_MASTER_KEY` for legacy compatibility — treat it as your Scutum API key. Per-team and per-user scoped keys can be created from the Admin Console once the platform is up.)
+The installer:
 
-```
-LITELLM_MASTER_KEY=$LITELLM_KEY
-```
+- Verifies your container runtime
+- Drops a versioned `docker-compose.yaml`, the `scutum` operator CLI, the `.env` template, and the license public key into `./scutum/`
+- Generates fresh random secrets for `SCUTUM_API_KEY`, `JWT_SECRET_KEY`, `INTERNAL_SERVICE_KEY`, and `POSTGRES_PASSWORD` so production never ships with example values
 
-> **Important:** Change `LITELLM_MASTER_KEY` to a strong random value before any production or shared deployment.
-
-## 3. Start the Platform
+To install a specific version into a different directory:
 
 ```bash
-docker compose --env-file config/.env up -d
+curl -fsSL https://scutum.dev/install.sh | sh -s -- --version 0.1.0 --dir /opt/scutum
 ```
 
-This starts the customer-safe core:
+## 2. Activate your license + provider keys
 
-| Service    | URL                        | Purpose                              |
-|------------|----------------------------|--------------------------------------|
-| Scutum API | http://localhost:4000      | OpenAI-compatible LLM endpoint       |
-| Admin API  | http://localhost:8086      | Configuration, audit, governance     |
-| Admin UI   | http://localhost:5173      | Web admin console                    |
-| Docs Site  | http://localhost:8089      | This documentation                   |
-| PostgreSQL | localhost:5432             | Source of truth for config           |
-| Redis      | localhost:6379             | Cache + rate limiting                |
-
-Wait about 30 seconds for all health checks to pass:
+Open `config/.env` and paste:
 
 ```bash
-docker compose ps
+LICENSE_KEY=eyJhbGciOiJFZERTQSI...   # the JWT we sent you
+
+# At least one of:
+OPENAI_API_KEY=sk-proj-...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_API_KEY=...
 ```
 
-All services should show `healthy` or `running` status.
+The other secrets (`SCUTUM_API_KEY`, `JWT_SECRET_KEY`, `INTERNAL_SERVICE_KEY`, `POSTGRES_PASSWORD`) were already populated by the installer with fresh random values. `SCUTUM_API_KEY` is what your applications use to authenticate against the Scutum proxy on port 4000.
 
-## 4. Send Your First Request
-
-Make an OpenAI-compatible chat completion request to the Scutum proxy:
+## 3. Start the platform
 
 ```bash
+./scutum up
+```
+
+This pulls the pinned multi-arch images and brings up the customer-safe core:
+
+| Service    | URL                        | Purpose                            |
+|------------|----------------------------|------------------------------------|
+| Scutum API | http://localhost:4000      | OpenAI-compatible LLM endpoint     |
+| Admin API  | http://localhost:8086      | Configuration, audit, governance   |
+| Admin UI   | http://localhost:5173      | Web admin console                  |
+| Docs Site  | http://localhost:8089      | This documentation                 |
+| PostgreSQL | localhost:5432             | Source of truth for config         |
+| Redis      | localhost:6379             | Cache + rate limiting              |
+
+Wait ~30 seconds for health checks to pass:
+
+```bash
+./scutum ps
+```
+
+## 4. Send your first request
+
+The Scutum proxy is OpenAI-compatible — point any OpenAI client at port 4000 and authenticate with your API key.
+
+```bash
+# The installer wrote SCUTUM_API_KEY into your .env
+KEY=$(grep ^SCUTUM_API_KEY config/.env | cut -d= -f2)
+
 curl http://localhost:4000/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $LITELLM_KEY" \
+  -H "Authorization: Bearer $KEY" \
   -d '{
     "model": "gpt-4o-mini",
-    "messages": [
-      {"role": "user", "content": "Hello! What can you do?"}
-    ]
+    "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
 
-You should receive a standard OpenAI-format JSON response with the model's reply.
+### Try a different provider
 
-### Try a Different Provider
-
-Switch to Anthropic Claude with a single model name change:
+Switch models with one word — Scutum routes to the right provider:
 
 ```bash
 curl http://localhost:4000/v1/chat/completions \
+  -H "Authorization: Bearer $KEY" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $LITELLM_KEY" \
   -d '{
     "model": "claude-haiku-4.5",
-    "messages": [
-      {"role": "user", "content": "Explain the Gateway pattern in one paragraph."}
-    ]
+    "messages": [{"role": "user", "content": "One paragraph: what is the gateway pattern?"}]
   }'
 ```
 
-### Try a Model Group Alias
+### Try a model group alias
 
-Request the "fast" group, which automatically routes across the fastest models from all providers:
+Group aliases route across provider families with automatic fallback:
 
 ```bash
 curl http://localhost:4000/v1/chat/completions \
+  -H "Authorization: Bearer $KEY" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $LITELLM_KEY" \
-  -d '{
-    "model": "fast",
-    "messages": [
-      {"role": "user", "content": "What is 2 + 2?"}
-    ]
-  }'
+  -d '{"model": "fast", "messages": [{"role": "user", "content": "2+2?"}]}'
 ```
 
-## 5. Open the Admin UI
+## 5. Open the Admin Console
 
 Navigate to **http://localhost:5173** in your browser.
 
-1. On the login screen, enter your master key: `$LITELLM_KEY`
-2. Click **Sign In**
-3. You will land on the **Dashboard** showing today's request count, cost, and model usage
+1. Enter your master key from `config/.env` and click **Sign In**.
+2. The Dashboard shows today's request count, cost, and per-model usage.
 
-From the sidebar, explore:
-- **Models** -- see all 85+ configured models, filter by provider, edit routing tiers
-- **API Keys** -- generate and manage API keys with budgets and model restrictions
-- **Teams** -- organize users into teams with default models
-- **Budgets** -- create spending limits for teams or users
-- **Organizations** -- manage org hierarchy, business units, SSO, and members
-- **Audit Log** -- view a filterable trail of every configuration change
-- **Prompts** -- manage versioned prompt templates with approval workflows
-- **Rate Limits** -- set granular rate limiting policies per user, team, or model
-- **Model Access** -- define access tiers and approval workflows for premium models
-- **Chargeback** -- allocate costs to cost centers and generate chargeback reports
-- **SLA Monitor** -- track provider health, latency percentiles, and SLA violations
-- **A/B Tests** -- compare model variants with traffic splitting and metrics
-- **Events** -- configure event subscriptions (Slack, PagerDuty, email, webhooks)
-- **MCP Servers** -- configure Model Context Protocol servers for tool access
-- **A2A Agents** -- manage Agent-to-Agent protocol registrations
-- **Guardrails** -- configure content filtering, DLP detectors, and safety rules
-- **Workflows** -- run and monitor LangGraph workflow templates
-- **Settings** -- toggle caching, cost tracking, routing policies, and more
+From the sidebar:
 
-## 6. Explore the Playground
+- **Models** — all configured models, filter by provider, edit routing tiers
+- **API Keys** — generate per-team and per-user keys with budgets
+- **Teams / Organizations** — multi-tier hierarchy with SSO
+- **Budgets** — soft and hard spending limits with alerts
+- **Audit Log** — every config change, who, when, what
+- **Prompts** — versioned templates with approval workflows
+- **Rate Limits** — per-user, per-team, per-model
+- **Model Access** — access tiers and approval workflows
+- **Chargeback** — cost allocation per cost center
+- **SLA Monitor** — provider health, p50/p95/p99 latency
+- **A/B Tests** — model variants with traffic splitting
+- **Events** — Slack, PagerDuty, email, webhook subscriptions
+- **MCP Servers / A2A Agents** — agent gateway federation
+- **Guardrails** — DLP, regex, semantic, model-based filters
+- **Settings** — caching, cost tracking, routing policies
+- **License** — verify your license state, days remaining, refresh
 
-Open **http://localhost:9999** to access the interactive playground where you can test different models, compare responses, and experiment with parameters.
+## Optional bundles
 
-## Starting Additional Services
-
-The default `docker compose up` starts only the core services. Use profiles to enable more:
+Default `./scutum up` runs the customer-safe core (6 services). Enable more via Compose profiles:
 
 ```bash
-# Add observability (Prometheus, Grafana, Jaeger)
-docker compose --env-file config/.env --profile observability up -d
-
-# Add workflow engine (Temporal, LangGraph workflows)
-docker compose --env-file config/.env --profile workflows up -d
-
-# Add FinOps services (cost predictor, budget webhook)
-docker compose --env-file config/.env --profile finops up -d
-
-# Start everything
-docker compose --env-file config/.env --profile full up -d
+./scutum up --profile sre              # LLM-driven incident remediation, human-in-loop
+./scutum up --profile finops           # Cost prediction + budget webhook
+./scutum up --profile observability    # Prometheus + Grafana + Jaeger
+./scutum up --profile full             # everything
 ```
 
-## Stopping the Platform
+## Day-to-day operation
 
 ```bash
-docker compose --env-file config/.env down
+./scutum ps                # service status
+./scutum logs admin-api    # follow logs (any service name)
+./scutum pull              # pull updated images at the same version
+./scutum upgrade 0.2.0     # upgrade to a newer release
+./scutum backup            # dump postgres to a timestamped .sql.gz
+./scutum down              # stop everything (data preserved)
+./scutum down -v           # stop and DELETE persistent volumes
 ```
 
-Add `-v` to also remove persistent volumes (database data, cache):
-
-```bash
-docker compose --env-file config/.env down -v
-```
+For lower-level control, drop down to raw `docker compose` against the same `docker-compose.yaml`. Compose-spec compatible — works under `docker compose`, `podman-compose`, and `nerdctl compose` unchanged.
 
 ## Troubleshooting
 
-**Services not starting?** Check logs for a specific service:
+**License says invalid or expired?** Run `./scutum license` to see the current state. Activate a refreshed JWT with `./scutum activate <new-jwt>` (no restart needed).
+
+**A service is unhealthy?** Tail its logs:
+
 ```bash
-docker compose logs litellm
-docker compose logs admin-api
+./scutum logs admin-api
+./scutum logs litellm
 ```
 
-**Scutum proxy returning 401?** Verify your `Authorization` header matches the `LITELLM_MASTER_KEY` value in `config/.env`.
+**Scutum proxy returning 401?** The `Authorization: Bearer` value must match `SCUTUM_API_KEY` in `config/.env`, or be a per-team / per-user key created from the Admin Console.
 
-**Model returning errors?** Ensure you have set the correct API key for that model's provider in `config/.env`. For example, Anthropic models require `ANTHROPIC_API_KEY`.
+**Model returning errors?** Confirm the right provider API key is set in `config/.env` (e.g., Anthropic models need `ANTHROPIC_API_KEY`).
 
-**Port conflicts?** Edit the port variables in `config/.env` (e.g., `LITELLM_PORT`, `ADMIN_UI_PORT`) to use different ports.
+**Port conflicts?** Edit the port variables in `config/.env` (`LITELLM_PORT`, `ADMIN_UI_PORT`, `ADMIN_API_PORT`, `DOCS_SITE_PORT`).
 
-## Next Steps
+## Next steps
 
-- [API Integration Guide](./api-integration.md) -- code examples in Python, TypeScript, Go, and curl
-- [Model Routing Guide](./model-routing.md) -- understand how models are selected and routed
-- [Cost Management Guide](./cost-management.md) -- set up budgets, alerts, and cost optimization
-- [Admin UI Guide](./admin-guide.md) -- detailed walkthrough of every admin console page
-- Hello World Examples -- see `examples/hello-world/` in the repository for step-by-step examples
+- [API Integration Guide](./api-integration.md) — code examples in Python, TypeScript, Go, curl
+- [Model Routing](./model-routing.md) — fallback chains, model groups, weighted policies
+- [Cost Management](./cost-management.md) — budgets, alerts, FinOps reporting
+- [Admin Guide](./admin-guide.md) — page-by-page console walkthrough
+- [Licensing](../operations/licensing.md) — activate, refresh, troubleshoot

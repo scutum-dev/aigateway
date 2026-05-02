@@ -22,7 +22,7 @@ LICENSE_KEY=eyJhbGciOiJFZERTQSI...
 Then start the platform:
 
 ```bash
-make up
+./scutum up
 ```
 
 On first boot, admin-api validates the token, persists it to the `licenses` table, and uses the DB row on subsequent restarts. The env var becomes a fallback only.
@@ -102,7 +102,7 @@ Either the JWT was modified in transit (paste truncation is common), or someone 
 The token is otherwise valid but past its `exp`. Activate a renewed license via Path B.
 
 **`error: "license public key not bundled with admin-api build"`**
-You're running a custom-built admin-api image that doesn't include `config/license-public.pem`. Rebuild from a clean checkout (`make up --build`) or contact us if you've intentionally swapped public keys.
+You're running a custom-built admin-api image that doesn't include the bundled license public key. The official `ghcr.io/deosha/scutum-admin-api` images always include it; if you've forked the source and built your own, ensure `config/license-public.pem` is bundled into the build context. Contact us if you intentionally need to swap public keys.
 
 **No license at all**
 With both `LICENSE_KEY` unset and the `licenses` table empty, admin-api logs `"No license present"` on startup and the Admin Console will prompt for activation. The platform still serves traffic during this period; you have time to paste your license without an outage.
