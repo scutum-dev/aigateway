@@ -112,7 +112,7 @@ if [ ! -f config/.env ]; then
 
     # Replace each CHANGE-ME-... placeholder with a fresh random value so the
     # customer never accidentally runs production with the example secrets.
-    LITELLM_KEY="sk-$(randhex 32)"
+    SCUTUM_KEY="sk-$(randhex 32)"
     JWT_KEY="$(randhex 32)"
     INTERNAL_KEY="$(randhex 32)"
     PG_PASS="$(randhex 16)"
@@ -120,7 +120,7 @@ if [ ! -f config/.env ]; then
     # POSIX-portable in-place edit (sed -i differs between BSD and GNU)
     tmpfile="$(mktemp)"
     sed \
-        -e "s|sk-CHANGE-ME-openssl-rand-hex-32|${LITELLM_KEY}|" \
+        -e "s|sk-CHANGE-ME-openssl-rand-hex-32|${SCUTUM_KEY}|" \
         -e "s|^JWT_SECRET_KEY=CHANGE-ME-openssl-rand-hex-32|JWT_SECRET_KEY=${JWT_KEY}|" \
         -e "s|^INTERNAL_SERVICE_KEY=CHANGE-ME-openssl-rand-hex-32|INTERNAL_SERVICE_KEY=${INTERNAL_KEY}|" \
         -e "s|^POSTGRES_PASSWORD=CHANGE-ME-openssl-rand-hex-16|POSTGRES_PASSWORD=${PG_PASS}|" \

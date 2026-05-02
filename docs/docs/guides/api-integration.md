@@ -4,22 +4,23 @@ Scutum exposes an OpenAI-compatible LLM endpoint on port 4000. Any application t
 
 ## Authentication
 
-All requests to the Scutum proxy require a Bearer token in the `Authorization` header. Use the API key from your `config/.env` file (variable named `LITELLM_MASTER_KEY` for historical reasons):
+All requests to the Scutum proxy require a Bearer token in the `Authorization` header. Use `SCUTUM_API_KEY` from your `config/.env` file, or a per-team / per-user scoped key created from the Admin Console:
 
 ```
-Authorization: Bearer $LITELLM_KEY
+Authorization: Bearer $SCUTUM_API_KEY
 ```
 
 For production, generate per-user or per-team API keys through the Admin UI or Admin API at `http://localhost:8086`.
 
 ## Base URL
 
-| Environment | Base URL                                |
-|-------------|----------------------------------------|
-| Local       | `http://localhost:4000`                |
-| Production  | `https://api.aicontrolplane.dev`       |
-| Docs        | `https://docs.aicontrolplane.dev`      |
-| Admin UI    | `https://api.aicontrolplane.dev/admin` |
+The Scutum proxy listens on port `4000` of whichever host you deployed to. Examples:
+
+| Environment | Base URL                                       |
+|-------------|------------------------------------------------|
+| Local       | `http://localhost:4000`                        |
+| Your VM     | `http://<your-host>:4000` (or behind your TLS terminator) |
+| Admin UI    | `http://<your-host>:5173`                      |
 
 All OpenAI-compatible endpoints live under `/v1/`:
 - `POST /v1/chat/completions` -- chat completions (streaming and non-streaming)
@@ -33,7 +34,7 @@ All OpenAI-compatible endpoints live under `/v1/`:
 ```bash
 curl http://localhost:4000/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $LITELLM_KEY" \
+  -H "Authorization: Bearer $SCUTUM_API_KEY" \
   -d '{
     "model": "claude-sonnet-4.5",
     "messages": [
@@ -52,7 +53,7 @@ from openai import OpenAI
 
 client = OpenAI(
     base_url="http://localhost:4000/v1",
-    api_key="$LITELLM_KEY",
+    api_key="$SCUTUM_API_KEY",
 )
 
 response = client.chat.completions.create(
@@ -75,7 +76,7 @@ import OpenAI from "openai";
 
 const client = new OpenAI({
   baseURL: "http://localhost:4000/v1",
-  apiKey: "$LITELLM_KEY",
+  apiKey: "$SCUTUM_API_KEY",
 });
 
 const response = await client.chat.completions.create({
@@ -103,7 +104,7 @@ import (
 )
 
 func main() {
-    config := openai.DefaultConfig("$LITELLM_KEY")
+    config := openai.DefaultConfig("$SCUTUM_API_KEY")
     config.BaseURL = "http://localhost:4000/v1"
 
     client := openai.NewClientWithConfig(config)
@@ -221,7 +222,7 @@ from openai import OpenAI, APIError, RateLimitError, APIConnectionError
 
 client = OpenAI(
     base_url="http://localhost:4000/v1",
-    api_key="$LITELLM_KEY",
+    api_key="$SCUTUM_API_KEY",
 )
 
 try:
@@ -281,7 +282,7 @@ The Admin API at `http://localhost:8086` (production: `https://api.aicontrolplan
 # Get a JWT token
 TOKEN=$(curl -s http://localhost:8086/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"api_key": "$LITELLM_KEY"}' | jq -r '.access_token')
+  -d '{"api_key": "$SCUTUM_API_KEY"}' | jq -r '.access_token')
 ```
 
 ### Available Endpoints

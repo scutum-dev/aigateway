@@ -6,7 +6,7 @@ A page-by-page walkthrough of the AI Control Plane Admin Console at **http://loc
 
 When you first open the Admin UI, you see the login screen:
 
-1. Enter your **API Key** in the password field. Use the LiteLLM master key (the value of `LITELLM_MASTER_KEY` from `config/.env`, e.g., `$LITELLM_KEY`).
+1. Enter your **API Key** in the password field. Use the LiteLLM master key (the value of `SCUTUM_API_KEY` from `config/.env`, e.g., `$SCUTUM_API_KEY`).
 2. Click **Sign In**.
 3. The UI validates your key against LiteLLM and issues a JWT token that is stored in your browser for 8 hours.
 
