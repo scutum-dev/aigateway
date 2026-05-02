@@ -88,3 +88,11 @@ terraform/environments/prod.tfvars
 terraform/environments/secrets.auto.tfvars
 terraform/environments/demo-ephemeral/terraform.tfvars
 .claude/
+
+# License signing private keys — NEVER commit. Live in ~/.scutum/ on the issuer's laptop.
+*license-private*.pem
+*.private.pem
+
+# Override: allow the license PUBLIC key (matches *.pem above). It's
+# intentionally bundled so admin-api can validate signed license JWTs.
+!config/license-public.pem

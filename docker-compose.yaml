@@ -111,6 +111,7 @@ services:
       dockerfile: Dockerfile
       additional_contexts:
         shared: ./src/shared
+        platform_config: ./config
     container_name: admin-api
     ports:
       - "${ADMIN_API_PORT:-8086}:8086"
@@ -124,6 +125,8 @@ services:
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
       GATEWAY_CONFIG_PATH: /app/gateway-config/config.yaml
       SRE_AGENT_URL: ${SRE_AGENT_URL:-http://sre-agent:8092}
+      LICENSE_KEY: ${LICENSE_KEY:-}
+      LICENSE_PUBLIC_KEY_PATH: /app/config/license-public.pem
     volumes:
       - gateway-config:/app/gateway-config
     depends_on:

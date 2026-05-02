@@ -33,7 +33,7 @@ GOOGLE_API_KEY=your-google-key
 DEEPSEEK_API_KEY=your-deepseek-key
 ```
 
-The file already contains a default `LITELLM_MASTER_KEY` for local development. You will use this key to authenticate all API requests:
+The file already contains a default API key for local development. You will use this key to authenticate all requests to the Scutum proxy. (The variable is named `LITELLM_MASTER_KEY` for legacy compatibility — treat it as your Scutum API key. Per-team and per-user scoped keys can be created from the Admin Console once the platform is up.)
 
 ```
 LITELLM_MASTER_KEY=$LITELLM_KEY
@@ -47,19 +47,16 @@ LITELLM_MASTER_KEY=$LITELLM_KEY
 docker compose --env-file config/.env up -d
 ```
 
-This starts the core services:
+This starts the customer-safe core:
 
-| Service    | URL                        | Purpose                    |
-|------------|----------------------------|----------------------------|
-| LiteLLM    | http://localhost:4000      | OpenAI-compatible API      |
-| Admin API  | http://localhost:8086      | Configuration & management |
-| Admin UI   | http://localhost:5173      | Web admin console          |
-| Landing UI | http://localhost:9999      | Interactive playground     |
-| Playground | http://localhost:6001      | Multi-model comparison     |
-| Deck       | http://localhost:6002      | Product presentation       |
-| Docs Site  | http://localhost:8089      | Developer documentation    |
-| PostgreSQL | localhost:5432             | Database                   |
-| Redis      | localhost:6379             | Cache                      |
+| Service    | URL                        | Purpose                              |
+|------------|----------------------------|--------------------------------------|
+| Scutum API | http://localhost:4000      | OpenAI-compatible LLM endpoint       |
+| Admin API  | http://localhost:8086      | Configuration, audit, governance     |
+| Admin UI   | http://localhost:5173      | Web admin console                    |
+| Docs Site  | http://localhost:8089      | This documentation                   |
+| PostgreSQL | localhost:5432             | Source of truth for config           |
+| Redis      | localhost:6379             | Cache + rate limiting                |
 
 Wait about 30 seconds for all health checks to pass:
 
@@ -71,7 +68,7 @@ All services should show `healthy` or `running` status.
 
 ## 4. Send Your First Request
 
-Make an OpenAI-compatible chat completion request to the LiteLLM proxy:
+Make an OpenAI-compatible chat completion request to the Scutum proxy:
 
 ```bash
 curl http://localhost:4000/v1/chat/completions \
@@ -189,7 +186,7 @@ docker compose logs litellm
 docker compose logs admin-api
 ```
 
-**LiteLLM returning 401?** Verify your `Authorization` header matches the `LITELLM_MASTER_KEY` value in `config/.env`.
+**Scutum proxy returning 401?** Verify your `Authorization` header matches the `LITELLM_MASTER_KEY` value in `config/.env`.
 
 **Model returning errors?** Ensure you have set the correct API key for that model's provider in `config/.env`. For example, Anthropic models require `ANTHROPIC_API_KEY`.
 

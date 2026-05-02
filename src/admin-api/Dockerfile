@@ -1,5 +1,8 @@
 FROM python:3.12-slim
 
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
 WORKDIR /app
 
 # Install dependencies
@@ -11,6 +14,11 @@ COPY . .
 
 # Copy shared library (injected via docker compose additional_contexts)
 COPY --from=shared . /app/shared/
+
+# Copy license public key (injected via docker compose additional_contexts).
+# Bundling into the image binds verification to the build — customers can't
+# replace the public key at runtime without rebuilding admin-api.
+COPY --from=platform_config license-public.pem /app/config/license-public.pem
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser
