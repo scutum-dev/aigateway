@@ -206,6 +206,44 @@ curl http://localhost:4000/v1/chat/completions \
   -d '{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hello!"}]}'
 ```
 
+## Licensing
+
+Scutum is **commercial self-hosted** software. Every deploy needs a license JWT
+issued by us. The validation is **offline** — no phone-home — so once a license
+is on the box, no outbound network is required to keep running.
+
+```bash
+# 1. Set LICENSE_KEY in config/.env to the JWT we sent you
+echo "LICENSE_KEY=eyJhbGciOiJFZERTQSI..." >> config/.env
+
+# 2. Bring up the platform — admin-api validates on startup
+make up
+
+# 3. Check the live license state
+curl http://localhost:8086/api/v1/license | jq
+```
+
+If the license is expired, missing, or tampered with, admin-api **still boots**
+(no hard kill) but `GET /api/v1/license` returns `valid:false` and the Admin UI
+shows a renewal banner. Hard tier-gating is on the v2 roadmap.
+
+To activate a refreshed license without restarting:
+
+```bash
+curl -X POST http://localhost:8086/api/v1/license/activate \
+  -H "Authorization: Bearer <admin-jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"license_key": "<new-jwt>"}'
+```
+
+**For Scutum operators only** — to mint a new trial license:
+
+```bash
+# Requires ~/.scutum/license-private.pem on your laptop (gitignored)
+python scripts/issue-license.py \
+  --email founder@acme.com --company "Acme Corp" --tier trial --days 30
+```
+
 ## Admin API Reference
 
 | Method | Path | Description |

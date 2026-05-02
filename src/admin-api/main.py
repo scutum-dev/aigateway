@@ -50,6 +50,7 @@ from routers import events as events_router
 from routers import guardrails as guardrails_router
 from routers import keys as keys_router
 from routers import leads as leads_router
+from routers import license as license_router
 from routers import mcp_servers as mcp_servers_router
 from routers import model_access as model_access_router
 from routers import models as models_router
@@ -523,11 +524,22 @@ async def lifespan(app: FastAPI):
     # Sync gateway config from DB to shared volume (so agentgateway can start)
     await _sync_gateway_config_on_startup()
 
+    # Resolve operative license (env -> DB -> none). Soft-fails — never crashes admin-api.
+    import license as _license_module
+
+    try:
+        await asyncio.wait_for(_license_module.initial_load(deps.db_pool), timeout=10.0)
+    except asyncio.TimeoutError:
+        logger.warning("License initial_load timed out after 10s")
+    except Exception as e:
+        logger.warning("License initial_load failed: %s: %s", type(e).__name__, e)
+
     # Start background tasks
     _bg_tasks = []
     _bg_tasks.append(asyncio.create_task(_sla_health_collector()))
     _bg_tasks.append(asyncio.create_task(_ensure_cost_view()))
-    logger.info("Background tasks started (SLA health collector, cost view recovery)")
+    _bg_tasks.append(asyncio.create_task(_license_module.revalidator(deps.db_pool, shutdown_event)))
+    logger.info("Background tasks started (SLA health collector, cost view recovery, license revalidator)")
 
     logger.info("Admin API service started")
     yield
@@ -778,6 +790,7 @@ app.include_router(deprecations_router.router, prefix="/api/v1", tags=["Deprecat
 app.include_router(routing_router.router, prefix="/api/v1", tags=["Routing"])
 app.include_router(sre_router.router, prefix="/api/v1", tags=["SRE Agent"])
 app.include_router(leads_router.router, prefix="/api/v1", tags=["Leads"])
+app.include_router(license_router.router, prefix="/api/v1", tags=["License"])
 
 
 if __name__ == "__main__":
