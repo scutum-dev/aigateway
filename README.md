@@ -1,12 +1,18 @@
 # Scutum
 
-A self-hosted *control plane* for AI infrastructure. Sits on top of [LiteLLM](https://docs.litellm.ai) (LLM proxy) and [Agent Gateway](https://agentgateway.dev) (MCP/A2A) and adds: unified Admin UI, DB-backed configuration, cost governance, audit, RBAC, workflow orchestration, semantic caching, guardrails, SRE agent for incident remediation, and FinOps reporting.
+[![Release](https://img.shields.io/github/v/release/deosha/aigateway?label=release&color=black)](https://github.com/deosha/aigateway/releases)
+[![License](https://img.shields.io/badge/license-proprietary-black)](#licensing)
+[![Compose-spec compatible](https://img.shields.io/badge/compose--spec-compatible-black)](https://compose-spec.io/)
 
-Run on your own cluster, your own keys, your own data. One OpenAI-compatible endpoint, 100+ models across 9 providers, with cost prediction, budget enforcement, Cedar-policy authorization, and a 7-year audit trail built in.
+A self-hosted *control plane* for AI infrastructure. One OpenAI-compatible LLM endpoint, 100+ models across 9 providers, with cost governance, audit, RBAC, MCP/A2A, workflow orchestration, semantic caching, guardrails, an SRE agent for incident remediation, and FinOps reporting.
+
+Run on your own cluster, your own keys, your own data.
 
 **Public site**: [scutum.dev](https://scutum.dev/) · **Docs**: [scutum.dev/docs](https://scutum.dev/docs/) · **Operated by**: Scuti Marketplace India (OPC) Pvt Ltd
 
-**Core idea:** LiteLLM and Agent Gateway are powerful standalone tools. Scutum is the cockpit that ties them together with one UI, one database, one deployment pipeline — plus the cost/audit/policy machinery enterprises need on top.
+> **Latest release**: [`v0.1.0`](https://github.com/deosha/aigateway/releases/tag/v0.1.0) — first customer-shippable build. See [CHANGELOG.md](./CHANGELOG.md) for what's in it.
+
+**Core idea**: best-of-breed open components ([LiteLLM](https://docs.litellm.ai) for LLM proxying, [Agent Gateway](https://agentgateway.dev) for MCP/A2A) wrapped with the Admin UI, governance, audit, and SRE machinery enterprises need on top.
 
 ## Architecture
 
