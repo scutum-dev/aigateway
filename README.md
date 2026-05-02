@@ -135,6 +135,7 @@ Agent Gateway v0.12+ has: MCP federation, A2A routing, LLM inference proxy, buil
 | **Admin API** | 8086 | FastAPI — JWT auth, CRUD, gateway sync |
 | **Admin UI** | 5173 | React — unified management dashboard |
 | **Workflow Engine** | 8085 | LangGraph + Temporal — multi-step AI workflows |
+| **SRE Agent** | 8092 | LLM-driven incident remediation, human-in-loop, risk-scored |
 | **Cost Predictor** | 8080 | Per-request cost estimation |
 | **Budget Webhook** | 8081 | Soft/hard budget enforcement with alerts |
 | **PostgreSQL** | 5432 | Source of truth for all config |
