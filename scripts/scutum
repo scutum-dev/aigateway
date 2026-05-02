@@ -1,0 +1,198 @@
+#!/bin/sh
+# =============================================================================
+# scutum — operator CLI
+# =============================================================================
+# Thin wrapper around `docker compose` (or `podman-compose`) that hides the
+# repetitive flags. Run from the directory the installer created.
+#
+# Why this exists: customers expect a single binary-like UX. Compose is the
+# real primitive — the wrapper just makes the common verbs short. You can
+# always drop down to raw `docker compose` if you need more control.
+# =============================================================================
+
+set -eu
+
+# ----- detect compose runtime ------------------------------------------------
+if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    COMPOSE="docker compose"
+elif command -v podman-compose >/dev/null 2>&1; then
+    COMPOSE="podman-compose"
+else
+    echo "scutum: need docker (with compose plugin) or podman-compose installed" >&2
+    exit 1
+fi
+
+ENV_FILE="${ENV_FILE:-config/.env}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yaml}"
+
+cmd="${1:-help}"
+shift 2>/dev/null || true
+
+# Help is the only command that doesn't need an env file (so a customer can
+# discover the CLI before installing).
+if [ "$cmd" != "help" ] && [ ! -f "$ENV_FILE" ]; then
+    echo "scutum: $ENV_FILE not found — run from the directory created by the installer" >&2
+    exit 1
+fi
+
+# Load env so we can access POSTGRES_USER etc. for backup. Strip comments + blanks.
+if [ -f "$ENV_FILE" ]; then
+    # shellcheck disable=SC2046
+    export $(grep -E '^[A-Z_]+=' "$ENV_FILE" | grep -v '^#' | xargs -0 2>/dev/null || grep -E '^[A-Z_]+=' "$ENV_FILE" | grep -v '^#')
+fi
+
+dc() { $COMPOSE --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"; }
+
+case "$cmd" in
+
+    up)
+        # Pull latest images for the pinned version, then start.
+        dc pull
+        dc up -d "$@"
+        echo
+        echo "  Admin UI:    http://localhost:${ADMIN_UI_PORT:-5173}"
+        echo "  Scutum API:  http://localhost:${LITELLM_PORT:-4000}"
+        echo "  Docs:        http://localhost:${DOCS_SITE_PORT:-8089}"
+        ;;
+
+    down)
+        dc down "$@"
+        ;;
+
+    restart)
+        dc restart "$@"
+        ;;
+
+    logs)
+        dc logs -f --tail=200 "$@"
+        ;;
+
+    ps|status)
+        dc ps "$@"
+        ;;
+
+    pull)
+        dc pull
+        ;;
+
+    upgrade)
+        # Re-runs the installer in-place to fetch a newer release. Optional
+        # version arg pins to a specific tag; defaults to the SCUTUM_VERSION
+        # already set in config/.env.
+        target="${1:-${SCUTUM_VERSION:-0.1.0}}"
+        echo "Upgrading to v${target}..."
+        curl -fsSL https://scutum.dev/install.sh | INSTALL_DIR="$PWD" SCUTUM_VERSION="$target" sh
+        # Also bump the env var inside config/.env
+        if [ -f config/.env ]; then
+            tmp="$(mktemp)"
+            sed "s|^SCUTUM_VERSION=.*|SCUTUM_VERSION=${target}|" config/.env > "$tmp" && mv "$tmp" config/.env
+        fi
+        dc pull
+        dc up -d
+        ;;
+
+    backup)
+        ts="$(date -u +%Y%m%dT%H%M%SZ)"
+        out="scutum-backup-${ts}.sql.gz"
+        dc exec -T postgres pg_dump \
+            -U "${POSTGRES_USER:-litellm}" \
+            -d "${POSTGRES_DB:-litellm}" \
+            --clean --if-exists --no-owner | gzip -9 > "$out"
+        size=$(wc -c < "$out" | tr -d ' ')
+        if [ "$size" -lt 1024 ]; then
+            echo "scutum: backup looks too small ($size bytes), removing" >&2
+            rm -f "$out"
+            exit 1
+        fi
+        echo "  ✓ wrote $out ($size bytes)"
+        ;;
+
+    restore)
+        if [ -z "${1:-}" ]; then
+            echo "scutum: usage: scutum restore <backup.sql.gz>" >&2
+            exit 1
+        fi
+        echo "  WARNING: this will OVERWRITE the current database. Type the filename to confirm:"
+        read -r confirm
+        if [ "$confirm" != "$1" ]; then
+            echo "  Aborted."
+            exit 1
+        fi
+        gunzip -c "$1" | dc exec -T postgres psql \
+            -U "${POSTGRES_USER:-litellm}" \
+            -d "${POSTGRES_DB:-litellm}"
+        echo "  ✓ restored from $1"
+        ;;
+
+    activate)
+        if [ -z "${1:-}" ]; then
+            echo "scutum: usage: scutum activate <license-jwt>" >&2
+            exit 1
+        fi
+        if [ -z "${ADMIN_TOKEN:-}" ]; then
+            echo "scutum: set ADMIN_TOKEN to your admin JWT (from /auth/login) and re-run" >&2
+            exit 1
+        fi
+        curl -fsSL -X POST "http://localhost:${ADMIN_API_PORT:-8086}/api/v1/license/activate" \
+            -H "Authorization: Bearer $ADMIN_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"license_key\":\"$1\"}" | sed 's/,/,\n  /g'
+        echo
+        ;;
+
+    license)
+        # Public endpoint, no auth needed
+        curl -fsSL "http://localhost:${ADMIN_API_PORT:-8086}/api/v1/license"
+        echo
+        ;;
+
+    exec)
+        if [ -z "${1:-}" ]; then
+            echo "scutum: usage: scutum exec <service> [cmd...]" >&2
+            exit 1
+        fi
+        svc="$1"; shift
+        dc exec "$svc" "${@:-sh}"
+        ;;
+
+    config)
+        # Show the resolved compose config (post env interpolation)
+        dc config "$@"
+        ;;
+
+    help|*)
+        cat <<EOF
+scutum — operate a Scutum deployment
+
+Usage: scutum <command> [args]
+
+Lifecycle
+  up               Pull images and start the platform
+  down             Stop the platform (data preserved in volumes)
+  restart [svc]    Restart everything or a single service
+  upgrade [VER]    Pull a newer Scutum release (defaults to current SCUTUM_VERSION)
+
+Inspection
+  ps | status      Show service status
+  logs [svc]       Stream logs (tail 200, follow)
+  config           Print the resolved compose config (post env interpolation)
+  exec <svc> [..]  Drop into a shell inside a service container
+
+Data
+  backup           Dump the database to scutum-backup-<timestamp>.sql.gz
+  restore <file>   Restore from a backup (prompts for confirmation)
+
+License
+  license          Print the current license state (no auth)
+  activate <jwt>   Post a refreshed license to admin-api (needs ADMIN_TOKEN)
+
+Pass --profile <name> to 'up' to enable optional bundles:
+  --profile sre              SRE agent (LLM-driven incident remediation)
+  --profile finops           Cost predictor + budget webhook
+  --profile observability    Prometheus + Grafana + Jaeger
+  --profile full             Everything
+
+For lower-level control, drop down to raw 'docker compose' — same compose file.
+EOF
+        ;;
+esac

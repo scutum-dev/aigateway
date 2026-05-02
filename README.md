@@ -137,7 +137,37 @@ Agent Gateway v0.12+ has: MCP federation, A2A routing, LLM inference proxy, buil
 | **Grafana** | 3030 | Dashboards and visualization |
 | **Jaeger** | 16686 | Distributed tracing |
 
-## Quick Start
+## Customer install (one-liner)
+
+If you have a license JWT and want to deploy Scutum on a Linux server (cloud VM, on-prem box, k8s host):
+
+```bash
+curl -fsSL https://scutum.dev/install.sh | sh
+cd scutum
+# Edit config/.env — paste LICENSE_KEY + at least one provider API key
+./scutum up
+```
+
+The installer:
+
+- Verifies you have **Docker Engine 20.10+** *or* **Podman 4.4+** (no Docker Desktop required — your install runs on Apache 2.0 components, no Docker Inc commercial license).
+- Drops a slim `docker-compose.yaml` referencing pre-built images on **GHCR** (no source code, no `build:` directives).
+- Creates `config/.env` from a template **and generates fresh random secrets** so production never ships with default keys.
+- Bundles the Scutum license public key for offline JWT validation.
+- Drops a `scutum` CLI wrapper covering `up / down / logs / ps / pull / upgrade / backup / restore / activate / license`.
+
+Optional bundles via Compose profiles:
+
+```bash
+./scutum up --profile sre              # LLM-driven incident remediation
+./scutum up --profile finops           # Cost prediction + budget enforcement
+./scutum up --profile observability    # Prometheus + Grafana + Jaeger
+./scutum up --profile full             # everything
+```
+
+Customer never clones the repo. Upgrades are `./scutum upgrade 0.2.0`. Compose-spec compatible — the same `docker-compose.yaml` works under `podman-compose` and `nerdctl compose`.
+
+## Developer Quick Start (this repo)
 
 ### Prerequisites
 
