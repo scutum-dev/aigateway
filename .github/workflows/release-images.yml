@@ -40,28 +40,36 @@ jobs:
           - name: admin-api
             context: ./src/admin-api
             dockerfile: ./src/admin-api/Dockerfile
-            contexts: "shared=./src/shared,platform_config=./config"
+            contexts: |
+              shared=./src/shared
+              platform_config=./config
           - name: admin-ui
             context: ./ui/admin
             dockerfile: ./ui/admin/Dockerfile
+            contexts: ""
           - name: docs
             context: ./docs
             dockerfile: ./docs/Dockerfile
+            contexts: ""
           - name: litellm
             context: ./config/litellm
             dockerfile: ./config/litellm/Dockerfile
+            contexts: ""
           - name: sre-agent
             context: ./src/sre-agent
             dockerfile: ./src/sre-agent/Dockerfile
-            contexts: "shared=./src/shared"
+            contexts: |
+              shared=./src/shared
           - name: cost-predictor
             context: ./src/cost-predictor
             dockerfile: ./src/cost-predictor/Dockerfile
-            contexts: "shared=./src/shared"
+            contexts: |
+              shared=./src/shared
           - name: budget-webhook
             context: ./src/budget-webhook
             dockerfile: ./src/budget-webhook/Dockerfile
-            contexts: "shared=./src/shared"
+            contexts: |
+              shared=./src/shared
 
     steps:
       - uses: actions/checkout@v4
