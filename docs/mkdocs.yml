@@ -1,25 +1,56 @@
-site_name: AI Control Plane Platform
-site_description: Unified AI infrastructure — 85+ models, 9 providers, intelligent routing, cost management
-site_url: https://docs.aicontrolplane.dev
+site_name: Scutum Docs
+site_description: Scutum — unified LLM, MCP & A2A infrastructure. Self-hosted control plane with cost governance, audit, and policy.
+site_url: https://scutum.dev/docs/
+site_author: Scutum
 
 theme:
   name: material
+  language: en
+  logo: assets/scutum-mark.svg
+  favicon: assets/scutum-mark.svg
   palette:
-    scheme: slate
-    primary: indigo
-    accent: indigo
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      accent: black
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: white
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
   font:
-    text: Inter
+    text: Helvetica Neue
     code: JetBrains Mono
   features:
-    - navigation.instant
     - navigation.tracking
     - navigation.sections
     - navigation.top
+    - navigation.indexes
+    - toc.follow
     - search.suggest
     - search.highlight
     - content.code.copy
     - content.code.annotate
+    - content.tabs.link
+
+extra_css:
+  - stylesheets/scutum.css
+
+extra:
+  homepage: https://scutum.dev/
+  social:
+    - icon: fontawesome/solid/globe
+      link: https://scutum.dev/
+      name: scutum.dev
+    - icon: fontawesome/brands/github
+      link: https://github.com/scutum-dev
+      name: GitHub
+  generator: false
 
 nav:
   - Home: index.md
@@ -55,15 +86,30 @@ nav:
 markdown_extensions:
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight:
       anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.inlinehilite
+  - pymdownx.snippets
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - tables
   - attr_list
   - md_in_html
+  - footnotes
+  - toc:
+      permalink: "¶"
+      toc_depth: 3
 
 plugins:
-  - search
+  - search:
+      separator: '[\s​\-_,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'

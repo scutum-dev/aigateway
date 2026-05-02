@@ -83,6 +83,13 @@ import type {
   RoutingPolicy,
   RoutingPolicyCreate,
   LiteLLMRouterStatus,
+  SREIncidentSummary,
+  SREIncidentDetail,
+  SREStats,
+  SRETriggerRequest,
+  Lead,
+  LeadStatus,
+  LeadUpdate,
 } from '../types'
 
 // Use Vite's BASE_URL so API calls route through the admin-ui nginx proxy
@@ -890,6 +897,50 @@ export const routingApi = {
   },
   getLiteLLMStatus: async (): Promise<LiteLLMRouterStatus> => {
     const response = await api.get('/routing-policies/litellm-status')
+    return response.data
+  },
+}
+
+// SRE Agent API
+export const sreApi = {
+  listIncidents: async (params?: { status?: string; limit?: number }): Promise<SREIncidentSummary[]> => {
+    const response = await api.get('/sre/incidents', { params })
+    return response.data
+  },
+  getIncident: async (id: string): Promise<SREIncidentDetail> => {
+    const response = await api.get(`/sre/incidents/${id}`)
+    return response.data
+  },
+  approve: async (id: string): Promise<{ ok: boolean; status: string; executed: unknown[] }> => {
+    const response = await api.post(`/sre/incidents/${id}/approve`)
+    return response.data
+  },
+  reject: async (id: string, reason?: string): Promise<{ ok: boolean; status: string }> => {
+    const response = await api.post(`/sre/incidents/${id}/reject`, { reason })
+    return response.data
+  },
+  trigger: async (data: SRETriggerRequest): Promise<{ incident_id: string; status: string }> => {
+    const response = await api.post('/sre/trigger', data)
+    return response.data
+  },
+  stats: async (): Promise<SREStats> => {
+    const response = await api.get('/sre/stats')
+    return response.data
+  },
+}
+
+// Leads (demo requests) API
+export const leadsApi = {
+  list: async (params?: { status?: LeadStatus; limit?: number }): Promise<Lead[]> => {
+    const response = await api.get('/leads', { params })
+    return response.data
+  },
+  get: async (id: string): Promise<Lead> => {
+    const response = await api.get(`/leads/${id}`)
+    return response.data
+  },
+  update: async (id: string, data: LeadUpdate): Promise<Lead> => {
+    const response = await api.patch(`/leads/${id}`, data)
     return response.data
   },
 }

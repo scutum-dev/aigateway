@@ -1,8 +1,12 @@
-# AI Control Plane Platform
+# Scutum
 
-A unified management layer for [LiteLLM](https://docs.litellm.ai) and [Agent Gateway](https://agentgateway.dev) — providing a single admin UI, DB-backed configuration, atomic deployments, workflow orchestration, and FinOps governance across both systems.
+A self-hosted *control plane* for AI infrastructure. Sits on top of [LiteLLM](https://docs.litellm.ai) (LLM proxy) and [Agent Gateway](https://agentgateway.dev) (MCP/A2A) and adds: unified Admin UI, DB-backed configuration, cost governance, audit, RBAC, workflow orchestration, semantic caching, guardrails, SRE agent for incident remediation, and FinOps reporting.
 
-**Core idea:** LiteLLM and Agent Gateway are powerful standalone tools. This platform is the cockpit that ties them together with one UI, one database, and one deployment pipeline.
+Run on your own cluster, your own keys, your own data. One OpenAI-compatible endpoint, 100+ models across 9 providers, with cost prediction, budget enforcement, Cedar-policy authorization, and a 7-year audit trail built in.
+
+**Public site**: [scutum.dev](https://scutum.dev/) · **Docs**: [scutum.dev/docs](https://scutum.dev/docs/) · **Operated by**: Scuti Marketplace India (OPC) Pvt Ltd
+
+**Core idea:** LiteLLM and Agent Gateway are powerful standalone tools. Scutum is the cockpit that ties them together with one UI, one database, one deployment pipeline — plus the cost/audit/policy machinery enterprises need on top.
 
 ## Architecture
 
@@ -151,21 +155,30 @@ cp config/.env.example config/.env
 ### Start
 
 ```bash
-# Core services (LiteLLM, Admin API/UI, Postgres, Redis, Landing, Docs, Playground, Deck)
-docker compose --env-file config/.env up -d
+# Customer-safe core (postgres, redis, litellm, admin-api, admin-ui, docs)
+make up
 
 # Add observability (Grafana, Prometheus, Jaeger)
-docker compose --env-file config/.env --profile observability up -d
+make up-observability
 
 # Add workflows (Temporal, LangGraph engine, A2A runtime)
-docker compose --env-file config/.env --profile workflows up -d
+make up-workflows
 
 # Add FinOps (cost predictor, budget webhook)
-docker compose --env-file config/.env --profile finops up -d
+make up-finops
 
-# Everything
-docker compose --env-file config/.env --profile full up -d
+# Add SRE agent (LLM-driven incident remediation, human-in-loop)
+make up-sre
+
+# Everything (including agent gateway, vault, marketing surfaces)
+make up-full
 ```
+
+> **Customer vs scutum.dev internal**: `make up` is customer-safe — it omits the
+> scutum.dev marketing surfaces (landing page, Cal.com Book-a-Demo backend, sales
+> deck, public playground). Those services are gated behind the `marketing`
+> profile and only get spun up via `make up-marketing` for the scutum.dev VM.
+> See [CLAUDE.md](./CLAUDE.md) for the boundary rule.
 
 ### Access
 

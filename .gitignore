@@ -87,3 +87,4 @@ terraform/environments/staging.tfvars
 terraform/environments/prod.tfvars
 terraform/environments/secrets.auto.tfvars
 terraform/environments/demo-ephemeral/terraform.tfvars
+.claude/

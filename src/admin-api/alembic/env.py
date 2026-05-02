@@ -45,7 +45,15 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            # Commit each migration in its own transaction so a failure in
+            # migration N does not roll back the alembic_version row created
+            # by migration 001. Without this, transient errors during a
+            # later migration cause the whole upgrade chain to restart.
+            transaction_per_migration=True,
+        )
 
         with context.begin_transaction():
             context.run_migrations()

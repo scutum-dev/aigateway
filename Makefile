@@ -66,15 +66,22 @@ env-check: ## Verify environment configuration
 # DOCKER COMPOSE - CORE
 # =============================================================================
 
-up: ## Start core services (postgres, redis, litellm, admin, landing, deck, docs, playground)
+up: ## Start customer-safe core (postgres, redis, litellm, admin, docs) — no marketing surfaces
 	$(DOCKER_COMPOSE) up -d --build
-	@echo "$(GREEN)Core services started$(RESET)"
+	@echo "$(GREEN)Core platform started (customer-safe — no scutum.dev marketing surfaces)$(RESET)"
+	@echo "  Admin UI:   http://localhost:$${ADMIN_UI_PORT:-5173}"
+	@echo "  LiteLLM:    http://localhost:$${LITELLM_PORT:-4000}"
+	@echo "  Docs:       http://localhost:$${DOCS_SITE_PORT:-8089}"
+	@echo ""
+	@echo "  (For scutum.dev internal stack, run: make up-marketing)"
+
+up-marketing: ## Start core + scutum.dev marketing surfaces (landing, deck, playground, demo backend)
+	$(DOCKER_COMPOSE) --profile marketing up -d --build
+	@echo "$(GREEN)Core + marketing stack started (scutum.dev internal)$(RESET)"
 	@echo "  Landing:    http://localhost:$${LANDING_UI_PORT:-9999}"
 	@echo "  Deck:       http://localhost:$${DECK_UI_PORT:-6002}"
 	@echo "  Playground: http://localhost:$${PLAYGROUND_UI_PORT:-6001}"
-	@echo "  Docs:       http://localhost:$${DOCS_SITE_PORT:-8089}"
 	@echo "  Admin UI:   http://localhost:$${ADMIN_UI_PORT:-5173}"
-	@echo "  LiteLLM:    http://localhost:$${LITELLM_PORT:-4000}"
 
 down: ## Stop all services
 	$(DOCKER_COMPOSE) --profile full down
@@ -111,6 +118,12 @@ up-finops: ## Start core + FinOps services
 	$(DOCKER_COMPOSE) --profile finops up -d --build
 	@echo "$(GREEN)FinOps stack started$(RESET)"
 
+up-sre: ## Start core + SRE agent
+	$(DOCKER_COMPOSE) --profile sre up -d --build
+	@echo "$(GREEN)SRE agent started$(RESET)"
+	@echo "  SRE Agent: http://localhost:8092"
+	@echo "  Admin UI:  http://localhost:$${ADMIN_UI_PORT:-5173}/sre"
+
 up-experimental: ## Start core + experimental features
 	$(DOCKER_COMPOSE) --profile experimental up -d --build
 	@echo "$(GREEN)Experimental features started$(RESET)"
@@ -141,6 +154,12 @@ logs-litellm: ## View LiteLLM logs
 
 logs-admin: ## View Admin API logs
 	$(DOCKER_COMPOSE) logs -f admin-api
+
+logs-sre: ## View SRE agent logs
+	$(DOCKER_COMPOSE) logs -f sre-agent
+
+logs-landing: ## View landing-backend logs
+	$(DOCKER_COMPOSE) logs -f landing-backend
 
 ps: ## Show running services
 	$(DOCKER_COMPOSE) ps

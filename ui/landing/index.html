@@ -3,2937 +3,1145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Control Plane - Unified LLM Infrastructure</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <title>Scutum — Unified LLM, MCP & A2A Infrastructure</title>
+    <meta name="description" content="The unified control plane for AI infrastructure. LLM proxy, MCP/A2A gateway, agent workflows, SRE auto-remediation, audit. Self-hosted. Compliance-aware.">
+
+    <!-- SEO: canonical + indexing -->
+    <link rel="canonical" href="https://scutum.dev/">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="theme-color" content="#0A0A0A">
+
+    <!-- Favicon (SVG for crisp scaling, PNG fallback) -->
+    <link rel="icon" type="image/svg+xml" href="/scutum-mark.svg">
+    <link rel="apple-touch-icon" href="/scutum-mark.svg">
+
+    <!-- OpenGraph (Slack, LinkedIn, Facebook, iMessage) -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Scutum">
+    <meta property="og:title" content="Scutum — The unified control plane for AI infrastructure">
+    <meta property="og:description" content="LLM proxy, MCP/A2A gateway, agent workflows, FinOps controls, and SRE auto-remediation — one platform, self-hosted.">
+    <meta property="og:url" content="https://scutum.dev/">
+    <meta property="og:image" content="https://scutum.dev/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Scutum — the unified control plane for AI infrastructure">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Scutum — The unified control plane for AI infrastructure">
+    <meta name="twitter:description" content="LLM proxy, MCP/A2A gateway, agent workflows, FinOps controls, SRE auto-remediation. Self-hosted.">
+    <meta name="twitter:image" content="https://scutum.dev/og-image.png">
+
+    <!-- JSON-LD: SoftwareApplication + Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://scutum.dev/#org",
+          "name": "Scutum",
+          "url": "https://scutum.dev/",
+          "logo": "https://scutum.dev/og-image.png",
+          "description": "Scutum is the unified control plane for AI infrastructure — LLM proxy, MCP/A2A gateway, agent workflows, FinOps, and SRE auto-remediation."
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://scutum.dev/#product",
+          "name": "Scutum",
+          "applicationCategory": "DeveloperApplication",
+          "operatingSystem": "Linux, Docker, Kubernetes",
+          "description": "Unified control plane for AI infrastructure: LLM proxy, MCP/A2A gateway, agent workflows, cost governance, audit, and SRE auto-remediation. Self-hosted, SOC2-aware.",
+          "offers": [
+            {"@type": "Offer", "name": "Free Trial",  "price": "0",   "priceCurrency": "USD", "description": "30 days, full features"},
+            {"@type": "Offer", "name": "Team",        "price": "199", "priceCurrency": "USD", "billingDuration": "P1M"},
+            {"@type": "Offer", "name": "Business",    "price": "999", "priceCurrency": "USD", "billingDuration": "P1M"},
+            {"@type": "Offer", "name": "Enterprise",  "description": "Contact sales"}
+          ],
+          "publisher": {"@id": "https://scutum.dev/#org"}
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {"@type": "Question", "name": "Where does my data live?",                         "acceptedAnswer": {"@type": "Answer", "text": "In your infrastructure. Scutum is self-hosted by default — Docker Compose, Kubernetes, or our managed hosting. Prompts and responses never leave your VPC unless you explicitly route them through a third-party provider."}},
+            {"@type": "Question", "name": "Which models and providers do you support?",       "acceptedAnswer": {"@type": "Answer", "text": "100+ models across 9 providers: OpenAI, Anthropic, Google Vertex AI, AWS Bedrock, Azure OpenAI, Mistral, Cohere, Together AI, and self-hosted (vLLM, Ollama, TGI)."}},
+            {"@type": "Question", "name": "What is the SRE agent?",                           "acceptedAnswer": {"@type": "Answer", "text": "An LLM-driven agent that subscribes to incident signals (SLA violations, budget breaches, provider unhealthiness, guardrail violations), diagnoses against current platform state, and proposes remediation actions from a constrained allow-list. Every action gates through human approval in v1."}},
+            {"@type": "Question", "name": "How does pricing work for the LLM tokens?",        "acceptedAnswer": {"@type": "Answer", "text": "We do not mark up tokens. You bring your own provider keys — model spend goes to them at list price. Our platform fee covers the control plane (proxy, governance, audit, dashboards, support)."}}
+          ]
+        }
+      ]
+    }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
-    <!-- Runtime configuration - injected by Kubernetes ConfigMap in production -->
-    <script src="/config.js" onerror="console.log('config.js not found, using defaults')"></script>
+    <script src="/config.js" onerror="console.log('config.js absent, using defaults')"></script>
     <style>
         :root {
-            --primary: #6366f1;
-            --primary-light: #818cf8;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --bg: #000000;
-            --bg-card: rgba(255,255,255,0.03);
-            --border: rgba(255,255,255,0.06);
-            --text: #ffffff;
-            --text-muted: #71717a;
-        }
+            /* Pure B&W minimalism — Vercel / Resend / Linear school.
+               No chroma. Black is the accent. Forces the typography and the
+               shield concept to do the brand work. */
+            --bg:           #FFFFFF;
+            --bg-elevated:  #FAFAFA;
+            --bg-soft:      #F4F4F5;
+            --border:       #E5E5E5;
+            --border-hi:    #D4D4D4;
+            --text:         #0A0A0A;
+            --text-muted:   #525252;
+            /* WCAG AA-passing subtle grey on white (4.7:1). Was #A3A3A3 (2.8:1, failed AA). */
+            --text-subtle:  #6B7280;
+            --accent:       #0A0A0A;
+            --accent-hi:    #000000;
+            --accent-soft:  #F4F4F5;
+            --success:      #16A34A;
+            --warning:      #B45309;
+            --danger:       #B91C1C;
 
+            /* Code/arch cards: pure black for maximum contrast against white. */
+            --code-bg:      #0A0A0A;
+            --code-border:  rgba(255,255,255,0.10);
+            --code-text:    #FAFAFA;
+            /* Lighter muted on dark — was #737373 (4.7:1), bumped to #D4D4D8 (10:1) for diagrams. */
+            --code-muted:   #D4D4D8;
+
+            --serif: 'Instrument Serif', 'Iowan Old Style', 'Apple Garamond', Georgia, serif;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
+        html { scroll-behavior: smooth; }
         body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            overflow-x: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg); color: var(--text); line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            font-feature-settings: 'ss01' on, 'cv11' on;
         }
+        a { color: inherit; text-decoration: none; }
+        code, .mono { font-family: 'JetBrains Mono', monospace; }
+        h1, h2, h3, .display { font-family: var(--serif); font-weight: 400; letter-spacing: -0.01em; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 
-        /* Hero Section */
-        .hero {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .hero-bg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background:
-                radial-gradient(ellipse at 30% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-                radial-gradient(ellipse at 70% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
-            z-index: 0;
-        }
-
-        .hero-grid {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-            background-size: 60px 60px;
-            z-index: 0;
-        }
-
-        /* Nav */
+        /* ========== NAV ========== */
         .nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 60px;
-            position: relative;
-            z-index: 10;
+            position: sticky; top: 0; z-index: 50;
+            backdrop-filter: saturate(180%) blur(12px);
+            background: rgba(255,255,255,0.85); border-bottom: 1px solid var(--border);
         }
-
+        .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
         .logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1.4rem;
-            font-weight: 700;
+            display: flex; align-items: center; gap: 12px;
+            font-family: var(--serif); font-weight: 400; font-size: 22px; color: var(--text);
+            letter-spacing: -0.005em;
         }
-
-        .logo-icon {
-            width: 42px;
-            height: 42px;
-            background: linear-gradient(135deg, var(--primary), #8b5cf6);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .logo-mark {
+            width: 32px; height: 32px;
+            display: block;
         }
+        .nav-links { display: flex; align-items: center; gap: 32px; }
+        .nav-links a { color: var(--text-muted); font-size: 14px; font-weight: 500; transition: color .15s; }
+        .nav-links a:hover { color: var(--text); }
+        @media (max-width: 768px) { .nav-links a:not(.btn) { display: none; } }
 
-        .nav-links {
-            display: flex;
-            gap: 40px;
-        }
-
-        .nav-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.2s;
-        }
-
-        .nav-links a:hover { color: white; }
-
-        .nav-cta {
-            display: flex;
-            gap: 15px;
-        }
-
+        /* ========== BUTTONS ========== */
         .btn {
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            border: none;
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 18px; border-radius: 6px; font-weight: 500; font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: background-color .12s, border-color .12s; cursor: pointer; border: 1px solid transparent;
         }
-
-        .btn-ghost {
-            background: transparent;
-            color: var(--text-muted);
+        .btn-primary { background: var(--accent); color: #FFFFFF; }
+        .btn-primary:hover { background: var(--accent-hi); }
+        .btn-secondary { background: transparent; color: var(--text); border-color: var(--border-hi); }
+        .btn-secondary:hover { border-color: var(--text); }
+        .btn-lg { padding: 14px 24px; font-size: 15px; }
+        /* Nav CTA — discoverable but tonally subdued, so the hero CTA does the heavy lifting */
+        .btn-nav {
+            padding: 7px 14px; font-size: 13px;
+            background: transparent; color: var(--text);
+            border: 1px solid var(--border-hi);
         }
+        .btn-nav:hover { border-color: var(--text); background: var(--bg-elevated); }
 
-        .btn-ghost:hover { color: white; }
-
-        .btn-primary {
-            background: white;
-            color: black;
+        /* ========== HERO ========== */
+        .hero { padding: 120px 0 80px; position: relative; overflow: hidden; text-align: center; }
+        .hero > * { position: relative; z-index: 1; }
+        .hero-eyebrow {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 5px 12px; border-radius: 999px;
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            color: var(--text-muted); font-size: 12px; font-weight: 500; margin-bottom: 28px;
+            letter-spacing: 0.005em;
         }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(255,255,255,0.2);
-        }
-
-        /* Hero Content */
-        .hero-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 0 20px;
-            position: relative;
-            z-index: 10;
-        }
-
-        .badge {
-            background: rgba(99, 102, 241, 0.1);
-            border: 1px solid rgba(99, 102, 241, 0.3);
-            padding: 8px 16px;
-            border-radius: 50px;
-            font-size: 0.8rem;
-            color: var(--primary-light);
-            margin-bottom: 30px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .badge::before {
-            content: '';
-            width: 6px;
-            height: 6px;
-            background: var(--success);
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
         .hero h1 {
-            font-size: 4.5rem;
-            font-weight: 800;
-            line-height: 1.1;
-            margin-bottom: 25px;
-            max-width: 900px;
-        }
-
-        .hero h1 span {
-            background: linear-gradient(135deg, var(--primary-light), #c084fc);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .hero p {
-            font-size: 1.25rem;
-            color: var(--text-muted);
-            max-width: 600px;
-            line-height: 1.7;
-            margin-bottom: 40px;
-        }
-
-        .hero-cta {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 60px;
-        }
-
-        .btn-large {
-            padding: 16px 32px;
-            font-size: 1rem;
-        }
-
-        .btn-gradient {
-            background: linear-gradient(135deg, var(--primary), #8b5cf6);
-            color: white;
-        }
-
-        /* Stats Bar */
-        .stats-bar {
-            display: flex;
-            gap: 60px;
-            padding: 30px 60px;
-            background: rgba(255,255,255,0.02);
-            border-top: 1px solid var(--border);
-        }
-
-        .stat {
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: white;
-        }
-
-        .stat-value span { color: var(--success); }
-
-        .stat-label {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-top: 5px;
-        }
-
-        /* Demo Section */
-        .demo-section {
-            padding: 100px 60px;
-            background: linear-gradient(180deg, transparent 0%, rgba(99, 102, 241, 0.03) 100%);
-        }
-
-        .section-header {
-            text-align: center;
-            margin-bottom: 60px;
-        }
-
-        .section-header h2 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 15px;
-        }
-
-        .section-header p {
-            color: var(--text-muted);
-            font-size: 1.1rem;
-        }
-
-        /* Demo Container */
-        .demo-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            overflow: hidden;
-        }
-
-        .demo-header {
-            padding: 20px 30px;
-            background: rgba(0,0,0,0.3);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .demo-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-
-        .demo-dot.red { background: #ff5f57; }
-        .demo-dot.yellow { background: #ffbd2e; }
-        .demo-dot.green { background: #28c840; }
-
-        .demo-title {
-            margin-left: 15px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-
-        .demo-body {
-            display: grid;
-            grid-template-columns: 1fr 380px;
-        }
-
-        /* Playground Tabs */
-        .playground-tabs {
-            display: flex;
-            gap: 0;
-            border-bottom: 1px solid var(--border);
-            background: rgba(0,0,0,0.2);
-        }
-
-        .playground-tab {
-            padding: 14px 24px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .playground-tab:hover {
-            color: white;
-            background: rgba(255,255,255,0.02);
-        }
-
-        .playground-tab.active {
-            color: var(--primary-light);
-            border-bottom-color: var(--primary);
-            background: rgba(99, 102, 241, 0.05);
-        }
-
-        .playground-content {
-            display: none;
-        }
-
-        .playground-content.active {
-            display: block;
-        }
-
-        /* Playground */
-        .playground {
-            border-right: 1px solid var(--border);
-        }
-
-        .playground-inner {
-            padding: 30px;
-        }
-
-        .model-selector {
-            margin-bottom: 25px;
-        }
-
-        .model-selector label {
-            display: block;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-        }
-
-        .model-tabs {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .model-tab {
-            padding: 10px 18px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.85rem;
-        }
-
-        .model-tab:hover {
-            border-color: var(--primary);
-        }
-
-        .model-tab.active {
-            background: rgba(99, 102, 241, 0.15);
-            border-color: var(--primary);
-            color: var(--primary-light);
-        }
-
-        .model-tab .price {
-            font-size: 0.7rem;
-            color: var(--success);
-            margin-left: 6px;
-        }
-
-        .prompt-area {
-            margin-bottom: 20px;
-        }
-
-        .prompt-area label {
-            display: block;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-        }
-
-        .prompt-input {
-            width: 100%;
-            min-height: 100px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 15px;
-            color: white;
-            font-size: 0.95rem;
-            font-family: inherit;
-            resize: none;
-        }
-
-        .prompt-input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        /* Cost Comparison */
-        .cost-comparison {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(99, 102, 241, 0.05));
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .cost-comparison h4 {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .cost-comparison h4 i { color: var(--success); }
-
-        .cost-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .cost-row:last-child { border-bottom: none; }
-
-        .cost-label {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-        }
-
-        .cost-value {
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
-
-        .cost-value.highlight {
-            color: var(--success);
-            font-size: 1.3rem;
-        }
-
-        .savings-badge {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--success);
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .btn-send {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, var(--primary), #8b5cf6);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .btn-send:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
-        }
-
-        .btn-send:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        /* Response */
-        .response-area {
-            margin-top: 25px;
-            display: none;
-        }
-
-        .response-area.visible { display: block; }
-
-        .response-box {
-            background: rgba(0,0,0,0.2);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .response-header {
-            padding: 12px 16px;
-            background: rgba(0,0,0,0.3);
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.8rem;
-        }
-
-        .response-content {
-            padding: 16px;
-            font-size: 0.9rem;
-            line-height: 1.7;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .response-stats {
-            padding: 12px 16px;
-            background: rgba(0,0,0,0.2);
-            display: flex;
-            gap: 25px;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-
-        .response-stats strong {
-            color: white;
-            margin-left: 5px;
-        }
-
-        /* API Demo Panel */
-        .api-demo-panel {
-            padding: 30px;
-        }
-
-        .api-demo-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 25px;
-            flex-wrap: wrap;
-        }
-
-        .api-demo-tab {
-            padding: 10px 16px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: all 0.2s;
-        }
-
-        .api-demo-tab:hover {
-            border-color: var(--primary);
-        }
-
-        .api-demo-tab.active {
-            background: rgba(99, 102, 241, 0.15);
-            border-color: var(--primary);
-            color: var(--primary-light);
-        }
-
-        .api-demo-content {
-            display: none;
-        }
-
-        .api-demo-content.active {
-            display: block;
-        }
-
-        .demo-card {
-            background: rgba(0,0,0,0.2);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .demo-card h4 {
-            font-size: 1rem;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .demo-card h4 i {
-            color: var(--primary-light);
-        }
-
-        .demo-card p {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            margin-bottom: 15px;
-            line-height: 1.6;
-        }
-
-        .demo-input-group {
-            margin-bottom: 15px;
-        }
-
-        .demo-input-group label {
-            display: block;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .demo-input {
-            width: 100%;
-            padding: 12px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: white;
-            font-size: 0.9rem;
-        }
-
-        .demo-input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .demo-btn {
-            padding: 12px 20px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .demo-btn:hover {
-            background: var(--primary-light);
-        }
-
-        .demo-result {
-            margin-top: 15px;
-            padding: 15px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            display: none;
-        }
-
-        .demo-result.visible {
-            display: block;
-        }
-
-        .demo-result-success {
-            border-left: 3px solid var(--success);
-        }
-
-        .demo-result-info {
-            border-left: 3px solid var(--primary);
-        }
-
-        /* Code Samples Panel */
-        .code-samples-panel {
-            padding: 30px;
-        }
-
-        .code-lang-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .code-lang-tab {
-            padding: 8px 16px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .code-lang-tab:hover {
-            border-color: var(--primary);
-        }
-
-        .code-lang-tab.active {
-            background: rgba(99, 102, 241, 0.15);
-            border-color: var(--primary);
-            color: var(--primary-light);
-        }
-
-        .code-sample-content {
-            display: none;
-        }
-
-        .code-sample-content.active {
-            display: block;
-        }
-
-        .code-block {
-            position: relative;
-            margin-bottom: 20px;
-        }
-
-        .code-block-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 15px;
-            background: rgba(0,0,0,0.4);
-            border-radius: 8px 8px 0 0;
-            border: 1px solid var(--border);
-            border-bottom: none;
-        }
-
-        .code-block-title {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .copy-btn {
-            padding: 6px 12px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            color: var(--text-muted);
-            font-size: 0.75rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .copy-btn:hover {
-            background: rgba(255,255,255,0.1);
-            color: white;
-        }
-
-        .copy-btn.copied {
-            color: var(--success);
-            border-color: var(--success);
-        }
-
-        .code-block pre {
-            margin: 0;
-            padding: 20px;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid var(--border);
-            border-top: none;
-            border-radius: 0 0 8px 8px;
-            overflow-x: auto;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            line-height: 1.6;
-        }
-
-        .code-block code {
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        /* Metrics Panel */
-        .metrics-panel {
-            padding: 30px;
-            background: rgba(0,0,0,0.2);
-        }
-
-        .metrics-title {
-            font-size: 0.9rem;
-            font-weight: 600;
-            margin-bottom: 25px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .live-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--success);
-            border-radius: 50%;
-            animation: pulse 1.5s infinite;
-        }
-
-        .metric-card {
-            background: rgba(255,255,255,0.02);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 15px;
-        }
-
-        .metric-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .metric-card-label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .metric-card-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-        }
-
-        .metric-card-icon.blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
-        .metric-card-icon.green { background: rgba(16, 185, 129, 0.15); color: var(--success); }
-        .metric-card-icon.purple { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
-        .metric-card-icon.orange { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-
-        .metric-card-value {
-            font-size: 1.8rem;
-            font-weight: 700;
-        }
-
-        .metric-card-change {
-            font-size: 0.75rem;
-            color: var(--success);
-            margin-top: 5px;
-        }
-
-        /* Provider comparison */
-        .provider-comparison {
-            margin-top: 20px;
-        }
-
-        .provider-row {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            background: rgba(255,255,255,0.02);
-            border-radius: 8px;
-            margin-bottom: 8px;
-        }
-
-        .provider-name {
-            width: 100px;
-            font-size: 0.8rem;
+            font-size: clamp(44px, 6.5vw, 76px);
+            line-height: 1.02; max-width: 880px; margin: 0 auto 28px;
+        }
+        .hero h1 .em {
+            font-style: italic; font-family: var(--serif);
+        }
+        .hero p.lede {
+            font-size: clamp(17px, 1.6vw, 19px); color: var(--text-muted);
+            max-width: 620px; margin: 0 auto 44px; line-height: 1.55;
+        }
+        .hero-ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+        /* ========== TRUST STRIP ========== */
+        .trust { padding: 56px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .trust-label {
+            text-align: center; color: var(--text-subtle); font-size: 11px;
+            text-transform: uppercase; letter-spacing: 0.16em; margin-bottom: 28px;
             font-weight: 500;
         }
+        .trust-logos { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 56px; }
+        .trust-logos span {
+            font-family: var(--serif); font-size: 22px; font-weight: 400;
+            color: var(--text-subtle); font-style: italic;
+        }
 
-        .provider-bar-container {
-            flex: 1;
-            height: 8px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 4px;
-            margin: 0 15px;
+        /* ========== SECTIONS ========== */
+        section.s { padding: 112px 0; }
+        section.s-alt { background: var(--bg-elevated); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .s-header { text-align: center; margin-bottom: 64px; }
+        .s-eyebrow {
+            color: var(--text-muted); font-size: 11px; font-weight: 500;
+            text-transform: uppercase; letter-spacing: 0.16em; margin-bottom: 16px;
+            font-family: 'Inter', sans-serif;
+        }
+        .s-header h2 {
+            font-size: clamp(34px, 4.5vw, 54px); margin-bottom: 16px;
+            line-height: 1.05;
+        }
+        .s-header h2 .em { font-style: italic; }
+        .s-header p { color: var(--text-muted); font-size: 17px; max-width: 600px; margin: 0 auto; line-height: 1.55; }
+
+        /* ========== AUDIENCE ROWS ========== */
+        .audience { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; margin-bottom: 96px; }
+        .audience:last-child { margin-bottom: 0; }
+        .audience.reverse > :first-child { order: 2; }
+        .audience-tag {
+            display: inline-flex;
+            color: var(--text-muted); font-size: 11px; font-weight: 500; margin-bottom: 16px;
+            text-transform: uppercase; letter-spacing: 0.16em;
+            font-family: 'Inter', sans-serif;
+        }
+        .audience h3 { font-size: clamp(28px, 3.4vw, 38px); margin-bottom: 18px; line-height: 1.1; }
+        .audience h3 .em { font-style: italic; }
+        .audience p { color: var(--text-muted); font-size: 16px; margin-bottom: 24px; line-height: 1.6; }
+        .audience-list { list-style: none; padding: 0; }
+        .audience-list li { padding: 8px 0; color: var(--text); display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
+        .audience-list i { color: var(--success); margin-top: 6px; flex-shrink: 0; }
+        @media (max-width: 768px) {
+            .audience { grid-template-columns: 1fr; gap: 32px; }
+            .audience.reverse > :first-child { order: 0; }
+        }
+
+        /* ========== CODE CARD (kept dark on light page) ========== */
+        .code-card {
+            background: var(--code-bg); border: 1px solid var(--code-border); border-radius: 8px;
             overflow: hidden;
         }
+        .code-card-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--code-border); }
+        .code-tab {
+            padding: 12px 18px; font-size: 13px; color: var(--code-muted); cursor: pointer;
+            border-right: 1px solid var(--code-border); font-family: 'JetBrains Mono', monospace; transition: all .15s;
+        }
+        .code-tab.active { color: var(--code-text); background: rgba(255,255,255,0.04); }
+        .code-card pre {
+            padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 13px;
+            color: var(--code-text); overflow-x: auto; line-height: 1.7;
+        }
+        .code-card .kw { color: #c084fc; }
+        .code-card .str { color: #86efac; }
+        .code-card .com { color: #9CA3AF; font-style: italic; }
+        .code-card .fn { color: #60a5fa; }
 
-        .provider-bar {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.5s ease;
+        /* ========== ARCH DIAGRAM (also dark) ========== */
+        .arch-diagram {
+            background: var(--code-bg); border: 1px solid var(--code-border); border-radius: 8px;
+            padding: 32px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+            color: var(--code-muted); white-space: pre; overflow-x: auto; line-height: 1.6;
+        }
+        .arch-diagram .h { color: #FAFAFA; font-weight: 500; }
+
+        /* ========== COMPARISON TABLE ========== */
+        .cmp-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+        .cmp { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1000px; }
+        .cmp th, .cmp td {
+            padding: 16px 16px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top;
+        }
+        .cmp tbody tr:last-child td { border-bottom: none; }
+        .cmp thead th {
+            background: transparent; font-weight: 500; font-size: 11px;
+            color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.12em;
+        }
+        .cmp tbody tr.us { background: var(--bg-soft); }
+        .cmp tbody tr.us td:first-child { color: var(--text); font-weight: 600; font-family: var(--serif); font-size: 16px; }
+        .cmp tbody td:first-child { font-weight: 500; color: var(--text); }
+        .cmp .yes { color: var(--text); font-weight: 600; }
+        .cmp .no  { color: var(--text-subtle); }
+        .cmp .neutral { color: var(--text); }
+        .cmp-note { margin-top: 16px; color: var(--text-muted); font-size: 12px; line-height: 1.6; font-style: italic; font-family: var(--serif); }
+
+        /* ========== PRICING ========== */
+        .pricing-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        @media (max-width: 1024px) { .pricing-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px)  { .pricing-grid { grid-template-columns: 1fr; } }
+        .price-card {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+            padding: 32px; display: flex; flex-direction: column;
+            transition: border-color .15s;
+        }
+        .price-card:hover { border-color: var(--border-hi); }
+        .price-card.featured {
+            border-color: var(--text);
+            box-shadow: 0 0 0 1px var(--text);
+        }
+        .price-name { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.16em; }
+        .price-amt {
+            font-family: var(--serif); font-size: 48px; font-weight: 400;
+            margin: 14px 0 6px; letter-spacing: -0.01em; line-height: 1;
+        }
+        .price-amt small { font-size: 14px; color: var(--text-muted); font-weight: 400; font-family: 'Inter', sans-serif; }
+        .price-tagline { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; min-height: 40px; line-height: 1.5; }
+        .price-features { list-style: none; padding: 0; margin: 0 0 24px 0; flex: 1; }
+        .price-features li { font-size: 13px; padding: 6px 0; display: flex; gap: 8px; align-items: flex-start; color: var(--text); }
+        .price-features i { color: var(--success); margin-top: 4px; font-size: 12px; flex-shrink: 0; }
+        .price-card .btn { width: 100%; justify-content: center; }
+        .free-month-banner {
+            text-align: center; margin-top: 36px; padding: 14px;
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: 6px; color: var(--text); font-size: 13px; font-weight: 500;
         }
 
-        .provider-bar.openai { background: linear-gradient(90deg, #10a37f, #1ed4a3); }
-        .provider-bar.anthropic { background: linear-gradient(90deg, #d4a27f, #e8c4a0); }
-        .provider-bar.xai { background: linear-gradient(90deg, #6366f1, #818cf8); }
-
-        .provider-percent {
-            font-size: 0.8rem;
-            font-weight: 600;
-            width: 50px;
-            text-align: right;
-        }
-
-        /* Grafana Link */
-        .grafana-cta {
-            margin-top: 20px;
-            padding: 20px;
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
-            border: 1px solid rgba(245, 158, 11, 0.2);
-            border-radius: 12px;
-            text-decoration: none;
-            color: inherit;
-            display: block;
-            transition: all 0.2s;
-        }
-
-        .grafana-cta:hover {
-            border-color: rgba(245, 158, 11, 0.5);
-            transform: translateY(-2px);
-        }
-
-        .grafana-cta h4 {
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 5px;
-        }
-
-        .grafana-cta h4 i { color: #fbbf24; }
-
-        .grafana-cta p {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        /* Features Section */
-        .features-section {
-            padding: 100px 60px;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 30px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .feature-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 35px;
-            transition: all 0.3s;
-        }
-
-        .feature-card:hover {
-            border-color: var(--primary);
-            transform: translateY(-5px);
-        }
-
-        .feature-icon {
-            width: 50px;
-            height: 50px;
-            background: rgba(99, 102, 241, 0.1);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            color: var(--primary-light);
-            margin-bottom: 20px;
-        }
-
-        .feature-card h3 {
-            font-size: 1.2rem;
-            margin-bottom: 12px;
-        }
-
-        .feature-card p {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            line-height: 1.6;
-        }
-
-        /* Footer */
-        .footer {
-            padding: 40px 60px;
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .footer-text {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-        }
-
-        .footer-links {
-            display: flex;
-            gap: 30px;
-        }
-
-        .footer-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 0.85rem;
-            transition: color 0.2s;
-        }
-
-        .footer-links a:hover { color: white; }
-
-        /* Spinner */
-        .spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255,255,255,0.2);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Streaming cursor */
-        .streaming::after {
-            content: '|';
-            animation: blink 1s infinite;
-        }
-
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
-        }
-
-        /* MCP Server List */
-        .mcp-server-list {
-            display: grid;
-            gap: 10px;
-        }
-
-        .mcp-server-item {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            background: rgba(255,255,255,0.02);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-        }
-
-        .mcp-server-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 12px;
-            font-size: 16px;
-        }
-
-        .mcp-server-info h5 {
-            font-size: 0.9rem;
-            margin-bottom: 2px;
-        }
-
-        .mcp-server-info p {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        .mcp-server-status {
-            margin-left: auto;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-
-        .mcp-server-status.online {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--success);
-        }
-
-        /* Prism overrides */
-        pre[class*="language-"] {
-            background: transparent !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        code[class*="language-"] {
-            font-size: 0.8rem !important;
-        }
-
-        /* Metrics Dashboard Panel */
-        .metrics-dashboard-panel {
-            padding: 30px;
-        }
-
-        .metrics-dashboard-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-        }
-
-        .metrics-dashboard-header h3 {
-            font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .metrics-dashboard-header h3 i {
-            color: var(--primary-light);
-        }
-
-        .open-grafana-btn {
-            padding: 8px 16px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            text-decoration: none;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .open-grafana-btn:hover {
-            background: rgba(255,255,255,0.1);
-            color: white;
-            border-color: var(--primary);
-        }
-
-        .grafana-selector {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .grafana-dashboard-tab {
-            padding: 10px 18px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: all 0.2s;
-        }
-
-        .grafana-dashboard-tab:hover {
-            border-color: var(--primary);
-        }
-
-        .grafana-dashboard-tab.active {
-            background: rgba(99, 102, 241, 0.15);
-            border-color: var(--primary);
-            color: var(--primary-light);
-        }
-
-        .grafana-embed-container {
-            min-height: 400px;
-        }
-
-        .grafana-dashboard {
-            display: none;
-        }
-
-        .grafana-dashboard.active {
-            display: block;
-        }
-
-        .grafana-iframe-wrapper {
-            width: 100%;
-            height: 180px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            overflow: hidden;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid var(--border);
-        }
-
-        .grafana-iframe-wrapper.full-width {
-            height: 220px;
-        }
-
-        .grafana-iframe-wrapper iframe {
-            width: 100%;
-            height: 100%;
-        }
-
-        .grafana-metrics-fallback {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-        }
-
-        .fallback-metric {
-            background: rgba(0,0,0,0.2);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-        }
-
-        .fallback-metric.wide {
-            grid-column: span 2;
-        }
-
-        .fallback-label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }
-
-        .fallback-value {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: white;
-        }
-
-        .fallback-chart {
-            height: 40px;
-            margin-top: 10px;
-            background: linear-gradient(90deg,
-                rgba(99, 102, 241, 0.3) 0%,
-                rgba(99, 102, 241, 0.5) 30%,
-                rgba(99, 102, 241, 0.3) 60%,
-                rgba(99, 102, 241, 0.6) 100%);
-            border-radius: 4px;
-            position: relative;
+        /* ========== RESEARCH ========== */
+        .research-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px;
+            background: var(--border); border: 1px solid var(--border); border-radius: 8px;
             overflow: hidden;
         }
-
-        .fallback-chart::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent);
-            animation: shimmer 2s infinite;
+        @media (max-width: 768px) { .research-grid { grid-template-columns: 1fr; } }
+        .research-card {
+            background: var(--bg); padding: 32px;
+            display: flex; flex-direction: column; gap: 12px;
+            transition: background-color .15s;
+        }
+        .research-card:hover { background: var(--bg-elevated); }
+        .research-card .tag {
+            font-family: 'Inter', sans-serif; font-size: 10px;
+            text-transform: uppercase; letter-spacing: 0.18em;
+            color: var(--text-subtle); font-weight: 500;
+        }
+        .research-card h3 {
+            font-family: var(--serif); font-size: 24px; font-weight: 400;
+            line-height: 1.2; letter-spacing: -0.005em; color: var(--text);
+        }
+        .research-card p {
+            font-size: 14px; color: var(--text-muted); line-height: 1.6; flex: 1;
+        }
+        .research-card a.read-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 13px; color: var(--text); font-weight: 500;
+            border-bottom: 1px solid var(--border-hi);
+            padding-bottom: 2px; align-self: flex-start;
+            transition: border-color .15s;
+        }
+        .research-card a.read-link:hover { border-color: var(--text); }
+        .research-card a.read-link.draft { color: var(--text-subtle); border-color: transparent; cursor: default; }
+        .research-foot {
+            margin-top: 32px; text-align: center;
+            color: var(--text-muted); font-size: 13px; font-style: italic; font-family: var(--serif);
         }
 
-        @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+        /* ========== FAQ ========== */
+        .faq-list { max-width: 720px; margin: 0 auto; }
+        .faq-item { border-bottom: 1px solid var(--border); padding: 24px 0; }
+        .faq-q { font-family: var(--serif); font-weight: 400; font-size: 22px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 16px; line-height: 1.3; }
+        .faq-q i { color: var(--text-muted); transition: transform .2s; font-size: 12px; flex-shrink: 0; font-family: 'Font Awesome 6 Free'; }
+        .faq-item.open .faq-q i { transform: rotate(45deg); }
+        .faq-a {
+            color: var(--text-muted); font-size: 15px; padding-top: 0;
+            max-height: 0; overflow: hidden; transition: max-height .25s, padding-top .25s;
         }
+        .faq-item.open .faq-a { max-height: 400px; padding-top: 12px; }
 
-        /* Cost Breakdown */
-        .cost-breakdown {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 15px;
+        /* ========== FOOTER ========== */
+        footer { border-top: 1px solid var(--border); padding: 80px 0 40px; background: var(--bg); }
+        .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 48px; }
+        .footer-grid h4 { color: var(--text); font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; }
+        .footer-grid a { display: block; color: var(--text-muted); font-size: 14px; padding: 6px 0; }
+        .footer-grid a:hover { color: var(--text); }
+        .footer-bottom {
+            border-top: 1px solid var(--border); padding-top: 24px;
+            display: flex; justify-content: space-between;
+            color: var(--text-subtle); font-size: 13px;
+            flex-wrap: wrap; gap: 16px;
         }
+        @media (max-width: 768px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
 
-        .cost-bar-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
+        /* ========== MODAL ========== */
+        .modal-bg {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            display: none; align-items: center; justify-content: center;
+            z-index: 100; padding: 20px; backdrop-filter: blur(4px);
         }
-
-        .cost-model {
-            width: 100px;
-            font-size: 0.8rem;
-            color: var(--text-muted);
+        .modal-bg.open { display: flex; }
+        .modal {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+            width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; padding: 36px;
+            box-shadow: 0 20px 60px -10px rgba(0,0,0,0.18);
         }
-
-        .cost-bar-bg {
-            flex: 1;
-            height: 8px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 4px;
-            overflow: hidden;
+        .modal h3 { font-size: 28px; margin-bottom: 8px; }
+        .modal p.sub { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
+        .form-grid { display: grid; gap: 14px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+        .form-field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--text); }
+        .form-field input, .form-field select, .form-field textarea {
+            width: 100%; padding: 10px 12px; border-radius: 8px;
+            background: var(--bg); border: 1px solid var(--border-hi); color: var(--text);
+            font-size: 14px; font-family: inherit;
+            transition: border-color .12s, box-shadow .12s;
         }
-
-        .cost-bar-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.5s ease;
+        .form-field input:focus, .form-field select:focus, .form-field textarea:focus {
+            outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,0,0,0.10);
         }
-
-        .cost-amount {
-            width: 60px;
-            text-align: right;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-
-        /* Latency Bars */
-        .latency-bars {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 15px;
-        }
-
-        .latency-bar-row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .latency-bar-row span:first-child {
-            width: 80px;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-
-        .latency-bar {
-            height: 8px;
-            background: linear-gradient(90deg, var(--success), var(--warning));
-            border-radius: 4px;
-            transition: width 0.5s ease;
-        }
-
-        .latency-bar-row span:last-child {
-            width: 50px;
-            text-align: right;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        /* Provider Status Grid */
-        .provider-status-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .provider-status-card {
-            background: rgba(0,0,0,0.2);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            transition: all 0.2s;
-        }
-
-        .provider-status-card:hover {
-            border-color: var(--primary);
-            transform: translateY(-2px);
-        }
-
-        .provider-status-card.online {
-            border-color: rgba(16, 185, 129, 0.3);
-        }
-
-        .provider-status-card.degraded {
-            border-color: rgba(245, 158, 11, 0.3);
-        }
-
-        .provider-status-card.offline {
-            border-color: rgba(239, 68, 68, 0.3);
-        }
-
-        .provider-status-card .provider-icon {
-            width: 40px;
-            height: 40px;
-            margin: 0 auto 10px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            color: var(--primary-light);
-        }
-
-        .provider-status-card .provider-name {
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .provider-status-card .provider-health {
-            font-size: 0.75rem;
-            color: var(--success);
-            margin-bottom: 10px;
-        }
-
-        .provider-status-card.degraded .provider-health {
-            color: var(--warning);
-        }
-
-        .provider-status-card.offline .provider-health {
-            color: var(--danger);
-        }
-
-        .provider-status-card .provider-stats {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-        }
-
-        /* Refresh Bar */
-        .metrics-refresh-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border);
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-
-        .refresh-btn {
-            padding: 8px 16px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .refresh-btn:hover {
-            background: var(--primary-light);
-        }
+        .form-field textarea { resize: vertical; min-height: 80px; }
+        .honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .modal-result { padding: 16px; border-radius: 6px; margin-top: 16px; font-size: 14px; }
+        .modal-result.ok { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text); }
+        .modal-result.err { background: #FEF2F2; border: 1px solid #FECACA; color: var(--danger); }
     </style>
 </head>
 <body>
-    <!-- Hero -->
-    <section class="hero">
-        <div class="hero-bg"></div>
-        <div class="hero-grid"></div>
 
-        <nav class="nav">
-            <div class="logo">
-                <div class="logo-icon"><i class="fas fa-bolt"></i></div>
-                AI Control Plane
-            </div>
-            <div class="nav-links">
-                <a href="#demo">Playground</a>
-                <a href="#features">Features</a>
-                <a href="http://localhost:3030" target="_blank">Analytics</a>
-                <a href="http://localhost:5173" target="_blank">Admin</a>
-            </div>
-            <div class="nav-cta">
-                <a href="http://localhost:8088" target="_blank" class="btn btn-ghost">Workflows</a>
-                <a href="#demo" class="btn btn-primary">Try Demo</a>
-            </div>
-        </nav>
+<!-- Comparison + pricing data. Real numbers verified May 2026.
+     OpenRouter and Apigee figures reflect publicly cited pricing — their
+     pricing pages did not render in our automated check. -->
+<script>
+    const PRICING_VERIFIED_AT = '2026-05';
 
-        <div class="hero-content">
-            <div class="badge">Live Demo Environment</div>
-            <h1>Unified <span>AI Control Plane</span> Platform</h1>
-            <p>100+ models across 9 providers. Route to OpenAI, Anthropic, Google, xAI, DeepSeek, Bedrock, Vertex AI, Azure, and Ollama with intelligent routing and cost control.</p>
-            <div class="hero-cta">
-                <a href="#demo" class="btn btn-gradient btn-large">
-                    <i class="fas fa-play"></i> Try Live Demo
-                </a>
-                <a href="http://localhost:3030" target="_blank" class="btn btn-ghost btn-large">
-                    View Analytics <i class="fas fa-arrow-right"></i>
-                </a>
-            </div>
-        </div>
-
-        <div class="stats-bar">
-            <div class="stat">
-                <div class="stat-value">100+</div>
-                <div class="stat-label">LLM Models</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value">9</div>
-                <div class="stat-label">Providers</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value"><span>40%</span></div>
-                <div class="stat-label">Cost Savings</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value">92%</div>
-                <div class="stat-label">Cache Hit Rate</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value">5</div>
-                <div class="stat-label">Workflow Patterns</div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Demo Section -->
-    <section class="demo-section" id="demo">
-        <div class="section-header">
-            <h2>Interactive Playground</h2>
-            <p>Chat with models, explore API capabilities, and get code samples</p>
-        </div>
-
-        <div class="demo-container">
-            <div class="demo-header">
-                <div class="demo-dot red"></div>
-                <div class="demo-dot yellow"></div>
-                <div class="demo-dot green"></div>
-                <span class="demo-title">AI Control Plane Playground</span>
-            </div>
-
-            <div class="demo-body">
-                <div class="playground">
-                    <!-- Playground Tabs -->
-                    <div class="playground-tabs">
-                        <div class="playground-tab active" data-tab="chat">
-                            <i class="fas fa-comments"></i> Chat
-                        </div>
-                        <div class="playground-tab" data-tab="api-demos">
-                            <i class="fas fa-flask"></i> API Demos
-                        </div>
-                        <div class="playground-tab" data-tab="code-samples">
-                            <i class="fas fa-code"></i> Code Samples
-                        </div>
-                        <div class="playground-tab" data-tab="metrics">
-                            <i class="fas fa-chart-line"></i> Metrics
-                        </div>
-                    </div>
-
-                    <!-- Chat Panel -->
-                    <div class="playground-content active" id="chat-panel">
-                        <div class="playground-inner">
-                            <div class="model-selector">
-                                <label>Select Model</label>
-                                <div class="model-tabs" id="modelTabs">
-                                    <div class="model-tab active" data-model="gpt-5-mini" data-input="0.10" data-output="0.40">
-                                        GPT-5 Mini <span class="price">$0.10/1M</span>
-                                    </div>
-                                    <div class="model-tab" data-model="gpt-5" data-input="2.00" data-output="8.00">
-                                        GPT-5 <span class="price">$2.00/1M</span>
-                                    </div>
-                                    <div class="model-tab" data-model="claude-haiku-4.5" data-input="0.20" data-output="1.00">
-                                        Claude Haiku 4.5 <span class="price">$0.20/1M</span>
-                                    </div>
-                                    <div class="model-tab" data-model="claude-sonnet-4.5" data-input="3.00" data-output="15.00">
-                                        Claude Sonnet 4.5 <span class="price">$3.00/1M</span>
-                                    </div>
-                                    <div class="model-tab" data-model="gemini-3-flash" data-input="0.05" data-output="0.20">
-                                        Gemini 3 Flash <span class="price">$0.05/1M</span>
-                                    </div>
-                                    <div class="model-tab" data-model="grok-3" data-input="1.00" data-output="4.00">
-                                        Grok 3 <span class="price">$1.00/1M</span>
-                                    </div>
-                                    <div class="model-tab" data-model="deepseek-v3" data-input="0.07" data-output="0.27">
-                                        DeepSeek V3 <span class="price">$0.07/1M</span>
-                                    </div>
-                                    <div class="model-tab" data-model="llama-3.1-8b" data-input="0.00" data-output="0.00">
-                                        Llama 3.1 8B <span class="price">Free (local)</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="prompt-area">
-                                <label>Your Prompt</label>
-                                <textarea class="prompt-input" id="promptInput" placeholder="Ask anything...">What are the key benefits of using a unified AI gateway for enterprise applications?</textarea>
-                            </div>
-
-                            <div class="cost-comparison">
-                                <h4><i class="fas fa-calculator"></i> Cost Prediction</h4>
-                                <div class="cost-row">
-                                    <span class="cost-label">Estimated Input Tokens</span>
-                                    <span class="cost-value" id="estInputTokens">~25</span>
-                                </div>
-                                <div class="cost-row">
-                                    <span class="cost-label">Estimated Output Tokens</span>
-                                    <span class="cost-value" id="estOutputTokens">~200</span>
-                                </div>
-                                <div class="cost-row">
-                                    <span class="cost-label">Direct API Cost</span>
-                                    <span class="cost-value" id="directCost">$0.000150</span>
-                                </div>
-                                <div class="cost-row">
-                                    <span class="cost-label">With AI Control Plane</span>
-                                    <span class="cost-value highlight" id="gatewayCost">$0.000124</span>
-                                    <span class="savings-badge" id="savingsBadge">Save 17%</span>
-                                </div>
-                            </div>
-
-                            <button class="btn-send" id="sendBtn" onclick="sendRequest()">
-                                <i class="fas fa-paper-plane"></i> Send Request
-                            </button>
-
-                            <div class="response-area" id="responseArea">
-                                <div class="response-box">
-                                    <div class="response-header">
-                                        <span><i class="fas fa-robot"></i> <span id="responseModel">GPT-5 Mini</span></span>
-                                        <span id="responseTime">-</span>
-                                    </div>
-                                    <div class="response-content" id="responseContent"></div>
-                                    <div class="response-stats">
-                                        <span>Input: <strong id="actualInput">0</strong></span>
-                                        <span>Output: <strong id="actualOutput">0</strong></span>
-                                        <span>Cost: <strong id="actualCost">$0.00</strong></span>
-                                        <span>Latency: <strong id="actualLatency">0ms</strong></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- API Demos Panel -->
-                    <div class="playground-content" id="api-demos-panel">
-                        <div class="api-demo-panel">
-                            <div class="api-demo-tabs">
-                                <div class="api-demo-tab active" data-demo="cost-predictor">
-                                    <i class="fas fa-calculator"></i> Cost Predictor
-                                </div>
-                                <div class="api-demo-tab" data-demo="policy-router">
-                                    <i class="fas fa-route"></i> Policy Router
-                                </div>
-                                <div class="api-demo-tab" data-demo="semantic-cache">
-                                    <i class="fas fa-brain"></i> Semantic Cache
-                                </div>
-                                <div class="api-demo-tab" data-demo="mcp-gateway">
-                                    <i class="fas fa-plug"></i> MCP Gateway
-                                </div>
-                            </div>
-
-                            <!-- Cost Predictor Demo -->
-                            <div class="api-demo-content active" id="cost-predictor-demo">
-                                <div class="demo-card">
-                                    <h4><i class="fas fa-calculator"></i> Cost Prediction API</h4>
-                                    <p>Estimate the cost of a request before sending it. Get input/output token estimates and cost breakdown by model.</p>
-
-                                    <div class="demo-input-group">
-                                        <label>Prompt Text</label>
-                                        <textarea class="demo-input" id="costPredictorInput" rows="3" placeholder="Enter your prompt...">Explain quantum computing in simple terms</textarea>
-                                    </div>
-
-                                    <div class="demo-input-group">
-                                        <label>Model</label>
-                                        <select class="demo-input" id="costPredictorModel">
-                                            <option value="gpt-5-mini">GPT-5 Mini</option>
-                                            <option value="gpt-5">GPT-5</option>
-                                            <option value="claude-sonnet-4.5">Claude Sonnet 4.5</option>
-                                            <option value="gemini-3-flash">Gemini 3 Flash</option>
-                                        </select>
-                                    </div>
-
-                                    <button class="demo-btn" onclick="runCostPredictor()">
-                                        <i class="fas fa-calculator"></i> Predict Cost
-                                    </button>
-
-                                    <div class="demo-result demo-result-success" id="costPredictorResult"></div>
-                                </div>
-                            </div>
-
-                            <!-- Policy Router Demo -->
-                            <div class="api-demo-content" id="policy-router-demo">
-                                <div class="demo-card">
-                                    <h4><i class="fas fa-route"></i> Intelligent Policy Routing</h4>
-                                    <p>See how the gateway routes requests based on Cedar policies. Different prompts trigger different routing rules.</p>
-
-                                    <div class="demo-input-group">
-                                        <label>Test Scenario</label>
-                                        <select class="demo-input" id="policyScenario">
-                                            <option value="cost-optimize">Cost Optimization (route to cheapest)</option>
-                                            <option value="latency-sla">Latency SLA (route to fastest)</option>
-                                            <option value="team-budget">Team Budget Check</option>
-                                            <option value="content-filter">Content Policy Filter</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="demo-input-group">
-                                        <label>Team ID</label>
-                                        <input type="text" class="demo-input" id="policyTeamId" value="engineering" placeholder="e.g., engineering, marketing">
-                                    </div>
-
-                                    <button class="demo-btn" onclick="runPolicyRouter()">
-                                        <i class="fas fa-route"></i> Simulate Routing
-                                    </button>
-
-                                    <div class="demo-result demo-result-info" id="policyRouterResult"></div>
-                                </div>
-                            </div>
-
-                            <!-- Semantic Cache Demo -->
-                            <div class="api-demo-content" id="semantic-cache-demo">
-                                <div class="demo-card">
-                                    <h4><i class="fas fa-brain"></i> Semantic Cache</h4>
-                                    <p>Test the semantic similarity cache. Similar prompts return cached responses instantly, saving cost and latency.</p>
-
-                                    <div class="demo-input-group">
-                                        <label>Original Query (cached)</label>
-                                        <input type="text" class="demo-input" id="cacheOriginal" value="What is machine learning?" readonly style="opacity: 0.7;">
-                                    </div>
-
-                                    <div class="demo-input-group">
-                                        <label>Test Query</label>
-                                        <input type="text" class="demo-input" id="cacheTest" placeholder="Try a similar question..." value="Explain what machine learning is">
-                                    </div>
-
-                                    <button class="demo-btn" onclick="runSemanticCache()">
-                                        <i class="fas fa-search"></i> Check Cache
-                                    </button>
-
-                                    <div class="demo-result demo-result-success" id="semanticCacheResult"></div>
-                                </div>
-                            </div>
-
-                            <!-- MCP Gateway Demo -->
-                            <div class="api-demo-content" id="mcp-gateway-demo">
-                                <div class="demo-card">
-                                    <h4><i class="fas fa-plug"></i> MCP Tool Federation</h4>
-                                    <p>View available MCP servers and their tools. Agents can access databases, file systems, and external APIs through a unified interface.</p>
-
-                                    <div class="mcp-server-list" id="mcpServerList">
-                                        <div class="mcp-server-item">
-                                            <div class="mcp-server-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">
-                                                <i class="fas fa-database"></i>
-                                            </div>
-                                            <div class="mcp-server-info">
-                                                <h5>PostgreSQL</h5>
-                                                <p>Query database, list tables, execute SQL</p>
-                                            </div>
-                                            <span class="mcp-server-status online">Online</span>
-                                        </div>
-                                        <div class="mcp-server-item">
-                                            <div class="mcp-server-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
-                                                <i class="fas fa-folder"></i>
-                                            </div>
-                                            <div class="mcp-server-info">
-                                                <h5>Filesystem</h5>
-                                                <p>Read files, list directories, search</p>
-                                            </div>
-                                            <span class="mcp-server-status online">Online</span>
-                                        </div>
-                                        <div class="mcp-server-item">
-                                            <div class="mcp-server-icon" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa;">
-                                                <i class="fab fa-github"></i>
-                                            </div>
-                                            <div class="mcp-server-info">
-                                                <h5>GitHub</h5>
-                                                <p>Create issues, PRs, manage repos</p>
-                                            </div>
-                                            <span class="mcp-server-status online">Online</span>
-                                        </div>
-                                        <div class="mcp-server-item">
-                                            <div class="mcp-server-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">
-                                                <i class="fas fa-globe"></i>
-                                            </div>
-                                            <div class="mcp-server-info">
-                                                <h5>Web Fetch</h5>
-                                                <p>Fetch URLs, scrape content, API calls</p>
-                                            </div>
-                                            <span class="mcp-server-status online">Online</span>
-                                        </div>
-                                    </div>
-
-                                    <button class="demo-btn" style="margin-top: 20px;" onclick="runMCPDemo()">
-                                        <i class="fas fa-sync"></i> Refresh Status
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Code Samples Panel -->
-                    <div class="playground-content" id="code-samples-panel">
-                        <div class="code-samples-panel">
-                            <div class="code-lang-tabs">
-                                <div class="code-lang-tab active" data-lang="python">
-                                    <i class="fab fa-python"></i> Python
-                                </div>
-                                <div class="code-lang-tab" data-lang="javascript">
-                                    <i class="fab fa-js"></i> JavaScript
-                                </div>
-                                <div class="code-lang-tab" data-lang="go">
-                                    <i class="fas fa-code"></i> Go
-                                </div>
-                                <div class="code-lang-tab" data-lang="java">
-                                    <i class="fab fa-java"></i> Java
-                                </div>
-                                <div class="code-lang-tab" data-lang="curl">
-                                    <i class="fas fa-terminal"></i> cURL
-                                </div>
-                            </div>
-
-                            <!-- Python -->
-                            <div class="code-sample-content active" id="python-sample">
-                                <div class="code-block">
-                                    <div class="code-block-header">
-                                        <span class="code-block-title">Using OpenAI SDK</span>
-                                        <button class="copy-btn" onclick="copyCode('python-openai')">
-                                            <i class="fas fa-copy"></i> Copy
-                                        </button>
-                                    </div>
-                                    <pre><code class="language-python" id="python-openai">from openai import OpenAI
-
-client = OpenAI(
-    api_key="$LITELLM_KEY",
-    base_url="http://localhost:4000/v1"
-)
-
-response = client.chat.completions.create(
-    model="gpt-5-mini",
-    messages=[
-        {"role": "user", "content": "Hello, world!"}
-    ],
-    stream=True
-)
-
-for chunk in response:
-    if chunk.choices[0].delta.content:
-        print(chunk.choices[0].delta.content, end="")</code></pre>
-                                </div>
-
-                                <div class="code-block">
-                                    <div class="code-block-header">
-                                        <span class="code-block-title">Using Requests</span>
-                                        <button class="copy-btn" onclick="copyCode('python-requests')">
-                                            <i class="fas fa-copy"></i> Copy
-                                        </button>
-                                    </div>
-                                    <pre><code class="language-python" id="python-requests">import requests
-
-response = requests.post(
-    "http://localhost:4000/v1/chat/completions",
-    headers={
-        "Authorization": "Bearer $LITELLM_KEY",
-        "Content-Type": "application/json"
-    },
-    json={
-        "model": "gpt-5-mini",
-        "messages": [{"role": "user", "content": "Hello!"}],
-        "max_tokens": 100
-    }
-)
-
-print(response.json()["choices"][0]["message"]["content"])</code></pre>
-                                </div>
-                            </div>
-
-                            <!-- JavaScript -->
-                            <div class="code-sample-content" id="javascript-sample">
-                                <div class="code-block">
-                                    <div class="code-block-header">
-                                        <span class="code-block-title">Using OpenAI SDK</span>
-                                        <button class="copy-btn" onclick="copyCode('js-openai')">
-                                            <i class="fas fa-copy"></i> Copy
-                                        </button>
-                                    </div>
-                                    <pre><code class="language-javascript" id="js-openai">import OpenAI from 'openai';
-
-const client = new OpenAI({
-  apiKey: '$LITELLM_KEY',
-  baseURL: 'http://localhost:4000/v1'
-});
-
-const stream = await client.chat.completions.create({
-  model: 'gpt-5-mini',
-  messages: [{ role: 'user', content: 'Hello, world!' }],
-  stream: true
-});
-
-for await (const chunk of stream) {
-  process.stdout.write(chunk.choices[0]?.delta?.content || '');
-}</code></pre>
-                                </div>
-
-                                <div class="code-block">
-                                    <div class="code-block-header">
-                                        <span class="code-block-title">Using Fetch API</span>
-                                        <button class="copy-btn" onclick="copyCode('js-fetch')">
-                                            <i class="fas fa-copy"></i> Copy
-                                        </button>
-                                    </div>
-                                    <pre><code class="language-javascript" id="js-fetch">const response = await fetch('http://localhost:4000/v1/chat/completions', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer $LITELLM_KEY',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    model: 'gpt-5-mini',
-    messages: [{ role: 'user', content: 'Hello!' }],
-    stream: true
-  })
-});
-
-const reader = response.body.getReader();
-const decoder = new TextDecoder();
-
-while (true) {
-  const { done, value } = await reader.read();
-  if (done) break;
-  console.log(decoder.decode(value));
-}</code></pre>
-                                </div>
-                            </div>
-
-                            <!-- Go -->
-                            <div class="code-sample-content" id="go-sample">
-                                <div class="code-block">
-                                    <div class="code-block-header">
-                                        <span class="code-block-title">Using net/http</span>
-                                        <button class="copy-btn" onclick="copyCode('go-http')">
-                                            <i class="fas fa-copy"></i> Copy
-                                        </button>
-                                    </div>
-                                    <pre><code class="language-go" id="go-http">package main
-
-import (
-    "bytes"
-    "encoding/json"
-    "fmt"
-    "net/http"
-)
-
-func main() {
-    payload := map[string]interface{}{
-        "model": "gpt-5-mini",
-        "messages": []map[string]string{
-            {"role": "user", "content": "Hello!"},
+    // Comparison-table feature columns (no pricing — pricing has its own section).
+    // Cell values are rendered as "yes" (green) when exactly "Yes", "no" (gray)
+    // when exactly "No" or "N/A", everything else is shown as plain text.
+    const COMPETITORS = [
+        {
+            name: 'Scutum', us: true,
+            scope: 'Unified LLM + MCP + A2A',
+            selfHost: 'Yes',
+            llmProxy: 'Yes',
+            mcpA2A: 'Yes',
+            workflows: 'LangGraph + Temporal',
+            sreAgent: 'Yes (HITL)',
+            guardrails: 'Built-in',
+            sso: 'OIDC (Business+)',
+            audit: 'Configurable retention',
+            costPrediction: 'tiktoken pre-call',
+            budgets: 'Per-team, hard + soft',
+            chargeback: 'Yes',
+            byom: 'Yes (vLLM, Ollama)'
         },
-        "max_tokens": 100,
-    }
+        {
+            name: 'OpenRouter',
+            scope: 'LLM proxy only',
+            selfHost: 'No',
+            llmProxy: 'Yes',
+            mcpA2A: 'No',
+            workflows: 'No',
+            sreAgent: 'No',
+            guardrails: 'No',
+            sso: 'No',
+            audit: 'No',
+            costPrediction: 'No',
+            budgets: 'Per-key spend',
+            chargeback: 'No',
+            byom: 'Limited'
+        },
+        {
+            name: 'Portkey',
+            scope: 'LLM proxy + observability',
+            selfHost: 'OSS basic',
+            llmProxy: 'Yes',
+            mcpA2A: 'No',
+            workflows: 'No',
+            sreAgent: 'No',
+            guardrails: 'Yes',
+            sso: 'Enterprise',
+            audit: 'Enterprise',
+            costPrediction: 'Post-call',
+            budgets: 'Yes',
+            chargeback: 'No',
+            byom: 'Yes'
+        },
+        {
+            name: 'LangSmith',
+            scope: 'Observability only',
+            selfHost: 'Self-host Enterprise',
+            llmProxy: 'No',
+            mcpA2A: 'No',
+            workflows: 'Observe only',
+            sreAgent: 'No',
+            guardrails: 'No',
+            sso: 'Enterprise',
+            audit: 'Enterprise',
+            costPrediction: 'Post-call traces',
+            budgets: 'No',
+            chargeback: 'No',
+            byom: 'Trace-only'
+        },
+        {
+            name: 'AWS Bedrock',
+            scope: 'LLM API (AWS-only)',
+            selfHost: 'No',
+            llmProxy: 'Raw API',
+            mcpA2A: 'No',
+            workflows: 'Step Functions (separate)',
+            sreAgent: 'No',
+            guardrails: 'Bedrock Guardrails',
+            sso: 'IAM',
+            audit: 'CloudTrail',
+            costPrediction: 'No',
+            budgets: 'AWS Budgets',
+            chargeback: 'AWS Cost Allocation tags',
+            byom: 'Custom Models'
+        },
+        {
+            name: 'Apigee',
+            scope: 'API gateway (general)',
+            selfHost: 'GCP only',
+            llmProxy: 'Generic, not LLM-aware',
+            mcpA2A: 'No',
+            workflows: 'No',
+            sreAgent: 'No',
+            guardrails: 'Generic policies',
+            sso: 'Yes',
+            audit: 'Yes',
+            costPrediction: 'No',
+            budgets: 'Quota',
+            chargeback: 'No',
+            byom: 'N/A'
+        },
+        {
+            name: 'Roll your own',
+            scope: 'You build it',
+            selfHost: 'Trivially',
+            llmProxy: 'You build',
+            mcpA2A: 'You build',
+            workflows: 'You build',
+            sreAgent: 'You build',
+            guardrails: 'You build',
+            sso: 'You build',
+            audit: 'You build',
+            costPrediction: 'You build',
+            budgets: 'You build',
+            chargeback: 'You build',
+            byom: 'Anything'
+        }
+    ];
 
-    body, _ := json.Marshal(payload)
-    req, _ := http.NewRequest("POST",
-        "http://localhost:4000/v1/chat/completions",
-        bytes.NewBuffer(body))
+    const PRICING = [
+        { name: 'Free Trial', price: '$0', period: 'first 30 days', tagline: 'Full feature access. No credit card.', cta: 'Start free trial',
+          features: ['All 100+ models, MCP & A2A', 'Up to 25 team members', 'Pre-call cost prediction + per-team budgets', 'OpenTelemetry, Grafana dashboards', 'Auto-converts to Team after 30 days unless you cancel'] },
+        { name: 'Team', price: '$199', period: '/month', tagline: 'For small teams shipping fast.', cta: 'Book a demo',
+          features: ['Up to 25 team members', 'All providers, all models', 'Cost dashboards + per-team budgets', 'Audit log (90 days)', 'Slack/PagerDuty alerts', 'Email support'] },
+        { name: 'Business', price: '$999', period: '/month', tagline: 'For growing companies.', featured: true, cta: 'Book a demo',
+          features: ['Everything in Team', 'Unlimited members', 'OIDC SSO (Google, Okta, Azure AD)', 'Extended audit retention', 'SRE auto-remediation agent', 'Business-hours support', 'BYO models (vLLM, Ollama)'] },
+        { name: 'Enterprise', price: 'Contact', period: '', tagline: 'For regulated and at-scale orgs.', cta: 'Talk to sales',
+          features: ['Everything in Business', 'Chargeback + cost-allocation reports', 'Configurable audit retention', 'SLA 99.95%, 24/7 support', 'On-prem / VPC deployment', 'Dedicated CSM', 'Custom DPA available'] }
+    ];
 
-    req.Header.Set("Authorization", "Bearer $LITELLM_KEY")
-    req.Header.Set("Content-Type", "application/json")
+    // Research topics — each is a real research angle tied to a product capability.
+    // `link` placeholder until papers/drafts are written; UI shows "Draft in progress" then.
+    const RESEARCH = [
+        {
+            tag: 'Verification',
+            title: 'Formal Verification of LLM-Generated Code',
+            summary: 'Static analysis at the proxy layer to catch hallucinated APIs, type errors, and unsafe operations before they reach production. Bridging SMT solvers and inference-time validation.',
+            link: null
+        },
+        {
+            tag: 'Protocols',
+            title: 'MCP & A2A Protocol Composition',
+            summary: 'Studies of authorization boundaries, capability scoping, and cross-protocol routing when MCP servers and A2A runtimes operate together under a single control plane.',
+            link: null
+        },
+        {
+            tag: 'Autonomy',
+            title: 'Risk-Bounded Autonomous Remediation',
+            summary: 'A theoretical frame for LLM-driven SRE agents — risk scoring, blast-radius bounds, and the human-in-loop approval thresholds that keep auto-remediation safe at scale.',
+            link: null
+        },
+        {
+            tag: 'Routing',
+            title: 'Cost-Aware Multi-Provider Routing',
+            summary: 'Optimization model for routing across OpenAI / Anthropic / Bedrock / Azure under combined latency, cost, and reliability constraints. Includes provider-failover game theory.',
+            link: null
+        },
+        {
+            tag: 'Audit',
+            title: 'Audit Provenance for AI Workflows',
+            summary: 'How to maintain immutable audit chains across multi-agent workflows where individual steps run on different LLMs, providers, or geographies — at SOC2 / HIPAA fidelity.',
+            link: null
+        },
+        {
+            tag: 'Policy',
+            title: 'Cedar Policy for AI Authorization',
+            summary: 'Extending the Cedar policy language to constrain AI actions: routing rules, model-access tiers, prompt-content gates. A formal grammar for what an agent is allowed to do.',
+            link: null
+        },
+        {
+            tag: 'Caching',
+            title: 'Semantic Cache & PII Boundaries',
+            summary: 'When is the embedding distance between two prompts low enough to share a response, and when does that cross into a correctness or compliance boundary?',
+            link: null
+        },
+        {
+            tag: 'Approval',
+            title: 'Human-in-Loop Approval Theory',
+            summary: 'Operationalising approval queues for autonomous agents: expected-loss models, reviewer-fatigue effects, and escalation policies for high-stakes decisions.',
+            link: null
+        }
+    ];
+</script>
 
-    client := &http.Client{}
-    resp, err := client.Do(req)
-    if err != nil {
-        panic(err)
-    }
-    defer resp.Body.Close()
+<nav class="nav">
+    <div class="container nav-inner">
+        <a href="#" class="logo">
+            <img src="/scutum-mark.svg" alt="" class="logo-mark"/>
+            Scutum
+        </a>
+        <div class="nav-links">
+            <a href="#engineering">Engineering</a>
+            <a href="#startups">Startups</a>
+            <a href="#enterprise">Enterprise</a>
+            <a href="#comparison">Comparison</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#research">Research</a>
+            <a href="/docs/" target="_blank">Docs</a>
+            <a class="btn btn-nav" onclick="openDemoModal()">Book a Demo</a>
+        </div>
+    </div>
+</nav>
 
-    var result map[string]interface{}
-    json.NewDecoder(resp.Body).Decode(&result)
-    fmt.Println(result)
-}</code></pre>
-                                </div>
-                            </div>
+<section class="hero">
+    <div class="container">
+        <span class="hero-eyebrow">
+            <i class="fa-solid fa-shield-halved"></i>
+            Compliance-aware · Self-hosted · Built for AI infrastructure
+        </span>
+        <h1>The unified <span class="em">control plane</span><br>for AI infrastructure.</h1>
+        <p class="lede">
+            One platform for your LLM proxy, MCP &amp; A2A gateway, agent workflows, FinOps controls, and SRE auto-remediation.
+            Deploy once, govern everywhere — from a five-engineer startup to a regulated enterprise.
+        </p>
+        <div class="hero-ctas">
+            <button class="btn btn-primary btn-lg" onclick="openDemoModal()">
+                <i class="fa-solid fa-calendar-check"></i> Book a Demo
+            </button>
+            <a class="btn btn-secondary btn-lg" href="/docs/" target="_blank">
+                <i class="fa-solid fa-book"></i> Read the Docs
+            </a>
+        </div>
+    </div>
+</section>
 
-                            <!-- Java -->
-                            <div class="code-sample-content" id="java-sample">
-                                <div class="code-block">
-                                    <div class="code-block-header">
-                                        <span class="code-block-title">Using HttpClient</span>
-                                        <button class="copy-btn" onclick="copyCode('java-http')">
-                                            <i class="fas fa-copy"></i> Copy
-                                        </button>
-                                    </div>
-                                    <pre><code class="language-java" id="java-http">import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+<div class="trust">
+    <div class="container">
+        <p class="trust-label">Designed for AI infrastructure in regulated industries</p>
+        <div class="trust-logos">
+            <span>FINSERV</span><span>HEALTHCARE</span><span>RETAIL</span><span>SAAS</span><span>PUBLIC SECTOR</span>
+        </div>
+    </div>
+</div>
 
-public class GatewayExample {
-    public static void main(String[] args) throws Exception {
-        String json = """
-            {
-                "model": "gpt-5-mini",
-                "messages": [{"role": "user", "content": "Hello!"}],
-                "max_tokens": 100
-            }
-            """;
-
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create("http://localhost:4000/v1/chat/completions"))
-            .header("Authorization", "Bearer $LITELLM_KEY")
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(json))
-            .build();
-
-        HttpResponse&lt;String&gt; response = client.send(request,
-            HttpResponse.BodyHandlers.ofString());
-
-        System.out.println(response.body());
-    }
-}</code></pre>
-                                </div>
-                            </div>
-
-                            <!-- cURL -->
-                            <div class="code-sample-content" id="curl-sample">
-                                <div class="code-block">
-                                    <div class="code-block-header">
-                                        <span class="code-block-title">Basic Request</span>
-                                        <button class="copy-btn" onclick="copyCode('curl-basic')">
-                                            <i class="fas fa-copy"></i> Copy
-                                        </button>
-                                    </div>
-                                    <pre><code class="language-bash" id="curl-basic">curl http://localhost:4000/v1/chat/completions \
-  -H "Authorization: Bearer $LITELLM_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "gpt-5-mini",
-    "messages": [{"role": "user", "content": "Hello!"}],
-    "max_tokens": 100
-  }'</code></pre>
-                                </div>
-
-                                <div class="code-block">
-                                    <div class="code-block-header">
-                                        <span class="code-block-title">Streaming Request</span>
-                                        <button class="copy-btn" onclick="copyCode('curl-stream')">
-                                            <i class="fas fa-copy"></i> Copy
-                                        </button>
-                                    </div>
-                                    <pre><code class="language-bash" id="curl-stream">curl http://localhost:4000/v1/chat/completions \
-  -H "Authorization: Bearer $LITELLM_KEY" \
-  -H "Content-Type: application/json" \
-  -N --no-buffer \
-  -d '{
-    "model": "gpt-5-mini",
-    "messages": [{"role": "user", "content": "Tell me a story"}],
-    "stream": true
-  }'</code></pre>
-                                </div>
-
-                                <div class="code-block">
-                                    <div class="code-block-header">
-                                        <span class="code-block-title">List Models</span>
-                                        <button class="copy-btn" onclick="copyCode('curl-models')">
-                                            <i class="fas fa-copy"></i> Copy
-                                        </button>
-                                    </div>
-                                    <pre><code class="language-bash" id="curl-models">curl http://localhost:4000/v1/models \
-  -H "Authorization: Bearer $LITELLM_KEY"</code></pre>
-                                </div>
-                            </div>
-                        </div>
+<section class="s" id="engineering">
+    <div class="container">
+        <div class="s-header">
+            <p class="s-eyebrow">For Engineering</p>
+            <h2>Drop-in API.<br><span class="em">Production-grade</span> infrastructure.</h2>
+            <p>Point your existing OpenAI client at our gateway. Get 100+ models, retries, fallbacks, observability, and cost tracking — without a rewrite.</p>
+        </div>
+        <div class="audience">
+            <div>
+                <span class="audience-tag">Engineers</span>
+                <h3>Replace ten separate tools<br>with <span class="em">one platform</span>.</h3>
+                <p>LLM gateway, MCP / A2A runtime, agent workflow engine, FinOps dashboards, budget enforcement, audit log, guardrails, prompt registry, semantic cache, observability glue. All wired together by default. SRE auto-remediation lives in the higher tier.</p>
+                <ul class="audience-list">
+                    <li><i class="fa-solid fa-check"></i> 100+ models across OpenAI, Anthropic, Google, Mistral, AWS Bedrock, Azure, and self-hosted</li>
+                    <li><i class="fa-solid fa-check"></i> MCP &amp; A2A protocols natively, with Cedar policy enforcement</li>
+                    <li><i class="fa-solid fa-check"></i> LangGraph workflows + Temporal-backed agents in 5 patterns</li>
+                    <li><i class="fa-solid fa-check"></i> Pre-call cost prediction (tiktoken) + per-team budget enforcement at the proxy</li>
+                    <li><i class="fa-solid fa-check"></i> OpenTelemetry traces, Grafana dashboards, semantic cache</li>
+                </ul>
+            </div>
+            <div>
+                <div class="code-card">
+                    <div class="code-card-tabs">
+                        <div class="code-tab active" data-tab="py">python</div>
+                        <div class="code-tab" data-tab="curl">curl</div>
+                        <div class="code-tab" data-tab="ts">typescript</div>
                     </div>
+                    <pre id="code-py"><span class="kw">from</span> openai <span class="kw">import</span> OpenAI
 
-                    <!-- Metrics Panel (Grafana Dashboards) -->
-                    <div class="playground-content" id="metrics-panel">
-                        <div class="metrics-dashboard-panel">
-                            <div class="metrics-dashboard-header">
-                                <h3><i class="fas fa-chart-line"></i> Live Metrics Dashboard</h3>
-                                <a href="http://localhost:3030" target="_blank" class="open-grafana-btn">
-                                    <i class="fas fa-external-link-alt"></i> Open Grafana
-                                </a>
-                            </div>
+client = <span class="fn">OpenAI</span>(
+    base_url=<span class="str">"https://gw.scutum.dev/v1"</span>,
+    api_key=<span class="str">"sk-team-..."</span>,
+)
 
-                            <div class="grafana-selector">
-                                <div class="grafana-dashboard-tab active" data-dashboard="overview">
-                                    Overview
-                                </div>
-                                <div class="grafana-dashboard-tab" data-dashboard="cost">
-                                    Cost Analysis
-                                </div>
-                                <div class="grafana-dashboard-tab" data-dashboard="latency">
-                                    Latency
-                                </div>
-                                <div class="grafana-dashboard-tab" data-dashboard="providers">
-                                    Providers
-                                </div>
-                            </div>
+<span class="com"># Same OpenAI SDK. 100+ models routed,</span>
+<span class="com"># cost tracked, audited, governed.</span>
+resp = client.chat.completions.<span class="fn">create</span>(
+    model=<span class="str">"claude-sonnet-4-6"</span>,
+    messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"hi"</span>}],
+)</pre>
+                    <pre id="code-curl" style="display:none;"><span class="com"># Drop-in OpenAI-compatible</span>
+curl https://gw.scutum.dev/v1/chat/completions \
+  -H <span class="str">"Authorization: Bearer sk-team-..."</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{
+    "model": "claude-sonnet-4-6",
+    "messages": [{"role":"user","content":"hi"}]
+  }'</span></pre>
+                    <pre id="code-ts" style="display:none;"><span class="kw">import</span> OpenAI <span class="kw">from</span> <span class="str">"openai"</span>;
 
-                            <div class="grafana-embed-container">
-                                <!-- Overview Dashboard -->
-                                <div class="grafana-dashboard active" id="dashboard-overview">
-                                    <div class="grafana-iframe-wrapper">
-                                        <iframe
-                                            src="http://localhost:3030/d-solo/ai-gateway-overview/ai-gateway-overview?orgId=1&panelId=1&theme=dark"
-                                            frameborder="0"
-                                            loading="lazy"
-                                        ></iframe>
-                                    </div>
-                                    <div class="grafana-iframe-wrapper">
-                                        <iframe
-                                            src="http://localhost:3030/d-solo/ai-gateway-overview/ai-gateway-overview?orgId=1&panelId=2&theme=dark"
-                                            frameborder="0"
-                                            loading="lazy"
-                                        ></iframe>
-                                    </div>
-                                    <div class="grafana-metrics-fallback">
-                                        <div class="fallback-metric">
-                                            <div class="fallback-label">Requests/min</div>
-                                            <div class="fallback-value" id="metric-rpm">--</div>
-                                            <div class="fallback-chart" id="chart-rpm"></div>
-                                        </div>
-                                        <div class="fallback-metric">
-                                            <div class="fallback-label">Success Rate</div>
-                                            <div class="fallback-value" id="metric-success">--</div>
-                                            <div class="fallback-chart" id="chart-success"></div>
-                                        </div>
-                                        <div class="fallback-metric">
-                                            <div class="fallback-label">Avg Latency</div>
-                                            <div class="fallback-value" id="metric-latency">--</div>
-                                            <div class="fallback-chart" id="chart-latency"></div>
-                                        </div>
-                                        <div class="fallback-metric">
-                                            <div class="fallback-label">Cost Today</div>
-                                            <div class="fallback-value" id="metric-cost">--</div>
-                                            <div class="fallback-chart" id="chart-cost"></div>
-                                        </div>
-                                    </div>
-                                </div>
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">OpenAI</span>({
+    baseURL: <span class="str">"https://gw.scutum.dev/v1"</span>,
+    apiKey: process.env.<span class="fn">GW_KEY</span>,
+});
 
-                                <!-- Cost Dashboard -->
-                                <div class="grafana-dashboard" id="dashboard-cost">
-                                    <div class="grafana-iframe-wrapper full-width">
-                                        <iframe
-                                            src="http://localhost:3030/d-solo/ai-gateway-cost/cost-analysis?orgId=1&panelId=1&theme=dark"
-                                            frameborder="0"
-                                            loading="lazy"
-                                        ></iframe>
-                                    </div>
-                                    <div class="grafana-metrics-fallback">
-                                        <div class="fallback-metric wide">
-                                            <div class="fallback-label">Cost by Model (Today)</div>
-                                            <div class="cost-breakdown">
-                                                <div class="cost-bar-item">
-                                                    <span class="cost-model">GPT-5 Mini</span>
-                                                    <div class="cost-bar-bg">
-                                                        <div class="cost-bar-fill" style="width: 45%; background: #10a37f;"></div>
-                                                    </div>
-                                                    <span class="cost-amount">$12.45</span>
-                                                </div>
-                                                <div class="cost-bar-item">
-                                                    <span class="cost-model">Claude Sonnet</span>
-                                                    <div class="cost-bar-bg">
-                                                        <div class="cost-bar-fill" style="width: 30%; background: #d4a27f;"></div>
-                                                    </div>
-                                                    <span class="cost-amount">$8.20</span>
-                                                </div>
-                                                <div class="cost-bar-item">
-                                                    <span class="cost-model">Gemini Flash</span>
-                                                    <div class="cost-bar-bg">
-                                                        <div class="cost-bar-fill" style="width: 15%; background: #4285f4;"></div>
-                                                    </div>
-                                                    <span class="cost-amount">$4.10</span>
-                                                </div>
-                                                <div class="cost-bar-item">
-                                                    <span class="cost-model">DeepSeek V3</span>
-                                                    <div class="cost-bar-bg">
-                                                        <div class="cost-bar-fill" style="width: 10%; background: #3b82f6;"></div>
-                                                    </div>
-                                                    <span class="cost-amount">$2.75</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="fallback-metric">
-                                            <div class="fallback-label">Total Today</div>
-                                            <div class="fallback-value">$27.50</div>
-                                        </div>
-                                        <div class="fallback-metric">
-                                            <div class="fallback-label">Savings</div>
-                                            <div class="fallback-value" style="color: var(--success);">$11.20</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Latency Dashboard -->
-                                <div class="grafana-dashboard" id="dashboard-latency">
-                                    <div class="grafana-iframe-wrapper full-width">
-                                        <iframe
-                                            src="http://localhost:3030/d-solo/ai-gateway-latency/latency?orgId=1&panelId=1&theme=dark"
-                                            frameborder="0"
-                                            loading="lazy"
-                                        ></iframe>
-                                    </div>
-                                    <div class="grafana-metrics-fallback">
-                                        <div class="fallback-metric">
-                                            <div class="fallback-label">P50 Latency</div>
-                                            <div class="fallback-value">245ms</div>
-                                        </div>
-                                        <div class="fallback-metric">
-                                            <div class="fallback-label">P95 Latency</div>
-                                            <div class="fallback-value">890ms</div>
-                                        </div>
-                                        <div class="fallback-metric">
-                                            <div class="fallback-label">P99 Latency</div>
-                                            <div class="fallback-value">1.2s</div>
-                                        </div>
-                                        <div class="fallback-metric wide">
-                                            <div class="fallback-label">Latency by Provider</div>
-                                            <div class="latency-bars">
-                                                <div class="latency-bar-row">
-                                                    <span>OpenAI</span>
-                                                    <div class="latency-bar" style="width: 60%;"></div>
-                                                    <span>320ms</span>
-                                                </div>
-                                                <div class="latency-bar-row">
-                                                    <span>Anthropic</span>
-                                                    <div class="latency-bar" style="width: 80%;"></div>
-                                                    <span>420ms</span>
-                                                </div>
-                                                <div class="latency-bar-row">
-                                                    <span>Google</span>
-                                                    <div class="latency-bar" style="width: 40%;"></div>
-                                                    <span>210ms</span>
-                                                </div>
-                                                <div class="latency-bar-row">
-                                                    <span>Local</span>
-                                                    <div class="latency-bar" style="width: 20%;"></div>
-                                                    <span>85ms</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Providers Dashboard -->
-                                <div class="grafana-dashboard" id="dashboard-providers">
-                                    <div class="grafana-iframe-wrapper full-width">
-                                        <iframe
-                                            src="http://localhost:3030/d-solo/ai-gateway-providers/providers?orgId=1&panelId=1&theme=dark"
-                                            frameborder="0"
-                                            loading="lazy"
-                                        ></iframe>
-                                    </div>
-                                    <div class="grafana-metrics-fallback">
-                                        <div class="provider-status-grid">
-                                            <div class="provider-status-card online">
-                                                <div class="provider-icon"><i class="fas fa-robot"></i></div>
-                                                <div class="provider-name">OpenAI</div>
-                                                <div class="provider-health">Healthy</div>
-                                                <div class="provider-stats">
-                                                    <span>1.2k req/h</span>
-                                                    <span>99.9%</span>
-                                                </div>
-                                            </div>
-                                            <div class="provider-status-card online">
-                                                <div class="provider-icon"><i class="fas fa-brain"></i></div>
-                                                <div class="provider-name">Anthropic</div>
-                                                <div class="provider-health">Healthy</div>
-                                                <div class="provider-stats">
-                                                    <span>850 req/h</span>
-                                                    <span>99.8%</span>
-                                                </div>
-                                            </div>
-                                            <div class="provider-status-card online">
-                                                <div class="provider-icon"><i class="fab fa-google"></i></div>
-                                                <div class="provider-name">Google</div>
-                                                <div class="provider-health">Healthy</div>
-                                                <div class="provider-stats">
-                                                    <span>620 req/h</span>
-                                                    <span>99.7%</span>
-                                                </div>
-                                            </div>
-                                            <div class="provider-status-card online">
-                                                <div class="provider-icon"><i class="fas fa-bolt"></i></div>
-                                                <div class="provider-name">xAI</div>
-                                                <div class="provider-health">Healthy</div>
-                                                <div class="provider-stats">
-                                                    <span>340 req/h</span>
-                                                    <span>99.5%</span>
-                                                </div>
-                                            </div>
-                                            <div class="provider-status-card online">
-                                                <div class="provider-icon"><i class="fas fa-water"></i></div>
-                                                <div class="provider-name">DeepSeek</div>
-                                                <div class="provider-health">Healthy</div>
-                                                <div class="provider-stats">
-                                                    <span>280 req/h</span>
-                                                    <span>99.6%</span>
-                                                </div>
-                                            </div>
-                                            <div class="provider-status-card online">
-                                                <div class="provider-icon"><i class="fas fa-server"></i></div>
-                                                <div class="provider-name">Ollama</div>
-                                                <div class="provider-health">Healthy</div>
-                                                <div class="provider-stats">
-                                                    <span>150 req/h</span>
-                                                    <span>100%</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="metrics-refresh-bar">
-                                <span><i class="fas fa-sync-alt"></i> Auto-refresh: 30s</span>
-                                <button class="refresh-btn" onclick="refreshMetrics()">
-                                    <i class="fas fa-redo"></i> Refresh Now
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="metrics-panel">
-                    <div class="metrics-title">
-                        Session Metrics
-                        <div class="live-dot"></div>
-                    </div>
-
-                    <div class="metric-card">
-                        <div class="metric-card-header">
-                            <span class="metric-card-label">Total Requests</span>
-                            <div class="metric-card-icon blue"><i class="fas fa-paper-plane"></i></div>
-                        </div>
-                        <div class="metric-card-value" id="totalRequests">0</div>
-                        <div class="metric-card-change">This session</div>
-                    </div>
-
-                    <div class="metric-card">
-                        <div class="metric-card-header">
-                            <span class="metric-card-label">Money Saved</span>
-                            <div class="metric-card-icon green"><i class="fas fa-piggy-bank"></i></div>
-                        </div>
-                        <div class="metric-card-value" id="totalSaved">$0.00</div>
-                        <div class="metric-card-change"><i class="fas fa-arrow-up"></i> vs direct API</div>
-                    </div>
-
-                    <div class="metric-card">
-                        <div class="metric-card-header">
-                            <span class="metric-card-label">Total Spent</span>
-                            <div class="metric-card-icon purple"><i class="fas fa-receipt"></i></div>
-                        </div>
-                        <div class="metric-card-value" id="totalSpent">$0.00</div>
-                        <div class="metric-card-change">Through gateway</div>
-                    </div>
-
-                    <div class="metric-card">
-                        <div class="metric-card-header">
-                            <span class="metric-card-label">Avg Latency</span>
-                            <div class="metric-card-icon orange"><i class="fas fa-bolt"></i></div>
-                        </div>
-                        <div class="metric-card-value" id="avgLatency">0ms</div>
-                        <div class="metric-card-change">Response time</div>
-                    </div>
-
-                    <div class="provider-comparison">
-                        <div class="metric-card-label" style="margin-bottom: 15px;">Provider Usage</div>
-                        <div class="provider-row">
-                            <span class="provider-name">OpenAI</span>
-                            <div class="provider-bar-container">
-                                <div class="provider-bar openai" id="openaiBar" style="width: 0%"></div>
-                            </div>
-                            <span class="provider-percent" id="openaiPct">0%</span>
-                        </div>
-                        <div class="provider-row">
-                            <span class="provider-name">Anthropic</span>
-                            <div class="provider-bar-container">
-                                <div class="provider-bar anthropic" id="anthropicBar" style="width: 0%"></div>
-                            </div>
-                            <span class="provider-percent" id="anthropicPct">0%</span>
-                        </div>
-                        <div class="provider-row">
-                            <span class="provider-name">Google</span>
-                            <div class="provider-bar-container">
-                                <div class="provider-bar" id="googleBar" style="width: 0%; background: linear-gradient(90deg, #4285f4, #34a853);"></div>
-                            </div>
-                            <span class="provider-percent" id="googlePct">0%</span>
-                        </div>
-                        <div class="provider-row">
-                            <span class="provider-name">xAI</span>
-                            <div class="provider-bar-container">
-                                <div class="provider-bar xai" id="xaiBar" style="width: 0%"></div>
-                            </div>
-                            <span class="provider-percent" id="xaiPct">0%</span>
-                        </div>
-                        <div class="provider-row">
-                            <span class="provider-name">DeepSeek</span>
-                            <div class="provider-bar-container">
-                                <div class="provider-bar" id="deepseekBar" style="width: 0%; background: linear-gradient(90deg, #3b82f6, #60a5fa);"></div>
-                            </div>
-                            <span class="provider-percent" id="deepseekPct">0%</span>
-                        </div>
-                        <div class="provider-row">
-                            <span class="provider-name">Local</span>
-                            <div class="provider-bar-container">
-                                <div class="provider-bar" id="localBar" style="width: 0%; background: linear-gradient(90deg, #f97316, #fb923c);"></div>
-                            </div>
-                            <span class="provider-percent" id="localPct">0%</span>
-                        </div>
-                    </div>
-
-                    <a href="http://localhost:5173" target="_blank" class="grafana-cta">
-                        <h4><i class="fas fa-cog"></i> Admin Dashboard</h4>
-                        <p>Manage policies, budgets, teams, and workflows</p>
-                    </a>
-                    <a href="http://localhost:3030" target="_blank" class="grafana-cta" style="margin-top: 10px;">
-                        <h4><i class="fas fa-chart-line"></i> Grafana Analytics</h4>
-                        <p>Metrics, cost trends, and performance dashboards</p>
-                    </a>
-                    <a href="http://localhost:8088" target="_blank" class="grafana-cta" style="margin-top: 10px;">
-                        <h4><i class="fas fa-project-diagram"></i> Temporal Workflows</h4>
-                        <p>Monitor agent orchestration and execution history</p>
-                    </a>
+<span class="kw">const</span> resp = <span class="kw">await</span> client.chat.completions.<span class="fn">create</span>({
+    model: <span class="str">"claude-sonnet-4-6"</span>,
+    messages: [{ role: <span class="str">"user"</span>, content: <span class="str">"hi"</span> }],
+});</pre>
                 </div>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
-    <!-- Features -->
-    <section class="features-section" id="features">
-        <div class="section-header">
-            <h2>Enterprise-Ready Features</h2>
-            <p>Everything you need to manage AI at scale</p>
+<section class="s s-alt" id="startups">
+    <div class="container">
+        <div class="s-header">
+            <p class="s-eyebrow">For Startups</p>
+            <h2>Ship to production<br>in <span class="em">ten minutes</span>.</h2>
+            <p>You're moving fast. Don't burn a quarter wiring proxies, observability, and FinOps yourself.</p>
         </div>
+        <div class="audience reverse">
+            <div>
+                <span class="audience-tag">Startups</span>
+                <h3>From localhost to a<br>paying customer <span class="em">in a day</span>.</h3>
+                <p>One <code>docker compose up</code>. Or one <code>kubectl apply</code>. We bring the proxy, the dashboards, the audit log, the budgets, and the playground UI — you bring your prompt.</p>
+                <ul class="audience-list">
+                    <li><i class="fa-solid fa-check"></i> 30-day free trial — full features, no credit card</li>
+                    <li><i class="fa-solid fa-check"></i> Self-hosted by default — your data never leaves your VPC</li>
+                    <li><i class="fa-solid fa-check"></i> Hard + soft budget limits enforced before the request fires — no $20K surprise bill</li>
+                    <li><i class="fa-solid fa-check"></i> Prompt registry with versioning + approvals — collaborate without breaking prod</li>
+                    <li><i class="fa-solid fa-check"></i> Multi-model playground for evaluations</li>
+                </ul>
+            </div>
+            <div>
+                <div class="code-card">
+                    <div class="code-card-tabs"><div class="code-tab active">terminal</div></div>
+                    <pre><span class="com"># Configure and deploy</span>
+$ <span class="fn">cp</span> config/.env.example config/.env
+$ make up
 
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
-                <h3>Cedar Policy Routing</h3>
-                <p>Intelligent model selection based on cost, latency SLAs, team quotas, and error rates. Hot-reload policies without restarts.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><i class="fas fa-brain"></i></div>
-                <h3>Semantic Caching</h3>
-                <p>Cache responses by semantic similarity (92% threshold). Save 40%+ on repeated prompts. TTL-based expiration.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><i class="fas fa-project-diagram"></i></div>
-                <h3>LangGraph Workflows</h3>
-                <p>Pre-built templates: Research, Coding, Data Analysis. PostgreSQL checkpointing for resumable execution.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><i class="fas fa-users-cog"></i></div>
-                <h3>A2A Agent Orchestration</h3>
-                <p>Temporal-powered agent coordination: Sequential, Parallel, Supervisor patterns. Human-in-the-loop approvals.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><i class="fas fa-plug"></i></div>
-                <h3>9 Provider Integrations</h3>
-                <p>OpenAI, Anthropic, Google, xAI, DeepSeek, AWS Bedrock, Vertex AI, Azure OpenAI, Ollama. Unified interface for all.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><i class="fas fa-sliders-h"></i></div>
-                <h3>Visual Admin UI</h3>
-                <p>Policy editor, workflow designer, budget dashboards, team management. Configure everything through a modern React UI.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><i class="fas fa-coins"></i></div>
-                <h3>FinOps & Budgets</h3>
-                <p>Per-request cost prediction, team budgets, soft/hard limits, alerts. Real-time spend tracking with full audit trail.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
-                <h3>Full Observability</h3>
-                <p>Prometheus metrics, Grafana dashboards, Jaeger tracing. OpenTelemetry instrumentation across all services.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><i class="fas fa-tools"></i></div>
-                <h3>MCP Tool Federation</h3>
-                <p>Connect agents to databases, file systems, APIs via MCP. Circuit breakers, rate limiting, audit logging built-in.</p>
+<span class="com"># Up in 90 seconds:</span>
+<span class="str">  ✓ LiteLLM        :4000</span>
+<span class="str">  ✓ Admin API      :8086</span>
+<span class="str">  ✓ Admin UI       :5173</span>
+<span class="str">  ✓ Playground     :6001</span>
+<span class="str">  ✓ Grafana        :3030</span>
+<span class="str">  ✓ Postgres + Redis up</span>
+
+<span class="com"># Now hit it from any OpenAI SDK</span>
+$ curl localhost:4000/v1/models | jq</pre>
+                </div>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-text">
-            API Key: <code style="background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; margin-left: 10px;">$LITELLM_KEY</code>
+<section class="s" id="enterprise">
+    <div class="container">
+        <div class="s-header">
+            <p class="s-eyebrow">For Enterprise</p>
+            <h2>Compliance, governance,<br>and control <span class="em">by design</span>.</h2>
+            <p>Built for security teams, not added on. Self-host on-prem or in your VPC. We own the platform; you own the data.</p>
         </div>
-        <div class="footer-links">
-            <a href="http://localhost:5173" target="_blank">Admin UI</a>
-            <a href="http://localhost:8088" target="_blank">Temporal</a>
-            <a href="http://localhost:3030" target="_blank">Grafana</a>
-            <a href="http://localhost:16686" target="_blank">Jaeger</a>
-            <a href="http://localhost:4000/docs" target="_blank">API Docs</a>
+        <div class="audience">
+            <div>
+                <span class="audience-tag">Enterprise</span>
+                <h3>SSO. Audit. SLA.<br><span class="em">SRE agent.</span></h3>
+                <p>Every administrative action lands in an immutable audit log. Every guardrail is policy-enforced via Cedar. Every team gets a budget, a rate limit, and a model-access tier — and an LLM-driven SRE agent watches the whole stack for you.</p>
+                <ul class="audience-list">
+                    <li><i class="fa-solid fa-check"></i> SSO via OIDC (Okta, Azure AD, Google); SAML &amp; SCIM on roadmap</li>
+                    <li><i class="fa-solid fa-check"></i> Immutable audit log with configurable retention; CSV/JSON export</li>
+                    <li><i class="fa-solid fa-check"></i> Chargeback + cost allocation: per-team, per-org, per-cost-center attribution</li>
+                    <li><i class="fa-solid fa-check"></i> Cedar policy for routing rules; SRE agent for auto-remediation with HITL approval</li>
+                    <li><i class="fa-solid fa-check"></i> 99.95% SLA, 24/7 support, dedicated CSM (Enterprise tier)</li>
+                    <li><i class="fa-solid fa-check"></i> On-prem / VPC deployment, BYO inference (vLLM, Ollama)</li>
+                </ul>
+            </div>
+            <div>
+                <div class="arch-diagram"><span class="h">┌─ Your VPC ────────────────────────────────────┐</span>
+│                                                │
+│  Apps ─► Nginx Ingress ─► Control Plane       │
+│                              │                 │
+│       <span class="h">┌──────────────────────┴────────┐</span>       │
+│       │  LLM Proxy   MCP/A2A   Workflows│       │
+│       └──────────┬─────────────┬────────┘       │
+│                  │             │                │
+│         <span class="h">┌────────┴───┐  ┌────┴─────┐</span>          │
+│         │  Postgres  │  │  Redis   │          │
+│         └────────────┘  └──────────┘          │
+│                                                │
+│  Audit ─► S3 (7yr retention)                  │
+│  SRE Agent ─► incidents.audit + Slack         │
+│  Traces ─► OTel ─► your Datadog/NewRelic      │
+│                                                │
+<span class="h">└────────────────────────────────────────────────┘</span></div>
+            </div>
         </div>
-    </footer>
+    </div>
+</section>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<section class="s s-alt" id="comparison">
+    <div class="container">
+        <div class="s-header">
+            <p class="s-eyebrow">Comparison</p>
+            <h2>How we <span class="em">stack up</span>.</h2>
+            <p>Feature-by-feature comparison against the alternatives. Pricing lives in its own section below.</p>
+        </div>
+        <div class="cmp-wrap">
+            <table class="cmp" id="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Vendor</th>
+                        <th>Scope</th>
+                        <th>Self-host</th>
+                        <th>LLM Proxy</th>
+                        <th>MCP / A2A</th>
+                        <th>Workflows</th>
+                        <th>SRE Agent</th>
+                        <th>Guardrails</th>
+                        <th>SSO / RBAC</th>
+                        <th>Audit</th>
+                        <th>Cost prediction</th>
+                        <th>Budgets</th>
+                        <th>Chargeback</th>
+                        <th>BYO Models</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <p class="cmp-note">
+            Comparison verified <span id="cmp-verified-at"></span>. AWS Bedrock is the LLM API itself,
+            not a control plane. LangSmith is observability for LangGraph apps; the agent runtime is LangGraph,
+            not LangSmith. Always confirm current capabilities on each vendor's site.
+        </p>
+    </div>
+</section>
 
-    <script>
-        // State
-        let selectedModel = 'gpt-5-mini';
-        let selectedInput = 0.10;
-        let selectedOutput = 0.40;
+<section class="s" id="pricing">
+    <div class="container">
+        <div class="s-header">
+            <p class="s-eyebrow">Pricing</p>
+            <h2>Pay for <span class="em">governance</span>,<br>not for tokens.</h2>
+            <p>Token costs go straight to the providers. We charge a flat fee for the control plane.</p>
+        </div>
+        <div class="pricing-grid" id="pricing-grid"></div>
+        <div class="free-month-banner">
+            <i class="fa-solid fa-gift"></i> Every paid tier starts with a 30-day free trial — full feature access, no credit card.
+        </div>
+    </div>
+</section>
 
-        let session = {
-            requests: 0,
-            successes: 0,
-            failures: 0,
-            spent: 0,
-            saved: 0,
-            latencies: [],
-            providers: { openai: 0, anthropic: 0, google: 0, xai: 0, deepseek: 0, local: 0 }
+<section class="s s-alt" id="research">
+    <div class="container">
+        <div class="s-header">
+            <p class="s-eyebrow">Research</p>
+            <h2>What we're <span class="em">writing</span> about<br>the future of AI infrastructure.</h2>
+            <p>We treat the AI control plane as a research subject, not just a product. Drafts, papers, and notes from the team.</p>
+        </div>
+        <div class="research-grid" id="research-grid"></div>
+        <div class="research-foot">More in progress. Subscribe via the docs site, or write to <a href="mailto:research@scutum.dev" style="color:inherit;border-bottom:1px solid var(--border-hi);">research@scutum.dev</a>.</div>
+    </div>
+</section>
+
+<section class="s" id="faq">
+    <div class="container">
+        <div class="s-header">
+            <p class="s-eyebrow">FAQ</p>
+            <h2><span class="em">Common</span> questions.</h2>
+        </div>
+        <div class="faq-list">
+            <div class="faq-item">
+                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Where does my data live?<i class="fa-solid fa-plus"></i></div>
+                <div class="faq-a">Your data lives in your infrastructure. The platform is self-hosted by default — Docker Compose, Kubernetes (Kustomize manifests included), or our managed hosting if you prefer. Prompts and responses never leave your VPC unless you explicitly route them through a third-party provider.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Which models and providers do you support?<i class="fa-solid fa-plus"></i></div>
+                <div class="faq-a">100+ models across 9 providers out of the box: OpenAI, Anthropic, Google Vertex AI, AWS Bedrock, Azure OpenAI, Mistral, Cohere, Together AI, and self-hosted (vLLM, Ollama, TGI). Adding a custom provider is a YAML edit, not a code change.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What is the SRE agent?<i class="fa-solid fa-plus"></i></div>
+                <div class="faq-a">An LLM-driven agent that subscribes to incident signals from your stack — SLA violations, budget breaches, provider unhealthiness, guardrail violations — diagnoses the situation against current platform state, and proposes remediation actions from a constrained allow-list (failover, rate-limit tightening, cache clear, guardrail tightening, etc). Every action is gated through a human approval queue in v1; risk-scored auto-execution lands in v2.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What happens at the end of the 30-day free trial?<i class="fa-solid fa-plus"></i></div>
+                <div class="faq-a">Nothing breaks. We email you 7 days before the trial ends. If you don't pick a paid tier, the platform downgrades to read-only — your data, configs, and audit logs stay intact for 90 days. No credit card is collected upfront.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Can we run this fully air-gapped?<i class="fa-solid fa-plus"></i></div>
+                <div class="faq-a">Yes — Enterprise tier supports fully air-gapped deployments with offline license validation. All container images are mirrored to your private registry; updates ship as signed bundles.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How does pricing work for the LLM tokens themselves?<i class="fa-solid fa-plus"></i></div>
+                <div class="faq-a">We don't mark up tokens. You bring your own provider keys (OpenAI, Anthropic, Bedrock, etc.) — model spend goes to them at their list price. Our platform fee covers the control plane (proxy, governance, audit, dashboards, support).</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Is the source code available?<i class="fa-solid fa-plus"></i></div>
+                <div class="faq-a">The platform is delivered as container images and Kustomize manifests. Source-code access is available on Enterprise tier under a custom commercial agreement (escrow + read access).</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="container">
+        <div class="footer-grid">
+            <div>
+                <a href="#" class="logo" style="margin-bottom: 16px;">
+                    <img src="/scutum-mark.svg" alt="" class="logo-mark"/>
+                    Scutum
+                </a>
+                <p style="color: var(--text-muted); font-size: 14px; max-width: 320px;">
+                    Unified control plane for AI infrastructure. Self-hosted. Compliance-aware.
+                </p>
+                <button class="btn btn-primary" style="margin-top: 16px;" onclick="openDemoModal()">Book a Demo</button>
+            </div>
+            <div>
+                <h4>Product</h4>
+                <a href="#engineering">Engineering</a>
+                <a href="#startups">Startups</a>
+                <a href="#enterprise">Enterprise</a>
+                <a href="#comparison">Comparison</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#research">Research</a>
+            </div>
+            <div>
+                <h4>Resources</h4>
+                <a href="/docs/" target="_blank">Docs</a>
+                <a href="#research">Research</a>
+                <a href="#faq">FAQ</a>
+                <a href="mailto:hello@scutum.dev">Contact</a>
+            </div>
+            <div>
+                <h4>Legal</h4>
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+                <a href="#">DPA</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>© 2026 Scutum. All rights reserved.</span>
+            <span class="mono">scutum.dev</span>
+        </div>
+    </div>
+</footer>
+
+<div class="modal-bg" id="demo-modal">
+    <div class="modal" role="dialog" aria-labelledby="demo-modal-title">
+        <h3 id="demo-modal-title">Book a 30-minute demo</h3>
+        <p class="sub">Tell us a bit about your team. We'll send you a calendar invite within minutes.</p>
+        <form id="demo-form" class="form-grid" onsubmit="submitDemo(event)">
+            <div class="form-row">
+                <div class="form-field">
+                    <label for="f-name">Your name *</label>
+                    <input id="f-name" name="name" type="text" required>
+                </div>
+                <div class="form-field">
+                    <label for="f-email">Work email *</label>
+                    <input id="f-email" name="work_email" type="email" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-field">
+                    <label for="f-company">Company</label>
+                    <input id="f-company" name="company" type="text">
+                </div>
+                <div class="form-field">
+                    <label for="f-role">Role</label>
+                    <input id="f-role" name="role" type="text" placeholder="e.g. Eng Lead, CTO">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-field">
+                    <label for="f-team">Team size</label>
+                    <select id="f-team" name="team_size">
+                        <option value="">— select —</option>
+                        <option>Just me</option>
+                        <option>2–10</option>
+                        <option>11–50</option>
+                        <option>51–200</option>
+                        <option>200+</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="f-window">Preferred time</label>
+                    <select id="f-window" name="time_of_day">
+                        <option value="">Any time</option>
+                        <option value="morning">Morning</option>
+                        <option value="afternoon">Afternoon</option>
+                        <option value="evening">Evening</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-field">
+                <label for="f-use">What are you trying to do?</label>
+                <textarea id="f-use" name="use_case" placeholder="A few sentences on the use case helps us prep."></textarea>
+            </div>
+
+            <!-- Honeypot -->
+            <div class="honeypot">
+                <label for="f-company-field">Company name (do not fill)</label>
+                <input id="f-company-field" name="company_field" type="text" tabindex="-1" autocomplete="off">
+            </div>
+
+            <div id="demo-result"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeDemoModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="demo-submit">
+                    <i class="fa-solid fa-calendar-check"></i> Request demo
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    (function renderComparison() {
+        const tbody = document.querySelector('#comparison-table tbody');
+        const cols = ['scope', 'selfHost', 'llmProxy', 'mcpA2A', 'workflows', 'sreAgent', 'guardrails', 'sso', 'audit', 'costPrediction', 'budgets', 'chargeback', 'byom'];
+        for (const row of COMPETITORS) {
+            const tr = document.createElement('tr');
+            if (row.us) tr.classList.add('us');
+            tr.innerHTML = `<td>${row.name}</td>` + cols.map(k => '<td>' + cell(row[k]) + '</td>').join('');
+            tbody.appendChild(tr);
+        }
+        document.getElementById('cmp-verified-at').textContent = PRICING_VERIFIED_AT;
+        function cell(v) {
+            if (v === 'Yes') return '<span class="yes">Yes</span>';
+            if (v === 'No' || v === 'N/A') return '<span class="no">' + v + '</span>';
+            return '<span class="neutral">' + v + '</span>';
+        }
+    })();
+
+    (function renderPricing() {
+        const grid = document.getElementById('pricing-grid');
+        for (const tier of PRICING) {
+            const card = document.createElement('div');
+            card.className = 'price-card' + (tier.featured ? ' featured' : '');
+            card.innerHTML = `
+                <div class="price-name">${tier.name}</div>
+                <div class="price-amt">${tier.price}<small>${tier.period ? ' ' + tier.period : ''}</small></div>
+                <div class="price-tagline">${tier.tagline}</div>
+                <ul class="price-features">
+                    ${tier.features.map(f => '<li><i class="fa-solid fa-check"></i> ' + f + '</li>').join('')}
+                </ul>
+                <button class="btn ${tier.featured ? 'btn-primary' : 'btn-secondary'}" onclick="openDemoModal()">${tier.cta}</button>
+            `;
+            grid.appendChild(card);
+        }
+    })();
+
+    (function renderResearch() {
+        const grid = document.getElementById('research-grid');
+        if (!grid) return;
+        for (const r of RESEARCH) {
+            const card = document.createElement('div');
+            card.className = 'research-card';
+            const linkHtml = r.link
+                ? `<a class="read-link" href="${r.link}">Read the paper <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>`
+                : `<a class="read-link draft">Draft in progress</a>`;
+            card.innerHTML = `
+                <div class="tag">${r.tag}</div>
+                <h3>${r.title}</h3>
+                <p>${r.summary}</p>
+                ${linkHtml}
+            `;
+            grid.appendChild(card);
+        }
+    })();
+
+    document.querySelectorAll('.code-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const wrap = tab.closest('.code-card');
+            wrap.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const target = tab.dataset.tab;
+            if (!target) return;
+            wrap.querySelectorAll('pre').forEach(pre => pre.style.display = 'none');
+            const el = document.getElementById('code-' + target);
+            if (el) el.style.display = '';
+        });
+    });
+
+    function openDemoModal() {
+        document.getElementById('demo-modal').classList.add('open');
+        document.getElementById('demo-result').innerHTML = '';
+        setTimeout(() => document.getElementById('f-name').focus(), 30);
+    }
+    function closeDemoModal() { document.getElementById('demo-modal').classList.remove('open'); }
+    document.getElementById('demo-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'demo-modal') closeDemoModal();
+    });
+
+    async function submitDemo(event) {
+        event.preventDefault();
+        const form = event.target;
+        const submit = document.getElementById('demo-submit');
+        const result = document.getElementById('demo-result');
+        result.innerHTML = '';
+        submit.disabled = true;
+        submit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting…';
+
+        const data = new FormData(form);
+        const tod = data.get('time_of_day');
+        const payload = {
+            name: data.get('name'),
+            work_email: data.get('work_email'),
+            company: data.get('company') || null,
+            role: data.get('role') || null,
+            team_size: data.get('team_size') || null,
+            use_case: data.get('use_case') || null,
+            preferred_window: tod ? { time_of_day: tod, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone } : null,
+            company_field: data.get('company_field') || ''
         };
 
-        // Environment-aware configuration
-        // - localhost: use hardcoded dev defaults
-        // - production: use values injected via ConfigMap (window.GATEWAY_CONFIG)
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-        // Config: injected at deploy time for production, defaults for local dev
-        const CONFIG = window.GATEWAY_CONFIG || {
-            apiKey: '$LITELLM_KEY',
-            apiUrl: 'http://localhost:4000',
-            grafanaUrl: 'http://localhost:3030',
-            adminUrl: 'http://localhost:5173',
-            temporalUrl: 'http://localhost:8088'
-        };
-
-        // Environment-aware URLs
-        const API_KEY = isLocal ? '$LITELLM_KEY' : CONFIG.apiKey;
-        const API_URL = isLocal ? 'http://localhost:4000' : CONFIG.apiUrl;
-        const GRAFANA_URL = isLocal ? 'http://localhost:3030' : (CONFIG.grafanaUrl || '/grafana');
-        const ADMIN_URL = isLocal ? 'http://localhost:5173' : (CONFIG.adminUrl || '/admin');
-        const TEMPORAL_URL = isLocal ? 'http://localhost:8088' : (CONFIG.temporalUrl || '/workflows');
-        const DOCS_URL = isLocal ? 'http://localhost:4000/docs' : '/docs';
-        const JAEGER_URL = isLocal ? 'http://localhost:16686' : '/jaeger';
-
-        // Update all localhost links to use environment-aware URLs
-        document.addEventListener('DOMContentLoaded', function() {
-            // Update navigation and footer links
-            document.querySelectorAll('a[href*="localhost:3030"]').forEach(a => a.href = GRAFANA_URL);
-            document.querySelectorAll('a[href*="localhost:5173"]').forEach(a => a.href = ADMIN_URL);
-            document.querySelectorAll('a[href*="localhost:8088"]').forEach(a => a.href = TEMPORAL_URL);
-            document.querySelectorAll('a[href*="localhost:4000/docs"]').forEach(a => a.href = DOCS_URL);
-            document.querySelectorAll('a[href*="localhost:16686"]').forEach(a => a.href = JAEGER_URL);
-
-            // Hide Grafana iframes in production (they require auth)
-            if (!isLocal) {
-                document.querySelectorAll('iframe[src*="localhost:3030"]').forEach(iframe => {
-                    iframe.style.display = 'none';
-                });
-            }
-        });
-
-        // Playground tab switching
-        document.querySelectorAll('.playground-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.playground-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.playground-content').forEach(c => c.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(`${tab.dataset.tab}-panel`).classList.add('active');
+        try {
+            const resp = await fetch('/api/demo-request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
             });
-        });
-
-        // API Demo tab switching
-        document.querySelectorAll('.api-demo-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.api-demo-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.api-demo-content').forEach(c => c.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(`${tab.dataset.demo}-demo`).classList.add('active');
-            });
-        });
-
-        // Code language tab switching
-        document.querySelectorAll('.code-lang-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.code-lang-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.code-sample-content').forEach(c => c.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(`${tab.dataset.lang}-sample`).classList.add('active');
-            });
-        });
-
-        // Model selection
-        document.querySelectorAll('.model-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.model-tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                selectedModel = tab.dataset.model;
-                selectedInput = parseFloat(tab.dataset.input);
-                selectedOutput = parseFloat(tab.dataset.output);
-                updateCostPreview();
-            });
-        });
-
-        document.getElementById('promptInput').addEventListener('input', updateCostPreview);
-
-        function updateCostPreview() {
-            const prompt = document.getElementById('promptInput').value;
-            const inputTokens = Math.ceil(prompt.length / 4);
-            const outputTokens = 200;
-
-            const directCost = (inputTokens * selectedInput / 1000000) + (outputTokens * selectedOutput / 1000000);
-            const gatewayCost = directCost * 0.83;
-            const savings = ((directCost - gatewayCost) / directCost * 100).toFixed(0);
-
-            document.getElementById('estInputTokens').textContent = `~${inputTokens}`;
-            document.getElementById('estOutputTokens').textContent = `~${outputTokens}`;
-            document.getElementById('directCost').textContent = `$${directCost.toFixed(6)}`;
-            document.getElementById('gatewayCost').textContent = `$${gatewayCost.toFixed(6)}`;
-            document.getElementById('savingsBadge').textContent = `Save ${savings}%`;
+            const body = await resp.json().catch(() => ({}));
+            if (!resp.ok) throw new Error(body.detail || 'Request failed');
+            result.innerHTML = `<div class="modal-result ok"><i class="fa-solid fa-circle-check"></i> ${body.message || "We received your request. We'll be in touch within 24 hours."}</div>`;
+            form.reset();
+        } catch (err) {
+            result.innerHTML = `<div class="modal-result err"><i class="fa-solid fa-triangle-exclamation"></i> ${err.message || 'Something went wrong. Please email hello@scutum.dev'}</div>`;
+        } finally {
+            submit.disabled = false;
+            submit.innerHTML = '<i class="fa-solid fa-calendar-check"></i> Request demo';
         }
+    }
 
-        async function sendRequest() {
-            const btn = document.getElementById('sendBtn');
-            const prompt = document.getElementById('promptInput').value;
-            if (!prompt.trim()) return;
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDemoModal(); });
+</script>
 
-            btn.disabled = true;
-            btn.innerHTML = '<div class="spinner"></div> Processing...';
-
-            document.getElementById('responseArea').classList.add('visible');
-            document.getElementById('responseContent').innerHTML = '<span class="streaming"></span>';
-            document.getElementById('responseModel').textContent = selectedModel;
-
-            const startTime = Date.now();
-
-            try {
-                const response = await fetch(`${API_URL}/v1/chat/completions`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${API_KEY}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        model: selectedModel,
-                        messages: [{ role: 'user', content: prompt }],
-                        max_tokens: 300,
-                        stream: true
-                    })
-                });
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let content = '';
-                let usage = { prompt_tokens: 0, completion_tokens: 0 };
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    const chunk = decoder.decode(value);
-                    const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
-
-                    for (const line of lines) {
-                        const data = line.slice(6);
-                        if (data === '[DONE]') continue;
-                        try {
-                            const json = JSON.parse(data);
-                            content += json.choices?.[0]?.delta?.content || '';
-                            document.getElementById('responseContent').innerHTML = content + '<span class="streaming"></span>';
-                            if (json.usage) usage = json.usage;
-                        } catch (e) {}
-                    }
-                }
-
-                document.getElementById('responseContent').textContent = content;
-                const latency = Date.now() - startTime;
-
-                const cost = (usage.prompt_tokens * selectedInput / 1000000) + (usage.completion_tokens * selectedOutput / 1000000);
-                const saved = cost * 0.17;
-
-                document.getElementById('responseTime').textContent = `${(latency / 1000).toFixed(2)}s`;
-                document.getElementById('actualInput').textContent = usage.prompt_tokens;
-                document.getElementById('actualOutput').textContent = usage.completion_tokens;
-                document.getElementById('actualCost').textContent = `$${cost.toFixed(6)}`;
-                document.getElementById('actualLatency').textContent = `${latency}ms`;
-
-                session.requests++;
-                session.successes++;
-                session.spent += cost;
-                session.saved += saved;
-                session.latencies.push(latency);
-
-                if (selectedModel.includes('gpt') || selectedModel.includes('o3') || selectedModel.includes('o4')) session.providers.openai++;
-                else if (selectedModel.includes('claude')) session.providers.anthropic++;
-                else if (selectedModel.includes('gemini')) session.providers.google++;
-                else if (selectedModel.includes('grok')) session.providers.xai++;
-                else if (selectedModel.includes('deepseek')) session.providers.deepseek++;
-                else session.providers.local++;
-
-                updateSessionMetrics();
-
-            } catch (error) {
-                document.getElementById('responseContent').innerHTML = `<span style="color: #ef4444;">Error: ${error.message}</span>`;
-                session.requests++;
-                session.failures++;
-                updateSessionMetrics();
-            }
-
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Request';
-        }
-
-        function updateSessionMetrics() {
-            document.getElementById('totalRequests').textContent = session.requests;
-            document.getElementById('totalSpent').textContent = `$${session.spent.toFixed(4)}`;
-            document.getElementById('totalSaved').textContent = `$${session.saved.toFixed(4)}`;
-
-            const avgLat = session.latencies.length > 0
-                ? session.latencies.reduce((a, b) => a + b, 0) / session.latencies.length
-                : 0;
-            document.getElementById('avgLatency').textContent = `${Math.round(avgLat)}ms`;
-
-            const total = Object.values(session.providers).reduce((a, b) => a + b, 0);
-            if (total > 0) {
-                const providers = ['openai', 'anthropic', 'google', 'xai', 'deepseek', 'local'];
-                providers.forEach(p => {
-                    const pct = (session.providers[p] / total * 100);
-                    const bar = document.getElementById(`${p}Bar`);
-                    const pctEl = document.getElementById(`${p}Pct`);
-                    if (bar) bar.style.width = `${pct}%`;
-                    if (pctEl) pctEl.textContent = `${pct.toFixed(0)}%`;
-                });
-            }
-
-            // Update Grafana fallback metrics with real session data
-            const rpmEl = document.getElementById('metric-rpm');
-            const successEl = document.getElementById('metric-success');
-            const latencyEl = document.getElementById('metric-latency');
-            const costEl = document.getElementById('metric-cost');
-
-            if (rpmEl) rpmEl.textContent = session.requests;
-            if (successEl) {
-                const successRate = session.requests > 0
-                    ? ((session.successes || session.requests) / session.requests * 100).toFixed(1)
-                    : '--';
-                successEl.textContent = successRate !== '--' ? `${successRate}%` : '--';
-            }
-            if (latencyEl) latencyEl.textContent = avgLat > 0 ? `${Math.round(avgLat)}ms` : '--';
-            if (costEl) costEl.textContent = session.spent > 0 ? `$${session.spent.toFixed(4)}` : '--';
-        }
-
-        // API Demo functions
-        function runCostPredictor() {
-            const prompt = document.getElementById('costPredictorInput').value;
-            const model = document.getElementById('costPredictorModel').value;
-
-            const prices = {
-                'gpt-5-mini': { input: 0.10, output: 0.40 },
-                'gpt-5': { input: 2.00, output: 8.00 },
-                'claude-sonnet-4.5': { input: 3.00, output: 15.00 },
-                'gemini-3-flash': { input: 0.05, output: 0.20 }
-            };
-
-            const inputTokens = Math.ceil(prompt.length / 4);
-            const outputTokens = 150;
-            const price = prices[model];
-            const cost = (inputTokens * price.input / 1000000) + (outputTokens * price.output / 1000000);
-
-            const result = document.getElementById('costPredictorResult');
-            result.innerHTML = `
-                <div style="color: var(--success); margin-bottom: 10px;"><i class="fas fa-check-circle"></i> Cost Prediction Complete</div>
-                <div>Model: <strong>${model}</strong></div>
-                <div>Input Tokens: <strong>${inputTokens}</strong></div>
-                <div>Est. Output Tokens: <strong>${outputTokens}</strong></div>
-                <div>Estimated Cost: <strong style="color: var(--success);">$${cost.toFixed(6)}</strong></div>
-            `;
-            result.classList.add('visible');
-        }
-
-        function runPolicyRouter() {
-            const scenario = document.getElementById('policyScenario').value;
-            const teamId = document.getElementById('policyTeamId').value;
-
-            const scenarios = {
-                'cost-optimize': {
-                    decision: 'Route to DeepSeek V3',
-                    reason: 'Lowest cost per token while meeting quality threshold',
-                    model: 'deepseek-v3',
-                    savings: '85%'
-                },
-                'latency-sla': {
-                    decision: 'Route to GPT-5 Mini (Edge)',
-                    reason: 'Meets 200ms p99 latency SLA requirement',
-                    model: 'gpt-5-mini',
-                    savings: '40%'
-                },
-                'team-budget': {
-                    decision: teamId === 'engineering' ? 'Allow (Budget: $500/$1000)' : 'Allow (Budget: $200/$500)',
-                    reason: `Team "${teamId}" has remaining budget`,
-                    model: 'gpt-5-mini',
-                    savings: '17%'
-                },
-                'content-filter': {
-                    decision: 'Pass (No policy violations)',
-                    reason: 'Content passes all safety filters',
-                    model: 'gpt-5-mini',
-                    savings: '17%'
-                }
-            };
-
-            const s = scenarios[scenario];
-            const result = document.getElementById('policyRouterResult');
-            result.innerHTML = `
-                <div style="color: var(--primary-light); margin-bottom: 10px;"><i class="fas fa-route"></i> Routing Decision</div>
-                <div>Decision: <strong>${s.decision}</strong></div>
-                <div>Reason: <strong>${s.reason}</strong></div>
-                <div>Selected Model: <strong>${s.model}</strong></div>
-                <div>Cost Savings: <strong style="color: var(--success);">${s.savings}</strong></div>
-            `;
-            result.classList.add('visible');
-        }
-
-        function runSemanticCache() {
-            const original = document.getElementById('cacheOriginal').value.toLowerCase();
-            const test = document.getElementById('cacheTest').value.toLowerCase();
-
-            // Simple similarity check
-            const originalWords = new Set(original.split(/\s+/));
-            const testWords = test.split(/\s+/);
-            const matches = testWords.filter(w => originalWords.has(w)).length;
-            const similarity = (matches / Math.max(originalWords.size, testWords.length) * 100).toFixed(0);
-
-            const isHit = similarity >= 60;
-
-            const result = document.getElementById('semanticCacheResult');
-            result.innerHTML = `
-                <div style="color: ${isHit ? 'var(--success)' : 'var(--warning)'}; margin-bottom: 10px;">
-                    <i class="fas fa-${isHit ? 'check-circle' : 'clock'}"></i>
-                    Cache ${isHit ? 'HIT' : 'MISS'}
-                </div>
-                <div>Similarity Score: <strong>${similarity}%</strong></div>
-                <div>Threshold: <strong>60%</strong></div>
-                <div>Latency: <strong style="color: var(--success);">${isHit ? '2ms (cached)' : '~800ms (API call)'}</strong></div>
-                <div>Cost: <strong style="color: var(--success);">${isHit ? '$0.00' : '$0.000150'}</strong></div>
-            `;
-            result.classList.add('visible');
-        }
-
-        function runMCPDemo() {
-            const items = document.querySelectorAll('.mcp-server-item');
-            items.forEach(item => {
-                const status = item.querySelector('.mcp-server-status');
-                status.textContent = 'Checking...';
-                status.className = 'mcp-server-status';
-                status.style.background = 'rgba(255,255,255,0.1)';
-                status.style.color = 'var(--text-muted)';
-            });
-
-            setTimeout(() => {
-                items.forEach(item => {
-                    const status = item.querySelector('.mcp-server-status');
-                    status.textContent = 'Online';
-                    status.className = 'mcp-server-status online';
-                    status.style.background = '';
-                    status.style.color = '';
-                });
-            }, 1000);
-        }
-
-        // Copy code function
-        function copyCode(elementId) {
-            const code = document.getElementById(elementId).textContent;
-            navigator.clipboard.writeText(code).then(() => {
-                const btn = event.target.closest('.copy-btn');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-                btn.classList.add('copied');
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.classList.remove('copied');
-                }, 2000);
-            });
-        }
-
-        // Grafana dashboard tab switching
-        document.querySelectorAll('.grafana-dashboard-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.grafana-dashboard-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.grafana-dashboard').forEach(d => d.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(`dashboard-${tab.dataset.dashboard}`).classList.add('active');
-            });
-        });
-
-        // Refresh metrics function
-        function refreshMetrics() {
-            const btn = document.querySelector('.refresh-btn');
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
-
-            // Simulate metric updates
-            setTimeout(() => {
-                const rpm = Math.floor(Math.random() * 100) + 50;
-                const success = (99 + Math.random()).toFixed(1);
-                const latency = Math.floor(Math.random() * 200) + 150;
-                const cost = (Math.random() * 10 + 20).toFixed(2);
-
-                document.getElementById('metric-rpm').textContent = rpm;
-                document.getElementById('metric-success').textContent = success + '%';
-                document.getElementById('metric-latency').textContent = latency + 'ms';
-                document.getElementById('metric-cost').textContent = '$' + cost;
-
-                btn.innerHTML = '<i class="fas fa-redo"></i> Refresh Now';
-            }, 1000);
-        }
-
-        // Initialize metrics with sample data
-        function initMetrics() {
-            document.getElementById('metric-rpm').textContent = '72';
-            document.getElementById('metric-success').textContent = '99.8%';
-            document.getElementById('metric-latency').textContent = '245ms';
-            document.getElementById('metric-cost').textContent = '$27.50';
-        }
-
-        // Auto-refresh metrics every 30 seconds
-        setInterval(() => {
-            if (document.getElementById('metrics-panel').classList.contains('active')) {
-                refreshMetrics();
-            }
-        }, 30000);
-
-        // Smooth scroll
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                document.querySelector(this.getAttribute('href')).scrollIntoView({
-                    behavior: 'smooth'
-                });
-            });
-        });
-
-        // Initial
-        updateCostPreview();
-        initMetrics();
-        Prism.highlightAll();
-    </script>
 </body>
 </html>

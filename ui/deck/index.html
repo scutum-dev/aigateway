@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Control Plane - Product Deck</title>
+<title>Scutum - Product Deck</title>
 <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.2.1/dist/reveal.css">
 <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.2.1/plugin/highlight/monokai.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap">
@@ -327,7 +327,7 @@
 <section data-transition="fade">
   <div style="text-align:center; padding-top:60px;">
     <p class="muted" style="font-size:0.75em; letter-spacing:6px; text-transform:uppercase; margin-bottom:20px;">Introducing</p>
-    <h1 class="gradient-text" style="font-size:3.8em; margin-bottom:20px;">AI Control Plane</h1>
+    <h1 class="gradient-text" style="font-size:3.8em; margin-bottom:20px;">Scutum</h1>
     <p style="font-size:1.3em; color:#d6d3d1; font-weight:300; margin-bottom:60px;">Unified AI Infrastructure for the Enterprise</p>
     <div style="display:flex; justify-content:center; gap:80px;">
       <div style="text-align:center;">
@@ -391,7 +391,7 @@
 
       <!-- Solution box -->
       <rect x="280" y="370" width="1200" height="120" rx="22" fill="url(#solGrad)" stroke="#F7901D" stroke-width="2"/>
-      <text x="880" y="420" text-anchor="middle" fill="#F7901D" font-size="32" font-weight="800" filter="url(#glow1)">AI Control Plane</text>
+      <text x="880" y="420" text-anchor="middle" fill="#F7901D" font-size="32" font-weight="800" filter="url(#glow1)">Scutum</text>
       <text x="880" y="462" text-anchor="middle" fill="#d6d3d1" font-size="20">One endpoint &middot; Cost control &middot; Guardrails &middot; Routing &middot; Observability</text>
 
       <!-- Provider row -->
@@ -469,10 +469,10 @@
     <text x="70" y="172" fill="#F7901D" font-size="18" font-weight="700">Gateway Core</text>
     <g font-size="16">
       <rect x="200" y="155" width="160" height="38" rx="10" fill="rgba(247,144,29,0.2)" stroke="#F7901D" stroke-opacity="0.4"/><text x="280" y="179" text-anchor="middle" fill="#fff" font-weight="600" filter="url(#glow2)">LiteLLM Proxy</text>
-      <rect x="375" y="155" width="140" height="38" rx="10" fill="rgba(255,255,255,0.05)"/><text x="445" y="179" text-anchor="middle" fill="#d6d3d1">Policy Router</text>
-      <rect x="530" y="155" width="155" height="38" rx="10" fill="rgba(255,255,255,0.05)"/><text x="607" y="179" text-anchor="middle" fill="#d6d3d1">Semantic Cache</text>
-      <rect x="700" y="155" width="120" height="38" rx="10" fill="rgba(255,255,255,0.05)"/><text x="760" y="179" text-anchor="middle" fill="#d6d3d1">Guardrails</text>
-      <rect x="835" y="155" width="150" height="38" rx="10" fill="rgba(255,255,255,0.05)"/><text x="910" y="179" text-anchor="middle" fill="#d6d3d1">Cost Predictor</text>
+      <rect x="375" y="155" width="160" height="38" rx="10" fill="rgba(247,144,29,0.10)" stroke="#F7901D" stroke-opacity="0.2"/><text x="455" y="179" text-anchor="middle" fill="#d6d3d1">Routing &amp; Failover</text>
+      <rect x="550" y="155" width="155" height="38" rx="10" fill="rgba(247,144,29,0.10)" stroke="#F7901D" stroke-opacity="0.2"/><text x="627" y="179" text-anchor="middle" fill="#d6d3d1">Semantic Cache</text>
+      <rect x="720" y="155" width="120" height="38" rx="10" fill="rgba(247,144,29,0.10)" stroke="#F7901D" stroke-opacity="0.2"/><text x="780" y="179" text-anchor="middle" fill="#d6d3d1">Guardrails</text>
+      <rect x="855" y="155" width="140" height="38" rx="10" fill="rgba(247,144,29,0.10)" stroke="#F7901D" stroke-opacity="0.2"/><text x="925" y="179" text-anchor="middle" fill="#d6d3d1">Cost Tracking</text>
     </g>
 
     <line x1="790" y1="225" x2="790" y2="260" stroke="#F7901D" stroke-opacity="0.4" stroke-width="2" marker-end="url(#a1)"/>
@@ -495,8 +495,8 @@
     <g font-size="16" fill="#d6d3d1">
       <rect x="200" y="405" width="120" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="260" y="427" text-anchor="middle">Admin API</text>
       <rect x="335" y="405" width="160" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="415" y="427" text-anchor="middle">Budget Webhook</text>
-      <rect x="510" y="405" width="155" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="587" y="427" text-anchor="middle">FinOps Reporter</text>
-      <rect x="680" y="405" width="145" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="752" y="427" text-anchor="middle">Config Loader</text>
+      <rect x="510" y="405" width="155" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="587" y="427" text-anchor="middle">Cost Predictor</text>
+      <rect x="680" y="405" width="145" height="34" rx="8" fill="rgba(255,255,255,0.05)"/><text x="752" y="427" text-anchor="middle">Gateway Sync</text>
     </g>
 
     <line x1="790" y1="465" x2="790" y2="500" stroke="#F7901D" stroke-opacity="0.4" stroke-width="2" marker-end="url(#a1)"/>
@@ -927,36 +927,66 @@ Output: "Call [PERSON] at [PHONE]"</code></pre>
 <!-- SLIDE 12: Admin Console -->
 <section>
   <h2>Admin Console</h2>
-  <div class="card-grid card-grid-2x3" style="margin-top:8px;">
+  <div class="card-grid" style="margin-top:8px; display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">
     <div class="card" style="background:linear-gradient(135deg, rgba(247,144,29,0.08) 0%, rgba(20,18,17,0.95) 100%);">
       <div class="icon-circle"><i class="fa-solid fa-robot"></i></div>
       <h3>Models</h3>
       <p style="font-size:0.72em;">Browse, enable/disable, configure fallback chains</p>
     </div>
     <div class="card" style="background:linear-gradient(135deg, rgba(24,99,220,0.08) 0%, rgba(20,18,17,0.95) 100%);">
-      <div class="icon-circle" style="background:rgba(24,99,220,0.12); color:var(--blue);"><i class="fa-solid fa-users"></i></div>
-      <h3 style="color:var(--blue);">Teams</h3>
-      <p style="font-size:0.72em;">Budgets, guardrail profiles, member management</p>
-    </div>
-    <div class="card" style="background:linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(20,18,17,0.95) 100%);">
-      <div class="icon-circle" style="background:rgba(34,197,94,0.12); color:var(--green);"><i class="fa-solid fa-key"></i></div>
-      <h3 style="color:var(--green);">API Keys</h3>
-      <p style="font-size:0.72em;">Generate, rotate, scope to teams and models</p>
+      <div class="icon-circle" style="background:rgba(24,99,220,0.12); color:var(--blue);"><i class="fa-solid fa-building"></i></div>
+      <h3 style="color:var(--blue);">Organizations</h3>
+      <p style="font-size:0.72em;">Teams, budgets, member management</p>
     </div>
     <div class="card" style="background:linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(20,18,17,0.95) 100%);">
       <div class="icon-circle" style="background:rgba(239,68,68,0.12); color:var(--red);"><i class="fa-solid fa-shield-halved"></i></div>
-      <h3 style="color:var(--red);">Guardrails</h3>
+      <h3 style="color:var(--red);">Guardrails & DLP</h3>
       <p style="font-size:0.72em;">Scanner profiles, PII rules, toxicity thresholds</p>
     </div>
+    <div class="card" style="background:linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(20,18,17,0.95) 100%);">
+      <div class="icon-circle" style="background:rgba(139,92,246,0.12); color:#8b5cf6;"><i class="fa-solid fa-file-code"></i></div>
+      <h3 style="color:#8b5cf6;">Prompt Registry</h3>
+      <p style="font-size:0.72em;">Versioned templates, variables, review workflows</p>
+    </div>
     <div class="card" style="background:linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(20,18,17,0.95) 100%);">
-      <div class="icon-circle" style="background:rgba(245,158,11,0.12); color:var(--amber);"><i class="fa-solid fa-scroll"></i></div>
-      <h3 style="color:var(--amber);">Policies</h3>
+      <div class="icon-circle" style="background:rgba(245,158,11,0.12); color:var(--amber);"><i class="fa-solid fa-tachometer-alt"></i></div>
+      <h3 style="color:var(--amber);">Rate Limits</h3>
+      <p style="font-size:0.72em;">Per-model limits, tiered access, approval workflows</p>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(20,18,17,0.95) 100%);">
+      <div class="icon-circle" style="background:rgba(34,197,94,0.12); color:var(--green);"><i class="fa-solid fa-key"></i></div>
+      <h3 style="color:var(--green);">Model Access</h3>
+      <p style="font-size:0.72em;">Per-team model access, approval gates</p>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(20,18,17,0.95) 100%);">
+      <div class="icon-circle" style="background:rgba(99,102,241,0.12); color:#6366f1;"><i class="fa-solid fa-coins"></i></div>
+      <h3 style="color:#6366f1;">Chargeback</h3>
+      <p style="font-size:0.72em;">Cost allocation, team reports, export</p>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg, rgba(236,72,153,0.08) 0%, rgba(20,18,17,0.95) 100%);">
+      <div class="icon-circle" style="background:rgba(236,72,153,0.12); color:#ec4899;"><i class="fa-solid fa-heartbeat"></i></div>
+      <h3 style="color:#ec4899;">SLA Monitoring</h3>
+      <p style="font-size:0.72em;">Latency/uptime SLAs, violation tracking</p>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg, rgba(14,165,233,0.08) 0%, rgba(20,18,17,0.95) 100%);">
+      <div class="icon-circle" style="background:rgba(14,165,233,0.12); color:#0ea5e9;"><i class="fa-solid fa-flask"></i></div>
+      <h3 style="color:#0ea5e9;">A/B Testing</h3>
+      <p style="font-size:0.72em;">Split traffic, metrics, statistical comparison</p>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg, rgba(247,144,29,0.08) 0%, rgba(20,18,17,0.95) 100%);">
+      <div class="icon-circle"><i class="fa-solid fa-route"></i></div>
+      <h3>Routing Policies</h3>
       <p style="font-size:0.72em;">Cedar editor, RBAC rules, routing weights</p>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg, rgba(168,162,158,0.08) 0%, rgba(20,18,17,0.95) 100%);">
+      <div class="icon-circle" style="background:rgba(168,162,158,0.12); color:#a8a29e;"><i class="fa-solid fa-clipboard-list"></i></div>
+      <h3 style="color:#a8a29e;">Audit Trail</h3>
+      <p style="font-size:0.72em;">Full request log, event subscriptions, webhooks</p>
     </div>
     <div class="card" style="background:linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(20,18,17,0.95) 100%);">
       <div class="icon-circle" style="background:rgba(139,92,246,0.12); color:#8b5cf6;"><i class="fa-solid fa-diagram-project"></i></div>
-      <h3 style="color:#8b5cf6;">Workflows</h3>
-      <p style="font-size:0.72em;">Launch templates, monitor Temporal runs</p>
+      <h3 style="color:#8b5cf6;">MCP & A2A</h3>
+      <p style="font-size:0.72em;">Tool federation, agent orchestration</p>
     </div>
   </div>
 </section>
@@ -1119,12 +1149,12 @@ Output: "Call [PERSON] at [PHONE]"</code></pre>
 
 <!-- SLIDE 16: Comparison -->
 <section>
-  <h2>Why AI Control Plane?</h2>
+  <h2>Why Scutum?</h2>
   <table>
     <thead>
       <tr>
         <th>Feature</th>
-        <th class="highlight-col">AI Control Plane</th>
+        <th class="highlight-col">Scutum</th>
         <th>Solo.io</th>
         <th>Kong AI</th>
         <th>Portkey</th>
@@ -1142,6 +1172,10 @@ Output: "Call [PERSON] at [PHONE]"</code></pre>
       <tr><td>Admin UI</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> React</td><td><span class="check"><i class="fa-solid fa-check"></i></span></td><td><span class="check"><i class="fa-solid fa-check"></i></span></td><td><span class="check"><i class="fa-solid fa-check"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td></tr>
       <tr><td>Self-hosted + open source</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> Fully</td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="check"><i class="fa-solid fa-check"></i></span></td></tr>
       <tr><td>A2A protocol</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td></tr>
+      <tr><td>Prompt registry</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> Versioned</td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td></tr>
+      <tr><td>SLA monitoring</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> Auto-failover</td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td></tr>
+      <tr><td>A/B testing</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> Statistical</td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td><td><span class="cross"><i class="fa-solid fa-xmark"></i></span></td></tr>
+      <tr><td>Audit trail</td><td class="highlight-col"><span class="check"><i class="fa-solid fa-check"></i></span> Full</td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td><td><span class="partial"><i class="fa-solid fa-minus"></i></span></td></tr>
     </tbody>
   </table>
 </section>
@@ -1150,18 +1184,18 @@ Output: "Call [PERSON] at [PHONE]"</code></pre>
 <section data-transition="fade">
   <div style="text-align:center; padding-top:60px;">
     <h1 class="gradient-text" style="font-size:3em; margin-bottom:20px;">See It Live</h1>
-    <p style="font-size:1.1em; color:#d6d3d1; margin-bottom:44px;"><strong class="orange-text">api.aicontrolplane.dev</strong></p>
+    <p style="font-size:1.1em; color:#d6d3d1; margin-bottom:44px;"><strong class="orange-text">api.scutum.dev</strong></p>
     <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap; margin-bottom:60px;">
-      <a href="https://api.aicontrolplane.dev" class="cta-btn cta-primary" target="_blank"><i class="fa-solid fa-globe"></i>&ensp;Landing</a>
-      <a href="https://api.aicontrolplane.dev/playground" class="cta-btn cta-secondary" target="_blank"><i class="fa-solid fa-flask"></i>&ensp;Playground</a>
-      <a href="https://api.aicontrolplane.dev/admin" class="cta-btn cta-secondary" target="_blank"><i class="fa-solid fa-gauge-high"></i>&ensp;Admin</a>
-      <a href="https://docs.aicontrolplane.dev" class="cta-btn cta-secondary" target="_blank"><i class="fa-solid fa-book"></i>&ensp;Docs</a>
-      <a href="https://api.aicontrolplane.dev/grafana" class="cta-btn cta-secondary" target="_blank"><i class="fa-solid fa-chart-line"></i>&ensp;Grafana</a>
+      <a href="https://api.scutum.dev" class="cta-btn cta-primary" target="_blank"><i class="fa-solid fa-globe"></i>&ensp;Landing</a>
+      <a href="https://api.scutum.dev/playground" class="cta-btn cta-secondary" target="_blank"><i class="fa-solid fa-flask"></i>&ensp;Playground</a>
+      <a href="https://api.scutum.dev/admin" class="cta-btn cta-secondary" target="_blank"><i class="fa-solid fa-gauge-high"></i>&ensp;Admin</a>
+      <a href="https://docs.scutum.dev" class="cta-btn cta-secondary" target="_blank"><i class="fa-solid fa-book"></i>&ensp;Docs</a>
+      <a href="https://api.scutum.dev/grafana" class="cta-btn cta-secondary" target="_blank"><i class="fa-solid fa-chart-line"></i>&ensp;Grafana</a>
     </div>
     <div style="display:flex; justify-content:center; gap:72px;">
       <div style="text-align:center;"><span class="stat orange-text">100+</span><div class="stat-label">Models</div></div>
       <div style="text-align:center;"><span class="stat orange-text">9</span><div class="stat-label">Providers</div></div>
-      <div style="text-align:center;"><span class="stat orange-text">15</span><div class="stat-label">Services</div></div>
+      <div style="text-align:center;"><span class="stat orange-text">20+</span><div class="stat-label">Features</div></div>
       <div style="text-align:center;"><span class="stat orange-text">1</span><div class="stat-label">Command Deploy</div></div>
     </div>
   </div>

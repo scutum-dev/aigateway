@@ -1,4 +1,4 @@
-# Contributing to AI Control Plane
+# Contributing to Scutum
 
 Thank you for your interest in contributing! This guide covers development setup, coding standards, and the pull request process.
 

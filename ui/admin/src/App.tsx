@@ -26,6 +26,8 @@ import SLAMonitoring from './pages/SLAMonitoring'
 import ABTests from './pages/ABTests'
 import Events from './pages/Events'
 import RoutingPolicies from './pages/RoutingPolicies'
+import SREAgent from './pages/SREAgent'
+import Leads from './pages/Leads'
 import SSOComplete from './pages/SSOComplete'
 
 function App() {
@@ -99,6 +101,8 @@ function App() {
         <Route path="/ab-tests" element={<ABTests />} />
         <Route path="/events" element={<Events />} />
         <Route path="/routing" element={<RoutingPolicies />} />
+        <Route path="/sre" element={<SREAgent />} />
+        <Route path="/leads" element={<Leads />} />
         <Route path="/auth/sso/complete" element={<SSOComplete />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

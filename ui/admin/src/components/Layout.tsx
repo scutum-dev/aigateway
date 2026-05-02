@@ -26,6 +26,8 @@ import {
   BeakerIcon,
   BellAlertIcon,
   ArrowsRightLeftIcon,
+  ShieldExclamationIcon,
+  InboxIcon,
 } from '@heroicons/react/24/outline'
 import { BoltIcon } from '@heroicons/react/24/solid'
 import type { UserInfo } from '../types'
@@ -52,6 +54,8 @@ const navigation = [
   { name: 'A/B Tests', href: '/ab-tests', icon: BeakerIcon },
   { name: 'Events', href: '/events', icon: BellAlertIcon },
   { name: 'Routing', href: '/routing', icon: ArrowsRightLeftIcon },
+  { name: 'SRE Agent', href: '/sre', icon: ShieldExclamationIcon },
+  { name: 'Leads', href: '/leads', icon: InboxIcon },
   { name: 'MCP Servers', href: '/mcp-servers', icon: ServerIcon },
   { name: 'A2A Agents', href: '/agents', icon: CpuChipIcon },
   { name: 'Guardrails', href: '/guardrails', icon: ShieldCheckIcon },
@@ -75,6 +79,8 @@ const routeLabels: Record<string, string> = {
   '/ab-tests': 'A/B Tests',
   '/events': 'Events',
   '/routing': 'Routing',
+  '/sre': 'SRE Agent',
+  '/leads': 'Leads',
   '/mcp-servers': 'MCP Servers',
   '/agents': 'A2A Agents',
   '/guardrails': 'Guardrails',
@@ -100,7 +106,7 @@ function SidebarContent({
           </div>
         ) : (
           <>
-            <h1 className="text-xl font-bold">AI Control Plane</h1>
+            <h1 className="text-xl font-bold">Scutum</h1>
             <p className="text-sm text-gray-400">Admin Console</p>
           </>
         )}

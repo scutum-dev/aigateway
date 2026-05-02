@@ -89,7 +89,7 @@ services:
       OTEL_ENDPOINT: http://otel-collector:4318
     volumes:
       - ./config/litellm/config.yaml:/etc/litellm/config.yaml:ro
-    command: ["--config", "/etc/litellm/config.yaml", "--port", "4000"]
+    command: ["--config", "/etc/litellm/config.yaml", "--port", "4000", "--num_workers", "4"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -123,6 +123,7 @@ services:
       REDIS_URL: redis://redis:6379
       INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
       GATEWAY_CONFIG_PATH: /app/gateway-config/config.yaml
+      SRE_AGENT_URL: ${SRE_AGENT_URL:-http://sre-agent:8092}
     volumes:
       - gateway-config:/app/gateway-config
     depends_on:
@@ -457,6 +458,40 @@ services:
     restart: unless-stopped
 
   # ===========================================================================
+  # SRE AGENT (Profile: sre)
+  # ===========================================================================
+
+  sre-agent:
+    build:
+      context: ./src/sre-agent
+      dockerfile: Dockerfile
+      additional_contexts:
+        shared: ./src/shared
+    container_name: sre-agent
+    profiles: ["sre", "full"]
+    ports:
+      - "8092:8092"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
+      LITELLM_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-}
+      ADMIN_API_URL: http://admin-api:8086
+      ADMIN_UI_URL: ${ADMIN_UI_URL:-http://localhost:5173}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
+      SRE_AGENT_API_KEY: ${SRE_AGENT_API_KEY:-}
+      SRE_AGENT_MODEL: ${SRE_AGENT_MODEL:-claude-sonnet-4-6}
+      SRE_AUTO_APPROVE: ${SRE_AUTO_APPROVE:-false}
+      SRE_RISK_THRESHOLD: ${SRE_RISK_THRESHOLD:-40}
+    depends_on:
+      - postgres
+      - litellm
+      - admin-api
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
+  # ===========================================================================
   # INFRASTRUCTURE (Profile: infra)
   # ===========================================================================
 
@@ -505,15 +540,23 @@ services:
       - gateway-network
     restart: unless-stopped
 
+  # ---------------------------------------------------------------------------
+  # MARKETING PROFILE — scutum.dev-only surfaces.
+  # NOT deployed to customer environments. Profile-gated so `docker compose up`
+  # without `--profile marketing` produces a clean platform-only stack.
+  # ---------------------------------------------------------------------------
   landing-ui:
     build:
       context: ./ui/landing
       dockerfile: Dockerfile
     container_name: landing-ui
+    profiles: ["marketing", "full"]
     ports:
       - "${LANDING_UI_PORT:-9999}:80"
     environment:
       LITELLM_KEY: ${LITELLM_MASTER_KEY}
+    depends_on:
+      - landing-backend
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
       interval: 10s
@@ -523,10 +566,42 @@ services:
       - gateway-network
     restart: unless-stopped
 
+  landing-backend:
+    build:
+      context: ./src/landing-backend
+      dockerfile: Dockerfile
+      additional_contexts:
+        shared: ./src/shared
+    container_name: landing-backend
+    profiles: ["marketing", "full"]
+    ports:
+      - "${LANDING_BACKEND_PORT:-8093}:8093"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      CALCOM_API_KEY: ${CALCOM_API_KEY:-}
+      CALCOM_EVENT_TYPE_ID: ${CALCOM_EVENT_TYPE_ID:-}
+      DEMO_INBOX: ${DEMO_INBOX:-demo@scutum.dev}
+      DEMO_FROM: ${DEMO_FROM:-hello@scutum.dev}
+      DEMO_REPLY_TO: ${DEMO_REPLY_TO:-hello@scutum.dev}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      admin-api:
+        condition: service_started
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
   deck-ui:
     build:
       context: ./ui/deck
     container_name: deck-ui
+    profiles: ["marketing", "full"]
     ports:
       - "${DECK_UI_PORT:-6002}:80"
     healthcheck:
@@ -559,6 +634,7 @@ services:
       context: ./ui/playground
       dockerfile: Dockerfile
     container_name: playground-ui
+    profiles: ["marketing", "full"]
     ports:
       - "${PLAYGROUND_UI_PORT:-6001}:80"
     environment:
