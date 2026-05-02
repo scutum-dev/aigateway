@@ -59,9 +59,9 @@ Your apps ──► Scutum ──► OpenAI · Anthropic · Google · xAI · Dee
 
 ### Operations
 - [Admin Guide](guides/admin-guide.md) — page-by-page console walkthrough
+- [Licensing](operations/licensing.md) — activate, refresh, troubleshoot your license
 - [Observability](guides/observability.md) — OTel, Prometheus, Jaeger, Grafana
 - [Cloud Deployment](operations/cloud-deployment.md) — GKE, EKS, AKS, OCI
-- [Demo Runbook](operations/demo-runbook.md) — sales-engineering script
 
 ### Production
 - [Production Readiness](production/production-readiness.md) — pre-launch checklist
