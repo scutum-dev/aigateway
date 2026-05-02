@@ -1,0 +1,235 @@
+# =============================================================================
+# Scutum — release docker-compose (customer-safe, image-only)
+# =============================================================================
+# This file is what `https://scutum.dev/install.sh` drops on a customer's box.
+# Every service references a versioned image — no `build:` directives, no
+# source code, no scutum.dev marketing surfaces.
+#
+# Compatibility: Compose Specification (compose-spec.io). Runs on:
+#   - docker compose      (Docker Engine 20.10+)
+#   - podman-compose      (Podman 4.4+)
+#   - nerdctl compose     (containerd-native)
+#
+# Image versions are pinned via SCUTUM_VERSION; default = current release tag.
+# Override per-service env vars in `config/.env` (template shipped alongside).
+# =============================================================================
+
+x-scutum-image-defaults: &scutum-version "${SCUTUM_VERSION:-0.1.0}"
+
+services:
+  # ---------------------------------------------------------------------------
+  # Data plane
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: scutum-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-litellm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-litellm}
+      POSTGRES_DB: ${POSTGRES_DB:-litellm}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-litellm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [scutum-network]
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: scutum-redis
+    command: redis-server --appendonly yes --maxmemory ${REDIS_MEMORY_LIMIT:-512mb} --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [scutum-network]
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Scutum proxy (OpenAI-compatible LLM endpoint, port 4000)
+  # ---------------------------------------------------------------------------
+  litellm:
+    image: ghcr.io/deosha/scutum-litellm:${SCUTUM_VERSION:-0.1.0}
+    container_name: scutum-proxy
+    ports:
+      - "${LITELLM_PORT:-4000}:4000"
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION_NAME: ${AWS_REGION_NAME:-us-east-1}
+      AZURE_API_KEY: ${AZURE_API_KEY:-}
+      AZURE_API_BASE: ${AZURE_API_BASE:-}
+      AZURE_API_VERSION: ${AZURE_API_VERSION:-2025-01-01-preview}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_started }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/health/liveliness"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks: [scutum-network]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${LITELLM_MEMORY_LIMIT:-2g}
+
+  # ---------------------------------------------------------------------------
+  # Control plane (admin API + UI + docs)
+  # ---------------------------------------------------------------------------
+  admin-api:
+    image: ghcr.io/deosha/scutum-admin-api:${SCUTUM_VERSION:-0.1.0}
+    container_name: scutum-admin-api
+    ports:
+      - "${ADMIN_API_PORT:-8086}:8086"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
+      LITELLM_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-in-production}
+      REDIS_URL: redis://redis:6379
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
+      LICENSE_KEY: ${LICENSE_KEY:-}
+      LICENSE_PUBLIC_KEY_PATH: /app/config/license-public.pem
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_started }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8086/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks: [scutum-network]
+    restart: unless-stopped
+
+  admin-ui:
+    image: ghcr.io/deosha/scutum-admin-ui:${SCUTUM_VERSION:-0.1.0}
+    container_name: scutum-admin-ui
+    ports:
+      - "${ADMIN_UI_PORT:-5173}:80"
+    environment:
+      ADMIN_API_URL: http://admin-api:8086
+    depends_on:
+      admin-api: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks: [scutum-network]
+    restart: unless-stopped
+
+  docs-site:
+    image: ghcr.io/deosha/scutum-docs:${SCUTUM_VERSION:-0.1.0}
+    container_name: scutum-docs
+    ports:
+      - "${DOCS_SITE_PORT:-8089}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks: [scutum-network]
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Optional profiles — enable with `scutum up --profile <name>`
+  # ---------------------------------------------------------------------------
+  sre-agent:
+    image: ghcr.io/deosha/scutum-sre-agent:${SCUTUM_VERSION:-0.1.0}
+    container_name: scutum-sre-agent
+    profiles: ["sre", "full"]
+    environment:
+      LITELLM_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      ADMIN_API_URL: http://admin-api:8086
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
+      SRE_AGENT_MODEL: ${SRE_AGENT_MODEL:-claude-sonnet-4-6}
+      SRE_AUTO_APPROVE: ${SRE_AUTO_APPROVE:-false}
+      SRE_RISK_THRESHOLD: ${SRE_RISK_THRESHOLD:-40}
+    depends_on:
+      admin-api: { condition: service_healthy }
+    networks: [scutum-network]
+    restart: unless-stopped
+
+  cost-predictor:
+    image: ghcr.io/deosha/scutum-cost-predictor:${SCUTUM_VERSION:-0.1.0}
+    container_name: scutum-cost-predictor
+    profiles: ["finops", "full"]
+    environment:
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
+    networks: [scutum-network]
+    restart: unless-stopped
+
+  budget-webhook:
+    image: ghcr.io/deosha/scutum-budget-webhook:${SCUTUM_VERSION:-0.1.0}
+    container_name: scutum-budget-webhook
+    profiles: ["finops", "full"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      PAGERDUTY_ROUTING_KEY: ${PAGERDUTY_ROUTING_KEY:-}
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [scutum-network]
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Observability profile — third-party images, no Scutum build
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    container_name: scutum-prometheus
+    profiles: ["observability", "full"]
+    ports: ["${PROMETHEUS_PORT:-9090}:9090"]
+    volumes:
+      - prometheus-data:/prometheus
+    networks: [scutum-network]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.3.0
+    container_name: scutum-grafana
+    profiles: ["observability", "full"]
+    ports: ["${GRAFANA_PORT:-3030}:3000"]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks: [scutum-network]
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.54
+    container_name: scutum-jaeger
+    profiles: ["observability", "full"]
+    ports:
+      - "${JAEGER_PORT:-16686}:16686"
+      - "4317:4317"
+    networks: [scutum-network]
+    restart: unless-stopped
+
+networks:
+  scutum-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:
