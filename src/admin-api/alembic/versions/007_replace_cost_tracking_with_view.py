@@ -42,8 +42,33 @@ GROUP BY "startTime"::date, "user", team_id, model, custom_llm_provider
 
 
 def upgrade() -> None:
+    # ╔══════════════════════════════════════════════════════════════════════╗
+    # ║ DO NOT "SIMPLIFY" THIS MIGRATION.                                    ║
+    # ║                                                                      ║
+    # ║ The to_regclass check + savepoint look like defensive programming    ║
+    # ║ noise but they prevent two real first-boot failures:                 ║
+    # ║                                                                      ║
+    # ║  1. Race with LiteLLM Prisma — `LiteLLM_SpendLogs` is created at     ║
+    # ║     runtime by LiteLLM, not by alembic. On a fresh deploy the        ║
+    # ║     admin-api may run migrations before LiteLLM has booted. Without  ║
+    # ║     the existence check, CREATE VIEW raises and admin-api restart-   ║
+    # ║     loops. Skipping is safe — `_ensure_cost_view` in main.py        ║
+    # ║     creates the view on a 30s background task once the table        ║
+    # ║     appears.                                                         ║
+    # ║                                                                      ║
+    # ║  2. LiteLLM column drift — across LiteLLM versions, columns in       ║
+    # ║     LiteLLM_SpendLogs occasionally rename. The savepoint contains    ║
+    # ║     any CREATE VIEW failure to a sub-transaction so the outer        ║
+    # ║     migration transaction stays clean and alembic_version still      ║
+    # ║     advances. Without it, every fresh deploy with a slightly         ║
+    # ║     different LiteLLM image stalls at version 006.                   ║
+    # ║                                                                      ║
+    # ║ See CLAUDE.md "Gotchas" + the docstring above before changing this. ║
+    # ╚══════════════════════════════════════════════════════════════════════╝
     bind = op.get_bind()
 
+    # Idempotent cleanup of any prior shape (table or view, with or without
+    # the four legacy indexes). Safe to run repeatedly.
     op.execute("DROP VIEW IF EXISTS cost_tracking_daily CASCADE")
     op.execute("DROP TABLE IF EXISTS cost_tracking_daily CASCADE")
     op.execute("DROP INDEX IF EXISTS idx_cost_tracking_date")
@@ -51,6 +76,7 @@ def upgrade() -> None:
     op.execute("DROP INDEX IF EXISTS idx_cost_tracking_team")
     op.execute("DROP INDEX IF EXISTS idx_cost_tracking_model")
 
+    # Defensive existence check (see header comment, reason #1).
     spendlogs_exists = bind.exec_driver_sql("SELECT to_regclass('public.\"LiteLLM_SpendLogs\"') IS NOT NULL").scalar()
 
     if not spendlogs_exists:
@@ -60,8 +86,7 @@ def upgrade() -> None:
         )
         return
 
-    # Savepoint isolates a column-mismatch (LiteLLM schema drift across versions)
-    # so it doesn't abort the migration's outer transaction and stall alembic_version.
+    # Savepoint isolates column-mismatch failures (see header comment, reason #2).
     try:
         with bind.begin_nested():
             bind.exec_driver_sql(COST_VIEW_SQL)

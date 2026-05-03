@@ -703,7 +703,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 
@@ -789,7 +789,16 @@ app.include_router(playground_router.router, prefix="/api/v1", tags=["Playground
 app.include_router(deprecations_router.router, prefix="/api/v1", tags=["Deprecations"])
 app.include_router(routing_router.router, prefix="/api/v1", tags=["Routing"])
 app.include_router(sre_router.router, prefix="/api/v1", tags=["SRE Agent"])
-app.include_router(leads_router.router, prefix="/api/v1", tags=["Leads"])
+
+# Leads API is the scutum.dev demo-request management surface. It must NOT be
+# exposed on customer deploys — the demo_requests table only ever has rows on
+# scutum.dev's own VM (where landing-backend is running). Gate behind an env
+# flag the marketing-profile compose stack sets explicitly. Customer compose
+# leaves it unset → router never registers, /api/v1/leads* return 404.
+if os.getenv("ENABLE_LEADS_API", "").lower() in ("1", "true", "yes"):
+    app.include_router(leads_router.router, prefix="/api/v1", tags=["Leads"])
+    logger.info("Leads API enabled (ENABLE_LEADS_API=true) — scutum.dev marketing mode")
+
 app.include_router(license_router.router, prefix="/api/v1", tags=["License"])
 
 
