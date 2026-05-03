@@ -56,12 +56,13 @@
           "applicationCategory": "DeveloperApplication",
           "operatingSystem": "Linux, Docker, Kubernetes",
           "description": "Unified control plane for AI infrastructure: LLM proxy, MCP/A2A gateway, agent workflows, cost governance, audit, and SRE auto-remediation. Self-hosted.",
-          "// pricing-source-of-truth": "Mirrored from window.PRICING below. Keep in sync with the on-page pricing cards — search engines indexing this JSON-LD don't run JS, so rendering from the JS array would lose Google rich-result eligibility.",
+          "// pricing-source-of-truth": "Mirrored from window.PRICING_SELFHOSTED + window.PRICING_MANAGED below. Keep in sync with the on-page pricing cards — search engines indexing this JSON-LD don't run JS, so rendering from the JS array would lose Google rich-result eligibility.",
           "offers": [
-            {"@type": "Offer", "name": "Free Trial",  "price": "0",    "priceCurrency": "USD", "description": "30 days, full features"},
-            {"@type": "Offer", "name": "Team",        "price": "199",  "priceCurrency": "USD", "billingDuration": "P1M"},
-            {"@type": "Offer", "name": "Business",    "price": "999",  "priceCurrency": "USD", "billingDuration": "P1M"},
-            {"@type": "Offer", "name": "Enterprise",  "price": "5000", "priceCurrency": "USD", "billingDuration": "P1M", "description": "Starts at $5,000/month, contract sales"}
+            {"@type": "Offer", "name": "Free Trial (self-hosted)",      "price": "0",    "priceCurrency": "USD", "description": "30 days, full features, on your infrastructure"},
+            {"@type": "Offer", "name": "License (self-hosted)",         "price": "99",   "priceCurrency": "USD", "billingDuration": "P1M", "description": "Self-hosted license. You run the platform."},
+            {"@type": "Offer", "name": "License + SRE (self-hosted)",   "price": "179",  "priceCurrency": "USD", "billingDuration": "P1M", "description": "Self-hosted license plus the SRE auto-remediation agent."},
+            {"@type": "Offer", "name": "Business Managed",              "price": "1299", "priceCurrency": "USD", "billingDuration": "P1M", "description": "Fully managed dedicated instance, single region, 24/7 on-call."},
+            {"@type": "Offer", "name": "Enterprise Managed",            "price": "5000", "priceCurrency": "USD", "billingDuration": "P1M", "description": "Multi-region, 99.95% SLA, BAA. Starts at $5,000/month."}
           ],
           "publisher": {"@id": "https://scutum.dev/#org"}
         },
@@ -245,6 +246,40 @@
         .proof-list span {
             display: block; font-size: 13px; color: var(--text-muted); line-height: 1.4;
         }
+
+        /* Two-deployment-modes strip — self-hosted vs managed */
+        .modes { padding: 64px 0; border-bottom: 1px solid var(--border); background: var(--bg-elevated); }
+        .modes-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 20px; max-width: 1000px; margin: 0 auto;
+        }
+        .modes-card {
+            background: var(--bg); border: 1px solid var(--border-hi); border-radius: 8px;
+            padding: 28px 32px;
+        }
+        .modes-card--managed {
+            border-color: var(--text);
+        }
+        .modes-tag {
+            color: var(--text-muted); font-size: 11px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.12em;
+            margin: 0 0 8px; font-family: 'Inter', sans-serif;
+        }
+        .modes-card h3 {
+            font-size: 20px; font-weight: 500; line-height: 1.3;
+            margin: 0 0 14px; letter-spacing: -0.01em;
+        }
+        .modes-card p {
+            font-size: 14px; line-height: 1.65; color: var(--text-muted);
+            margin: 0 0 14px;
+        }
+        .modes-cta { font-size: 14px; }
+        .modes-cta a {
+            color: var(--text); border-bottom: 1px solid var(--border-hi);
+            text-decoration: none; font-weight: 500;
+        }
+        .modes-cta a:hover { border-bottom-color: var(--text); }
+        @media (max-width: 768px) { .modes-grid { grid-template-columns: 1fr; } }
 
         /* Founder note — pre-customer credibility */
         .founder { padding: 80px 0; border-bottom: 1px solid var(--border); }
@@ -463,8 +498,36 @@
 
         /* ========== PRICING ========== */
         .pricing-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-        @media (max-width: 1024px) { .pricing-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 600px)  { .pricing-grid { grid-template-columns: 1fr; } }
+        .pricing-grid--3 { grid-template-columns: repeat(3, 1fr); max-width: 980px; margin: 0 auto; }
+        @media (max-width: 1024px) {
+            .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+            .pricing-grid--3 { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px)  {
+            .pricing-grid, .pricing-grid--3 { grid-template-columns: 1fr; }
+        }
+
+        /* Pricing-track section headers (Self-hosted / Fully managed) */
+        .pricing-section { margin-top: 48px; }
+        .pricing-section:first-of-type { margin-top: 32px; }
+        .pricing-section-header {
+            text-align: center; margin-bottom: 32px;
+            max-width: 640px; margin-left: auto; margin-right: auto;
+        }
+        .pricing-section-eyebrow {
+            color: var(--text-muted); font-size: 11px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.16em;
+            margin-bottom: 12px; font-family: 'Inter', sans-serif;
+        }
+        .pricing-section-header h3 {
+            font-size: 24px; font-weight: 500; line-height: 1.3;
+            margin: 0 0 12px; letter-spacing: -0.01em;
+        }
+        .pricing-section-header h3 .em { font-family: var(--serif); font-style: italic; font-weight: 400; }
+        .pricing-section-header p {
+            color: var(--text-muted); font-size: 14px; line-height: 1.65;
+            margin: 0;
+        }
         .price-card {
             background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
             padding: 32px; display: flex; flex-direction: column;
@@ -726,15 +789,26 @@
 
     // Pricing tiers — keep in sync with the JSON-LD `offers` array above (search
     // engines need the static JSON-LD; this array drives the visible cards).
-    const PRICING = [
-        { name: 'Free Trial', price: '$0', period: 'first 30 days', tagline: 'Full feature access. Setup call required.', cta: 'Request trial access',
-          features: ['All 100+ models, MCP & A2A', 'Up to 25 team members', 'Pre-call cost prediction + per-team budgets', 'OpenTelemetry, Grafana dashboards', '30-min onboarding call with the founder'] },
-        { name: 'Team', price: '$199', period: '/month', tagline: 'For small teams shipping fast.', cta: 'Book a demo',
-          features: ['Up to 25 team members', 'All providers, all models', 'Cost dashboards + per-team budgets', 'Audit log (90 days)', 'Slack/PagerDuty alerts', 'Email support'] },
-        { name: 'Business', price: '$999', period: '/month', tagline: 'For growing companies.', featured: true, cta: 'Book a demo',
-          features: ['Everything in Team', 'Unlimited members', 'OIDC SSO (Google, Okta, Azure AD)', 'Extended audit retention', 'SRE agent (LLM-driven remediation, human-in-loop)', 'Business-hours support', 'BYO models (vLLM, Ollama)'] },
-        { name: 'Enterprise', price: 'From $5k', period: '/month', tagline: 'For regulated and at-scale orgs.', cta: 'Talk to sales',
-          features: ['Everything in Business', 'Chargeback + cost-allocation reports', 'Configurable audit retention (up to 7 years)', 'SLA 99.95%, 24/7 support', 'On-prem / VPC deployment', 'Dedicated CSM', 'Custom DPA available'] }
+    // SELF-HOSTED — you run it, we keep it licensed. Low licensing fee since you bring infrastructure,
+    // keys, and operational ownership. SRE agent is an opt-in add-on.
+    const PRICING_SELFHOSTED = [
+        { name: 'Free Trial', price: '$0', period: 'first 30 days', tagline: 'Full features. Setup call required.', cta: 'Request trial access',
+          features: ['All 100+ models, MCP & A2A', 'Unlimited team members', 'Pre-call cost prediction + per-team budgets', 'OpenTelemetry, Grafana dashboards', '30-min onboarding with the founder'] },
+        { name: 'License', price: '$99', period: '/month', tagline: 'You run it. We keep it licensed.', featured: true, cta: 'Book a demo',
+          features: ['Unlimited team members', 'All providers, all models', 'Cost dashboards + per-team budgets', 'OIDC SSO (Google, Okta, Azure AD)', '90-day audit log', 'Email support', 'Self-hosted on your infrastructure'] },
+        { name: 'License + SRE', price: '$179', period: '/month', tagline: 'Adds the SRE auto-remediation agent.', cta: 'Book a demo',
+          features: ['Everything in License', 'SRE agent (LLM-driven, HITL approval)', 'Four-component risk scoring', 'Slack / PagerDuty / webhook alerts', 'Risk-bounded auto-execution roadmap (Q4)', 'Action-library updates included'] }
+    ];
+
+    // FULLY MANAGED — we run a dedicated instance for you. Higher cost; you pay for the
+    // operational tax (24/7 on-call, backups, upgrades, BAA).
+    const PRICING_MANAGED = [
+        { name: 'Trial', price: '$0', period: 'first 30 days', tagline: 'Free trial on the managed offering.', cta: 'Request trial access',
+          features: ['Per-customer namespace', 'Single region', 'We provision in 24h', 'Convert to Business or Enterprise after trial'] },
+        { name: 'Business Managed', price: '$1,299', period: '/month', tagline: 'We run it. You drive it.', featured: true, cta: 'Book a demo',
+          features: ['Per-customer dedicated instance', 'We handle setup, upgrades, backups', '24/7 on-call', '99.9% uptime target', 'Single region (US, EU, India, or SE Asia)', 'BYO KMS for your secrets', 'Includes everything in self-hosted License + SRE'] },
+        { name: 'Enterprise Managed', price: 'From $5k', period: '/month', tagline: 'Multi-region, SLA, BAA.', cta: 'Talk to sales',
+          features: ['Multi-region failover', '99.95% contractual SLA with credits', 'BAA + custom DPA', 'Dedicated CSM', 'On-prem option', 'Configurable audit retention up to 7 years', 'Chargeback + cost-allocation reports'] }
     ];
 
     // Research topics — each is a real research angle tied to a product capability.
@@ -803,12 +877,12 @@
     <div class="container">
         <span class="hero-eyebrow">
             <i class="fa-solid fa-shield-halved"></i>
-            Self-hosted · v0.1.0 · Open early access
+            Self-hosted or fully managed · v0.1.0 · Open early access
         </span>
         <h1>Stop gluing together <br>five AI infrastructure tools.</h1>
         <p class="lede">
-            Scutum is one self-hosted <span class="em">control plane</span>: LLM proxy, MCP &amp; A2A gateway, cost governance, audit, and risk-scored SRE remediation.
-            Drop-in OpenAI-compatible. Built for teams that want <strong>control</strong>, not just observability.
+            Scutum is one <span class="em">control plane</span>: LLM proxy, MCP &amp; A2A gateway, cost governance, audit, and risk-scored SRE remediation.
+            Drop-in OpenAI-compatible. <strong>Run it on your infrastructure</strong>, or let us run a dedicated instance for you.
         </p>
         <div class="hero-ctas">
             <button class="btn btn-primary btn-lg" onclick="openDemoModal()">
@@ -845,6 +919,26 @@
             <li><a href="/docs/whitepapers/cost-aware-routing/" target="_blank"><strong>Pre-call</strong><span>cost prediction + budget gates</span></a></li>
             <li><a href="/docs/whitepapers/self-managed-best-practices/" target="_blank"><strong>Self-hosted</strong><span>Docker / Podman / nerdctl</span></a></li>
         </ul>
+    </div>
+</div>
+
+<!-- Two-deployment-modes strip — clarifies managed exists alongside self-hosted -->
+<div class="modes">
+    <div class="container">
+        <div class="modes-grid">
+            <div class="modes-card">
+                <p class="modes-tag">Self-hosted</p>
+                <h3>Run it on your own infrastructure.</h3>
+                <p>One-line installer onto a Linux box, your VPC, or your Kubernetes cluster. Your data, your provider keys, your audit log — all stay on your side. Compose-spec compatible (Docker, Podman, nerdctl).</p>
+                <p class="modes-cta"><a href="/docs/guides/quickstart/" target="_blank">Read the quickstart →</a></p>
+            </div>
+            <div class="modes-card modes-card--managed">
+                <p class="modes-tag">Fully managed</p>
+                <h3>Or let us run a dedicated instance for you.</h3>
+                <p>Per-customer namespace in our region of choice (US East/West, EU, India, SE Asia). 24/7 on-call, automated backups, zero-downtime upgrades, BYO KMS for your secrets. We're the processor; the platform is yours.</p>
+                <p class="modes-cta"><a href="/docs/whitepapers/managed-vs-self-hosted/" target="_blank">Compare modes →</a></p>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -1151,13 +1245,31 @@ $ curl localhost:4000/v1/models | jq</pre>
     <div class="container">
         <div class="s-header">
             <p class="s-eyebrow">Pricing</p>
-            <h2>Pay for <span class="em">governance</span>,<br>not for tokens.</h2>
-            <p>Token costs go straight to the providers. We charge a flat fee for the control plane.</p>
+            <h2>Two ways to run it,<br>priced for what each <span class="em">actually costs</span>.</h2>
+            <p>Token costs go to the providers — at list price, no markup. We charge a flat fee for the control plane. Self-hosted is licence-only; managed costs more because we're running it.</p>
             <p class="founding-banner">
                 <strong>Founding-customer pricing.</strong> These rates lock in for the first 12 months. Future tiers will be priced higher; you keep the original rate as long as you stay on the plan.
             </p>
         </div>
-        <div class="pricing-grid" id="pricing-grid"></div>
+
+        <div class="pricing-section">
+            <div class="pricing-section-header">
+                <p class="pricing-section-eyebrow">Self-hosted</p>
+                <h3>You run it on your infrastructure.</h3>
+                <p>Lowest price. We license the software and ship updates. Your data, your provider keys, your audit log all stay on your side. SRE auto-remediation is an opt-in add-on.</p>
+            </div>
+            <div class="pricing-grid pricing-grid--3" id="pricing-grid-selfhosted"></div>
+        </div>
+
+        <div class="pricing-section">
+            <div class="pricing-section-header">
+                <p class="pricing-section-eyebrow">Fully managed</p>
+                <h3>Or let us run a dedicated instance.</h3>
+                <p>We provision the stack, do the upgrades, take the on-call pages. You get a console URL and a service-account token. Higher price covers our operational tax — backups, 24/7, BAA, multi-region.</p>
+            </div>
+            <div class="pricing-grid pricing-grid--3" id="pricing-grid-managed"></div>
+        </div>
+
         <div class="free-month-banner">
             <i class="fa-solid fa-gift"></i> Every paid tier starts with a 30-day free trial — full feature access, no credit card.
         </div>
@@ -1356,21 +1468,26 @@ $ curl localhost:4000/v1/models | jq</pre>
     })();
 
     (function renderPricing() {
-        const grid = document.getElementById('pricing-grid');
-        for (const tier of PRICING) {
-            const card = document.createElement('div');
-            card.className = 'price-card' + (tier.featured ? ' featured' : '');
-            card.innerHTML = `
-                <div class="price-name">${tier.name}</div>
-                <div class="price-amt">${tier.price}<small>${tier.period ? ' ' + tier.period : ''}</small></div>
-                <div class="price-tagline">${tier.tagline}</div>
-                <ul class="price-features">
-                    ${tier.features.map(f => '<li><i class="fa-solid fa-check"></i> ' + f + '</li>').join('')}
-                </ul>
-                <button class="btn ${tier.featured ? 'btn-primary' : 'btn-secondary'}" onclick="openDemoModal()">${tier.cta}</button>
-            `;
-            grid.appendChild(card);
+        function renderInto(gridId, tiers) {
+            const grid = document.getElementById(gridId);
+            if (!grid) return;
+            for (const tier of tiers) {
+                const card = document.createElement('div');
+                card.className = 'price-card' + (tier.featured ? ' featured' : '');
+                card.innerHTML = `
+                    <div class="price-name">${tier.name}</div>
+                    <div class="price-amt">${tier.price}<small>${tier.period ? ' ' + tier.period : ''}</small></div>
+                    <div class="price-tagline">${tier.tagline}</div>
+                    <ul class="price-features">
+                        ${tier.features.map(f => '<li><i class="fa-solid fa-check"></i> ' + f + '</li>').join('')}
+                    </ul>
+                    <button class="btn ${tier.featured ? 'btn-primary' : 'btn-secondary'}" onclick="openDemoModal()">${tier.cta}</button>
+                `;
+                grid.appendChild(card);
+            }
         }
+        renderInto('pricing-grid-selfhosted', PRICING_SELFHOSTED);
+        renderInto('pricing-grid-managed', PRICING_MANAGED);
     })();
 
     (function renderResearch() {
