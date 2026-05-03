@@ -223,6 +223,77 @@
         .dp-body { color: var(--text-muted); max-width: 580px; margin: 0 auto 28px; font-size: 15px; line-height: 1.7; }
         .dp-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
+        /* Proof points strip — concrete claims, each linkable to docs */
+        .proof { padding: 56px 0; border-bottom: 1px solid var(--border); }
+        .proof-list {
+            list-style: none; padding: 0; margin: 0;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            max-width: 1100px; margin: 0 auto;
+        }
+        .proof-list li a {
+            display: block; padding: 16px 18px;
+            border: 1px solid var(--border-hi); border-radius: 6px;
+            color: var(--text); text-decoration: none;
+            transition: border-color 0.15s ease, transform 0.15s ease;
+        }
+        .proof-list li a:hover { border-color: var(--text); transform: translateY(-1px); }
+        .proof-list strong {
+            display: block; font-size: 16px; font-weight: 600; letter-spacing: -0.01em;
+            margin-bottom: 4px;
+        }
+        .proof-list span {
+            display: block; font-size: 13px; color: var(--text-muted); line-height: 1.4;
+        }
+
+        /* Founder note — pre-customer credibility */
+        .founder { padding: 80px 0; border-bottom: 1px solid var(--border); }
+        .founder-card {
+            max-width: 760px; margin: 0 auto;
+            display: flex; gap: 32px; align-items: flex-start;
+            padding: 32px; border: 1px solid var(--border-hi); border-radius: 8px;
+            background: var(--bg-elevated);
+        }
+        .founder-photo {
+            flex: 0 0 96px; height: 96px; width: 96px; border-radius: 50%;
+            overflow: hidden; background: var(--bg);
+            border: 1px solid var(--border-hi);
+        }
+        .founder-photo img { width: 100%; height: 100%; object-fit: cover; }
+        .founder-photo--placeholder {
+            display: flex; align-items: center; justify-content: center;
+            font-family: var(--serif); font-style: italic; font-size: 36px;
+            color: var(--text-muted);
+        }
+        .founder-photo--placeholder::after { content: "DS"; }
+        .founder-body { flex: 1; }
+        .founder-eyebrow {
+            color: var(--text-muted); font-size: 11px; font-weight: 500;
+            text-transform: uppercase; letter-spacing: 0.16em;
+            margin: 0 0 12px; font-family: 'Inter', sans-serif;
+        }
+        .founder-quote {
+            font-family: var(--serif); font-style: italic; font-size: 19px;
+            line-height: 1.55; color: var(--text);
+            margin: 0 0 16px; max-width: 580px;
+        }
+        .founder-sig {
+            font-size: 14px; color: var(--text); margin: 0 0 6px;
+        }
+        .founder-sig span { color: var(--text-muted); }
+        .founder-links {
+            font-size: 13px; color: var(--text-muted); margin: 0;
+        }
+        .founder-links a {
+            color: inherit; border-bottom: 1px solid var(--border-hi);
+            text-decoration: none;
+        }
+        .founder-links a:hover { border-bottom-color: var(--text); }
+        @media (max-width: 640px) {
+            .founder-card { flex-direction: column; gap: 20px; }
+            .founder-photo { margin: 0 auto; }
+        }
+
         /* Comparison "best for" positioning callout */
         .cmp-best-for {
             max-width: 640px; margin: 24px auto 0; padding: 16px 20px;
@@ -707,6 +778,47 @@
             <span>LITELLM</span><span>AGENT GATEWAY</span><span>POSTGRESQL</span><span>CEDAR</span><span>TEMPORAL</span><span>OPENTELEMETRY</span>
         </div>
         <p class="trust-sub">Open-source components composed under one control plane — not reinvented. v0.1.0 shipped May 2026.</p>
+    </div>
+</div>
+
+<!-- Specific technical claims, each linkable to docs. Concrete > generic. -->
+<div class="proof">
+    <div class="container">
+        <ul class="proof-list">
+            <li><a href="/docs/guides/api-integration/" target="_blank"><strong>100+ models</strong><span>across 9 providers</span></a></li>
+            <li><a href="/docs/operations/licensing/" target="_blank"><strong>Ed25519</strong><span>offline license validation</span></a></li>
+            <li><a href="/docs/whitepapers/gateway-security/" target="_blank"><strong>Audit log</strong><span>on every mutation</span></a></li>
+            <li><a href="/docs/whitepapers/risk-bounded-remediation/" target="_blank"><strong>Risk-scored</strong><span>SRE remediation, HITL</span></a></li>
+            <li><a href="/docs/whitepapers/cost-aware-routing/" target="_blank"><strong>Pre-call</strong><span>cost prediction + budget gates</span></a></li>
+            <li><a href="/docs/whitepapers/self-managed-best-practices/" target="_blank"><strong>Self-hosted</strong><span>Docker / Podman / nerdctl</span></a></li>
+        </ul>
+    </div>
+</div>
+
+<!-- Founder note: pre-customer credibility. Edit placeholder text + replace
+     /founder.jpg with the actual headshot path when shipped. -->
+<div class="founder">
+    <div class="container">
+        <div class="founder-card">
+            <div class="founder-photo" aria-hidden="true">
+                <img src="/founder.jpg" alt="" onerror="this.style.display='none'; this.parentElement.classList.add('founder-photo--placeholder')"/>
+            </div>
+            <div class="founder-body">
+                <p class="founder-eyebrow">Why we're building this</p>
+                <p class="founder-quote">
+                    "We've spent the last decade building infrastructure under load — distributed systems,
+                    payments, observability — and watched every team that touches AI re-invent the same
+                    proxy, audit, and budget machinery. Scutum is what we wish existed when we started."
+                </p>
+                <p class="founder-sig">
+                    <strong>Deo Shankar</strong> · <span>founder, Scuti Marketplace India OPC</span>
+                </p>
+                <p class="founder-links">
+                    <a href="mailto:deo@scutum.dev">deo@scutum.dev</a>
+                    · <a href="https://x.com/scutum_dev" target="_blank" rel="noopener">@scutum_dev</a>
+                </p>
+            </div>
+        </div>
     </div>
 </div>
 
