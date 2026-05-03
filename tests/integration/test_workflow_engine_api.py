@@ -12,6 +12,10 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
+# Workflow engine has its own requirements.txt with langgraph + temporalio. Those
+# aren't in `tests/requirements.txt`, so on a CI host without them, skip cleanly.
+pytest.importorskip("langgraph", reason="langgraph not installed; install via src/workflow-engine/requirements.txt")
+
 # Load the workflow-engine module
 _service_dir = os.path.join(os.path.dirname(__file__), "../../src/workflow-engine")
 _service_path = os.path.join(_service_dir, "main.py")

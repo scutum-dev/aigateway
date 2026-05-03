@@ -24,6 +24,9 @@ _spec.loader.exec_module(_mod)
 
 app = _mod.app
 
+# db_pool / http_client / redis_client moved from main.py to the deps module
+import deps  # noqa: E402
+
 # Load auth module for token creation
 _auth_spec = importlib.util.spec_from_file_location("admin_api_auth", os.path.join(_service_dir, "auth.py"))
 _auth_mod = importlib.util.module_from_spec(_auth_spec)
@@ -56,17 +59,17 @@ def _mock_db_pool():
 @pytest.fixture(autouse=True)
 def _reset_state():
     """Reset module state between tests."""
-    original_db = _mod.db_pool
-    original_http = _mod.http_client
-    original_redis = _mod.redis_client
+    original_db = deps.db_pool
+    original_http = deps.http_client
+    original_redis = deps.redis_client
     original_shutdown = _mod.shutdown_event
     original_active = _mod.active_requests
     original_rate_cache = _mod._rate_limit_cache.copy()
     original_inmemory = _mod._inmemory_requests[:]
     yield
-    _mod.db_pool = original_db
-    _mod.http_client = original_http
-    _mod.redis_client = original_redis
+    deps.db_pool = original_db
+    deps.http_client = original_http
+    deps.redis_client = original_redis
     _mod.shutdown_event = original_shutdown
     _mod.active_requests = original_active
     _mod._rate_limit_cache.update(original_rate_cache)
@@ -77,9 +80,9 @@ def _reset_state():
 def client():
     """ASGI test client with no external dependencies."""
     _mod.INTERNAL_SERVICE_KEY = ""
-    _mod.db_pool = None
-    _mod.http_client = AsyncMock()
-    _mod.redis_client = None
+    deps.db_pool = None
+    deps.http_client = AsyncMock()
+    deps.redis_client = None
     _mod.shutdown_event = None
     _mod.active_requests = 0
     _mod._rate_limit_cache.update({"value": None, "expires_at": 0.0})
@@ -151,7 +154,7 @@ class TestRateLimitMiddleware:
         """Requests past the rate limit should return 429."""
         _mod._rate_limit_cache.update({"value": 2, "expires_at": time.time() + 60})
         _mod._inmemory_requests.clear()
-        _mod.redis_client = None
+        deps.redis_client = None
 
         headers = _auth_headers()
         # First two requests should pass (count 1 and 2 are within limit)
@@ -217,7 +220,7 @@ class TestMCPServerEndpoints:
         """GET /api/v1/mcp-servers should return servers."""
         pool, conn = _mock_db_pool()
         conn.fetch.return_value = [self._mcp_row()]
-        _mod.db_pool = pool
+        deps.db_pool = pool
         resp = await client.get("/api/v1/mcp-servers", headers=_auth_headers())
         assert resp.status_code == 200
         data = resp.json()
@@ -229,7 +232,7 @@ class TestMCPServerEndpoints:
         """POST /api/v1/mcp-servers should create a server config."""
         pool, conn = _mock_db_pool()
         conn.fetchrow.return_value = self._mcp_row()
-        _mod.db_pool = pool
+        deps.db_pool = pool
         resp = await client.post(
             "/api/v1/mcp-servers",
             json={
@@ -248,7 +251,7 @@ class TestMCPServerEndpoints:
         """GET /api/v1/mcp-servers/sync/preview should return config YAML."""
         pool, conn = _mock_db_pool()
         conn.fetch.return_value = [self._mcp_row()]
-        _mod.db_pool = pool
+        deps.db_pool = pool
         resp = await client.get("/api/v1/mcp-servers/sync/preview", headers=_auth_headers())
         assert resp.status_code == 200
         data = resp.json()
@@ -260,7 +263,7 @@ class TestMCPServerEndpoints:
         """DELETE /api/v1/mcp-servers/{id} for missing server should return 404."""
         pool, conn = _mock_db_pool()
         conn.execute.return_value = "DELETE 0"
-        _mod.db_pool = pool
+        deps.db_pool = pool
         resp = await client.delete("/api/v1/mcp-servers/nonexistent", headers=_auth_headers())
         assert resp.status_code == 404
 
@@ -278,7 +281,7 @@ class TestWorkflowEndpoints:
         mock_resp.status_code = 200
         mock_resp.json.return_value = {"execution_id": "exec-1", "status": "running"}
         mock_resp.raise_for_status = MagicMock()
-        _mod.http_client.post.return_value = mock_resp
+        deps.http_client.post.return_value = mock_resp
 
         resp = await client.post(
             "/api/v1/workflow-executions",
@@ -298,7 +301,7 @@ class TestWorkflowEndpoints:
         mock_resp.status_code = 200
         mock_resp.json.return_value = []
         mock_resp.raise_for_status = MagicMock()
-        _mod.http_client.get.return_value = mock_resp
+        deps.http_client.get.return_value = mock_resp
 
         resp = await client.get("/api/v1/workflow-executions", headers=_auth_headers())
         assert resp.status_code == 200
@@ -310,7 +313,7 @@ class TestWorkflowEndpoints:
         mock_resp.status_code = 200
         mock_resp.json.return_value = [{"name": "research", "description": "Deep research"}]
         mock_resp.raise_for_status = MagicMock()
-        _mod.http_client.get.return_value = mock_resp
+        deps.http_client.get.return_value = mock_resp
 
         resp = await client.get("/api/v1/workflow-templates", headers=_auth_headers())
         assert resp.status_code == 200
@@ -326,7 +329,7 @@ class TestSettingsEndpoints:
     @pytest.mark.asyncio
     async def test_get_settings_no_db_returns_defaults(self, client):
         """GET /api/v1/settings without DB should return defaults."""
-        _mod.db_pool = None
+        deps.db_pool = None
         resp = await client.get("/api/v1/settings", headers=_auth_headers())
         assert resp.status_code == 200
         data = resp.json()
@@ -341,7 +344,7 @@ class TestSettingsEndpoints:
             {"key": "default_model", "value": "claude-3-opus"},
             {"key": "maintenance_mode", "value": "true"},
         ]
-        _mod.db_pool = pool
+        deps.db_pool = pool
         resp = await client.get("/api/v1/settings", headers=_auth_headers())
         assert resp.status_code == 200
 
@@ -350,7 +353,7 @@ class TestSettingsEndpoints:
         """PUT /api/v1/settings with admin auth should update settings."""
         pool, conn = _mock_db_pool()
         conn.execute.return_value = "INSERT 0 1"
-        _mod.db_pool = pool
+        deps.db_pool = pool
         resp = await client.put(
             "/api/v1/settings",
             json={
