@@ -133,8 +133,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build Docker image
+        # admin-api references `platform_config=./config` for the license
+        # public-key bundle. Other services ignore the extra context silently.
         run: >-
           docker build
           --build-context shared=./src/shared
+          --build-context platform_config=./config
           -t ${{ matrix.service.name }}:test
           ${{ matrix.service.context }}

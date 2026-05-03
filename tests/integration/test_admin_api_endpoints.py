@@ -129,9 +129,11 @@ class TestAuthLogin:
 class TestAuthMe:
     @pytest.mark.asyncio
     async def test_me_without_token(self, client):
-        """GET /auth/me without token should return 401 or 403."""
+        """GET /auth/me without a Bearer token must reject. 401 (no creds) is
+        the correct status; older FastAPI versions returned 403. Accept either
+        to stay robust across dependency upgrades."""
         resp = await client.get("/auth/me")
-        assert resp.status_code == 403
+        assert resp.status_code in (401, 403)
 
     @pytest.mark.asyncio
     async def test_me_with_valid_token(self, client):
