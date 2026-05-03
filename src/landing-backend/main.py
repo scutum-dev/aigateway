@@ -174,6 +174,16 @@ async def submit(
     _check_rate_limit(ip)
     user_agent = request.headers.get("user-agent", "")[:500]
 
+    # Email-axis dedup: if the same email has already submitted within the rate-limit
+    # window, return the existing id so the user sees a friendly "we already got you"
+    # rather than creating a duplicate row. Per-IP rate-limit above handles spammers
+    # cycling IPs without changing email; this handles the same person hitting submit
+    # twice or a slow Cal.com retry.
+    existing = await storage.recent_request_by_email(db_pool, str(body.work_email), RATE_LIMIT_WINDOW_S)
+    if existing:
+        logger.info("Demo request dedup hit for email %s (existing id=%s)", body.work_email, existing)
+        return {"ok": True, "id": existing, "deduped": True}
+
     request_id = await storage.insert_demo_request(
         db_pool,
         name=body.name,

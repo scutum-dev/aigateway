@@ -8,6 +8,29 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger(__name__)
 
 
+async def recent_request_by_email(db_pool, work_email: str, window_seconds: int) -> Optional[str]:
+    """Return the id of the most recent demo_request from this email within the
+    window, or None. Used by the dedup gate so a single requester refreshing
+    the form (or a bot fanning out from many IPs but a single email) doesn't
+    create duplicate rows. Per-IP rate limiting is the IP-axis defence; this is
+    the email-axis dedup.
+    """
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT id::text AS id
+            FROM demo_requests
+            WHERE LOWER(work_email) = LOWER($1)
+              AND created_at > NOW() - ($2 || ' seconds')::interval
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            work_email,
+            str(window_seconds),
+        )
+        return row["id"] if row else None
+
+
 async def insert_demo_request(
     db_pool,
     *,

@@ -79,6 +79,12 @@ class LicenseState:
 
 _state: LicenseState = LicenseState()
 _public_key_cache: Optional[bytes] = None
+# Tracks what we last alerted on so we don't spam the events bus every 5 min.
+# Keyed by transition ("expired" / "expiring_soon"), value is unix timestamp of
+# last publish. The revalidator checks these before firing.
+_last_alert: dict = {}
+EXPIRING_SOON_DAYS = 14
+EXPIRING_SOON_REFIRE_S = 86_400  # re-fire the warning at most once per day
 
 
 def _load_public_key() -> Optional[bytes]:
@@ -254,13 +260,67 @@ def current_state() -> LicenseState:
     return _state
 
 
+async def _maybe_publish_alerts(prev: LicenseState, curr: LicenseState, db_pool) -> None:
+    """Fire events when license state transitions across operational boundaries.
+
+    Two signals worth alerting on:
+      - `license.expired` — transition from valid+not-expired -> expired. Fires
+        ONCE per transition (not every 5 min thereafter).
+      - `license.expiring_soon` — within EXPIRING_SOON_DAYS of expiry. Fires at
+        most once per 24h so an op who's seen it doesn't get paged repeatedly.
+    """
+    import time as _time
+
+    try:
+        from event_publisher import publish_event
+    except ImportError:
+        return
+    if db_pool is None:
+        return
+
+    now = _time.time()
+    base_payload = {
+        "tier": curr.tier or None,
+        "customer_email": curr.customer_email or None,
+        "expires_at": curr.expires_at.isoformat() if curr.expires_at else None,
+        "days_remaining": curr.days_remaining,
+    }
+
+    # Transition: was healthy, now expired (or just-flipped invalid)
+    became_unhealthy = (prev.is_valid and not prev.is_expired) and (curr.is_expired or not curr.is_valid)
+    if became_unhealthy:
+        await publish_event(
+            db_pool,
+            "license.expired",
+            {**base_payload, "error": curr.error or "expired"},
+            source_service="admin-api:license",
+        )
+        _last_alert["expired"] = now
+
+    # Warning band: still healthy but inside the warning window
+    if curr.is_valid and not curr.is_expired and 0 < curr.days_remaining <= EXPIRING_SOON_DAYS:
+        last = _last_alert.get("expiring_soon", 0)
+        if now - last >= EXPIRING_SOON_REFIRE_S:
+            await publish_event(
+                db_pool,
+                "license.expiring_soon",
+                base_payload,
+                source_service="admin-api:license",
+            )
+            _last_alert["expiring_soon"] = now
+
+
 async def revalidator(db_pool, shutdown_event: asyncio.Event) -> None:
     """Background task: re-checks the operative license every 5 min so an
-    expiry rollover or a new activation propagates without a restart.
+    expiry rollover or a new activation propagates without a restart. Also
+    fires events on state transitions (see `_maybe_publish_alerts`) so
+    operators are notified before they hit a hard expiry.
     """
     while not shutdown_event.is_set():
         try:
+            prev = current_state()
             await initial_load(db_pool)
+            await _maybe_publish_alerts(prev, current_state(), db_pool)
         except Exception as e:
             logger.warning("License revalidation error: %s", e)
         try:

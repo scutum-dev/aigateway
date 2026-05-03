@@ -10,6 +10,7 @@ import {
 import type { SREIncidentStatus, SREProposedAction } from '../types'
 import { SkeletonCard } from '../components/Skeleton'
 import { useToast } from '../components/Toast'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 const TRIGGER_EVENTS = ['sla.violation', 'budget.exceeded', 'provider.unhealthy', 'guardrail.violation']
 
@@ -44,8 +45,18 @@ export default function SREAgent() {
     '{\n  "provider": "openai",\n  "model": "gpt-4o",\n  "severity": "high"\n}',
   )
 
-  const handleApprove = async (id: string) => {
-    if (!confirm('Approve and execute the proposed plan? This will call admin-api mutations.')) return
+  // Confirmation modal for "Approve and execute". Native confirm() blocks the
+  // event loop, can't be styled, and produces no audit-friendly DOM. The
+  // ConfirmDialog component is used elsewhere in the admin UI for the same
+  // class of action — keep it consistent.
+  const [pendingApproveId, setPendingApproveId] = useState<string | null>(null)
+
+  const requestApprove = (id: string) => setPendingApproveId(id)
+
+  const confirmApprove = async () => {
+    const id = pendingApproveId
+    setPendingApproveId(null)
+    if (!id) return
     try {
       const result = await approveMutation.mutateAsync(id)
       toast(result.ok ? 'success' : 'error', result.ok ? 'Plan executed' : 'Execution failed; see incident detail.')
@@ -147,7 +158,7 @@ export default function SREAgent() {
         <ApprovalsTab
           loading={pendingLoading}
           incidents={pending || []}
-          onApprove={handleApprove}
+          onApprove={requestApprove}
           onReject={handleReject}
           approving={approveMutation.isPending}
           rejecting={rejectMutation.isPending}
@@ -204,6 +215,16 @@ export default function SREAgent() {
       {tab === 'stats' && (
         <StatsTab stats={stats || null} />
       )}
+
+      <ConfirmDialog
+        isOpen={pendingApproveId !== null}
+        onClose={() => setPendingApproveId(null)}
+        onConfirm={confirmApprove}
+        title="Approve and execute remediation?"
+        message="This calls admin-api mutations on your behalf and is logged to the audit trail. Reject instead if you only want to dismiss the incident."
+        confirmLabel="Approve & execute"
+        confirmVariant="danger"
+      />
     </div>
   )
 }
