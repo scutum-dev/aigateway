@@ -415,6 +415,52 @@
         .cmp .neutral { color: var(--text); }
         .cmp-note { margin-top: 16px; color: var(--text-muted); font-size: 12px; line-height: 1.6; font-style: italic; font-family: var(--serif); }
 
+        /* Status section — what's shipped vs what's coming */
+        .status-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 32px; max-width: 980px; margin: 0 auto;
+        }
+        .status-col {
+            border: 1px solid var(--border-hi); border-radius: 8px;
+            padding: 28px 32px; background: var(--bg);
+        }
+        .status-col h3 {
+            font-size: 14px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.06em;
+            margin: 0 0 20px; padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .status-col--coming { background: var(--bg-elevated); }
+        .status-col--coming h3 { color: var(--text-muted); }
+        .status-col ul { list-style: none; padding: 0; margin: 0; }
+        .status-col li {
+            padding: 8px 0 8px 24px; position: relative;
+            font-size: 14px; line-height: 1.55; color: var(--text);
+        }
+        .status-col li::before {
+            content: "✓"; position: absolute; left: 0; top: 8px;
+            color: var(--text); font-weight: 600;
+        }
+        .status-col--coming li::before { content: "→"; color: var(--text-muted); }
+        .status-col--coming li { color: var(--text-muted); }
+        .status-col--coming li strong { color: var(--text); }
+        .status-foot {
+            margin-top: 24px; text-align: center;
+            color: var(--text-muted); font-size: 13px;
+        }
+        @media (max-width: 768px) { .status-grid { grid-template-columns: 1fr; } }
+
+        /* Founding-customer pricing banner */
+        .founding-banner {
+            max-width: 580px; margin: 16px auto 0; padding: 12px 18px;
+            background: var(--bg-elevated); border: 1px solid var(--border-hi);
+            border-left: 3px solid var(--text);
+            border-radius: 4px;
+            font-size: 13px; line-height: 1.55; color: var(--text);
+            font-family: 'Inter', sans-serif;
+        }
+        .founding-banner strong { font-weight: 600; }
+
         /* ========== PRICING ========== */
         .pricing-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
         @media (max-width: 1024px) { .pricing-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -746,6 +792,7 @@
             <a href="#comparison">Comparison</a>
             <a href="#pricing">Pricing</a>
             <a href="#research">Research</a>
+            <a href="/changelog/" target="_blank">Changelog</a>
             <a href="/docs/" target="_blank">Docs</a>
             <a class="btn btn-nav" onclick="openDemoModal()">Book a Demo</a>
         </div>
@@ -756,12 +803,12 @@
     <div class="container">
         <span class="hero-eyebrow">
             <i class="fa-solid fa-shield-halved"></i>
-            Compliance-aware · Self-hosted · Built for AI infrastructure
+            Self-hosted · v0.1.0 · Open early access
         </span>
-        <h1>The unified <span class="em">control plane</span><br>for AI infrastructure.</h1>
+        <h1>Stop gluing together <br>five AI infrastructure tools.</h1>
         <p class="lede">
-            One platform for your LLM proxy, MCP &amp; A2A gateway, agent workflows, FinOps controls, and SRE auto-remediation.
-            Deploy once, govern everywhere — from a five-engineer startup to a regulated enterprise.
+            Scutum is one self-hosted <span class="em">control plane</span>: LLM proxy, MCP &amp; A2A gateway, cost governance, audit, and risk-scored SRE remediation.
+            Drop-in OpenAI-compatible. Built for teams that want <strong>control</strong>, not just observability.
         </p>
         <div class="hero-ctas">
             <button class="btn btn-primary btn-lg" onclick="openDemoModal()">
@@ -921,7 +968,7 @@ curl https://gw.scutum.dev/v1/chat/completions \
         <div class="audience reverse">
             <div>
                 <span class="audience-tag">Startups</span>
-                <h3>From localhost to a<br>paying customer <span class="em">in a day</span>.</h3>
+                <h3>From localhost to your first<br>production traffic <span class="em">in a day</span>.</h3>
                 <p>One <code>docker compose up</code>. Or one <code>kubectl apply</code>. We bring the proxy, the dashboards, the audit log, the budgets, and the playground UI — you bring your prompt.</p>
                 <ul class="audience-list">
                     <li><i class="fa-solid fa-check"></i> 30-day free trial — full features, no credit card</li>
@@ -975,7 +1022,6 @@ $ curl localhost:4000/v1/models | jq</pre>
                     <li><i class="fa-solid fa-check"></i> Immutable audit log with configurable retention; CSV/JSON export</li>
                     <li><i class="fa-solid fa-check"></i> Chargeback + cost allocation: per-team, per-org, per-cost-center attribution</li>
                     <li><i class="fa-solid fa-check"></i> Cedar policy for routing rules; SRE agent for auto-remediation with HITL approval</li>
-                    <li><i class="fa-solid fa-check"></i> 99.95% SLA, 24/7 support, dedicated CSM (Enterprise tier)</li>
                     <li><i class="fa-solid fa-check"></i> On-prem / VPC deployment, BYO inference (vLLM, Ollama)</li>
                 </ul>
             </div>
@@ -1054,6 +1100,50 @@ $ curl localhost:4000/v1/models | jq</pre>
             Comparison verified <span id="cmp-verified-at"></span>. AWS Bedrock is the LLM API itself,
             not a control plane. LangSmith is observability for LangGraph apps; the agent runtime is LangGraph,
             not LangSmith. Always confirm current capabilities on each vendor's site.
+            <strong>Found a row that's wrong?</strong> Email <a href="mailto:hello@scutum.dev?subject=Comparison%20table%20fix" style="color:inherit;border-bottom:1px solid var(--border-hi);">hello@scutum.dev</a> and we'll correct it on the next deploy.
+        </p>
+    </div>
+</section>
+
+<section class="s" id="status">
+    <div class="container">
+        <div class="s-header">
+            <p class="s-eyebrow">What's shipped, what's coming</p>
+            <h2>The honest <span class="em">scope</span>.</h2>
+            <p>Specific and falsifiable. We update this on every release. If something we marked "shipped" doesn't work for you, that's a bug — write to hello@scutum.dev.</p>
+        </div>
+        <div class="status-grid">
+            <div class="status-col">
+                <h3>Working in v0.1</h3>
+                <ul>
+                    <li>OpenAI-compatible LLM proxy, 100+ models, 9 providers</li>
+                    <li>Pre-call cost prediction + per-team budget gates</li>
+                    <li>Audit log on every administrative mutation</li>
+                    <li>Ed25519 offline license validation</li>
+                    <li>SRE agent — risk-scored, human-in-loop approvals</li>
+                    <li>MCP server registry + agent gateway hot-reload</li>
+                    <li>OIDC SSO (Okta, Azure AD, Google)</li>
+                    <li>OpenTelemetry traces + Grafana dashboards</li>
+                    <li>Self-hosted on Docker / Podman / nerdctl</li>
+                    <li>Customer ↔ marketing profile separation (clean install for customers)</li>
+                </ul>
+            </div>
+            <div class="status-col status-col--coming">
+                <h3>Coming next</h3>
+                <ul>
+                    <li><strong>SAML / SCIM</strong> — Q3 2026</li>
+                    <li><strong>Risk-scored SRE auto-execution</strong> (low-risk actions skip the approval queue) — Q4 2026</li>
+                    <li><strong>Per-request quality estimation</strong> for routing — Q4 2026</li>
+                    <li><strong>Multi-region managed offering</strong> — Q1 2027</li>
+                    <li><strong>SOC 2 Type I attestation</strong> — Q3 2026</li>
+                    <li><strong>SOC 2 Type II + HIPAA BAA</strong> — Q1 2027</li>
+                    <li><strong>Helm chart + Kubernetes operator</strong> — Q4 2026</li>
+                    <li><strong>Cross-deployment benchmarks</strong> (consenting design partners) — Q1 2027</li>
+                </ul>
+            </div>
+        </div>
+        <p class="status-foot">
+            We update this list on every release. <a href="/changelog/" style="color:inherit;border-bottom:1px solid var(--border-hi);">See the full changelog</a>.
         </p>
     </div>
 </section>
@@ -1064,6 +1154,9 @@ $ curl localhost:4000/v1/models | jq</pre>
             <p class="s-eyebrow">Pricing</p>
             <h2>Pay for <span class="em">governance</span>,<br>not for tokens.</h2>
             <p>Token costs go straight to the providers. We charge a flat fee for the control plane.</p>
+            <p class="founding-banner">
+                <strong>Founding-customer pricing.</strong> These rates lock in for the first 12 months. Future tiers will be priced higher; you keep the original rate as long as you stay on the plan.
+            </p>
         </div>
         <div class="pricing-grid" id="pricing-grid"></div>
         <div class="free-month-banner">

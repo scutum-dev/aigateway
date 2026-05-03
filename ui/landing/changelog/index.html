@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Changelog — Scutum</title>
+    <meta name="description" content="What's shipping in Scutum, release by release. Public, dated, falsifiable.">
+    <link rel="canonical" href="https://scutum.dev/changelog/">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" type="image/svg+xml" href="/scutum-mark.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #FFFFFF; --bg-elevated: #FAFAFA;
+            --border: #E5E5E5; --border-hi: #D4D4D4;
+            --text: #0A0A0A; --text-muted: #525252; --text-subtle: #6B7280;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg); color: var(--text);
+            line-height: 1.65; font-size: 15px;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--border-hi); }
+        a:hover { border-bottom-color: var(--text); }
+        nav.top { border-bottom: 1px solid var(--border); padding: 16px 24px; }
+        nav.top a.logo {
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-size: 22px; font-weight: 400; font-style: italic;
+            display: inline-flex; align-items: center; gap: 8px; border: none;
+        }
+        nav.top a.logo img { height: 22px; width: 22px; }
+        main { max-width: 760px; margin: 0 auto; padding: 64px 24px 96px; }
+        h1 {
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-size: 56px; font-weight: 400; font-style: italic;
+            margin: 0 0 8px; letter-spacing: -0.02em;
+        }
+        .meta { color: var(--text-subtle); font-size: 13px; margin-bottom: 56px; }
+        .release {
+            border-top: 1px solid var(--border);
+            padding-top: 40px; margin-top: 40px;
+        }
+        .release:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+        .release-head {
+            display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .release-version {
+            font-size: 28px; font-weight: 600; letter-spacing: -0.02em;
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+        }
+        .release-date {
+            color: var(--text-subtle); font-size: 14px;
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+        }
+        .release-tagline {
+            font-size: 17px; color: var(--text); margin: 0 0 24px;
+        }
+        h3 {
+            font-size: 13px; font-weight: 600; margin: 24px 0 8px;
+            text-transform: uppercase; letter-spacing: 0.06em;
+            color: var(--text-muted);
+        }
+        ul { margin: 0 0 16px; padding-left: 22px; }
+        li { margin-bottom: 6px; color: var(--text); }
+        li strong { font-weight: 600; }
+        code {
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            font-size: 0.85em; padding: 2px 5px; border-radius: 3px;
+            background: var(--bg-elevated); color: var(--text);
+        }
+        .upcoming-note {
+            background: var(--bg-elevated); border-left: 3px solid var(--text);
+            padding: 16px 20px; margin: 32px 0; font-size: 14px;
+        }
+        footer.bottom {
+            border-top: 1px solid var(--border);
+            padding: 24px; text-align: center;
+            color: var(--text-subtle); font-size: 13px;
+        }
+        footer.bottom a { color: inherit; border-bottom-color: var(--border); }
+    </style>
+</head>
+<body>
+    <nav class="top">
+        <a class="logo" href="/"><img src="/scutum-mark.svg" alt="">Scutum</a>
+    </nav>
+    <main>
+        <h1>Changelog</h1>
+        <p class="meta">Public release log. Updated on every tagged release. For the unreleased / in-progress backlog, see <a href="/#status">What's shipped, what's coming</a> on the home page.</p>
+
+        <div class="release">
+            <div class="release-head">
+                <span class="release-version">v0.1.0</span>
+                <span class="release-date">2026-05-03</span>
+            </div>
+            <p class="release-tagline">First customer-shippable release.</p>
+
+            <h3>Release plumbing</h3>
+            <ul>
+                <li><strong>One-line installer</strong>: <code>curl -fsSL https://scutum.dev/install.sh | sh</code> — verifies docker-or-podman, fetches the release-tagged compose file and license public key, generates fresh random secrets, drops a <code>scutum</code> operator CLI.</li>
+                <li><strong><code>scutum</code> operator CLI</strong> — 12 verbs: <code>up</code>, <code>down</code>, <code>restart</code>, <code>logs</code>, <code>ps</code>, <code>pull</code>, <code>upgrade</code>, <code>backup</code>, <code>restore</code>, <code>activate</code>, <code>license</code>, <code>exec</code>, <code>config</code>. POSIX <code>sh</code>, runs under <code>docker compose</code> or <code>podman-compose</code>.</li>
+                <li><strong><code>docker-compose.release.yaml</code></strong> — image-only customer-safe compose. References pre-built multi-arch images at <code>${SCUTUM_VERSION}</code>. 6 services up by default; optional <code>--profile sre|finops|observability|full</code>.</li>
+                <li><strong>GitHub Actions release pipeline</strong> — on <code>v*</code> tag push, builds and pushes 7 multi-arch (amd64+arm64) service images with both <code>:version</code> and <code>:latest</code> tags.</li>
+            </ul>
+
+            <h3>License enforcement</h3>
+            <ul>
+                <li><strong>30-day trial / paid license validation</strong> — Ed25519-signed JWTs verified offline against a public key bundled in the admin-api image. No phone-home.</li>
+                <li><code>GET /api/v1/license</code> (public) and <code>POST /api/v1/license/activate</code> (admin).</li>
+                <li>5-minute background revalidator so refreshed licenses take effect without restart.</li>
+            </ul>
+
+            <h3>SRE agent</h3>
+            <ul>
+                <li>LLM-driven incident remediation with human-in-loop approval. Four trigger events (<code>provider.unhealthy</code>, <code>budget.exceeded</code>, <code>sla.violation</code>, <code>latency.spike</code>). Risk-scored 0–100 actions; profile-gated.</li>
+            </ul>
+
+            <h3>Marketing surfaces (scutum.dev internal only)</h3>
+            <ul>
+                <li>B2B-positioned landing page with comparison table, pricing tiers, research section, and Cal.com-backed Book-a-Demo form.</li>
+                <li>mkdocs-material docs site at <a href="/docs/">scutum.dev/docs</a>, brand-matched to the landing.</li>
+                <li>Dedicated <code>marketing</code> Compose profile so these surfaces never deploy on customer infrastructure.</li>
+            </ul>
+
+            <h3>Changed</h3>
+            <ul>
+                <li>Rebranded the project's placeholder name to <strong>Scutum</strong> across README, docs, configs.</li>
+                <li>Customer-facing docs reframe references from "the LiteLLM proxy" to "the Scutum proxy". Customer-facing API key is <code>SCUTUM_API_KEY</code> (translated to <code>LITELLM_MASTER_KEY</code> internally).</li>
+            </ul>
+
+            <h3>Fixed</h3>
+            <ul>
+                <li>Migration 007 cold-start race when <code>LiteLLM_SpendLogs</code> doesn't exist yet (LiteLLM creates that table at runtime via Prisma). Now skips view creation gracefully; <code>_ensure_cost_view</code> background task creates it once LiteLLM finishes booting.</li>
+                <li><code>transaction_per_migration=True</code> in alembic env so a transient failure in migration N doesn't roll back the whole chain.</li>
+            </ul>
+
+            <h3>Compatibility</h3>
+            <ul>
+                <li>Compose-spec compatible — runs unchanged under <code>docker compose</code>, <code>podman-compose</code>, or <code>nerdctl compose</code>. No Docker Inc commercial license required for any production runtime.</li>
+            </ul>
+        </div>
+
+        <div class="upcoming-note">
+            <strong>What we're working on next.</strong> See the live <a href="/#status">"What's shipped, what's coming"</a> section on the home page for the dated roadmap. Highlights: SAML/SCIM in Q3, risk-scored auto-execution and per-request quality estimation in Q4, SOC 2 Type I in Q3 2026, Type II + HIPAA BAA in Q1 2027.
+        </div>
+    </main>
+    <footer class="bottom">
+        © 2026 Scutum · <a href="/">Home</a> · <a href="/docs/">Docs</a> · <a href="/privacy/">Privacy</a>
+    </footer>
+</body>
+</html>
