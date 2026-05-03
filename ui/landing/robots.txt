@@ -1,27 +1,41 @@
+# Content Signals (contentsignals.org / IETF draft) — declarative AI-usage
+# preferences. We allow search indexing and AI grounding-at-query-time
+# (because buyers increasingly research in Claude / ChatGPT / Perplexity /
+# Gemini), but disallow training without explicit permission.
 User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
 Disallow: /api/
 
-# AI search bots are explicitly allowed — buyers increasingly start research in
-# ChatGPT, Claude, Perplexity, and Gemini. Being indexed by them is now part of
-# discovery, not a tax. Listed explicitly so the intent is clear.
+# AI search bots explicitly allowed for crawling. Listed by name so the
+# intent is unambiguous to bots that use UA-based gating rather than
+# Content-Signal.
 User-agent: GPTBot
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
 User-agent: ChatGPT-User
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
 User-agent: ClaudeBot
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
 User-agent: anthropic-ai
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
 User-agent: Claude-Web
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
 User-agent: PerplexityBot
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
 User-agent: Google-Extended
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
 User-agent: CCBot
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
 User-agent: Bytespider
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
 
 Sitemap: https://scutum.dev/sitemap.xml

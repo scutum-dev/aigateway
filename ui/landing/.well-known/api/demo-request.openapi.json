@@ -1,0 +1,162 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Scutum Demo Request API",
+    "version": "0.1.0",
+    "description": "Public-facing endpoint backing the Book-a-Demo form on scutum.dev. Persists requests to a database, optionally books a Cal.com slot, and notifies the founder team. Rate-limited per IP with email-axis dedup. Honeypot field rejected silently.",
+    "contact": {
+      "name": "Scutum",
+      "email": "hello@scutum.dev",
+      "url": "https://scutum.dev/"
+    },
+    "license": {
+      "name": "Proprietary — see /terms/",
+      "url": "https://scutum.dev/terms/"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://scutum.dev",
+      "description": "Production"
+    }
+  ],
+  "paths": {
+    "/api/demo-request": {
+      "post": {
+        "operationId": "submitDemoRequest",
+        "summary": "Submit a demo request",
+        "description": "Persists the demo request, optionally books a Cal.com slot if `preferred_window.start_iso` is supplied, and sends an internal alert. Returns the persisted row id. Per-IP rate limit and per-email dedup window apply (default 5 requests / 1 hour).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DemoRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request persisted (and possibly booked).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DemoRequestResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded for this IP."
+          },
+          "503": {
+            "description": "Database unavailable; request was not persisted."
+          }
+        }
+      }
+    },
+    "/api/demo-availability": {
+      "get": {
+        "operationId": "getDemoAvailability",
+        "summary": "Fetch available demo slots from Cal.com",
+        "parameters": [
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "date", "example": "2026-05-10" }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "date", "example": "2026-05-17" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of bookable slots in the date range.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "description": "Cal.com availability response (passthrough). Shape governed by Cal.com's /v1/availability endpoint."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "HTTP client to Cal.com not initialized."
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "summary": "Landing-backend health probe",
+        "responses": {
+          "200": {
+            "description": "Service healthy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "enum": ["healthy"] },
+                    "db": { "type": "boolean" },
+                    "calcom_configured": { "type": "boolean" },
+                    "smtp_configured": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DemoRequest": {
+        "type": "object",
+        "required": ["name", "work_email"],
+        "properties": {
+          "name":           { "type": "string", "minLength": 1, "maxLength": 120 },
+          "work_email":     { "type": "string", "format": "email" },
+          "company":        { "type": "string", "maxLength": 200, "nullable": true },
+          "role":           { "type": "string", "maxLength": 120, "nullable": true },
+          "team_size":      { "type": "string", "maxLength": 40,  "nullable": true },
+          "use_case":       { "type": "string", "maxLength": 4000, "nullable": true },
+          "preferred_window": { "$ref": "#/components/schemas/PreferredWindow", "nullable": true },
+          "company_field":  { "type": "string", "description": "HONEYPOT — must be empty. Submissions with non-empty value are silently dropped." }
+        }
+      },
+      "PreferredWindow": {
+        "type": "object",
+        "properties": {
+          "date":         { "type": "string", "format": "date", "nullable": true },
+          "time_of_day":  { "type": "string", "enum": ["morning", "afternoon", "evening"], "nullable": true },
+          "timezone":     { "type": "string", "description": "IANA timezone, e.g. America/Los_Angeles", "nullable": true },
+          "start_iso":    { "type": "string", "format": "date-time", "nullable": true },
+          "end_iso":      { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "DemoRequestResponse": {
+        "type": "object",
+        "required": ["ok", "id"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "id": { "type": "string", "description": "UUID of the persisted demo_request row, or 'honeypot' if the bot trap was tripped." },
+          "deduped": { "type": "boolean", "description": "Set to true if the same email submitted within the rate-limit window; the existing row id is returned." },
+          "booking": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "url":    { "type": "string", "format": "uri", "description": "Cal.com meeting URL if booking succeeded." },
+              "status": { "type": "string", "enum": ["scheduled", "failed", "not_attempted"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

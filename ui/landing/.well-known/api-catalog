@@ -1,0 +1,46 @@
+{
+  "$comment": "Scutum API catalog (RFC 9727). Lists the public APIs scutum.dev itself exposes. The Scutum platform's own admin-api and OpenAI-compatible LLM proxy run on customer-deployed instances (not on scutum.dev) — they're documented at /docs/guides/api-integration/ and customers should advertise their own /.well-known/api-catalog when they deploy. Content-Type: application/linkset+json per RFC 9264.",
+  "linkset": [
+    {
+      "anchor": "https://scutum.dev/api/demo-request",
+      "service-desc": [
+        {
+          "href": "https://scutum.dev/.well-known/api/demo-request.openapi.json",
+          "type": "application/openapi+json",
+          "title": "OpenAPI 3.1 spec for the demo-request endpoint"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://scutum.dev/",
+          "type": "text/html",
+          "title": "Book a demo (form-driven; the API is a thin server-side wrapper)"
+        }
+      ],
+      "status": [
+        {
+          "href": "https://scutum.dev/health",
+          "type": "application/json",
+          "title": "Landing-backend health probe"
+        }
+      ]
+    },
+    {
+      "anchor": "https://scutum.dev/.well-known/agent-skills/index.json",
+      "service-desc": [
+        {
+          "href": "https://agentskills.io/schemas/index/v0.2.0.json",
+          "type": "application/schema+json",
+          "title": "Agent Skills Discovery Index schema (Cloudflare RFC v0.2.0)"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://github.com/cloudflare/agent-skills-discovery-rfc",
+          "type": "text/html",
+          "title": "Agent Skills Discovery RFC"
+        }
+      ]
+    }
+  ]
+}
