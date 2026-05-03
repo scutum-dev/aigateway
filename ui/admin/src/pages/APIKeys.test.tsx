@@ -132,7 +132,9 @@ describe('APIKeys', () => {
       error: null,
     })
     renderPage()
-    expect(screen.getByText('sk-abc12...6ghi')).toBeInTheDocument()
+    // The mask function is `token.slice(0, 8) + '...' + token.slice(-4)`.
+    // For input 'test-token-placeholder-1' that's 'test-tok' + '...' + 'er-1'.
+    expect(screen.getByText('test-tok...er-1')).toBeInTheDocument()
   })
 
   it('shows Revoke button on key cards', () => {

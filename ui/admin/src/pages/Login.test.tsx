@@ -26,7 +26,7 @@ describe('Login', () => {
 
   it('renders the heading and subtitle', () => {
     render(<Login onLogin={vi.fn()} />)
-    expect(screen.getByText('AI Control Plane')).toBeInTheDocument()
+    expect(screen.getByText('Scutum')).toBeInTheDocument()
     expect(screen.getByText('Admin Console')).toBeInTheDocument()
   })
 

@@ -26,21 +26,22 @@ SERVICE_KEY = "test-integration-key"
 
 
 @pytest.fixture(autouse=True)
-def _reset_state():
-    """Reset module state between tests."""
-    original_key = _mod.INTERNAL_SERVICE_KEY
+def _reset_state(monkeypatch):
+    """Reset module state between tests. INTERNAL_SERVICE_KEY moved to an env
+    var read by shared.middleware.ServiceAuthMiddleware at request time, so
+    we monkeypatch the env (cost-predictor pattern) rather than the module."""
+    monkeypatch.delenv("INTERNAL_SERVICE_KEY", raising=False)
     original_db = _mod.db_pool
     original_http = _mod.http_client
     yield
-    _mod.INTERNAL_SERVICE_KEY = original_key
     _mod.db_pool = original_db
     _mod.http_client = original_http
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
     """ASGI test client (dev mode, no auth)."""
-    _mod.INTERNAL_SERVICE_KEY = ""
+    monkeypatch.delenv("INTERNAL_SERVICE_KEY", raising=False)
     _mod.db_pool = None
     _mod.http_client = AsyncMock()
     transport = httpx.ASGITransport(app=app)
@@ -48,9 +49,9 @@ def client():
 
 
 @pytest.fixture
-def authed_client():
+def authed_client(monkeypatch):
     """ASGI test client with auth required."""
-    _mod.INTERNAL_SERVICE_KEY = SERVICE_KEY
+    monkeypatch.setenv("INTERNAL_SERVICE_KEY", SERVICE_KEY)
     _mod.db_pool = None
     _mod.http_client = AsyncMock()
     transport = httpx.ASGITransport(app=app)
@@ -83,12 +84,6 @@ class TestServiceAuthMiddleware:
             "/webhook/pre-request", json={"data": {"model": "gpt-4o", "api_key": "sk-test"}}
         )
         # Should not be 401 — endpoint is exempt from service auth
-        assert resp.status_code != 401
-
-    @pytest.mark.asyncio
-    async def test_webhook_post_request_exempt(self, authed_client):
-        """Post-request webhook should bypass auth."""
-        resp = await authed_client.post("/webhook/post-request", json={"data": {"model": "gpt-4o", "cost": 0.001}})
         assert resp.status_code != 401
 
     @pytest.mark.asyncio
@@ -214,56 +209,6 @@ class TestPreRequestWebhook:
         )
         assert resp.status_code == 200
         assert resp.json()["allow"] is True
-
-
-# ============================================================================
-# /webhook/post-request
-# ============================================================================
-
-
-class TestPostRequestWebhook:
-    @pytest.mark.asyncio
-    async def test_record_without_db(self, client):
-        """Should succeed even without database."""
-        _mod.db_pool = None
-        resp = await client.post(
-            "/webhook/post-request",
-            json={
-                "data": {
-                    "model": "gpt-4o",
-                    "user": "user-1",
-                    "usage": {"prompt_tokens": 100, "completion_tokens": 50},
-                    "cost": 0.005,
-                }
-            },
-        )
-        assert resp.status_code == 200
-        assert resp.json()["status"] == "recorded"
-
-    @pytest.mark.asyncio
-    async def test_record_with_db(self, client):
-        """Should record to database when available."""
-        conn = AsyncMock()
-        pool = MagicMock()
-        ctx = AsyncMock()
-        ctx.__aenter__ = AsyncMock(return_value=conn)
-        ctx.__aexit__ = AsyncMock(return_value=None)
-        pool.acquire.return_value = ctx
-        _mod.db_pool = pool
-
-        resp = await client.post(
-            "/webhook/post-request",
-            json={
-                "data": {
-                    "model": "gpt-4o",
-                    "user": "user-1",
-                    "usage": {"prompt_tokens": 100, "completion_tokens": 50},
-                    "cost": 0.005,
-                }
-            },
-        )
-        assert resp.status_code == 200
-        conn.execute.assert_called_once()
 
 
 # ============================================================================

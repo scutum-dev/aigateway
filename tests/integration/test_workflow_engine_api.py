@@ -12,6 +12,10 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
+# Workflow engine has its own requirements.txt with langgraph + temporalio. Those
+# aren't in `tests/requirements.txt`, so on a CI host without them, skip cleanly.
+pytest.importorskip("langgraph", reason="langgraph not installed; install via src/workflow-engine/requirements.txt")
+
 # Load the workflow-engine module
 _service_dir = os.path.join(os.path.dirname(__file__), "../../src/workflow-engine")
 _service_path = os.path.join(_service_dir, "main.py")
@@ -46,21 +50,22 @@ SERVICE_KEY = "test-integration-key"
 
 
 @pytest.fixture(autouse=True)
-def _reset_state():
-    """Reset module state between tests."""
-    original_key = _mod.INTERNAL_SERVICE_KEY
+def _reset_state(monkeypatch):
+    """Reset module state between tests. INTERNAL_SERVICE_KEY moved to env-var
+    via shared.middleware.ServiceAuthMiddleware (cost-predictor pattern); the
+    routes-module dependency injection still uses module-level state."""
+    monkeypatch.delenv("INTERNAL_SERVICE_KEY", raising=False)
     original_repo = _routes_mod._repository
     original_manager = _routes_mod._workflow_manager
     yield
-    _mod.INTERNAL_SERVICE_KEY = original_key
     _routes_mod._repository = original_repo
     _routes_mod._workflow_manager = original_manager
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
     """ASGI test client (dev mode, no auth) with mock dependencies."""
-    _mod.INTERNAL_SERVICE_KEY = ""
+    monkeypatch.delenv("INTERNAL_SERVICE_KEY", raising=False)
     mock_repo = AsyncMock()
     mock_manager = AsyncMock()
     _set_dependencies(mock_repo, mock_manager)
@@ -69,9 +74,9 @@ def client():
 
 
 @pytest.fixture
-def authed_client():
+def authed_client(monkeypatch):
     """ASGI test client with auth required and mock dependencies."""
-    _mod.INTERNAL_SERVICE_KEY = SERVICE_KEY
+    monkeypatch.setenv("INTERNAL_SERVICE_KEY", SERVICE_KEY)
     mock_repo = AsyncMock()
     mock_manager = AsyncMock()
     _set_dependencies(mock_repo, mock_manager)
@@ -80,9 +85,9 @@ def authed_client():
 
 
 @pytest.fixture
-def no_deps_client():
+def no_deps_client(monkeypatch):
     """ASGI test client with no repository or manager set."""
-    _mod.INTERNAL_SERVICE_KEY = ""
+    monkeypatch.delenv("INTERNAL_SERVICE_KEY", raising=False)
     _routes_mod._repository = None
     _routes_mod._workflow_manager = None
     transport = httpx.ASGITransport(app=app)
