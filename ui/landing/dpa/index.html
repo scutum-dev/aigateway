@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Processing Agreement — Scutum</title>
+    <meta name="description" content="Scutum DPA. The platform is self-hosted; in most deployments we are not even a processor.">
+    <link rel="canonical" href="https://scutum.dev/dpa/">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" type="image/svg+xml" href="/scutum-mark.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #FFFFFF; --bg-elevated: #FAFAFA;
+            --border: #E5E5E5; --border-hi: #D4D4D4;
+            --text: #0A0A0A; --text-muted: #525252; --text-subtle: #6B7280;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg); color: var(--text);
+            line-height: 1.65; font-size: 15px;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--border-hi); }
+        a:hover { border-bottom-color: var(--text); }
+        nav.top { border-bottom: 1px solid var(--border); padding: 16px 24px; }
+        nav.top a.logo {
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-size: 22px; font-weight: 400; font-style: italic;
+            display: inline-flex; align-items: center; gap: 8px; border: none;
+        }
+        nav.top a.logo img { height: 22px; width: 22px; }
+        main { max-width: 720px; margin: 0 auto; padding: 64px 24px 96px; }
+        h1 {
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-size: 48px; font-weight: 400; font-style: italic;
+            margin: 0 0 8px; letter-spacing: -0.02em;
+        }
+        .meta { color: var(--text-subtle); font-size: 13px; margin-bottom: 48px; }
+        .meta strong { color: var(--text); }
+        h2 {
+            font-size: 18px; font-weight: 600; margin: 40px 0 12px;
+            padding-top: 24px; border-top: 1px solid var(--border);
+            letter-spacing: -0.005em;
+        }
+        h2:first-of-type { padding-top: 0; border-top: none; }
+        p { margin: 0 0 16px; }
+        ul { margin: 0 0 16px; padding-left: 22px; }
+        li { margin-bottom: 6px; }
+        .lead {
+            background: var(--bg-elevated); border-left: 3px solid var(--text);
+            padding: 16px 20px; margin: 24px 0;
+            font-size: 15px;
+        }
+        .cta-box {
+            border: 1px solid var(--border-hi); border-radius: 6px;
+            padding: 24px; margin: 32px 0; text-align: center;
+        }
+        .cta-box .btn {
+            display: inline-block; padding: 10px 20px;
+            background: var(--text); color: var(--bg);
+            border: none; border-radius: 6px;
+            font-weight: 500; font-size: 14px;
+            margin-top: 12px;
+        }
+        footer.bottom {
+            border-top: 1px solid var(--border);
+            padding: 24px; text-align: center;
+            color: var(--text-subtle); font-size: 13px;
+        }
+        footer.bottom a { color: inherit; border-bottom-color: var(--border); }
+    </style>
+</head>
+<body>
+    <nav class="top">
+        <a class="logo" href="/"><img src="/scutum-mark.svg" alt="">Scutum</a>
+    </nav>
+    <main>
+        <h1>Data Processing Agreement</h1>
+        <p class="meta">Last updated <strong>2026-05-03</strong> · Operated by Scuti Marketplace India (OPC) Pvt Ltd</p>
+
+        <p class="lead">
+            <strong>Most Scutum customers don't need a DPA from us.</strong> The platform is self-hosted: data your applications process stays on your infrastructure and we never see it. Under GDPR / UK GDPR / similar frameworks, we are <em>not</em> the processor — your team is the controller, your provider (OpenAI, Anthropic, etc.) is the processor on the model side, and we are the licensor of the software running between them.
+        </p>
+
+        <h2>When you do need a DPA from us</h2>
+        <p>You need a DPA from Scutum in two cases:</p>
+        <ul>
+            <li><strong>If you use our managed offering</strong> (we run a dedicated Scutum instance for you on our infrastructure). In that mode we are a processor; the DPA binds us to GDPR / CCPA / similar processor obligations.</li>
+            <li><strong>If your security team requires a DPA from every vendor</strong> as a procurement step, even when there's no actual data processing relationship. We sign these.</li>
+        </ul>
+
+        <h2>What our standard DPA covers</h2>
+        <p>The Scutum DPA is based on the EU Standard Contractual Clauses (Module 2: controller-to-processor) with adjustments for our actual data flow. It covers:</p>
+        <ul>
+            <li>Scope of processing (only what's needed to provide the contracted service).</li>
+            <li>Sub-processor list (Cloudflare, OCI, GCP for managed; subset of these for self-hosted+support).</li>
+            <li>Sub-processor change notification (30 days advance for material changes; right to object).</li>
+            <li>Security measures: encryption in transit, encryption at rest where we hold data, access controls, audit logging, key separation per tenant.</li>
+            <li>Breach notification (72 hours per GDPR Art. 33).</li>
+            <li>Data subject rights handling (we forward, you action).</li>
+            <li>International transfer mechanisms (SCCs as adequate transfer mechanism).</li>
+            <li>Audit and inspection rights, with mutually-agreed reasonable scope.</li>
+            <li>Term, termination, and post-termination data return / deletion.</li>
+        </ul>
+
+        <h2>How to get the DPA</h2>
+        <div class="cta-box">
+            <p style="margin:0;">Email us with your legal entity name, country of registration, and the modes you're considering (self-hosted / managed / hybrid). We'll send the version current to your scenario within one business day.</p>
+            <a class="btn" href="mailto:legal@scutum.dev?subject=DPA%20request">legal@scutum.dev</a>
+        </div>
+
+        <h2>Why we don't ship a single PDF here</h2>
+        <p>Two reasons we don't auto-publish a downloadable PDF:</p>
+        <ul>
+            <li>The DPA varies materially based on whether the deployment is self-hosted (we are not a processor) versus managed (we are). A single document forces unhelpful disclaimers throughout.</li>
+            <li>Some customers' legal teams want amendments to specific clauses — sub-processor lists, jurisdiction, audit scope — and serving the negotiation form alongside the standard form is clearer than a hidden track-changes process.</li>
+        </ul>
+
+        <h2>Sub-processors (current list)</h2>
+        <p>For the public website and any sales / onboarding interaction:</p>
+        <ul>
+            <li><strong>Cloudflare</strong> (USA, with EU PoPs) — DNS, TLS termination, edge caching.</li>
+            <li><strong>Google Workspace</strong> (USA, regional storage) — email and calendar at scutum.dev addresses.</li>
+            <li><strong>Cal.com</strong> (USA) — demo booking widget.</li>
+            <li><strong>Resend</strong> (USA) — transactional email.</li>
+            <li><strong>Oracle Cloud Infrastructure</strong> (region: ap-mumbai-1) — host serving scutum.dev.</li>
+            <li><strong>GitHub</strong> (USA) — source repository, image registry.</li>
+        </ul>
+        <p>For managed Scutum deployments, the sub-processor list depends on the region and tier you're contracted to. Documented in the signed DPA.</p>
+
+        <h2>Material changes</h2>
+        <p>We notify customers of material sub-processor changes at least 30 days before the change takes effect. You may object in writing; we work with you to find a mutually-acceptable alternative or, if none is possible, you may terminate the affected service.</p>
+
+        <h2>Contact</h2>
+        <p>DPA requests: <a href="mailto:legal@scutum.dev">legal@scutum.dev</a> · Security questions: <a href="mailto:security@scutum.dev">security@scutum.dev</a></p>
+    </main>
+    <footer class="bottom">
+        © 2026 Scutum · <a href="/">Home</a> · <a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a>
+    </footer>
+</body>
+</html>

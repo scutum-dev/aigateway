@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms — Scutum</title>
+    <meta name="description" content="Terms of service for the Scutum self-hosted AI control plane.">
+    <link rel="canonical" href="https://scutum.dev/terms/">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" type="image/svg+xml" href="/scutum-mark.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #FFFFFF; --bg-elevated: #FAFAFA;
+            --border: #E5E5E5; --border-hi: #D4D4D4;
+            --text: #0A0A0A; --text-muted: #525252; --text-subtle: #6B7280;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg); color: var(--text);
+            line-height: 1.65; font-size: 15px;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--border-hi); }
+        a:hover { border-bottom-color: var(--text); }
+        nav.top { border-bottom: 1px solid var(--border); padding: 16px 24px; }
+        nav.top a.logo {
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-size: 22px; font-weight: 400; font-style: italic;
+            display: inline-flex; align-items: center; gap: 8px; border: none;
+        }
+        nav.top a.logo img { height: 22px; width: 22px; }
+        main { max-width: 720px; margin: 0 auto; padding: 64px 24px 96px; }
+        h1 {
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-size: 48px; font-weight: 400; font-style: italic;
+            margin: 0 0 8px; letter-spacing: -0.02em;
+        }
+        .meta { color: var(--text-subtle); font-size: 13px; margin-bottom: 48px; }
+        .meta strong { color: var(--text); }
+        h2 {
+            font-size: 18px; font-weight: 600; margin: 40px 0 12px;
+            padding-top: 24px; border-top: 1px solid var(--border);
+            letter-spacing: -0.005em;
+        }
+        h2:first-of-type { padding-top: 0; border-top: none; }
+        p { margin: 0 0 16px; }
+        ul { margin: 0 0 16px; padding-left: 22px; }
+        li { margin-bottom: 6px; }
+        .draft-banner {
+            background: #FEF3C7; border: 1px solid #FCD34D; color: #92400E;
+            padding: 12px 16px; border-radius: 6px; font-size: 14px; margin-bottom: 32px;
+        }
+        footer.bottom {
+            border-top: 1px solid var(--border);
+            padding: 24px; text-align: center;
+            color: var(--text-subtle); font-size: 13px;
+        }
+        footer.bottom a { color: inherit; border-bottom-color: var(--border); }
+    </style>
+</head>
+<body>
+    <nav class="top">
+        <a class="logo" href="/"><img src="/scutum-mark.svg" alt="">Scutum</a>
+    </nav>
+    <main>
+        <h1>Terms</h1>
+        <p class="meta">Last updated <strong>2026-05-03</strong> · Operated by Scuti Marketplace India (OPC) Pvt Ltd</p>
+
+        <div class="draft-banner">
+            These terms govern use of the public website and self-managed Scutum software in trial. <strong>Paid contracts are individually negotiated.</strong> Anything material to your deployment — SLA, indemnification, term length, jurisdiction overrides — lives in the signed order form, not here. Send questions to <a href="mailto:legal@scutum.dev">legal@scutum.dev</a>.
+        </div>
+
+        <h2>1. Definitions</h2>
+        <p><strong>"Scutum"</strong> refers to Scuti Marketplace India (OPC) Pvt Ltd, the company operating scutum.dev and licensing the Scutum software. <strong>"Software"</strong> refers to the Scutum self-hosted control plane and associated container images. <strong>"You"</strong> refers to the individual or organization accessing the website or running the Software.</p>
+
+        <h2>2. License grant</h2>
+        <p>Subject to a valid license JWT issued by Scutum, you receive a non-exclusive, non-transferable, worldwide license to install and operate the Software for your organization's internal use, scoped to the tenancy described in the JWT. The license expires on the date encoded in the JWT.</p>
+        <p>Trial licenses (30-day) are issued without payment for evaluation only and may not be used for production traffic with paying customers.</p>
+
+        <h2>3. What you may not do</h2>
+        <ul>
+            <li>Re-distribute, sub-license, or resell the Software or container images.</li>
+            <li>Remove or modify the license validation, copyright notices, or audit logging.</li>
+            <li>Use the Software to violate applicable law, infringe third-party rights, or evade your provider AUPs.</li>
+            <li>Reverse-engineer the Software except as required by mandatory law in your jurisdiction.</li>
+        </ul>
+
+        <h2>4. Your data, your responsibility</h2>
+        <p>The Software runs on your infrastructure. Data your applications send through Scutum stays on your infrastructure. You are the data controller for that data and are responsible for: (a) compliance with privacy law applicable to your end-users, (b) the keys and credentials you supply to providers (OpenAI, Anthropic, etc.), and (c) the policies you configure in the Admin Console.</p>
+
+        <h2>5. Provider terms apply downstream</h2>
+        <p>Scutum routes your requests to LLM providers under <em>your</em> API keys and <em>your</em> contracts with those providers. Their terms apply to that traffic; we don't re-paper their licenses.</p>
+
+        <h2>6. Updates</h2>
+        <p>We publish updates. You decide when to install them. Critical security patches are flagged in the changelog and we recommend applying within 7 days. Long-running unmaintained installations may eventually fall outside support coverage.</p>
+
+        <h2>7. Warranty</h2>
+        <p>The Software is provided "as is" during trial and under best-effort during paid term unless the signed order form provides differently. We don't warrant uninterrupted operation, error-free output of LLM providers, or fitness for a particular regulated use-case unless explicitly contracted.</p>
+
+        <h2>8. Limitation of liability</h2>
+        <p>To the maximum extent permitted by law, Scutum's aggregate liability arising from or related to your use of the Software is limited to the fees you paid to Scutum in the twelve months preceding the claim. We are not liable for indirect, incidental, consequential, or punitive damages including lost profits, lost data, or business interruption.</p>
+
+        <h2>9. Termination</h2>
+        <p>You may stop using the Software at any time. We may terminate the license on material breach with reasonable notice (definitions of "material" and "reasonable" sit in the order form for paid customers). Sections 4, 7, 8, and 11 survive termination.</p>
+
+        <h2>10. Trademarks</h2>
+        <p>"Scutum" and the shield logo are trademarks of Scuti Marketplace India (OPC) Pvt Ltd. You may use them in factual reference to the product (e.g., "we use Scutum") but not to imply endorsement or partnership without our written consent.</p>
+
+        <h2>11. Governing law and venue</h2>
+        <p>These terms are governed by the laws of India. Disputes that cannot be resolved between the parties are subject to the courts of Bengaluru, Karnataka — unless your signed order form provides for arbitration or alternative venue.</p>
+
+        <h2>12. Changes</h2>
+        <p>We may update these terms; if the changes are material we'll email registered customers at least 30 days before the new terms take effect.</p>
+
+        <h2>Contact</h2>
+        <p>Legal: <a href="mailto:legal@scutum.dev">legal@scutum.dev</a> · General: <a href="mailto:hello@scutum.dev">hello@scutum.dev</a></p>
+    </main>
+    <footer class="bottom">
+        © 2026 Scutum · <a href="/">Home</a> · <a href="/privacy/">Privacy</a> · <a href="/dpa/">DPA</a>
+    </footer>
+</body>
+</html>
