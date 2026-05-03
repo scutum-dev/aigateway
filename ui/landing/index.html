@@ -1187,11 +1187,19 @@ $ curl localhost:4000/v1/models | jq</pre>
                         <th>BYO Models</th>
                     </tr>
                 </thead>
-                <tbody></tbody>
+                <tbody>
+                    <tr class="us"><td>Scutum</td><td><span class="neutral">Unified LLM + MCP + A2A</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="neutral">LangGraph + Temporal</span></td><td><span class="neutral">Yes (HITL)</span></td><td><span class="neutral">Built-in</span></td><td><span class="neutral">OIDC (Business+)</span></td><td><span class="neutral">Configurable retention</span></td><td><span class="neutral">tiktoken pre-call</span></td><td><span class="neutral">Per-team, hard + soft</span></td><td><span class="yes">Yes</span></td><td><span class="neutral">Yes (vLLM, Ollama)</span></td></tr>
+                    <tr><td>OpenRouter</td><td><span class="neutral">LLM proxy only</span></td><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="neutral">Per-key spend</span></td><td><span class="no">No</span></td><td><span class="neutral">Limited</span></td></tr>
+                    <tr><td>Portkey</td><td><span class="neutral">LLM proxy + observability</span></td><td><span class="neutral">OSS basic</span></td><td><span class="yes">Yes</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="neutral">Enterprise</span></td><td><span class="neutral">Enterprise</span></td><td><span class="neutral">Post-call</span></td><td><span class="yes">Yes</span></td><td><span class="no">No</span></td><td><span class="yes">Yes</span></td></tr>
+                    <tr><td>LangSmith</td><td><span class="neutral">Observability only</span></td><td><span class="neutral">Self-host Enterprise</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="neutral">Observe only</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="neutral">Enterprise</span></td><td><span class="neutral">Enterprise</span></td><td><span class="neutral">Post-call traces</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="neutral">Trace-only</span></td></tr>
+                    <tr><td>AWS Bedrock</td><td><span class="neutral">LLM API (AWS-only)</span></td><td><span class="no">No</span></td><td><span class="neutral">Raw API</span></td><td><span class="no">No</span></td><td><span class="neutral">Step Functions (separate)</span></td><td><span class="no">No</span></td><td><span class="neutral">Bedrock Guardrails</span></td><td><span class="neutral">IAM</span></td><td><span class="neutral">CloudTrail</span></td><td><span class="no">No</span></td><td><span class="neutral">AWS Budgets</span></td><td><span class="neutral">AWS Cost Allocation tags</span></td><td><span class="neutral">Custom Models</span></td></tr>
+                    <tr><td>Apigee</td><td><span class="neutral">API gateway (general)</span></td><td><span class="neutral">GCP only</span></td><td><span class="neutral">Generic, not LLM-aware</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="neutral">Generic policies</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="no">No</span></td><td><span class="neutral">Quota</span></td><td><span class="no">No</span></td><td><span class="no">N/A</span></td></tr>
+                    <tr><td>Roll your own</td><td><span class="neutral">You build it</span></td><td><span class="neutral">Trivially</span></td><td><span class="neutral">You build</span></td><td><span class="neutral">You build</span></td><td><span class="neutral">You build</span></td><td><span class="neutral">You build</span></td><td><span class="neutral">You build</span></td><td><span class="neutral">You build</span></td><td><span class="neutral">You build</span></td><td><span class="neutral">You build</span></td><td><span class="neutral">You build</span></td><td><span class="neutral">You build</span></td><td><span class="neutral">Anything</span></td></tr>
+                </tbody>
             </table>
         </div>
         <p class="cmp-note">
-            Comparison verified <span id="cmp-verified-at"></span>. AWS Bedrock is the LLM API itself,
+            Comparison verified <span id="cmp-verified-at">2026-05</span>. AWS Bedrock is the LLM API itself,
             not a control plane. LangSmith is observability for LangGraph apps; the agent runtime is LangGraph,
             not LangSmith. Always confirm current capabilities on each vendor's site.
             <strong>Found a row that's wrong?</strong> Email <a href="mailto:hello@scutum.dev?subject=Comparison%20table%20fix" style="color:inherit;border-bottom:1px solid var(--border-hi);">hello@scutum.dev</a> and we'll correct it on the next deploy.
@@ -1258,7 +1266,50 @@ $ curl localhost:4000/v1/models | jq</pre>
                 <h3>You run it on your infrastructure.</h3>
                 <p>Lowest price. We license the software and ship updates. Your data, your provider keys, your audit log all stay on your side. SRE auto-remediation is an opt-in add-on.</p>
             </div>
-            <div class="pricing-grid pricing-grid--3" id="pricing-grid-selfhosted"></div>
+            <div class="pricing-grid pricing-grid--3" id="pricing-grid-selfhosted">
+                <div class="price-card">
+                    <div class="price-name">Free Trial</div>
+                    <div class="price-amt">$0<small> first 30 days</small></div>
+                    <div class="price-tagline">Full features. Setup call required.</div>
+                    <ul class="price-features">
+                            <li><i class="fa-solid fa-check"></i> All 100+ models, MCP &amp; A2A</li>
+                            <li><i class="fa-solid fa-check"></i> Unlimited team members</li>
+                            <li><i class="fa-solid fa-check"></i> Pre-call cost prediction + per-team budgets</li>
+                            <li><i class="fa-solid fa-check"></i> OpenTelemetry, Grafana dashboards</li>
+                            <li><i class="fa-solid fa-check"></i> 30-min onboarding with the founder</li>
+                    </ul>
+                    <button class="btn btn-secondary" onclick="openDemoModal()">Request trial access</button>
+                </div>
+                <div class="price-card featured">
+                    <div class="price-name">License</div>
+                    <div class="price-amt">$99<small> /month</small></div>
+                    <div class="price-tagline">You run it. We keep it licensed.</div>
+                    <ul class="price-features">
+                            <li><i class="fa-solid fa-check"></i> Unlimited team members</li>
+                            <li><i class="fa-solid fa-check"></i> All providers, all models</li>
+                            <li><i class="fa-solid fa-check"></i> Cost dashboards + per-team budgets</li>
+                            <li><i class="fa-solid fa-check"></i> OIDC SSO (Google, Okta, Azure AD)</li>
+                            <li><i class="fa-solid fa-check"></i> 90-day audit log</li>
+                            <li><i class="fa-solid fa-check"></i> Email support</li>
+                            <li><i class="fa-solid fa-check"></i> Self-hosted on your infrastructure</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="openDemoModal()">Book a demo</button>
+                </div>
+                <div class="price-card">
+                    <div class="price-name">License + SRE</div>
+                    <div class="price-amt">$179<small> /month</small></div>
+                    <div class="price-tagline">Adds the SRE auto-remediation agent.</div>
+                    <ul class="price-features">
+                            <li><i class="fa-solid fa-check"></i> Everything in License</li>
+                            <li><i class="fa-solid fa-check"></i> SRE agent (LLM-driven, HITL approval)</li>
+                            <li><i class="fa-solid fa-check"></i> Four-component risk scoring</li>
+                            <li><i class="fa-solid fa-check"></i> Slack / PagerDuty / webhook alerts</li>
+                            <li><i class="fa-solid fa-check"></i> Risk-bounded auto-execution roadmap (Q4)</li>
+                            <li><i class="fa-solid fa-check"></i> Action-library updates included</li>
+                    </ul>
+                    <button class="btn btn-secondary" onclick="openDemoModal()">Book a demo</button>
+                </div>
+            </div>
         </div>
 
         <div class="pricing-section">
@@ -1267,7 +1318,50 @@ $ curl localhost:4000/v1/models | jq</pre>
                 <h3>Or let us run a dedicated instance.</h3>
                 <p>We provision the stack, do the upgrades, take the on-call pages. You get a console URL and a service-account token. Higher price covers our operational tax — backups, 24/7, BAA, multi-region.</p>
             </div>
-            <div class="pricing-grid pricing-grid--3" id="pricing-grid-managed"></div>
+            <div class="pricing-grid pricing-grid--3" id="pricing-grid-managed">
+                <div class="price-card">
+                    <div class="price-name">Trial</div>
+                    <div class="price-amt">$0<small> first 30 days</small></div>
+                    <div class="price-tagline">Free trial on the managed offering.</div>
+                    <ul class="price-features">
+                            <li><i class="fa-solid fa-check"></i> Per-customer namespace</li>
+                            <li><i class="fa-solid fa-check"></i> Single region</li>
+                            <li><i class="fa-solid fa-check"></i> We provision in 24h</li>
+                            <li><i class="fa-solid fa-check"></i> Convert to Business or Enterprise after trial</li>
+                    </ul>
+                    <button class="btn btn-secondary" onclick="openDemoModal()">Request trial access</button>
+                </div>
+                <div class="price-card featured">
+                    <div class="price-name">Business Managed</div>
+                    <div class="price-amt">$1,299<small> /month</small></div>
+                    <div class="price-tagline">We run it. You drive it.</div>
+                    <ul class="price-features">
+                            <li><i class="fa-solid fa-check"></i> Per-customer dedicated instance</li>
+                            <li><i class="fa-solid fa-check"></i> We handle setup, upgrades, backups</li>
+                            <li><i class="fa-solid fa-check"></i> 24/7 on-call</li>
+                            <li><i class="fa-solid fa-check"></i> 99.9% uptime target</li>
+                            <li><i class="fa-solid fa-check"></i> Single region (US, EU, India, or SE Asia)</li>
+                            <li><i class="fa-solid fa-check"></i> BYO KMS for your secrets</li>
+                            <li><i class="fa-solid fa-check"></i> Includes everything in self-hosted License + SRE</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="openDemoModal()">Book a demo</button>
+                </div>
+                <div class="price-card">
+                    <div class="price-name">Enterprise Managed</div>
+                    <div class="price-amt">From $5k<small> /month</small></div>
+                    <div class="price-tagline">Multi-region, SLA, BAA.</div>
+                    <ul class="price-features">
+                            <li><i class="fa-solid fa-check"></i> Multi-region failover</li>
+                            <li><i class="fa-solid fa-check"></i> 99.95% contractual SLA with credits</li>
+                            <li><i class="fa-solid fa-check"></i> BAA + custom DPA</li>
+                            <li><i class="fa-solid fa-check"></i> Dedicated CSM</li>
+                            <li><i class="fa-solid fa-check"></i> On-prem option</li>
+                            <li><i class="fa-solid fa-check"></i> Configurable audit retention up to 7 years</li>
+                            <li><i class="fa-solid fa-check"></i> Chargeback + cost-allocation reports</li>
+                    </ul>
+                    <button class="btn btn-secondary" onclick="openDemoModal()">Talk to sales</button>
+                </div>
+            </div>
         </div>
 
         <div class="free-month-banner">
@@ -1283,7 +1377,44 @@ $ curl localhost:4000/v1/models | jq</pre>
             <h2>What we're <span class="em">working on</span><br>that isn't shipped yet.</h2>
             <p>The angles we think are unsolved at the AI-infrastructure layer. None of these are published papers — they're directions our roadmap is pulling toward. If one resonates, write to us; we collaborate with people working on the same problems.</p>
         </div>
-        <div class="research-grid" id="research-grid"></div>
+        <div class="research-grid" id="research-grid">
+                <div class="research-card">
+                    <div class="tag">Safety</div>
+                    <h3>AI Safety at the Infrastructure Layer</h3>
+                    <p>What safety properties can the platform layer enforce that the model layer can&#x27;t reliably guarantee? Action-space closure, audit, and human-in-loop gates as complementary disciplines to model-side safety work.</p>
+                    <a class="read-link" href="/docs/research/ai-safety/">Read the paper <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>
+                </div>
+                <div class="research-card">
+                    <div class="tag">Explainability</div>
+                    <h3>Explainable AI at the Platform Layer</h3>
+                    <p>At the infrastructure layer, explainability is audit + decision provenance — not &quot;why the model said X&quot; but &quot;why the platform allowed X.&quot; A complementary surface to model interpretability.</p>
+                    <a class="read-link" href="/docs/research/explainable-ai/">Read the paper <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>
+                </div>
+                <div class="research-card">
+                    <div class="tag">Context</div>
+                    <h3>Context Window Management</h3>
+                    <p>Hybrid long-context, RAG, and semantic cache — when each pays back, where each fails, and what the platform owes each pattern. Auto-routing between them is the open problem.</p>
+                    <a class="read-link" href="/docs/research/context-windows/">Read the paper <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>
+                </div>
+                <div class="research-card">
+                    <div class="tag">Retrieval</div>
+                    <h3>RAG Performance — measurement at the proxy layer</h3>
+                    <p>End-to-end RAG evaluation across heterogeneous retrieval backends. The proxy is the natural place to publish standardised benchmarks; the literature has not caught up to production.</p>
+                    <a class="read-link" href="/docs/research/rag-performance/">Read the paper <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>
+                </div>
+                <div class="research-card">
+                    <div class="tag">Agents</div>
+                    <h3>Multi-Agent Evaluations</h3>
+                    <p>A2A protocols and the eval substrate that drops out of having audit, cost, and trace data on every step. Trajectory-level decomposition over outcome-level pass/fail.</p>
+                    <a class="read-link" href="/docs/research/multi-agent-evaluations/">Read the paper <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>
+                </div>
+                <div class="research-card">
+                    <div class="tag">Adaptive</div>
+                    <h3>Self-Learning Platform Configuration</h3>
+                    <p>What if routing weights, risk-score weights, cache thresholds, and verbosity profiles were continuously refined from operational data — under bounded drift, with auditable updates?</p>
+                    <a class="read-link" href="/docs/research/self-learning/">Read the paper <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>
+                </div>
+        </div>
         <div class="research-foot">All entries are drafts in progress. To collaborate or get notified when one publishes, write to <a href="mailto:research@scutum.dev" style="color:inherit;border-bottom:1px solid var(--border-hi);">research@scutum.dev</a>.</div>
     </div>
 </section>
@@ -1452,6 +1583,7 @@ $ curl localhost:4000/v1/models | jq</pre>
 <script>
     (function renderComparison() {
         const tbody = document.querySelector('#comparison-table tbody');
+        if (tbody && tbody.children.length > 0) return;
         const cols = ['scope', 'selfHost', 'llmProxy', 'mcpA2A', 'workflows', 'sreAgent', 'guardrails', 'sso', 'audit', 'costPrediction', 'budgets', 'chargeback', 'byom'];
         for (const row of COMPETITORS) {
             const tr = document.createElement('tr');
@@ -1470,7 +1602,7 @@ $ curl localhost:4000/v1/models | jq</pre>
     (function renderPricing() {
         function renderInto(gridId, tiers) {
             const grid = document.getElementById(gridId);
-            if (!grid) return;
+            if (!grid || grid.children.length > 0) return;
             for (const tier of tiers) {
                 const card = document.createElement('div');
                 card.className = 'price-card' + (tier.featured ? ' featured' : '');
@@ -1492,7 +1624,7 @@ $ curl localhost:4000/v1/models | jq</pre>
 
     (function renderResearch() {
         const grid = document.getElementById('research-grid');
-        if (!grid) return;
+        if (!grid || grid.children.length > 0) return;
         for (const r of RESEARCH) {
             const card = document.createElement('div');
             card.className = 'research-card';
