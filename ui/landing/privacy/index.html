@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy — Scutum</title>
+    <meta name="description" content="Scutum privacy policy. What we collect on scutum.dev, what stays in your tenancy when you self-host.">
+    <link rel="canonical" href="https://scutum.dev/privacy/">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" type="image/svg+xml" href="/scutum-mark.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #FFFFFF; --bg-elevated: #FAFAFA;
+            --border: #E5E5E5; --border-hi: #D4D4D4;
+            --text: #0A0A0A; --text-muted: #525252; --text-subtle: #6B7280;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg); color: var(--text);
+            line-height: 1.65; font-size: 15px;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--border-hi); }
+        a:hover { border-bottom-color: var(--text); }
+        nav.top {
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+        }
+        nav.top a.logo {
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-size: 22px; font-weight: 400; font-style: italic;
+            display: inline-flex; align-items: center; gap: 8px;
+            border: none;
+        }
+        nav.top a.logo img { height: 22px; width: 22px; }
+        main {
+            max-width: 720px; margin: 0 auto;
+            padding: 64px 24px 96px;
+        }
+        h1 {
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-size: 48px; font-weight: 400; font-style: italic;
+            margin: 0 0 8px; letter-spacing: -0.02em;
+        }
+        .meta { color: var(--text-subtle); font-size: 13px; margin-bottom: 48px; }
+        .meta strong { color: var(--text); }
+        h2 {
+            font-size: 18px; font-weight: 600; margin: 40px 0 12px;
+            padding-top: 24px; border-top: 1px solid var(--border);
+            letter-spacing: -0.005em;
+        }
+        h2:first-of-type { padding-top: 0; border-top: none; }
+        p { margin: 0 0 16px; color: var(--text); }
+        ul { margin: 0 0 16px; padding-left: 22px; }
+        li { margin-bottom: 6px; }
+        .draft-banner {
+            background: #FEF3C7; border: 1px solid #FCD34D; color: #92400E;
+            padding: 12px 16px; border-radius: 6px;
+            font-size: 14px; margin-bottom: 32px;
+        }
+        footer.bottom {
+            border-top: 1px solid var(--border);
+            padding: 24px; text-align: center;
+            color: var(--text-subtle); font-size: 13px;
+        }
+        footer.bottom a { color: inherit; border-bottom-color: var(--border); }
+    </style>
+</head>
+<body>
+    <nav class="top">
+        <a class="logo" href="/"><img src="/scutum-mark.svg" alt="">Scutum</a>
+    </nav>
+    <main>
+        <h1>Privacy</h1>
+        <p class="meta">Last updated <strong>2026-05-03</strong> · Operated by Scuti Marketplace India (OPC) Pvt Ltd</p>
+
+        <div class="draft-banner">
+            This document describes our current practice. It will be reviewed by counsel before we onboard a paying customer in a regulated industry. Send legal questions to <a href="mailto:legal@scutum.dev">legal@scutum.dev</a>.
+        </div>
+
+        <h2>What this covers</h2>
+        <p>This page describes what data <strong>we, Scutum the company</strong>, collect about you when you visit our public website, request a demo, or contact us. It does <strong>not</strong> govern the data your team puts <em>through</em> a self-hosted Scutum deployment — that data lives entirely in your infrastructure and we don't see it.</p>
+
+        <h2>What scutum.dev collects</h2>
+        <p>When you visit the public website:</p>
+        <ul>
+            <li><strong>Server access logs</strong> from Cloudflare and our origin host — IP address, user-agent, requested URL, response code. Retained ≤ 30 days for operational diagnostics.</li>
+            <li><strong>Form submissions</strong> when you book a demo or write to us — your name, work email, company, role, team size, and the use-case description you typed. Persisted indefinitely so we can follow up; deletable on request.</li>
+            <li><strong>Calendar booking metadata</strong> via Cal.com (a sub-processor) when you pick a slot — start time, your email, the meeting URL. Retained for the duration of the scheduled meeting plus 90 days.</li>
+        </ul>
+        <p>We do <strong>not</strong> use third-party analytics with cross-site tracking. We do <strong>not</strong> sell or rent personal data to anyone.</p>
+
+        <h2>What self-hosted Scutum collects (about your end-users)</h2>
+        <p>When your team runs Scutum on your infrastructure, the platform processes data your applications send through it — prompts, completions, costs, audit events, etc. <strong>That data stays on your infrastructure.</strong> The platform never sends it to Scutum the company. License validation is offline (Ed25519 signature against a bundled public key); no telemetry is sent home by default.</p>
+
+        <h2>Sub-processors we use for the public site / sales process</h2>
+        <ul>
+            <li><strong>Cloudflare</strong> — TLS termination, DNS, edge caching for scutum.dev.</li>
+            <li><strong>Google Workspace</strong> — email and calendar at scutum.dev addresses.</li>
+            <li><strong>Cal.com</strong> — demo-booking widget on the landing page.</li>
+            <li><strong>Resend</strong> — transactional email (demo confirmations).</li>
+            <li><strong>Oracle Cloud Infrastructure</strong> — the host serving scutum.dev.</li>
+            <li><strong>GitHub</strong> — source repository and image registry.</li>
+        </ul>
+
+        <h2>Your rights</h2>
+        <p>You can request a copy of any data we hold about you, ask us to correct it, or ask us to delete it. Email <a href="mailto:legal@scutum.dev">legal@scutum.dev</a>. We respond within 30 days; usually faster.</p>
+
+        <h2>Cookies</h2>
+        <p>The public website sets one essential session cookie via Cloudflare for security. No advertising cookies, no third-party trackers.</p>
+
+        <h2>Children</h2>
+        <p>Scutum is a B2B product and is not intended for users under 18.</p>
+
+        <h2>Changes</h2>
+        <p>If this policy materially changes we'll update the "Last updated" date at the top and email anyone in our demo-request database whose data is materially affected.</p>
+
+        <h2>Contact</h2>
+        <p>Questions or requests: <a href="mailto:legal@scutum.dev">legal@scutum.dev</a> · General contact: <a href="mailto:hello@scutum.dev">hello@scutum.dev</a></p>
+    </main>
+    <footer class="bottom">
+        © 2026 Scutum · <a href="/">Home</a> · <a href="/terms/">Terms</a> · <a href="/dpa/">DPA</a>
+    </footer>
+</body>
+</html>
