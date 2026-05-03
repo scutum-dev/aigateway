@@ -41,6 +41,12 @@ theme:
 extra_css:
   - stylesheets/scutum.css
 
+extra_javascript:
+  # MathJax config + library for the research whitepapers
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
 extra:
   homepage: https://scutum.dev/
   social:
@@ -80,10 +86,15 @@ nav:
       - Secret Rotation: security/secret-rotation.md
   - FinOps:
       - KPI Definitions: finops/kpi-definitions.md
+  - Research:
+      - Risk-Bounded Autonomous Remediation: research/risk-bounded-remediation.md
+      - Cost-Aware Multi-Provider Routing: research/cost-aware-routing.md
 
 markdown_extensions:
   - admonition
   - pymdownx.details
+  - pymdownx.arithmatex:
+      generic: true
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
