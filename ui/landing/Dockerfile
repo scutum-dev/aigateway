@@ -6,7 +6,9 @@ COPY scutum-mark.svg /usr/share/nginx/html/scutum-mark.svg
 COPY scutum-wordmark.svg /usr/share/nginx/html/scutum-wordmark.svg
 COPY og-image.png /usr/share/nginx/html/og-image.png
 COPY install.sh /usr/share/nginx/html/install.sh
+COPY index.md /usr/share/nginx/html/index.md
 COPY release /usr/share/nginx/html/release
+COPY .well-known /usr/share/nginx/html/.well-known
 COPY privacy /usr/share/nginx/html/privacy
 COPY terms /usr/share/nginx/html/terms
 COPY dpa /usr/share/nginx/html/dpa

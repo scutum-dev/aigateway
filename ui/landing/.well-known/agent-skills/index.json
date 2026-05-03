@@ -1,0 +1,53 @@
+{
+  "$schema": "https://agentskills.io/schemas/index/v0.2.0.json",
+  "$comment": "Scutum agent-skills discovery index. SHA256 digests are point-in-time snapshots of each linked resource at index publication. Re-fetch the resource and re-verify if the digest matters for your workflow.",
+  "publisher": {
+    "name": "Scutum",
+    "url": "https://scutum.dev/",
+    "contact": "hello@scutum.dev"
+  },
+  "skills": [
+    {
+      "name": "scutum.proxy.api",
+      "type": "openai-compatible-llm-proxy",
+      "description": "OpenAI-compatible LLM proxy serving 100+ models across 9 providers (OpenAI, Anthropic, Google, xAI, DeepSeek, Bedrock, Azure, Vertex, Ollama). Drop-in replacement for direct provider calls. Self-hosted or fully managed.",
+      "url": "https://scutum.dev/docs/guides/api-integration/",
+      "sha256": "b96d84961e33ec1079ac2e947d66df9ec73e75f2f0000c82512fe163e04beda4"
+    },
+    {
+      "name": "scutum.install",
+      "type": "operator-runbook",
+      "description": "One-line installer for self-hosted Scutum. POSIX shell. Verifies docker-or-podman, fetches the release-tagged compose file and license public key, generates fresh random secrets, drops a `scutum` operator CLI.",
+      "url": "https://scutum.dev/install.sh",
+      "sha256": "dbfc80b65fc55fe5fe25619a5039e940b916d62fda2bd742739d52afa0d40ac7"
+    },
+    {
+      "name": "scutum.docs.quickstart",
+      "type": "documentation",
+      "description": "Five-minute quickstart for getting Scutum running on your infrastructure. Activation, configuration, first request through the OpenAI-compatible endpoint.",
+      "url": "https://scutum.dev/docs/guides/quickstart/",
+      "sha256": "e984036b5cef4aabe421941b12efdec5a90070dfb04f0ec24351c02c103ffe20"
+    },
+    {
+      "name": "scutum.whitepapers",
+      "type": "engineering-whitepapers",
+      "description": "Six engineering whitepapers covering operating Scutum (best practices, security, managed-vs-self-hosted, platform internals) and the math behind subsystems (risk-bounded SRE remediation, cost-aware multi-provider routing).",
+      "url": "https://scutum.dev/docs/whitepapers/",
+      "sha256": "7e3b29586a835fb94c895985128e626c8d65433480434c9412d6c6cf6d283275"
+    },
+    {
+      "name": "scutum.research",
+      "type": "research-perspectives",
+      "description": "Six research-area perspectives an AI infrastructure company has on AI Safety, Explainable AI, Context Window Management, RAG Performance, Multi-Agent Evaluations, and Self-Learning Platform Configuration.",
+      "url": "https://scutum.dev/docs/research/",
+      "sha256": "bcbd29359f0dc5e231f08103fb28519e280d74a86ef47c921f9fddbcdaf12caf"
+    },
+    {
+      "name": "scutum.changelog",
+      "type": "release-history",
+      "description": "Public release log with dated entries per version. v0.1.0 shipped 2026-05-03 — first customer-shippable build.",
+      "url": "https://scutum.dev/changelog/",
+      "sha256": "2b69aa1ec84412f2508eaf442f41ef3a7867df759e5150d267c088c9f5a92468"
+    }
+  ]
+}
