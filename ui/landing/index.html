@@ -505,10 +505,16 @@
         .footer-grid a:hover { color: var(--text); }
         .footer-bottom {
             border-top: 1px solid var(--border); padding-top: 24px;
-            display: flex; justify-content: space-between;
+            display: flex; justify-content: space-between; align-items: center;
             color: var(--text-subtle); font-size: 13px;
             flex-wrap: wrap; gap: 16px;
         }
+        .footer-social { display: inline-flex; gap: 16px; }
+        .footer-social a {
+            color: var(--text-subtle); font-size: 18px;
+            transition: color 0.15s ease;
+        }
+        .footer-social a:hover { color: var(--text); }
         @media (max-width: 768px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
 
         /* ========== MODAL ========== */
@@ -1152,9 +1158,19 @@ $ curl localhost:4000/v1/models | jq</pre>
                 <a href="/terms/">Terms</a>
                 <a href="/dpa/">DPA</a>
             </div>
+            <div>
+                <h4>Connect</h4>
+                <a href="https://x.com/scutum_dev" target="_blank" rel="noopener">X / Twitter</a>
+                <a href="https://www.linkedin.com/company/scutum-dev" target="_blank" rel="noopener">LinkedIn</a>
+                <a href="mailto:hello@scutum.dev">hello@scutum.dev</a>
+            </div>
         </div>
         <div class="footer-bottom">
             <span>© 2026 Scutum. All rights reserved.</span>
+            <span class="footer-social">
+                <a href="https://x.com/scutum_dev" target="_blank" rel="noopener" aria-label="Scutum on X"><i class="fa-brands fa-x-twitter"></i></a>
+                <a href="https://www.linkedin.com/company/scutum-dev" target="_blank" rel="noopener" aria-label="Scutum on LinkedIn"><i class="fa-brands fa-linkedin"></i></a>
+            </span>
             <span class="mono">scutum.dev</span>
         </div>
     </div>
