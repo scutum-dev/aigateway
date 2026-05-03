@@ -86,9 +86,22 @@ nav:
       - Secret Rotation: security/secret-rotation.md
   - FinOps:
       - KPI Definitions: finops/kpi-definitions.md
+  - Whitepapers:
+      - whitepapers/index.md
+      - Self-Managed Best Practices: whitepapers/self-managed-best-practices.md
+      - Gateway Security: whitepapers/gateway-security.md
+      - Managed vs Self-Hosted: whitepapers/managed-vs-self-hosted.md
+      - Platform Internals: whitepapers/platform-internals.md
+      - Risk-Bounded Autonomous Remediation: whitepapers/risk-bounded-remediation.md
+      - Cost-Aware Multi-Provider Routing: whitepapers/cost-aware-routing.md
   - Research:
-      - Risk-Bounded Autonomous Remediation: research/risk-bounded-remediation.md
-      - Cost-Aware Multi-Provider Routing: research/cost-aware-routing.md
+      - research/index.md
+      - AI Safety: research/ai-safety.md
+      - Explainable AI: research/explainable-ai.md
+      - Context Window Management: research/context-windows.md
+      - RAG Performance: research/rag-performance.md
+      - Multi-Agent Evaluations: research/multi-agent-evaluations.md
+      - Self-Learning Platform: research/self-learning.md
 
 markdown_extensions:
   - admonition

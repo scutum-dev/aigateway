@@ -6,21 +6,12 @@ hide:
 
 # Risk-Bounded Autonomous Remediation
 
-**A theoretical frame for LLM-driven SRE agents — the algorithm Scutum's SRE agent ships.**
+**Engineering whitepaper · Scutum · 2026**
 
-> Working paper · Scutum Research · v0.1, May 2026 · *Draft, comments welcome at <research@scutum.dev>*
+!!! note "What this is"
+    A design note describing how Scutum's SRE agent decides whether an LLM-proposed remediation should auto-execute or require operator approval. It is **not** peer-reviewed research — there are no empirical results here. The math is standard multi-objective scoring; the contribution is the decomposition we settled on after operator interviews. Empirical results, when we run them, publish separately as research.
 
----
-
-## Abstract
-
-We formalise the problem of letting an LLM agent take operational actions against a live AI-infrastructure platform without operator review on every action. The core construct is a **risk score** \( R: \mathcal{A} \times \mathcal{S} \to [0, 100] \) that maps each candidate action \(a \in \mathcal{A}\), in the current platform state \(s \in \mathcal{S}\), to a calibrated scalar. A configurable threshold \(\tau\) defines the human-in-loop boundary: actions with \( R(a, s) \le \tau \) auto-execute; everything else is gated behind operator approval.
-
-The contribution is the decomposition of \(R\) into four orthogonal components — **blast radius**, **reversibility**, **state-validity**, and **operational pressure** — each with an explicit, testable function and an aggregation rule that admits both worst-case and learned variants. We argue that this decomposition is the minimum needed for an autonomous agent to be safe enough to ship to enterprise SRE workflows, and small enough that an operator can audit any score after the fact.
-
-The Scutum SRE agent (`src/sre-agent/risk.py`) implements the formulation directly. We describe the algorithm, the constrained action space it ranges over, the empirically-tuned weights, and the open questions we'd like the field to take on.
-
-## 1. Problem statement
+## Why this exists
 
 A modern AI infrastructure deployment surfaces incidents through several channels: provider-side error rate spikes, latency-percentile excursions, budget breaches, SLA violations, guardrail strikes. Each is observable from instrumentation we already collect (OpenTelemetry traces, Prometheus metrics, the application's own audit log).
 
@@ -30,7 +21,7 @@ LLMs can do (a)–(c) in seconds. They cannot, today, be trusted to do (d) witho
 
 The question we formalise is: **given an action proposed by an LLM agent against the current platform state, what threshold of confidence-and-safety is sufficient to bypass operator approval, and how do we compute it cheaply enough to run at every action?**
 
-## 2. The action space
+## The action library
 
 Let \(\mathcal{A}\) denote the *constrained* action library the agent may propose from. We treat \(\mathcal{A}\) as a closed set, written by humans, every entry of which has:
 
@@ -41,7 +32,7 @@ Let \(\mathcal{A}\) denote the *constrained* action library the agent may propos
 
 Closing \(\mathcal{A}\) under these constraints rules out an enormous class of incidents-by-LLM. The agent cannot construct an action; it can only fill in a template.
 
-## 3. The risk score
+## The risk score
 
 We define
 
@@ -51,7 +42,7 @@ R(a, s) = \min\Bigl( 100,\ \max\bigl( w_{B}\, B(a, s) + w_{R}\, \mathrm{Inv}(a, 
 
 with weights \(w_B, w_R, w_V, w_P \ge 0\) summing to 100 (so the score lives natively in \([0, 100]\)). The four components:
 
-### 3.1 Blast radius \(B(a, s)\)
+### Blast radius \(B(a, s)\)
 
 Blast radius captures *how many entities the action affects*. Concretely, for an action targeting a set \(\mathcal{E}_a \subseteq \mathcal{E}_s\) (where \(\mathcal{E}_s\) is the set of teams, models, or providers active in state \(s\)):
 
@@ -63,7 +54,7 @@ Re-routing a single team's traffic = small \(B\); disabling a provider for the w
 
 A worth-discussing variant uses a *concave* mapping (e.g. \(B \propto \log |\mathcal{E}_a|\)) — punishing the first affected team less than the linear form, because operators tolerate small surgical actions more readily than the math suggests. We have not, in v0.1, observed evidence that the linear form mis-calibrates against operator preferences.
 
-### 3.2 Reversibility \(\mathrm{Inv}(a, s)\)
+### Reversibility \(\mathrm{Inv}(a, s)\)
 
 Some actions are perfectly reversible (a 5-minute circuit-breaker that auto-restores). Some are technically reversible but operationally costly (raising a budget cap creates an audit row that's hard to redact). Some are not reversible at all (paging on-call — you can't un-page).
 
@@ -71,7 +62,7 @@ We score reversibility on a four-step ordinal scale (auto-reverting → triviall
 
 The discreteness is intentional. Operators reason about reversibility categorically, not continuously. Forcing the agent into one of four buckets is auditable and prevents weights from being tuned around fractional differences that don't exist in practice.
 
-### 3.3 State validity \(V(a, s)\)
+### State validity \(V(a, s)\)
 
 Even a low-blast, reversible action can be wrong if it's predicated on a misread of the current state. \(V\) measures *how much of the agent's reasoning about \(s\) is currently true*.
 
@@ -85,7 +76,7 @@ If every precondition holds, \(V = 0\) (safe). If half are stale, \(V = 50\). If
 
 This is the component most analogous to a model-checking gate. It's also where most of v0.1's per-action latency goes — the dry-run runs the full preconditions list against postgres + the LiteLLM SpendLogs view.
 
-### 3.4 Operational pressure \(P(a, s)\)
+### Operational pressure \(P(a, s)\)
 
 Two actions can have identical blast / reversibility / validity profiles but feel very different at 3am on a Friday vs 2pm on a Tuesday. Operational pressure encodes contextual modifiers as a sum of indicator functions:
 
@@ -97,7 +88,7 @@ where the \(\phi_i\) read runtime context (after-hours window per timezone, the 
 
 The intent is to make the same action that auto-executes during business-hours green-zone get gated overnight or during a freeze. Specific \(\delta_i\) values ship as defaults; operators tune them per deployment based on their own risk posture.
 
-## 4. The HITL gate
+## The human-in-loop gate
 
 With \(R(a, s)\) computed, the threshold \(\tau\) is the only knob the operator turns:
 
@@ -112,7 +103,7 @@ Default \(\tau = 40\) in Scutum's shipping config. Operators tune it down in the
 
 A useful frame: \(\tau\) is the operator's *agency budget*. Setting \(\tau\) high authorises the agent to take more autonomous action; setting it low recovers human control at the cost of latency.
 
-## 5. Aggregation: why linear?
+## Why a linear aggregation, not a learned one
 
 We use a linear weighted sum across components. Two alternatives we considered and rejected:
 
@@ -122,7 +113,7 @@ We use a linear weighted sum across components. Two alternatives we considered a
 
 The decomposition itself, though, is the more important contribution than the aggregation. Operators auditing a proposal want to ask "*why* was this scored 35?" — the linear form gives them a per-component breakdown they can inspect (Scutum's UI displays this). A learned model would make audit harder unless paired with explainability work we haven't done yet.
 
-## 6. Implementation notes
+## How this maps to what ships
 
 The shipping system follows §3 directly. Each action proposed by the LLM is scored on the four components, weighted-summed, and clamped to \([0, 100]\). The component weights are *empirically calibrated* — initial values from operator interviews, refined over the first weeks of each deployment against approval/reject signals. Operators who want to inspect or tune weights for their own deployment can do so from the Admin Console; we don't publish a single canonical setting because what's correct varies meaningfully by industry, on-call ratio, and regulatory posture.
 
@@ -130,7 +121,7 @@ The state-validity component (§3.3) is the hottest part of the inner loop. The 
 
 The breakdown the operator sees on every proposal — \(B, \mathrm{Inv}, V, P\) values plus the aggregated score — is exposed in the Admin Console's incident view. Audit-friendly by construction.
 
-## 7. Theoretical questions worth taking on
+## What we don't know yet
 
 The above is shipped. The interesting open problems:
 
@@ -144,20 +135,6 @@ The above is shipped. The interesting open problems:
 
 **(Q5) Adversarial preconditions.** \(V\) trusts the agent to enumerate \(\mathcal{P}_a\) honestly. A misaligned (or compromised) agent could omit preconditions to force \(V = 0\). Sketch of a defence: have the agent and a separate "auditor agent" each generate preconditions; require their union to evaluate.
 
-## 8. Related work
-
-The closest published work is in the *safe exploration* and *human-in-the-loop reinforcement learning* literatures — see Garcia & Fernández, *A Comprehensive Survey on Safe Reinforcement Learning* (JMLR 2015) for the canonical framing, and Christiano et al., *Deep Reinforcement Learning from Human Preferences* (NeurIPS 2017) for the operator-preference-learning angle that informs Q2.
-
-The infrastructure-specific framing — operating on a *live platform*'s *running config* via a constrained action library, rather than a simulated environment — is, to our knowledge, not directly addressed. SRE-as-code projects (Site24x7, Datadog Watchdog) overlap on detection but not on autonomous remediation gates.
-
-We're collecting incidents data from early Scutum deployments to publish a follow-up with empirical numbers. If you're running an SRE workflow that wants to participate (or you have data we should look at), [research@scutum.dev](mailto:research@scutum.dev).
-
-## 9. Acknowledgments
-
-Conversations with operators at three early-design-partner deployments shaped both the action-library closure constraints (§2) and the four-component decomposition (§3). Specific weights in §6 are empirical, not derived — we welcome measurements that suggest different ones.
-
 ---
 
-*Citation*
-
-> Scutum Research. *Risk-Bounded Autonomous Remediation*. Working paper, v0.1, May 2026. <https://scutum.dev/docs/research/risk-bounded-remediation/>
+If you're running an SRE workflow and any of Q1–Q5 resonates, write to us — [hello@scutum.dev](mailto:hello@scutum.dev). We're collecting incidents data from early Scutum deployments and will publish empirical results separately as a research note when the dataset matures. The closest prior thinking is in the *safe exploration* and *human-in-the-loop RL* literatures, and we draw on those framings, but our domain (a live infrastructure platform, not a simulator) is sufficiently different that direct citation isn't useful here.

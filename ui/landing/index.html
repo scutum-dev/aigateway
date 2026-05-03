@@ -618,52 +618,40 @@
     // `link` placeholder until papers/drafts are written; UI shows "Draft in progress" then.
     const RESEARCH = [
         {
-            tag: 'Verification',
-            title: 'Formal Verification of LLM-Generated Code',
-            summary: 'Static analysis at the proxy layer to catch hallucinated APIs, type errors, and unsafe operations before they reach production. Bridging SMT solvers and inference-time validation.',
-            link: null
+            tag: 'Safety',
+            title: 'AI Safety at the Infrastructure Layer',
+            summary: 'What safety properties can the platform layer enforce that the model layer can\'t reliably guarantee? Action-space closure, audit, and human-in-loop gates as complementary disciplines to model-side safety work.',
+            link: '/docs/research/ai-safety/'
         },
         {
-            tag: 'Protocols',
-            title: 'MCP & A2A Protocol Composition',
-            summary: 'Studies of authorization boundaries, capability scoping, and cross-protocol routing when MCP servers and A2A runtimes operate together under a single control plane.',
-            link: null
+            tag: 'Explainability',
+            title: 'Explainable AI at the Platform Layer',
+            summary: 'At the infrastructure layer, explainability is audit + decision provenance — not "why the model said X" but "why the platform allowed X." A complementary surface to model interpretability.',
+            link: '/docs/research/explainable-ai/'
         },
         {
-            tag: 'Autonomy',
-            title: 'Risk-Bounded Autonomous Remediation',
-            summary: 'A theoretical frame for LLM-driven SRE agents — risk scoring, blast-radius bounds, and the human-in-loop approval thresholds that keep auto-remediation safe at scale.',
-            link: '/docs/research/risk-bounded-remediation/'
+            tag: 'Context',
+            title: 'Context Window Management',
+            summary: 'Hybrid long-context, RAG, and semantic cache — when each pays back, where each fails, and what the platform owes each pattern. Auto-routing between them is the open problem.',
+            link: '/docs/research/context-windows/'
         },
         {
-            tag: 'Routing',
-            title: 'Cost-Aware Multi-Provider Routing',
-            summary: 'Optimization model for routing across OpenAI / Anthropic / Bedrock / Azure under combined latency, cost, and reliability constraints. Includes provider-failover game theory.',
-            link: '/docs/research/cost-aware-routing/'
+            tag: 'Retrieval',
+            title: 'RAG Performance — measurement at the proxy layer',
+            summary: 'End-to-end RAG evaluation across heterogeneous retrieval backends. The proxy is the natural place to publish standardised benchmarks; the literature has not caught up to production.',
+            link: '/docs/research/rag-performance/'
         },
         {
-            tag: 'Audit',
-            title: 'Audit Provenance for AI Workflows',
-            summary: 'How to maintain immutable audit chains across multi-agent workflows where individual steps run on different LLMs, providers, or geographies — at SOC2 / HIPAA fidelity.',
-            link: null
+            tag: 'Agents',
+            title: 'Multi-Agent Evaluations',
+            summary: 'A2A protocols and the eval substrate that drops out of having audit, cost, and trace data on every step. Trajectory-level decomposition over outcome-level pass/fail.',
+            link: '/docs/research/multi-agent-evaluations/'
         },
         {
-            tag: 'Policy',
-            title: 'Cedar Policy for AI Authorization',
-            summary: 'Extending the Cedar policy language to constrain AI actions: routing rules, model-access tiers, prompt-content gates. A formal grammar for what an agent is allowed to do.',
-            link: null
-        },
-        {
-            tag: 'Caching',
-            title: 'Semantic Cache & PII Boundaries',
-            summary: 'When is the embedding distance between two prompts low enough to share a response, and when does that cross into a correctness or compliance boundary?',
-            link: null
-        },
-        {
-            tag: 'Approval',
-            title: 'Human-in-Loop Approval Theory',
-            summary: 'Operationalising approval queues for autonomous agents: expected-loss models, reviewer-fatigue effects, and escalation policies for high-stakes decisions.',
-            link: null
+            tag: 'Adaptive',
+            title: 'Self-Learning Platform Configuration',
+            summary: 'What if routing weights, risk-score weights, cache thresholds, and verbosity profiles were continuously refined from operational data — under bounded drift, with auditable updates?',
+            link: '/docs/research/self-learning/'
         }
     ];
 </script>
