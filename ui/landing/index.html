@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scutum — Unified LLM, MCP & A2A Infrastructure</title>
-    <meta name="description" content="The unified control plane for AI infrastructure. LLM proxy, MCP/A2A gateway, agent workflows, SRE auto-remediation, audit. Self-hosted. Compliance-aware.">
+    <meta name="description" content="The unified control plane for AI infrastructure. LLM proxy, MCP/A2A gateway, agent workflows, SRE auto-remediation. Self-hosted. Audit log on every mutation. Ed25519 offline license.">
 
     <!-- SEO: canonical + indexing -->
     <link rel="canonical" href="https://scutum.dev/">
@@ -55,12 +55,13 @@
           "name": "Scutum",
           "applicationCategory": "DeveloperApplication",
           "operatingSystem": "Linux, Docker, Kubernetes",
-          "description": "Unified control plane for AI infrastructure: LLM proxy, MCP/A2A gateway, agent workflows, cost governance, audit, and SRE auto-remediation. Self-hosted, SOC2-aware.",
+          "description": "Unified control plane for AI infrastructure: LLM proxy, MCP/A2A gateway, agent workflows, cost governance, audit, and SRE auto-remediation. Self-hosted.",
+          "// pricing-source-of-truth": "Mirrored from window.PRICING below. Keep in sync with the on-page pricing cards — search engines indexing this JSON-LD don't run JS, so rendering from the JS array would lose Google rich-result eligibility.",
           "offers": [
-            {"@type": "Offer", "name": "Free Trial",  "price": "0",   "priceCurrency": "USD", "description": "30 days, full features"},
-            {"@type": "Offer", "name": "Team",        "price": "199", "priceCurrency": "USD", "billingDuration": "P1M"},
-            {"@type": "Offer", "name": "Business",    "price": "999", "priceCurrency": "USD", "billingDuration": "P1M"},
-            {"@type": "Offer", "name": "Enterprise",  "description": "Contact sales"}
+            {"@type": "Offer", "name": "Free Trial",  "price": "0",    "priceCurrency": "USD", "description": "30 days, full features"},
+            {"@type": "Offer", "name": "Team",        "price": "199",  "priceCurrency": "USD", "billingDuration": "P1M"},
+            {"@type": "Offer", "name": "Business",    "price": "999",  "priceCurrency": "USD", "billingDuration": "P1M"},
+            {"@type": "Offer", "name": "Enterprise",  "price": "5000", "priceCurrency": "USD", "billingDuration": "P1M", "description": "Starts at $5,000/month, contract sales"}
           ],
           "publisher": {"@id": "https://scutum.dev/#org"}
         },
@@ -201,6 +202,63 @@
             font-family: var(--serif); font-size: 22px; font-weight: 400;
             color: var(--text-subtle); font-style: italic;
         }
+        .trust-sub {
+            text-align: center; color: var(--text-muted); font-size: 13px;
+            margin-top: 24px; max-width: 640px; margin-left: auto; margin-right: auto;
+        }
+
+        /* Design partner CTA — shown in the social-proof gap until we have customers */
+        .design-partner { padding: 80px 0; border-bottom: 1px solid var(--border); }
+        .dp-card {
+            max-width: 760px; margin: 0 auto; padding: 48px;
+            border: 1px solid var(--border-hi); border-radius: 8px; background: var(--bg);
+            text-align: center;
+        }
+        .dp-eyebrow {
+            color: var(--text-muted); font-size: 11px; font-weight: 500;
+            text-transform: uppercase; letter-spacing: 0.16em; margin-bottom: 16px;
+            font-family: 'Inter', sans-serif;
+        }
+        .dp-title { font-size: 30px; line-height: 1.2; font-weight: 500; margin-bottom: 20px; }
+        .dp-body { color: var(--text-muted); max-width: 580px; margin: 0 auto 28px; font-size: 15px; line-height: 1.7; }
+        .dp-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+        /* Comparison "best for" positioning callout */
+        .cmp-best-for {
+            max-width: 640px; margin: 24px auto 0; padding: 16px 20px;
+            background: var(--bg); border-left: 3px solid var(--text);
+            font-size: 14px; line-height: 1.6; color: var(--text);
+            text-align: left;
+        }
+        .cmp-best-for strong { font-weight: 600; }
+        .cmp-best-for em { font-family: var(--serif); font-style: italic; font-weight: 400; }
+
+        /* SRE plain-language explainer card */
+        .sre-explainer {
+            margin: 24px 0;
+            padding: 20px 24px;
+            border: 1px solid var(--border-hi);
+            border-left: 3px solid var(--text);
+            border-radius: 4px;
+            background: var(--bg);
+        }
+        .sre-explainer-title {
+            font-size: 11px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.12em;
+            color: var(--text); margin-bottom: 8px;
+        }
+        .sre-explainer-body {
+            font-size: 14px; line-height: 1.7; color: var(--text-muted); margin: 0;
+        }
+
+        /* Mid-page CTA band — between Enterprise and Comparison */
+        .midcta {
+            padding: 80px 0; text-align: center;
+            border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+        }
+        .midcta h3 { font-size: 28px; line-height: 1.3; font-weight: 500; margin-bottom: 12px; max-width: 640px; margin-left: auto; margin-right: auto; }
+        .midcta p { color: var(--text-muted); margin-bottom: 24px; max-width: 540px; margin-left: auto; margin-right: auto; }
+        .midcta .midcta-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
         /* ========== SECTIONS ========== */
         section.s { padding: 112px 0; }
@@ -543,67 +601,57 @@
         }
     ];
 
+    // Pricing tiers — keep in sync with the JSON-LD `offers` array above (search
+    // engines need the static JSON-LD; this array drives the visible cards).
     const PRICING = [
-        { name: 'Free Trial', price: '$0', period: 'first 30 days', tagline: 'Full feature access. No credit card.', cta: 'Start free trial',
-          features: ['All 100+ models, MCP & A2A', 'Up to 25 team members', 'Pre-call cost prediction + per-team budgets', 'OpenTelemetry, Grafana dashboards', 'Auto-converts to Team after 30 days unless you cancel'] },
+        { name: 'Free Trial', price: '$0', period: 'first 30 days', tagline: 'Full feature access. Setup call required.', cta: 'Request trial access',
+          features: ['All 100+ models, MCP & A2A', 'Up to 25 team members', 'Pre-call cost prediction + per-team budgets', 'OpenTelemetry, Grafana dashboards', '30-min onboarding call with the founder'] },
         { name: 'Team', price: '$199', period: '/month', tagline: 'For small teams shipping fast.', cta: 'Book a demo',
           features: ['Up to 25 team members', 'All providers, all models', 'Cost dashboards + per-team budgets', 'Audit log (90 days)', 'Slack/PagerDuty alerts', 'Email support'] },
         { name: 'Business', price: '$999', period: '/month', tagline: 'For growing companies.', featured: true, cta: 'Book a demo',
-          features: ['Everything in Team', 'Unlimited members', 'OIDC SSO (Google, Okta, Azure AD)', 'Extended audit retention', 'SRE auto-remediation agent', 'Business-hours support', 'BYO models (vLLM, Ollama)'] },
-        { name: 'Enterprise', price: 'Contact', period: '', tagline: 'For regulated and at-scale orgs.', cta: 'Talk to sales',
-          features: ['Everything in Business', 'Chargeback + cost-allocation reports', 'Configurable audit retention', 'SLA 99.95%, 24/7 support', 'On-prem / VPC deployment', 'Dedicated CSM', 'Custom DPA available'] }
+          features: ['Everything in Team', 'Unlimited members', 'OIDC SSO (Google, Okta, Azure AD)', 'Extended audit retention', 'SRE agent (LLM-driven remediation, human-in-loop)', 'Business-hours support', 'BYO models (vLLM, Ollama)'] },
+        { name: 'Enterprise', price: 'From $5k', period: '/month', tagline: 'For regulated and at-scale orgs.', cta: 'Talk to sales',
+          features: ['Everything in Business', 'Chargeback + cost-allocation reports', 'Configurable audit retention (up to 7 years)', 'SLA 99.95%, 24/7 support', 'On-prem / VPC deployment', 'Dedicated CSM', 'Custom DPA available'] }
     ];
 
     // Research topics — each is a real research angle tied to a product capability.
     // `link` placeholder until papers/drafts are written; UI shows "Draft in progress" then.
     const RESEARCH = [
         {
-            tag: 'Verification',
-            title: 'Formal Verification of LLM-Generated Code',
-            summary: 'Static analysis at the proxy layer to catch hallucinated APIs, type errors, and unsafe operations before they reach production. Bridging SMT solvers and inference-time validation.',
-            link: null
+            tag: 'Safety',
+            title: 'AI Safety at the Infrastructure Layer',
+            summary: 'What safety properties can the platform layer enforce that the model layer can\'t reliably guarantee? Action-space closure, audit, and human-in-loop gates as complementary disciplines to model-side safety work.',
+            link: '/docs/research/ai-safety/'
         },
         {
-            tag: 'Protocols',
-            title: 'MCP & A2A Protocol Composition',
-            summary: 'Studies of authorization boundaries, capability scoping, and cross-protocol routing when MCP servers and A2A runtimes operate together under a single control plane.',
-            link: null
+            tag: 'Explainability',
+            title: 'Explainable AI at the Platform Layer',
+            summary: 'At the infrastructure layer, explainability is audit + decision provenance — not "why the model said X" but "why the platform allowed X." A complementary surface to model interpretability.',
+            link: '/docs/research/explainable-ai/'
         },
         {
-            tag: 'Autonomy',
-            title: 'Risk-Bounded Autonomous Remediation',
-            summary: 'A theoretical frame for LLM-driven SRE agents — risk scoring, blast-radius bounds, and the human-in-loop approval thresholds that keep auto-remediation safe at scale.',
-            link: null
+            tag: 'Context',
+            title: 'Context Window Management',
+            summary: 'Hybrid long-context, RAG, and semantic cache — when each pays back, where each fails, and what the platform owes each pattern. Auto-routing between them is the open problem.',
+            link: '/docs/research/context-windows/'
         },
         {
-            tag: 'Routing',
-            title: 'Cost-Aware Multi-Provider Routing',
-            summary: 'Optimization model for routing across OpenAI / Anthropic / Bedrock / Azure under combined latency, cost, and reliability constraints. Includes provider-failover game theory.',
-            link: null
+            tag: 'Retrieval',
+            title: 'RAG Performance — measurement at the proxy layer',
+            summary: 'End-to-end RAG evaluation across heterogeneous retrieval backends. The proxy is the natural place to publish standardised benchmarks; the literature has not caught up to production.',
+            link: '/docs/research/rag-performance/'
         },
         {
-            tag: 'Audit',
-            title: 'Audit Provenance for AI Workflows',
-            summary: 'How to maintain immutable audit chains across multi-agent workflows where individual steps run on different LLMs, providers, or geographies — at SOC2 / HIPAA fidelity.',
-            link: null
+            tag: 'Agents',
+            title: 'Multi-Agent Evaluations',
+            summary: 'A2A protocols and the eval substrate that drops out of having audit, cost, and trace data on every step. Trajectory-level decomposition over outcome-level pass/fail.',
+            link: '/docs/research/multi-agent-evaluations/'
         },
         {
-            tag: 'Policy',
-            title: 'Cedar Policy for AI Authorization',
-            summary: 'Extending the Cedar policy language to constrain AI actions: routing rules, model-access tiers, prompt-content gates. A formal grammar for what an agent is allowed to do.',
-            link: null
-        },
-        {
-            tag: 'Caching',
-            title: 'Semantic Cache & PII Boundaries',
-            summary: 'When is the embedding distance between two prompts low enough to share a response, and when does that cross into a correctness or compliance boundary?',
-            link: null
-        },
-        {
-            tag: 'Approval',
-            title: 'Human-in-Loop Approval Theory',
-            summary: 'Operationalising approval queues for autonomous agents: expected-loss models, reviewer-fatigue effects, and escalation policies for high-stakes decisions.',
-            link: null
+            tag: 'Adaptive',
+            title: 'Self-Learning Platform Configuration',
+            summary: 'What if routing weights, risk-score weights, cache thresholds, and verbosity profiles were continuously refined from operational data — under bounded drift, with auditable updates?',
+            link: '/docs/research/self-learning/'
         }
     ];
 </script>
@@ -649,11 +697,33 @@
     </div>
 </section>
 
+<!-- Pre-customer phase: substitute credibility for social proof. Two strips:
+     (1) technical depth — what we're built on (real, verifiable);
+     (2) design-partner offer — converts "no customers" into a scarcity signal. -->
 <div class="trust">
     <div class="container">
-        <p class="trust-label">Designed for AI infrastructure in regulated industries</p>
+        <p class="trust-label">Built on production infrastructure you already trust</p>
         <div class="trust-logos">
-            <span>FINSERV</span><span>HEALTHCARE</span><span>RETAIL</span><span>SAAS</span><span>PUBLIC SECTOR</span>
+            <span>LITELLM</span><span>AGENT GATEWAY</span><span>POSTGRESQL</span><span>CEDAR</span><span>TEMPORAL</span><span>OPENTELEMETRY</span>
+        </div>
+        <p class="trust-sub">Open-source components composed under one control plane — not reinvented. v0.1.0 shipped May 2026.</p>
+    </div>
+</div>
+
+<div class="design-partner">
+    <div class="container">
+        <div class="dp-card">
+            <p class="dp-eyebrow">Design partner program</p>
+            <h2 class="dp-title">First <span class="em">5 design partners</span> get free setup, lifetime discount, and direct access to the founders.</h2>
+            <p class="dp-body">
+                We're early. If your team has real AI infrastructure — multiple providers, governance pressure,
+                <span style="white-space:nowrap;">SOC 2 ahead</span> — and you'd rather shape the product than wait for it,
+                this is a fit. Weekly working sessions, your roadmap items get prioritised, your logo on the page once you're ready.
+            </p>
+            <div class="dp-cta">
+                <button class="btn btn-primary" onclick="openDemoModal()">Apply to be a design partner</button>
+                <a class="btn btn-secondary" href="mailto:hello@scutum.dev?subject=Design%20Partner%20Inquiry">hello@scutum.dev</a>
+            </div>
         </div>
     </div>
 </div>
@@ -680,10 +750,10 @@
             </div>
             <div>
                 <div class="code-card">
-                    <div class="code-card-tabs">
-                        <div class="code-tab active" data-tab="py">python</div>
-                        <div class="code-tab" data-tab="curl">curl</div>
-                        <div class="code-tab" data-tab="ts">typescript</div>
+                    <div class="code-card-tabs" role="tablist" aria-label="Code example language">
+                        <div class="code-tab active" data-tab="py" role="tab" aria-selected="true" aria-controls="code-py" tabindex="0">python</div>
+                        <div class="code-tab" data-tab="curl" role="tab" aria-selected="false" aria-controls="code-curl" tabindex="-1">curl</div>
+                        <div class="code-tab" data-tab="ts" role="tab" aria-selected="false" aria-controls="code-ts" tabindex="-1">typescript</div>
                     </div>
                     <pre id="code-py"><span class="kw">from</span> openai <span class="kw">import</span> OpenAI
 
@@ -778,6 +848,10 @@ $ curl localhost:4000/v1/models | jq</pre>
                 <span class="audience-tag">Enterprise</span>
                 <h3>SSO. Audit. SLA.<br><span class="em">SRE agent.</span></h3>
                 <p>Every administrative action lands in an immutable audit log. Every guardrail is policy-enforced via Cedar. Every team gets a budget, a rate limit, and a model-access tier — and an LLM-driven SRE agent watches the whole stack for you.</p>
+                <div class="sre-explainer">
+                    <p class="sre-explainer-title">What the SRE agent actually does</p>
+                    <p class="sre-explainer-body">When a provider degrades, a budget breaches, or an SLA target slips, an LLM proposes a remediation from a constrained allow-list (re-route, circuit-break, raise a limit, page on-call). It scores the action 0–100 for risk and gates anything above your threshold for human approval before executing. Every step is in the audit log.</p>
+                </div>
                 <ul class="audience-list">
                     <li><i class="fa-solid fa-check"></i> SSO via OIDC (Okta, Azure AD, Google); SAML &amp; SCIM on roadmap</li>
                     <li><i class="fa-solid fa-check"></i> Immutable audit log with configurable retention; CSV/JSON export</li>
@@ -810,12 +884,30 @@ $ curl localhost:4000/v1/models | jq</pre>
     </div>
 </section>
 
+<div class="midcta">
+    <div class="container">
+        <h3>Skip the build phase.</h3>
+        <p>You'd build this in 6 months and maintain it forever. We already did. Spin up the platform on your infrastructure today.</p>
+        <div class="midcta-buttons">
+            <button class="btn btn-primary btn-lg" onclick="openDemoModal()">Book a 30-min demo</button>
+            <a class="btn btn-secondary btn-lg" href="/docs/guides/quickstart/" target="_blank">
+                <i class="fa-solid fa-book"></i> Read the quickstart
+            </a>
+        </div>
+    </div>
+</div>
+
 <section class="s s-alt" id="comparison">
     <div class="container">
         <div class="s-header">
             <p class="s-eyebrow">Comparison</p>
             <h2>How we <span class="em">stack up</span>.</h2>
             <p>Feature-by-feature comparison against the alternatives. Pricing lives in its own section below.</p>
+            <p class="cmp-best-for">
+                <strong>Best for:</strong> teams that need <em>self-hosted</em> AI infrastructure with first-class
+                cost governance, audit, and policy — not a SaaS LLM gateway, not a single-provider router,
+                not an observability bolt-on. If you'd build this yourself in 6 months, we already did.
+            </p>
         </div>
         <div class="cmp-wrap">
             <table class="cmp" id="comparison-table">
@@ -865,12 +957,12 @@ $ curl localhost:4000/v1/models | jq</pre>
 <section class="s s-alt" id="research">
     <div class="container">
         <div class="s-header">
-            <p class="s-eyebrow">Research</p>
-            <h2>What we're <span class="em">writing</span> about<br>the future of AI infrastructure.</h2>
-            <p>We treat the AI control plane as a research subject, not just a product. Drafts, papers, and notes from the team.</p>
+            <p class="s-eyebrow">Research roadmap</p>
+            <h2>What we're <span class="em">working on</span><br>that isn't shipped yet.</h2>
+            <p>The angles we think are unsolved at the AI-infrastructure layer. None of these are published papers — they're directions our roadmap is pulling toward. If one resonates, write to us; we collaborate with people working on the same problems.</p>
         </div>
         <div class="research-grid" id="research-grid"></div>
-        <div class="research-foot">More in progress. Subscribe via the docs site, or write to <a href="mailto:research@scutum.dev" style="color:inherit;border-bottom:1px solid var(--border-hi);">research@scutum.dev</a>.</div>
+        <div class="research-foot">All entries are drafts in progress. To collaborate or get notified when one publishes, write to <a href="mailto:research@scutum.dev" style="color:inherit;border-bottom:1px solid var(--border-hi);">research@scutum.dev</a>.</div>
     </div>
 </section>
 

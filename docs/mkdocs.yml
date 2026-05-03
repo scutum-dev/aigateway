@@ -41,6 +41,12 @@ theme:
 extra_css:
   - stylesheets/scutum.css
 
+extra_javascript:
+  # MathJax config + library for the research whitepapers
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
 extra:
   homepage: https://scutum.dev/
   social:
@@ -80,10 +86,28 @@ nav:
       - Secret Rotation: security/secret-rotation.md
   - FinOps:
       - KPI Definitions: finops/kpi-definitions.md
+  - Whitepapers:
+      - whitepapers/index.md
+      - Self-Managed Best Practices: whitepapers/self-managed-best-practices.md
+      - Gateway Security: whitepapers/gateway-security.md
+      - Managed vs Self-Hosted: whitepapers/managed-vs-self-hosted.md
+      - Platform Internals: whitepapers/platform-internals.md
+      - Risk-Bounded Autonomous Remediation: whitepapers/risk-bounded-remediation.md
+      - Cost-Aware Multi-Provider Routing: whitepapers/cost-aware-routing.md
+  - Research:
+      - research/index.md
+      - AI Safety: research/ai-safety.md
+      - Explainable AI: research/explainable-ai.md
+      - Context Window Management: research/context-windows.md
+      - RAG Performance: research/rag-performance.md
+      - Multi-Agent Evaluations: research/multi-agent-evaluations.md
+      - Self-Learning Platform: research/self-learning.md
 
 markdown_extensions:
   - admonition
   - pymdownx.details
+  - pymdownx.arithmatex:
+      generic: true
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
