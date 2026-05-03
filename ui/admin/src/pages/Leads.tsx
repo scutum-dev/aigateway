@@ -18,7 +18,9 @@ export default function Leads() {
   const [statusFilter, setStatusFilter] = useState<LeadStatus | ''>('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const { data: leads, isLoading } = useLeads(statusFilter ? { status: statusFilter as LeadStatus } : undefined)
+  const { data: leads, isLoading, isError, error, refetch } = useLeads(
+    statusFilter ? { status: statusFilter as LeadStatus } : undefined,
+  )
   const { data: detail } = useLead(selectedId)
   const updateMutation = useUpdateLead()
 
@@ -78,6 +80,24 @@ export default function Leads() {
           {[1, 2, 3].map((i) => (
             <SkeletonCard key={i} />
           ))}
+        </div>
+      ) : isError ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <p className="text-sm font-medium text-red-800">Could not load leads</p>
+          <p className="text-sm text-red-700 mt-1">
+            {error instanceof Error ? error.message : 'The /api/v1/leads endpoint returned an error.'}
+          </p>
+          <p className="text-xs text-red-600 mt-2">
+            If you're on a customer deploy, this endpoint is intentionally disabled — leads are a
+            scutum.dev-only feature gated by the <code>ENABLE_LEADS_API</code> env var.
+          </p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="mt-3 inline-flex items-center px-3 py-1.5 border border-red-300 text-sm font-medium rounded text-red-700 bg-white hover:bg-red-50"
+          >
+            Retry
+          </button>
         </div>
       ) : !leads?.length ? (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">

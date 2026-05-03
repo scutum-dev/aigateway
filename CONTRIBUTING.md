@@ -40,7 +40,7 @@ All environment variables live in `config/.env` (not the repo root). Key variabl
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LITELLM_MASTER_KEY` | `$LITELLM_KEY` | Master API key for LiteLLM |
+| `SCUTUM_API_KEY` | `$LITELLM_KEY` | Master API key for the Scutum proxy (env-translated to `LITELLM_MASTER_KEY` inside the litellm container for legacy compatibility) |
 | `DATABASE_URL` | `postgresql://litellm:litellm@postgres:5432/litellm` | PostgreSQL connection |
 | `REDIS_URL` | `redis://redis:6379` | Redis connection |
 | `JWT_SECRET_KEY` | (generated) | JWT signing secret |

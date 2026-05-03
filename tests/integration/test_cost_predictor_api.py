@@ -190,20 +190,6 @@ class TestPricingEndpoint:
         assert "input_cost_per_million" in data["gpt-4o"]
         assert "output_cost_per_million" in data["gpt-4o"]
 
-    @pytest.mark.skip(reason="POST /pricing/update was removed from the service; only GET /pricing remains")
-    @pytest.mark.asyncio
-    async def test_update_pricing(self, client):
-        """Should update pricing for a model."""
-        resp = await client.post(
-            "/pricing/update", params={"model": "test-model", "input_cost": 1.5, "output_cost": 3.0}
-        )
-        assert resp.status_code == 200
-        assert resp.json()["status"] == "updated"
-
-        # Verify it's reflected in GET
-        resp = await client.get("/pricing")
-        assert "test-model" in resp.json()
-
 
 # ============================================================================
 # /budget/check

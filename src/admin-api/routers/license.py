@@ -46,19 +46,17 @@ async def activate_license(
     if state.is_expired:
         raise HTTPException(status_code=400, detail=state.error or "license already expired")
 
-    if deps.db_pool:
-        await log_audit_event(
-            deps.db_pool,
-            user_id=user.user_id,
-            action="license.activate",
-            resource_type="license",
-            resource_id=state.customer_id,
-            details={
-                "tier": state.tier,
-                "customer_email": state.customer_email,
-                "expires_at": state.expires_at.isoformat() if state.expires_at else None,
-            },
-            ip_address=request.client.host if request.client else None,
-        )
+    await log_audit_event(
+        actor_id=user.user_id or "",
+        action="license.activate",
+        resource_type="license",
+        resource_id=state.customer_id,
+        resource_name=state.customer_email,
+        changes={
+            "tier": state.tier,
+            "expires_at": state.expires_at.isoformat() if state.expires_at else None,
+        },
+        request=request,
+    )
 
     return state.to_public_dict()
