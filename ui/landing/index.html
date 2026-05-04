@@ -832,9 +832,7 @@
     // engines need the static JSON-LD; this array drives the visible cards).
     // SELF-HOSTED — you run it, we keep it licensed. Low licensing fee since you bring infrastructure,
     // keys, and operational ownership. SRE agent is an opt-in add-on.
-    // Self-hosted: 3 tiers. Enterprise tier removed — it surfaced procurement-grade
-    // promises (SAML/SCIM availability, source escrow, dedicated CSM) we cannot underwrite.
-    // The "30-min onboarding with the founder" line scrubbed — voice is brand-led, never founder-named.
+    // Self-hosted: 3 tiers. Voice is brand-led; promises stay scoped to what's underwritten.
     const PRICING_SELFHOSTED = [
         { name: 'Free Trial', price: '$0', period: 'first 30 days', tagline: 'Full features. No credit card.', cta: 'Request trial access',
           features: ['All 100+ models, MCP & A2A', 'Unlimited team members', 'Pre-call cost prediction + per-team budgets', 'OpenTelemetry, Grafana dashboards', 'Onboarding session included'] },
@@ -1019,8 +1017,7 @@
     </div>
 </div>
 
-<!-- Built-by section removed: brand-forward / founder-hidden positioning. The FGCS-paper
-     and operator-credentials framing belongs on /research, not on the marketing front page. -->
+<!-- Brand-forward / founder-hidden positioning. -->
 
 <section class="s" id="engineering">
     <div class="container">
@@ -1316,9 +1313,7 @@ $ curl localhost:4000/v1/models | jq</pre>
                 <h3>You run it on your infrastructure.</h3>
                 <p>Lowest price. We license the software and ship updates. Your data, your provider keys, your audit log all stay on your side. SRE auto-remediation is an opt-in add-on.</p>
             </div>
-            <!-- Self-hosted Enterprise tier removed: surfaces procurement-grade promises
-                 (SAML/SCIM availability, source escrow, dedicated CSM, 7-yr retention guarantee)
-                 that a v0.1.0 product cannot underwrite. Back to the 3-card grid. -->
+            <!-- 3-card grid; promises stay scoped to what's underwritten. -->
             <div class="pricing-grid pricing-grid--3" id="pricing-grid-selfhosted">
                 <div class="price-card">
                     <div class="price-name">Free Trial</div>
@@ -1376,9 +1371,7 @@ $ curl localhost:4000/v1/models | jq</pre>
                      justifies them. -->
                 <p>We provision the stack and ship the upgrades. You get a console URL and a service-account token. Managed is in early access — pricing reflects that.</p>
             </div>
-            <!-- Enterprise Managed tier removed: 99.95% SLA / dedicated CSM / BAA / on-prem
-                 are all unsupportable today. Customers needing those should talk to us through
-                 the demo flow, not be promised a SKU on a marketing page. -->
+            <!-- 3-card grid; customers needing more go through the demo flow. -->
             <div class="pricing-grid pricing-grid--3" id="pricing-grid-managed">
                 <div class="price-card">
                     <div class="price-name">Trial</div>
@@ -1527,8 +1520,7 @@ $ curl localhost:4000/v1/models | jq</pre>
                     <img src="/scutum-mark.svg" alt="" class="logo-mark"/>
                     Scutum
                 </a>
-                <!-- Footer tagline: dropped "Compliance-aware" — that framing implied a regulated-vendor
-                     posture we don't yet underwrite. Replaced with what we actually do. -->
+                <!-- Tagline reflects what the platform actually does. -->
                 <p style="color: var(--text-muted); font-size: 14px; max-width: 320px;">
                     Unified control plane for AI infrastructure. Self-hosted. Self-healing.
                 </p>
