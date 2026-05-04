@@ -58,13 +58,11 @@
           "description": "Unified control plane for AI infrastructure: LLM proxy, MCP/A2A gateway, agent workflows, cost governance, audit, and SRE auto-remediation. Self-hosted.",
           "// pricing-source-of-truth": "Mirrored from window.PRICING_SELFHOSTED + window.PRICING_MANAGED below. Keep in sync with the on-page pricing cards — search engines indexing this JSON-LD don't run JS, so rendering from the JS array would lose Google rich-result eligibility.",
           "offers": [
-            {"@type": "Offer", "name": "Free Trial (self-hosted)",      "price": "0",    "priceCurrency": "USD", "description": "30 days, full features, on your infrastructure"},
+            {"@type": "Offer", "name": "Free Trial (self-hosted)",      "price": "0",    "priceCurrency": "USD", "description": "30 days, full features, on your infrastructure. No credit card."},
             {"@type": "Offer", "name": "License (self-hosted)",         "price": "99",   "priceCurrency": "USD", "billingDuration": "P1M", "description": "Self-hosted license. You run the platform."},
-            {"@type": "Offer", "name": "License + SRE (self-hosted)",   "price": "299",  "priceCurrency": "USD", "billingDuration": "P1M", "description": "Self-hosted license plus the SRE auto-remediation agent (publishable risk-scoring math)."},
-            {"@type": "Offer", "name": "Self-hosted Enterprise",        "price": "24000","priceCurrency": "USD", "billingDuration": "P1Y", "description": "Annual contract. Custom retention up to 7 years, SAML/SCIM when shipped, source escrow, dedicated CSM."},
-            {"@type": "Offer", "name": "Starter Managed",               "price": "499",  "priceCurrency": "USD", "billingDuration": "P1M", "description": "Shared multi-tenant infra, business-hours support, no SLA, single region, up to 10 team members."},
-            {"@type": "Offer", "name": "Business Managed",              "price": "1299", "priceCurrency": "USD", "billingDuration": "P1M", "description": "Fully managed dedicated instance, single region, business-hours support with after-hours emergency escalation."},
-            {"@type": "Offer", "name": "Enterprise Managed",            "price": "5000", "priceCurrency": "USD", "billingDuration": "P1M", "description": "Multi-region active-passive failover, SLA targets with credit schedule under MSA, BAA. Starts at $5,000/month."}
+            {"@type": "Offer", "name": "License + SRE (self-hosted)",   "price": "299",  "priceCurrency": "USD", "billingDuration": "P1M", "description": "Self-hosted license plus the autonomous SRE agent with HITL approval."},
+            {"@type": "Offer", "name": "Starter Managed (early access)","price": "499",  "priceCurrency": "USD", "billingDuration": "P1M", "description": "Shared multi-tenant infra, single region, BYO provider keys. Best-effort uptime."},
+            {"@type": "Offer", "name": "Business Managed (early access)","price": "1299","priceCurrency": "USD", "billingDuration": "P1M", "description": "Per-customer dedicated instance, single region. Best-effort uptime; targets calibrated as production data accumulates."}
           ],
           "publisher": {"@id": "https://scutum.dev/#org"}
         },
@@ -834,38 +832,29 @@
     // engines need the static JSON-LD; this array drives the visible cards).
     // SELF-HOSTED — you run it, we keep it licensed. Low licensing fee since you bring infrastructure,
     // keys, and operational ownership. SRE agent is an opt-in add-on.
-    // SRE upcharge widened from $80 to $200 (License $99 → License+SRE $299): the SRE agent
-    // is the page's most differentiated capability (publishable risk-scoring math); an $80
-    // delta signals it isn't worth much.
-    // Added Self-hosted Enterprise: feature copy refers to "7 years on Enterprise" — the
-    // ladder needs a matching tier or that line is a forward reference to nothing.
+    // Self-hosted: 3 tiers. Enterprise tier removed — it surfaced procurement-grade
+    // promises (SAML/SCIM availability, source escrow, dedicated CSM) we cannot underwrite.
+    // The "30-min onboarding with the founder" line scrubbed — voice is brand-led, never founder-named.
     const PRICING_SELFHOSTED = [
-        { name: 'Free Trial', price: '$0', period: 'first 30 days', tagline: 'Full features. Setup call required.', cta: 'Request trial access',
-          features: ['All 100+ models, MCP & A2A', 'Unlimited team members', 'Pre-call cost prediction + per-team budgets', 'OpenTelemetry, Grafana dashboards', '30-min onboarding with the founder'] },
-        { name: 'License', price: '$99', period: '/month', tagline: 'You run it. We keep it licensed.', featured: true, cta: 'Book a demo',
-          features: ['Unlimited team members', 'All providers, all models', 'Cost dashboards + per-team budgets', 'OIDC SSO (Google, Okta, Azure AD)', '90-day audit log', 'Email support', 'Self-hosted on your infrastructure'] },
-        { name: 'License + SRE', price: '$299', period: '/month', tagline: 'Adds the SRE auto-remediation agent.', cta: 'Book a demo',
-          features: ['Everything in License', 'SRE agent (LLM-driven, HITL approval)', 'Four-component risk scoring', 'Slack / PagerDuty / webhook alerts', 'Risk-bounded auto-execution roadmap (Q4)', 'Action-library updates included'] },
-        { name: 'Self-hosted Enterprise', price: 'From $24k', period: '/year', tagline: 'Annual contract. Procurement-ready.', cta: 'Talk to sales',
-          features: ['Everything in License + SRE', 'Custom audit retention up to 7 years', 'SAML / SCIM (when shipped, Q3 2026)', 'Source-code escrow', 'Dedicated CSM', 'Air-gapped install option', 'Custom MSA with credit schedule'] }
+        { name: 'Free Trial', price: '$0', period: 'first 30 days', tagline: 'Full features. No credit card.', cta: 'Request trial access',
+          features: ['All 100+ models, MCP & A2A', 'Unlimited team members', 'Pre-call cost prediction + per-team budgets', 'OpenTelemetry, Grafana dashboards', 'Onboarding session included'] },
+        { name: 'License', price: '$99', period: '/month', tagline: 'You run it. Licensed by us.', featured: true, cta: 'Book a demo',
+          features: ['Unlimited team members', 'All providers, all models', 'Cost dashboards + per-team budgets', 'OIDC SSO (Google, Okta, Azure AD)', 'Configurable audit retention', 'Email support', 'Self-hosted on your infrastructure'] },
+        { name: 'License + SRE', price: '$299', period: '/month', tagline: 'Adds the autonomous SRE agent.', cta: 'Book a demo',
+          features: ['Everything in License', 'Autonomous SRE agent with HITL approval', 'Four-component risk scoring', 'Slack / PagerDuty / webhook alerts', 'Risk-bounded auto-execution on the roadmap', 'Action-library updates included'] }
     ];
 
-    // FULLY MANAGED — we run a dedicated instance for you. Higher cost; you pay for the
-    // operational tax (24/7 on-call, backups, upgrades, BAA).
-    // Added Starter Managed ($499) to bridge the 13× cliff between $99 self-hosted and
-    // $1,299 Business Managed. Without an in-between tier, a casually curious manager
-    // has nowhere to land and goes to Portkey instead.
-    // Softened over-claims a v0.1.0 solo-OPC operation cannot underwrite: "24/7 on-call",
-    // "99.9% uptime target", "99.95% contractual SLA", "Multi-region failover".
+    // FULLY MANAGED — we provision and run the stack; customers don't deploy software.
+    // Managed: 3 tiers, framed as early access. SLA / dedicated-CSM / BAA / on-prem
+    // promises stay off the page until production data justifies them. Customers needing
+    // those go through the demo flow rather than seeing a SKU on a marketing page.
     const PRICING_MANAGED = [
-        { name: 'Trial', price: '$0', period: 'first 30 days', tagline: 'Free trial on the managed offering.', cta: 'Request trial access',
-          features: ['Per-customer namespace', 'Single region', 'We provision in 24h', 'Convert to Starter, Business, or Enterprise after trial'] },
-        { name: 'Starter Managed', price: '$499', period: '/month', tagline: 'Shared infra. Self-serve.', cta: 'Book a demo',
-          features: ['Shared multi-tenant infrastructure', 'Up to 10 team members', 'Single region', 'Business-hours support', 'No SLA — best-effort uptime', 'All providers, all models', 'OIDC SSO included'] },
-        { name: 'Business Managed', price: '$1,299', period: '/month', tagline: 'We run a dedicated instance for you.', featured: true, cta: 'Book a demo',
-          features: ['Per-customer dedicated instance', 'We handle setup, upgrades, backups', 'Business-hours support with after-hours emergency escalation; response targets defined in MSA', '99.5% uptime target during the v0.1.x series; tightens to 99.9% once we have six months of production telemetry', 'Single region (US, EU, India, or SE Asia)', 'BYO KMS for your secrets', 'Includes everything in self-hosted License + SRE'] },
-        { name: 'Enterprise Managed', price: 'From $5k', period: '/month', tagline: 'Multi-region, SLA, BAA.', cta: 'Talk to sales',
-          features: ['Multi-region active-passive failover', 'SLA targets with credit schedule under MSA, calibrated against operating data', 'BAA + custom DPA', 'Dedicated CSM', 'On-prem option', 'Configurable audit retention up to 7 years', 'Chargeback + cost-allocation reports'] }
+        { name: 'Trial', price: '$0', period: 'first 30 days', tagline: 'Try managed before committing.', cta: 'Request trial access',
+          features: ['Per-customer namespace', 'Single region', 'We provision in 24h', 'Convert to Starter or Business after trial'] },
+        { name: 'Starter Managed', price: '$499', period: '/month', tagline: 'Shared infra. Early access.', cta: 'Book a demo',
+          features: ['Shared multi-tenant infrastructure', 'Single region', 'Best-effort uptime', 'All providers, all models', 'OIDC SSO included', 'BYO provider keys, no token markup'] },
+        { name: 'Business Managed', price: '$1,299', period: '/month', tagline: 'Dedicated instance. Early access.', featured: true, cta: 'Book a demo',
+          features: ['Per-customer dedicated instance', 'Setup, upgrades, and backups handled', 'Single region (US, EU, India, or SE Asia)', 'Best-effort uptime during early access; targets calibrated as production data accumulates', 'Includes everything in self-hosted License + SRE', 'BYO provider keys, no token markup'] }
     ];
 
     // Research topics — each is a real research angle tied to a product capability.
@@ -934,12 +923,15 @@
     <div class="container">
         <span class="hero-eyebrow">
             <i class="fa-solid fa-shield-halved"></i>
-            Self-hosted or fully managed · v0.1.0 · Open early access
+            Self-hosted · v0.1.0 · Open early access
         </span>
-        <h1>Stop gluing together <br>five AI infrastructure tools.</h1>
+        <!-- H1 + lede reframed around what's true and demonstrable: autonomy + self-healing,
+             not procurement-grade enterprise. Buyer is VPE/staff at a Series A-C startup. -->
+        <h1>The AI control plane <br>that <span class="em">runs itself</span>.</h1>
         <p class="lede">
-            Scutum is one <span class="em">control plane</span>: LLM proxy, MCP &amp; A2A gateway, cost governance, audit, and risk-scored SRE remediation.
-            Drop-in OpenAI-compatible. <strong>Run it on your infrastructure</strong>, or let us run a dedicated instance for you.
+            Drop-in OpenAI-compatible proxy across 100+ models. Native MCP and A2A with Cedar policy enforcement.
+            Pre-call cost prediction with per-team budget gates. An autonomous SRE agent that watches the stack
+            and proposes remediations for human approval. <strong>Self-hosted by default</strong> — your data, your keys, your audit log.
         </p>
         <div class="hero-ctas">
             <button class="btn btn-primary btn-lg" onclick="openDemoModal()">
@@ -996,49 +988,27 @@
             <div class="modes-card modes-card--managed">
                 <p class="modes-tag">Fully managed</p>
                 <h3>Or let us run a dedicated instance for you.</h3>
-                <!-- "24/7 on-call" softened: a v0.1.0 solo-OPC operation cannot underwrite a 24/7 rota; describing what we actually do is more credible. -->
-                <p>Per-customer namespace in our region of choice (US East/West, EU, India, SE Asia). Business-hours support with after-hours emergency escalation, automated backups, zero-downtime upgrades, BYO KMS for your secrets. We're the processor; the platform is yours.</p>
+                <!-- Managed mode reframed as early access; specific support / SLA / KMS promises
+                     dropped until production data accumulates. Customers who need more talk to us. -->
+                <p>Per-customer namespace in a region of your choice (US East/West, EU, India, SE Asia). Automated backups and zero-downtime upgrades. Managed is in early access — best-effort uptime, no SLA promises until production data justifies them.</p>
                 <p class="modes-cta"><a href="/docs/whitepapers/managed-vs-self-hosted/" target="_blank">Compare modes →</a></p>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Founder note: pre-customer credibility. Edit placeholder text + replace
-     /founder.jpg with the actual headshot path when shipped. -->
-<div class="founder">
-    <div class="container">
-        <div class="founder-card">
-            <div class="founder-photo" aria-hidden="true">
-                <img src="/founder.jpg" alt="" onerror="this.style.display='none'; this.parentElement.classList.add('founder-photo--placeholder')"/>
-            </div>
-            <div class="founder-body">
-                <p class="founder-eyebrow">Why we're building this</p>
-                <p class="founder-quote">
-                    "We've spent the last decade building infrastructure under load — distributed systems,
-                    payments, observability — and watched every team that touches AI re-invent the same
-                    proxy, audit, and budget machinery. Scutum is what we wish existed when we started."
-                </p>
-                <p class="founder-sig">
-                    <strong>Deo Shankar</strong> · <span>founder, Scutum</span>
-                </p>
-                <p class="founder-links">
-                    <a href="mailto:deo@scutum.dev">deo@scutum.dev</a>
-                    · <a href="https://x.com/scutum_dev" target="_blank" rel="noopener">@scutum_dev</a>
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Founder note removed: brand-led page; voice is "we" / "Scutum" / "the platform"
+     and never names a person. The signed manifesto pattern doesn't fit. -->
 
 <div class="design-partner">
     <div class="container">
         <div class="dp-card">
             <p class="dp-eyebrow">Design partner program</p>
-            <h2 class="dp-title">First <span class="em">5 design partners</span> get free setup, lifetime discount, and direct access to the founders.</h2>
+            <!-- "founders" replaced with "the team building it" — voice is brand-led, never founder-named.
+                 "SOC 2 ahead" pressure callout dropped: it implied regulated-buyer targeting we no longer want. -->
+            <h2 class="dp-title">First <span class="em">5 design partners</span> get free setup, lifetime discount, and direct access to the team building it.</h2>
             <p class="dp-body">
-                We're early. If your team has real AI infrastructure — multiple providers, governance pressure,
-                <span style="white-space:nowrap;">SOC 2 ahead</span> — and you'd rather shape the product than wait for it,
+                We're early. If you're shipping LLM products to production and would rather shape the platform than wait for it,
                 this is a fit. Weekly working sessions, your roadmap items get prioritised, your logo on the page once you're ready.
             </p>
             <div class="dp-cta">
@@ -1049,35 +1019,8 @@
     </div>
 </div>
 
-<!-- "Built by" credentials block: surfaces founder + research moat directly on the page.
-     A solo Indian OPC selling self-hosted infra to enterprise needs founder credibility
-     visible, not one click away. The FGCS paper is the strongest technical-moat signal
-     on offer and was previously invisible. -->
-<section class="s s-alt" id="built-by">
-    <div class="container">
-        <div class="s-header">
-            <p class="s-eyebrow">Built by</p>
-            <h2><span class="em">Research-grade</span> infrastructure, shipped by an operator.</h2>
-        </div>
-        <div style="max-width: 760px; margin: 0 auto; font-size: 16px; line-height: 1.7; color: var(--text);">
-            <p style="margin-bottom: 16px;">
-                Scutum is built by <strong>Deo Shankar</strong>, multi-cloud architect with 13+ years across
-                Wipro, Ericsson, Paytm, Oracle, and Tiger Analytics.
-            </p>
-            <p style="margin-bottom: 16px;">
-                Author of the <em style="font-family: var(--serif);">FGCS</em>-published paper on MCP↔A2A
-                protocol translation — 90.5% accuracy, sub-millisecond latency, 5,000 test cases. The
-                research the SRE agent's risk model and the agent gateway's federation logic are built
-                on top of.
-            </p>
-            <p style="font-size: 14px; color: var(--text-muted);">
-                <a href="#" style="border-bottom: 1px solid var(--border-hi); color: inherit;">Read the paper</a>
-                · <a href="https://www.linkedin.com/in/deo-shankar/" target="_blank" rel="noopener" style="border-bottom: 1px solid var(--border-hi); color: inherit;">LinkedIn</a>
-                · <a href="mailto:deo@scutum.dev" style="border-bottom: 1px solid var(--border-hi); color: inherit;">deo@scutum.dev</a>
-            </p>
-        </div>
-    </div>
-</section>
+<!-- Built-by section removed: brand-forward / founder-hidden positioning. The FGCS-paper
+     and operator-credentials framing belongs on /research, not on the marketing front page. -->
 
 <section class="s" id="engineering">
     <div class="container">
@@ -1187,28 +1130,31 @@ $ curl localhost:4000/v1/models | jq</pre>
     </div>
 </section>
 
+<!-- "For Enterprise" reframed away from procurement-grade language (compliance,
+     SLA, on-prem, regulated industries) toward what the platform actually does:
+     governance, autonomy, self-healing — for engineering teams that need it. -->
 <section class="s" id="enterprise">
     <div class="container">
         <div class="s-header">
-            <p class="s-eyebrow">For Enterprise</p>
-            <h2>Compliance, governance,<br>and control <span class="em">by design</span>.</h2>
-            <p>Built for security teams, not added on. Self-host on-prem or in your VPC. We own the platform; you own the data.</p>
+            <p class="s-eyebrow">For Platform Teams</p>
+            <h2>Governance and <span class="em">autonomy</span>,<br>built into the proxy.</h2>
+            <p>Audit, budgets, and policy live one layer below the model — so every team's traffic is governed by default, not by convention.</p>
         </div>
         <div class="audience">
             <div>
-                <span class="audience-tag">Enterprise</span>
-                <h3>SSO. Audit. SLA.<br><span class="em">SRE agent.</span></h3>
-                <p>Every administrative action lands in an immutable audit log. Every guardrail is policy-enforced via Cedar. Every team gets a budget, a rate limit, and a model-access tier — and an LLM-driven SRE agent watches the whole stack for you.</p>
+                <span class="audience-tag">Platform</span>
+                <h3>Audit, budgets, policy,<br><span class="em">and self-healing</span>.</h3>
+                <p>Every administrative action lands in an immutable audit log. Every guardrail is policy-enforced via Cedar. Every team gets a budget, a rate limit, and a model-access tier — and an autonomous SRE agent watches the stack and proposes remediations for human approval before executing.</p>
                 <div class="sre-explainer">
                     <p class="sre-explainer-title">What the SRE agent actually does</p>
-                    <p class="sre-explainer-body">When a provider degrades, a budget breaches, or an SLA target slips, an LLM proposes a remediation from a constrained allow-list (re-route, circuit-break, raise a limit, page on-call). It scores the action 0–100 for risk and gates anything above your threshold for human approval before executing. Every step is in the audit log.</p>
+                    <p class="sre-explainer-body">When a provider degrades or a budget breaches, an LLM proposes a remediation from a constrained allow-list (re-route, circuit-break, raise a limit, page on-call). It scores the action 0–100 for risk and gates anything above the configured threshold for human approval before executing. Every step is in the audit log.</p>
                 </div>
                 <ul class="audience-list">
-                    <li><i class="fa-solid fa-check"></i> SSO via OIDC (Okta, Azure AD, Google); SAML &amp; SCIM on roadmap</li>
-                    <li><i class="fa-solid fa-check"></i> Immutable audit log with configurable retention; CSV/JSON export</li>
-                    <li><i class="fa-solid fa-check"></i> Chargeback + cost allocation: per-team, per-org, per-cost-center attribution</li>
-                    <li><i class="fa-solid fa-check"></i> Cedar policy for routing rules; SRE agent for auto-remediation with HITL approval</li>
-                    <li><i class="fa-solid fa-check"></i> On-prem / VPC deployment, BYO inference (vLLM, Ollama)</li>
+                    <li><i class="fa-solid fa-check"></i> SSO via OIDC (Okta, Azure AD, Google); SAML &amp; SCIM on the roadmap</li>
+                    <li><i class="fa-solid fa-check"></i> Immutable audit log with configurable retention; CSV / JSON export</li>
+                    <li><i class="fa-solid fa-check"></i> Per-team, per-org, per-cost-center chargeback and cost allocation</li>
+                    <li><i class="fa-solid fa-check"></i> Cedar policy for routing rules; autonomous SRE agent with HITL approval</li>
+                    <li><i class="fa-solid fa-check"></i> Self-hosted in your VPC; BYO inference (vLLM, Ollama)</li>
                 </ul>
             </div>
             <div>
@@ -1224,7 +1170,7 @@ $ curl localhost:4000/v1/models | jq</pre>
 │         │  Postgres  │  │  Redis   │          │
 │         └────────────┘  └──────────┘          │
 │                                                │
-│  Audit ─► S3 (7yr retention)                  │
+│  Audit ─► S3 (configurable retention)         │
 │  SRE Agent ─► incidents.audit + Slack         │
 │  Traces ─► OTel ─► your Datadog/NewRelic      │
 │                                                │
@@ -1253,10 +1199,12 @@ $ curl localhost:4000/v1/models | jq</pre>
             <p class="s-eyebrow">Comparison</p>
             <h2>How we <span class="em">stack up</span>.</h2>
             <p>Feature-by-feature comparison against the alternatives. Pricing lives in its own section below.</p>
+            <!-- Best-for shifted: target is engineering teams shipping LLM products to production
+                 (Series A-C startups, AI-native teams) — not regulated-industry compliance buyers. -->
             <p class="cmp-best-for">
-                <strong>Best for:</strong> teams that need <em>self-hosted</em> AI infrastructure with first-class
-                cost governance, audit, and policy — not a SaaS LLM gateway, not a single-provider router,
-                not an observability bolt-on. If you'd build this yourself in 6 months, we already did.
+                <strong>Best for:</strong> engineering teams shipping <em>LLM products to production</em> —
+                multiple providers, real cost pressure, governance you can't fake. Not a SaaS LLM router,
+                not an observability bolt-on. If you'd build this yourself in six months, we already did.
             </p>
         </div>
         <div class="cmp-wrap">
@@ -1368,8 +1316,10 @@ $ curl localhost:4000/v1/models | jq</pre>
                 <h3>You run it on your infrastructure.</h3>
                 <p>Lowest price. We license the software and ship updates. Your data, your provider keys, your audit log all stay on your side. SRE auto-remediation is an opt-in add-on.</p>
             </div>
-            <!-- Grid switched from --3 (3-col) to default 4-col to fit the new Self-hosted Enterprise tier. -->
-            <div class="pricing-grid" id="pricing-grid-selfhosted">
+            <!-- Self-hosted Enterprise tier removed: surfaces procurement-grade promises
+                 (SAML/SCIM availability, source escrow, dedicated CSM, 7-yr retention guarantee)
+                 that a v0.1.0 product cannot underwrite. Back to the 3-card grid. -->
+            <div class="pricing-grid pricing-grid--3" id="pricing-grid-selfhosted">
                 <div class="price-card">
                     <div class="price-name">Free Trial</div>
                     <div class="price-amt">$0<small> first 30 days</small></div>
@@ -1379,7 +1329,8 @@ $ curl localhost:4000/v1/models | jq</pre>
                             <li><i class="fa-solid fa-check"></i> Unlimited team members</li>
                             <li><i class="fa-solid fa-check"></i> Pre-call cost prediction + per-team budgets</li>
                             <li><i class="fa-solid fa-check"></i> OpenTelemetry, Grafana dashboards</li>
-                            <li><i class="fa-solid fa-check"></i> 30-min onboarding with the founder</li>
+                            <!-- Replaced "30-min onboarding with the founder" — voice is brand-led, never founder-named. -->
+                            <li><i class="fa-solid fa-check"></i> Onboarding session included</li>
                     </ul>
                     <button class="btn btn-secondary" onclick="openDemoModal()">Request trial access</button>
                 </div>
@@ -1413,22 +1364,6 @@ $ curl localhost:4000/v1/models | jq</pre>
                     </ul>
                     <button class="btn btn-secondary" onclick="openDemoModal()">Book a demo</button>
                 </div>
-                <!-- Self-hosted Enterprise added: feature copy already references "7 years on Enterprise"; without a matching tier, that's a forward reference to nothing. -->
-                <div class="price-card">
-                    <div class="price-name">Self-hosted Enterprise</div>
-                    <div class="price-amt">From $24k<small> /year</small></div>
-                    <div class="price-tagline">Annual contract. Procurement-ready.</div>
-                    <ul class="price-features">
-                            <li><i class="fa-solid fa-check"></i> Everything in License + SRE</li>
-                            <li><i class="fa-solid fa-check"></i> Custom audit retention up to 7 years</li>
-                            <li><i class="fa-solid fa-check"></i> SAML / SCIM (when shipped, Q3 2026)</li>
-                            <li><i class="fa-solid fa-check"></i> Source-code escrow</li>
-                            <li><i class="fa-solid fa-check"></i> Dedicated CSM</li>
-                            <li><i class="fa-solid fa-check"></i> Air-gapped install option</li>
-                            <li><i class="fa-solid fa-check"></i> Custom MSA with credit schedule</li>
-                    </ul>
-                    <button class="btn btn-secondary" onclick="openDemoModal()">Talk to sales</button>
-                </div>
             </div>
         </div>
 
@@ -1436,69 +1371,54 @@ $ curl localhost:4000/v1/models | jq</pre>
             <div class="pricing-section-header">
                 <p class="pricing-section-eyebrow">Fully managed</p>
                 <h3>Or let us run a dedicated instance.</h3>
-                <p>We provision the stack, do the upgrades, take the on-call pages. You get a console URL and a service-account token. Higher price covers our operational tax — backups, 24/7, BAA, multi-region.</p>
+                <!-- Reframed as early access — we run the stack, you don't deploy software,
+                     but support / SLA / BAA promises stay off the page until production data
+                     justifies them. -->
+                <p>We provision the stack and ship the upgrades. You get a console URL and a service-account token. Managed is in early access — pricing reflects that.</p>
             </div>
-            <!-- Grid switched from --3 to default 4-col to fit the new Starter Managed tier. -->
-            <div class="pricing-grid" id="pricing-grid-managed">
+            <!-- Enterprise Managed tier removed: 99.95% SLA / dedicated CSM / BAA / on-prem
+                 are all unsupportable today. Customers needing those should talk to us through
+                 the demo flow, not be promised a SKU on a marketing page. -->
+            <div class="pricing-grid pricing-grid--3" id="pricing-grid-managed">
                 <div class="price-card">
                     <div class="price-name">Trial</div>
                     <div class="price-amt">$0<small> first 30 days</small></div>
-                    <div class="price-tagline">Free trial on the managed offering.</div>
+                    <div class="price-tagline">Try managed before committing.</div>
                     <ul class="price-features">
                             <li><i class="fa-solid fa-check"></i> Per-customer namespace</li>
                             <li><i class="fa-solid fa-check"></i> Single region</li>
                             <li><i class="fa-solid fa-check"></i> We provision in 24h</li>
-                            <li><i class="fa-solid fa-check"></i> Convert to Starter, Business, or Enterprise after trial</li>
+                            <li><i class="fa-solid fa-check"></i> Convert to Starter or Business after trial</li>
                     </ul>
                     <button class="btn btn-secondary" onclick="openDemoModal()">Request trial access</button>
                 </div>
-                <!-- Starter Managed bridges the 13× cliff between $99 self-hosted and $1,299 Business: a casually curious manager now has somewhere to land. -->
                 <div class="price-card">
                     <div class="price-name">Starter Managed</div>
                     <div class="price-amt">$499<small> /month</small></div>
-                    <div class="price-tagline">Shared infra. Self-serve.</div>
+                    <div class="price-tagline">Shared infra. Early access.</div>
                     <ul class="price-features">
                             <li><i class="fa-solid fa-check"></i> Shared multi-tenant infrastructure</li>
-                            <li><i class="fa-solid fa-check"></i> Up to 10 team members</li>
                             <li><i class="fa-solid fa-check"></i> Single region</li>
-                            <li><i class="fa-solid fa-check"></i> Business-hours support</li>
-                            <li><i class="fa-solid fa-check"></i> No SLA — best-effort uptime</li>
+                            <li><i class="fa-solid fa-check"></i> Best-effort uptime</li>
                             <li><i class="fa-solid fa-check"></i> All providers, all models</li>
                             <li><i class="fa-solid fa-check"></i> OIDC SSO included</li>
+                            <li><i class="fa-solid fa-check"></i> BYO provider keys, no token markup</li>
                     </ul>
                     <button class="btn btn-secondary" onclick="openDemoModal()">Book a demo</button>
                 </div>
-                <!-- Business Managed: "24/7 on-call" + "99.9% uptime target" softened — a v0.1.0 solo-OPC operation cannot underwrite either; describing what we actually do is more credible. -->
                 <div class="price-card featured">
                     <div class="price-name">Business Managed</div>
                     <div class="price-amt">$1,299<small> /month</small></div>
-                    <div class="price-tagline">We run a dedicated instance for you.</div>
+                    <div class="price-tagline">Dedicated instance. Early access.</div>
                     <ul class="price-features">
                             <li><i class="fa-solid fa-check"></i> Per-customer dedicated instance</li>
-                            <li><i class="fa-solid fa-check"></i> We handle setup, upgrades, backups</li>
-                            <li><i class="fa-solid fa-check"></i> Business-hours support with after-hours emergency escalation; response targets defined in MSA</li>
-                            <li><i class="fa-solid fa-check"></i> 99.5% uptime target during the v0.1.x series; tightens to 99.9% once we have six months of production telemetry</li>
+                            <li><i class="fa-solid fa-check"></i> Setup, upgrades, and backups handled</li>
                             <li><i class="fa-solid fa-check"></i> Single region (US, EU, India, or SE Asia)</li>
-                            <li><i class="fa-solid fa-check"></i> BYO KMS for your secrets</li>
+                            <li><i class="fa-solid fa-check"></i> Best-effort uptime during early access; targets calibrated as production data accumulates</li>
                             <li><i class="fa-solid fa-check"></i> Includes everything in self-hosted License + SRE</li>
+                            <li><i class="fa-solid fa-check"></i> BYO provider keys, no token markup</li>
                     </ul>
                     <button class="btn btn-primary" onclick="openDemoModal()">Book a demo</button>
-                </div>
-                <!-- Enterprise Managed: "99.95% contractual SLA" + "Multi-region failover" softened — pricier to actually deliver an active-active rota; active-passive is honest and still differentiated. -->
-                <div class="price-card">
-                    <div class="price-name">Enterprise Managed</div>
-                    <div class="price-amt">From $5k<small> /month</small></div>
-                    <div class="price-tagline">Multi-region, SLA, BAA.</div>
-                    <ul class="price-features">
-                            <li><i class="fa-solid fa-check"></i> Multi-region active-passive failover</li>
-                            <li><i class="fa-solid fa-check"></i> SLA targets with credit schedule under MSA, calibrated against operating data</li>
-                            <li><i class="fa-solid fa-check"></i> BAA + custom DPA</li>
-                            <li><i class="fa-solid fa-check"></i> Dedicated CSM</li>
-                            <li><i class="fa-solid fa-check"></i> On-prem option</li>
-                            <li><i class="fa-solid fa-check"></i> Configurable audit retention up to 7 years</li>
-                            <li><i class="fa-solid fa-check"></i> Chargeback + cost-allocation reports</li>
-                    </ul>
-                    <button class="btn btn-secondary" onclick="openDemoModal()">Talk to sales</button>
                 </div>
             </div>
         </div>
@@ -1581,17 +1501,19 @@ $ curl localhost:4000/v1/models | jq</pre>
                 <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What happens at the end of the 30-day free trial?<i class="fa-solid fa-plus"></i></div>
                 <div class="faq-a">Nothing breaks. We email you 7 days before the trial ends. If you don't pick a paid tier, the platform downgrades to read-only — your data, configs, and audit logs stay intact for 90 days. No credit card is collected upfront.</div>
             </div>
+            <!-- Air-gapped FAQ reframed as roadmap-only — not a current capability. -->
             <div class="faq-item">
-                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Can we run this fully air-gapped?<i class="fa-solid fa-plus"></i></div>
-                <div class="faq-a">Yes — Enterprise tier supports fully air-gapped deployments with offline license validation. All container images are mirrored to your private registry; updates ship as signed bundles.</div>
+                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Does Scutum run fully air-gapped?<i class="fa-solid fa-plus"></i></div>
+                <div class="faq-a">Not today. The platform is self-hosted and runs entirely inside your network, but air-gapped installation with offline license validation and signed-bundle updates is on the roadmap, not currently available.</div>
             </div>
             <div class="faq-item">
                 <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How does pricing work for the LLM tokens themselves?<i class="fa-solid fa-plus"></i></div>
-                <div class="faq-a">We don't mark up tokens. You bring your own provider keys (OpenAI, Anthropic, Bedrock, etc.) — model spend goes to them at their list price. Our platform fee covers the control plane (proxy, governance, audit, dashboards, support).</div>
+                <div class="faq-a">No token markup. Bring your own provider keys (OpenAI, Anthropic, Bedrock, etc.); model spend goes to them at list price. The platform fee covers the control plane (proxy, governance, audit, dashboards, support).</div>
             </div>
+            <!-- Source-escrow reference dropped: not a current commitment. -->
             <div class="faq-item">
                 <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Is the source code available?<i class="fa-solid fa-plus"></i></div>
-                <div class="faq-a">The platform is delivered as container images and Kustomize manifests. Source-code access is available on Enterprise tier under a custom commercial agreement (escrow + read access).</div>
+                <div class="faq-a">The platform ships as container images and Kustomize manifests. Source-code access is not part of any current tier; that conversation is welcome but lives outside the standard pricing.</div>
             </div>
         </div>
     </div>
@@ -1605,8 +1527,10 @@ $ curl localhost:4000/v1/models | jq</pre>
                     <img src="/scutum-mark.svg" alt="" class="logo-mark"/>
                     Scutum
                 </a>
+                <!-- Footer tagline: dropped "Compliance-aware" — that framing implied a regulated-vendor
+                     posture we don't yet underwrite. Replaced with what we actually do. -->
                 <p style="color: var(--text-muted); font-size: 14px; max-width: 320px;">
-                    Unified control plane for AI infrastructure. Self-hosted. Compliance-aware.
+                    Unified control plane for AI infrastructure. Self-hosted. Self-healing.
                 </p>
                 <button class="btn btn-primary" style="margin-top: 16px;" onclick="openDemoModal()">Book a Demo</button>
             </div>

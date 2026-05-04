@@ -1,19 +1,18 @@
 # Scutum
 
-**The unified control plane for AI infrastructure.**
+**The AI control plane that runs itself.**
 
-Stop gluing together five AI infrastructure tools. Scutum is one control plane: LLM proxy, MCP & A2A gateway, cost governance, audit, and risk-scored SRE remediation. Drop-in OpenAI-compatible. Run it on your infrastructure, or let us run a dedicated instance for you.
+Drop-in OpenAI-compatible proxy across 100+ models. Native MCP and A2A with Cedar policy enforcement. Pre-call cost prediction with per-team budget gates. An autonomous SRE agent that watches the stack and proposes remediations for human approval. Self-hosted by default — your data, your keys, your audit log.
 
 - **Public site**: <https://scutum.dev/>
 - **Documentation**: <https://scutum.dev/docs/>
-- **Operated by**: Scuti Marketplace India (OPC) Private Limited
 - **Status**: v0.1.0, open early access (May 2026)
 
 ---
 
 ## Two ways to run it
 
-### Self-hosted
+### Self-hosted (default)
 
 Run Scutum on your own infrastructure. One-line installer onto a Linux box, your VPC, or your Kubernetes cluster:
 
@@ -21,13 +20,13 @@ Run Scutum on your own infrastructure. One-line installer onto a Linux box, your
 curl -fsSL https://scutum.dev/install.sh | sh
 ```
 
-Compose-spec compatible: works with Docker, Podman, and nerdctl. No Docker Inc commercial license required. Your data, your provider keys, your audit log — all stay on your side.
+Compose-spec compatible: works with Docker, Podman, and nerdctl. No Docker Inc commercial license required. Data, provider keys, and audit log all stay on your side.
 
 Quickstart: <https://scutum.dev/docs/guides/quickstart/>
 
-### Fully managed
+### Fully managed (early access)
 
-Per-customer dedicated namespace in our region of choice (US East/West, EU, India, SE Asia). 24/7 on-call, automated backups, BYO KMS for your secrets. We're the processor; the platform is yours.
+Per-customer dedicated namespace in a region of your choice (US East/West, EU, India, SE Asia). The platform team provisions the stack and ships the upgrades. Best-effort uptime during early access — SLA targets calibrate as production data accumulates.
 
 Compare modes: <https://scutum.dev/docs/whitepapers/managed-vs-self-hosted/>
 
@@ -35,16 +34,18 @@ Compare modes: <https://scutum.dev/docs/whitepapers/managed-vs-self-hosted/>
 
 ## What's in v0.1.0
 
-- **100+ models across 9 providers**: OpenAI, Anthropic, Google Vertex AI, AWS Bedrock, Azure OpenAI, xAI, DeepSeek, Mistral, and self-hosted (vLLM, Ollama, TGI).
+- **100+ models across 9 providers**: OpenAI, Anthropic, Google Vertex AI, AWS Bedrock, Azure OpenAI, xAI, DeepSeek, Mistral, and self-hosted (vLLM, Ollama, TGI). Catalog stays current with upstream — typical lag under 48 hours.
 - **OpenAI-compatible LLM endpoint** on port 4000. Drop-in replacement for direct provider calls.
+- **Native MCP and A2A protocol support** with Cedar policy enforcement at the gateway. Most AI gateways don't have this.
 - **Pre-call cost prediction** with per-team budget gates that fire **before** the request, not after.
-- **Audit log on every administrative mutation**, with configurable retention up to 7 years on Enterprise.
-- **Ed25519 offline license validation** — no phone-home, signature verified against bundled public key.
-- **SRE agent** with four-component risk scoring (blast radius, reversibility, state validity, operational pressure) and human-in-loop approval queue.
-- **MCP server registry** + Agent Gateway hot-reload for tool federation.
-- **OIDC SSO** (Okta, Azure AD, Google), OpenTelemetry traces, Grafana dashboards.
+- **Autonomous SRE agent** with four-component risk scoring (blast radius, reversibility, state validity, operational pressure) and human-in-loop approval queue.
+- **LangGraph workflows + Temporal-backed agent patterns** for long-running orchestration.
+- **OpenTelemetry traces, Grafana dashboards, semantic cache, prompt registry**.
+- **Audit log on every administrative mutation** with configurable retention.
+- **OIDC SSO** (Okta, Azure AD, Google).
+- **BYO provider keys, no token markup** — model spend goes to providers at list price.
 
-What's coming next: SAML/SCIM (Q3 2026), risk-scored auto-execution (Q4 2026), per-request quality estimation for routing (Q4 2026), SOC 2 Type I (Q3 2026), Type II + HIPAA BAA (Q1 2027).
+On the roadmap, not currently shipping: SAML & SCIM, risk-bounded auto-execution, air-gapped install, per-request quality estimation for routing.
 
 ---
 
@@ -54,17 +55,17 @@ Token costs go directly to providers at list price (no markup). The fee below co
 
 ### Self-hosted (you run it)
 
-- **Free Trial** — $0 for 30 days. Full features. Setup call required.
-- **License** — $99/month. Unlimited team members, all providers, all models, OIDC SSO, 90-day audit log, email support.
-- **License + SRE** — $179/month. Adds the SRE auto-remediation agent with HITL approval, four-component risk scoring, alerts.
+- **Free Trial** — $0 for 30 days. Full features. No credit card.
+- **License** — $99/month. Unlimited team members, all providers, all models, OIDC SSO, configurable audit retention, email support.
+- **License + SRE** — $299/month. Adds the autonomous SRE agent with HITL approval, four-component risk scoring, alerts.
 
-### Fully managed (we run it)
+### Fully managed (early access — we run it)
 
 - **Trial** — $0 for 30 days. Per-customer namespace, single region.
-- **Business Managed** — $1,299/month. Per-customer dedicated instance, 24/7 on-call, 99.9% uptime target, BYO KMS.
-- **Enterprise Managed** — from $5,000/month. Multi-region failover, 99.95% contractual SLA, BAA + custom DPA, dedicated CSM.
+- **Starter Managed** — $499/month. Shared multi-tenant infrastructure, single region, best-effort uptime, BYO provider keys.
+- **Business Managed** — $1,299/month. Per-customer dedicated instance, single region, best-effort uptime during early access (SLA targets calibrate as production data accumulates).
 
-Founding-customer rates lock in for the first 12 months. Future tiers will be priced higher; you keep the original rate as long as you stay on the plan.
+Founding-customer rates lock in for the first 12 months.
 
 ---
 
@@ -72,34 +73,31 @@ Founding-customer rates lock in for the first 12 months. Future tiers will be pr
 
 How Scutum stacks up against alternatives. Last verified 2026-05.
 
-| Vendor | Scope | Self-host | LLM Proxy | MCP / A2A | Workflows | SRE Agent | Cost prediction | Audit |
-|---|---|---|---|---|---|---|---|---|
-| **Scutum** | Unified control plane | Yes | Yes | Yes | Yes | Yes (HITL) | Yes (pre-call) | Immutable |
-| OpenRouter | LLM router (managed) | No | Yes | No | No | No | No | Limited |
-| Portkey | LLM gateway (managed) | Enterprise | Yes | No | No | No | Partial | Yes |
-| LangSmith | Observability for LangGraph | No | No | No | LangGraph only | No | No | Trace-level |
-| AWS Bedrock | LLM API (single vendor) | No | N/A | No | No | No | No | CloudTrail |
-| Apigee | API gateway (general) | GCP only | Generic | No | No | No | No | Yes |
-| Roll your own | You build it | Trivially | You build | You build | You build | You build | You build | You build |
+| Vendor | Scope | Self-host | LLM Proxy | MCP / A2A | Workflows | SRE Agent | Cost prediction | Audit | Pricing model | Open source |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **Scutum** | Unified control plane | Yes | Yes | Yes | Yes | Yes (HITL) | Yes (pre-call) | Configurable | Flat fee | No |
+| OpenRouter | LLM router (managed) | No | Yes | No | No | No | No | Limited | Per-token markup | No |
+| Portkey | LLM gateway (managed) | OSS basic | Yes | Partial | No | No | Post-call | Yes | Per-recorded-log | Gateway only |
+| LangSmith | Observability for LangGraph | Self-host Enterprise | No | No | LangGraph only | No | No | Trace-level | Per-trace | No |
+| AWS Bedrock | LLM API (single vendor) | No | Raw API | No | Step Functions | No | No | CloudTrail | Per-token | No |
+| Apigee | API gateway (general) | GCP only | Generic | No | No | No | No | Yes | Per-request | No |
+| TrueFoundry | AI deployment platform | Yes | Yes | MCP only | Yes | No | Partial | Yes | Flat fee | No |
+| LiteLLM | OSS LLM proxy | Yes | Yes | No | No | No | Partial | Basic | Free (self-host) | Yes |
 
-Found a row that's wrong? Email <hello@scutum.dev> and we'll correct it on the next deploy.
+Found a row that's wrong? Email <hello@scutum.dev>.
 
 ---
 
 ## Whitepapers
 
-Engineering whitepapers describing how Scutum is built, deployed, secured, and scaled.
-
-- **Self-Managed Best Practices** — operator playbook (day-one setup, backups, monitoring, scaling, upgrades, disaster scenarios). <https://scutum.dev/docs/whitepapers/self-managed-best-practices/>
-- **Gateway Security** — threat model, trust boundaries, audit-log integrity, rotation cadences. <https://scutum.dev/docs/whitepapers/gateway-security/>
-- **Managed vs Self-Hosted** — what you trade when we run it; migration paths in either direction. <https://scutum.dev/docs/whitepapers/managed-vs-self-hosted/>
+- **Self-Managed Best Practices** — operator playbook. <https://scutum.dev/docs/whitepapers/self-managed-best-practices/>
+- **Gateway Security** — threat model, trust boundaries, rotation cadences. <https://scutum.dev/docs/whitepapers/gateway-security/>
+- **Managed vs Self-Hosted** — what changes when we run it; migration paths in either direction. <https://scutum.dev/docs/whitepapers/managed-vs-self-hosted/>
 - **Platform Internals** — SRE agent in production + scaling patterns + semantic cache. <https://scutum.dev/docs/whitepapers/platform-internals/>
 - **Risk-Bounded Autonomous Remediation** — math behind the SRE agent's risk score. <https://scutum.dev/docs/whitepapers/risk-bounded-remediation/>
 - **Cost-Aware Multi-Provider Routing** — math behind proxy routing. <https://scutum.dev/docs/whitepapers/cost-aware-routing/>
 
-## Research
-
-Areas an AI infrastructure company has a perspective on.
+## Research roadmap
 
 - AI Safety at the Infrastructure Layer — <https://scutum.dev/docs/research/ai-safety/>
 - Explainable AI at the Platform Layer — <https://scutum.dev/docs/research/explainable-ai/>
@@ -112,11 +110,7 @@ Areas an AI infrastructure company has a perspective on.
 
 ## Design partner program
 
-We're working with our first five design partners. If your team has real AI infrastructure — multiple providers, governance pressure, SOC 2 ahead — and you'd rather shape the product than wait for it, this is a fit.
-
-What design partners get: free setup, lifetime discount, weekly working sessions with the founders, your roadmap items prioritised in our shipping order.
-
-What we ask: honesty about what's broken, permission to publish anonymised lessons (you keep your data).
+The first five design partners get free setup, a lifetime discount, and direct access to the team building the platform. The fit is engineering teams shipping LLM products to production who'd rather shape the platform than wait for it. Weekly working sessions; roadmap items get prioritised; logo on the page once you're ready.
 
 → <hello@scutum.dev>
 
@@ -125,12 +119,12 @@ What we ask: honesty about what's broken, permission to publish anonymised lesso
 ## Contact
 
 - **General**: <hello@scutum.dev>
-- **Demo / sales**: <hello@scutum.dev> or book at <https://scutum.dev/>
+- **Demo**: book at <https://scutum.dev/>
 - **Security disclosures**: <security@scutum.dev>
 - **Legal / DPA / privacy**: <legal@scutum.dev>
 - **Research collaboration**: <research@scutum.dev>
 
-- **X / Twitter**: <https://x.com/scutum_dev>
+- **X**: <https://x.com/scutum_dev>
 - **LinkedIn**: <https://www.linkedin.com/company/scutum-dev>
 
 ---
@@ -141,4 +135,4 @@ What we ask: honesty about what's broken, permission to publish anonymised lesso
 - Terms: <https://scutum.dev/terms/>
 - DPA: <https://scutum.dev/dpa/>
 
-© 2026 Scutum. Operated by Scuti Marketplace India (OPC) Private Limited.
+© 2026 Scutum.
