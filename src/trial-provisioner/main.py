@@ -36,9 +36,10 @@ import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import asyncpg
+import httpx
 from fastapi import FastAPI
 
 # Allow `from cloudflare import ...` style imports when running under uvicorn.
@@ -66,6 +67,22 @@ MACHINE_MEMORY_MB = int(os.getenv("MACHINE_MEMORY_MB", "2048"))
 # operator can just set MACHINE_MEMORY_MB and we pick the right cpu_kind.
 MACHINE_CPUS = max(1, (MACHINE_MEMORY_MB + 2047) // 2048)
 SCHEDULER_INTERVAL_S = int(os.getenv("SCHEDULER_INTERVAL_S", "3600"))
+# Max seconds to wait for the trial machine to start serving HTTP 200 before
+# we flip to 'active'. Cold-boot of dockerd + the full Scutum stack inside a
+# 2GB Fly machine takes 2-4 min on the happy path; give 7 min of headroom.
+# If the machine is still not ready after this, we mark active anyway and
+# accept the user might see /booting briefly — better than failing.
+READINESS_TIMEOUT_S = int(os.getenv("READINESS_TIMEOUT_S", "420"))
+READINESS_POLL_S = int(os.getenv("READINESS_POLL_S", "5"))
+
+# Provisioning sweeper: how often to scan for stuck 'provisioning' rows, and
+# how long a row must have been at 'provisioning' before the sweeper retries.
+# This is the safety net for: (a) NOTIFY events lost while the provisioner
+# was restarting, (b) crashes mid-provision that left a row partially set up.
+PROVISIONING_SWEEP_INTERVAL_S = int(os.getenv("PROVISIONING_SWEEP_INTERVAL_S", "60"))
+PROVISIONING_STUCK_AFTER_S = int(os.getenv("PROVISIONING_STUCK_AFTER_S", "90"))
+# Hard cap on automatic retries before a row is parked at 'failed' for a human.
+PROVISION_MAX_ATTEMPTS = int(os.getenv("PROVISION_MAX_ATTEMPTS", "5"))
 
 # Module-level state set in lifespan.
 _db_pool: Optional[asyncpg.Pool] = None
@@ -73,12 +90,17 @@ _fly: Optional[FlyClient] = None
 _cf: Optional[CloudflareClient] = None
 _listener_task: Optional[asyncio.Task] = None
 _scheduler_task: Optional[asyncio.Task] = None
+_provisioning_sweeper_task: Optional[asyncio.Task] = None
+# In-process guard against concurrent _provision() runs for the same trial id.
+# (Postgres advisory lock would be more robust, but an in-process set covers
+# the common case — sweeper firing while listener is also running.)
+_provision_in_flight: set[str] = set()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Boot the DB pool + Fly/Cloudflare clients + start the listener loop."""
-    global _db_pool, _fly, _cf, _listener_task, _scheduler_task
+    global _db_pool, _fly, _cf, _listener_task, _scheduler_task, _provisioning_sweeper_task
 
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL must be set")
@@ -93,17 +115,23 @@ async def lifespan(app: FastAPI):
 
     _listener_task = asyncio.create_task(_listen_loop())
     _scheduler_task = asyncio.create_task(_scheduler_loop())
+    # Periodic sweeper that re-issues provisioning for any row stuck at
+    # 'provisioning' for more than PROVISIONING_STUCK_AFTER_S seconds. This is
+    # the durability guarantee for the verify→provision handoff: even if a
+    # NOTIFY is dropped, the row is picked up within ~60s.
+    _provisioning_sweeper_task = asyncio.create_task(_provisioning_sweeper_loop())
     logger.info(
-        "trial-provisioner started (region=%s, image=%s, base_domain=%s)",
+        "trial-provisioner started (region=%s, image=%s, base_domain=%s, sweep_interval=%ds)",
         FLY_REGION,
         MACHINE_IMAGE,
         TRIAL_BASE_DOMAIN,
+        PROVISIONING_SWEEP_INTERVAL_S,
     )
 
     try:
         yield
     finally:
-        for t in (_listener_task, _scheduler_task):
+        for t in (_listener_task, _scheduler_task, _provisioning_sweeper_task):
             if t and not t.done():
                 t.cancel()
         if _fly:
@@ -160,17 +188,17 @@ def _handle_notify(connection, pid, channel, payload: str) -> None:
 
 
 async def _resume_in_flight() -> None:
-    """On startup, kick off provisioning for any rows already at status='provisioning'.
+    """On startup, kick off provisioning for any row at status='provisioning'.
 
     asyncpg's NOTIFY only delivers to live connections, so a restart loses
-    pending events. We re-issue them ourselves at boot.
+    pending events. We re-issue them ourselves at boot. We pick up rows
+    regardless of whether `fly_app_name` is set — `_provision_inner` is
+    idempotent and will resume from whatever state the Fly resources are in.
     """
     if not _db_pool:
         return
     try:
-        rows = await _db_pool.fetch(
-            "SELECT id::text FROM trial_instances WHERE status = 'provisioning' AND fly_app_name IS NULL"
-        )
+        rows = await _db_pool.fetch("SELECT id::text FROM trial_instances WHERE status = 'provisioning'")
     except Exception as e:
         logger.warning("resume_in_flight query failed: %s", e)
         return
@@ -184,7 +212,14 @@ async def _resume_in_flight() -> None:
 
 
 async def _provision(trial_id: str) -> None:
-    """Create the Fly app + DNS for one trial. Idempotent on retry."""
+    """Create the Fly app + DNS for one trial. Idempotent on retry.
+
+    The function may be invoked multiple times for the same trial — by NOTIFY,
+    by `_resume_in_flight` after restart, and by the periodic sweeper. The
+    in-process `_provision_in_flight` set prevents two concurrent runs for
+    the same id within one process; the early status check skips work for
+    rows that have already moved to active/failed/deleted.
+    """
     if not _db_pool or not _fly or not _cf:
         logger.error("provisioner not initialised; cannot provision %s", trial_id)
         return
@@ -195,6 +230,19 @@ async def _provision(trial_id: str) -> None:
         logger.warning("ignoring NOTIFY with non-UUID payload: %r", trial_id)
         return
 
+    if trial_id in _provision_in_flight:
+        logger.info("trial %s already being provisioned in this process — skipping", trial_id)
+        return
+    _provision_in_flight.add(trial_id)
+
+    try:
+        await _provision_inner(trial_id)
+    finally:
+        _provision_in_flight.discard(trial_id)
+
+
+async def _provision_inner(trial_id: str) -> None:
+    assert _db_pool and _fly and _cf  # guaranteed by caller
     async with _db_pool.acquire() as conn:
         row = await conn.fetchrow(
             "SELECT id, status, fly_app_name FROM trial_instances WHERE id = $1",
@@ -222,13 +270,37 @@ async def _provision(trial_id: str) -> None:
     # creation fails (the route updates fqdn at the very end of provisioning).
     fqdn = fly_url
 
+    # Claim ownership of this app name immediately. If the row had a previous
+    # fly_app_name set (mid-flow crash), we keep using that one — never
+    # generate a new name for the same trial id.
+    async with _db_pool.acquire() as conn:
+        existing_name = await conn.fetchval("SELECT fly_app_name FROM trial_instances WHERE id = $1", trial_id)
+        if existing_name:
+            app_name = existing_name
+            fly_url = f"{app_name}.fly.dev"
+            fqdn = fly_url
+        else:
+            await conn.execute(
+                "UPDATE trial_instances SET fly_app_name = $2 WHERE id = $1",
+                trial_id,
+                app_name,
+            )
+
     try:
-        # 1. Fly app.
+        # 1. Fly app — idempotent. "Already exists" means a previous run got
+        # this far and crashed; we keep using the existing app.
         logger.info("[%s] creating Fly app %s", trial_id, app_name)
-        await _fly.create_app(app_name)
+        try:
+            await _fly.create_app(app_name)
+        except FlyAPIError as e:
+            if _is_already_exists(e):
+                logger.info("[%s] Fly app %s already exists — resuming", trial_id, app_name)
+            else:
+                raise
 
         # 2. Public IPs. Without these the app gets only private 6PN routing
         # and *.fly.dev doesn't resolve. shared_v4 is free; v6 is free + dedicated.
+        # Already-allocated IPs return errors that we treat as success.
         try:
             logger.info("[%s] allocating shared IPv4 + IPv6", trial_id)
             await _fly.allocate_shared_ipv4(app_name)
@@ -236,29 +308,47 @@ async def _provision(trial_id: str) -> None:
         except FlyAPIError as e:
             logger.warning("[%s] IP allocation non-fatal: %s", trial_id, e)
 
-        # 3. Persistent volume (so postgres data inside the trial survives sleeps).
+        # 3. Persistent volume — idempotent. If a volume named "data" already
+        # exists for this app (previous run), reuse it.
         logger.info("[%s] creating volume", trial_id)
-        vol = await _fly.create_volume(
-            app_name=app_name,
-            name="data",
-            region=FLY_REGION,
-            size_gb=FLY_VOLUME_GB,
-        )
+        try:
+            vol = await _fly.create_volume(
+                app_name=app_name,
+                name="data",
+                region=FLY_REGION,
+                size_gb=FLY_VOLUME_GB,
+            )
+        except FlyAPIError as e:
+            if _is_already_exists(e):
+                logger.info("[%s] volume already exists — looking up existing volume", trial_id)
+                vol = await _find_existing_volume(app_name) or {}
+            else:
+                raise
         volume_id = vol.get("id")
 
-        # 4. Machine: scale-to-zero, mounts the volume.
-        logger.info("[%s] starting machine (image=%s)", trial_id, MACHINE_IMAGE)
-        await _fly.run_machine(
-            app_name=app_name,
-            image=MACHINE_IMAGE,
-            region=FLY_REGION,
-            env={"TRIAL_ID": trial_id, "PORT": "80"},
-            ports=[{"port": 443, "handlers": ["tls", "http"]}, {"port": 80, "handlers": ["http"]}],
-            memory_mb=MACHINE_MEMORY_MB,
-            cpus=MACHINE_CPUS,
-            volume_id=volume_id,
-            volume_mount_path="/data",
-        )
+        # 4. Machine: scale-to-zero, mounts the volume. If a machine already
+        # exists for this app (previous run), skip — we don't run a second one.
+        existing_machines = await _list_machines(app_name)
+        if existing_machines:
+            logger.info(
+                "[%s] machine already running on app %s (count=%d) — skipping run_machine",
+                trial_id,
+                app_name,
+                len(existing_machines),
+            )
+        else:
+            logger.info("[%s] starting machine (image=%s)", trial_id, MACHINE_IMAGE)
+            await _fly.run_machine(
+                app_name=app_name,
+                image=MACHINE_IMAGE,
+                region=FLY_REGION,
+                env={"TRIAL_ID": trial_id, "PORT": "80"},
+                ports=[{"port": 443, "handlers": ["tls", "http"]}, {"port": 80, "handlers": ["http"]}],
+                memory_mb=MACHINE_MEMORY_MB,
+                cpus=MACHINE_CPUS,
+                volume_id=volume_id,
+                volume_mount_path="/data",
+            )
 
         # 5. Custom hostname — three steps, each best-effort:
         #    a. Fly addCertificate registers the hostname for routing AND
@@ -323,6 +413,21 @@ async def _provision(trial_id: str) -> None:
         if custom_hostname_ready:
             fqdn = custom_fqdn
 
+        # 5b. Wait for the in-machine stack to actually answer HTTP 200 before
+        # flipping to 'active'. The Fly machine "started" event fires when the
+        # container is running, but inside it dockerd + postgres + admin-api +
+        # litellm still need ~3 min to become reachable. Without this gate the
+        # /try page redirects users to a URL that 502s for several minutes.
+        # Note: front-of-house nginx serves a /booting page during this window
+        # (see fly-monolith/nginx.conf) — we look for a JSON response from
+        # admin-api specifically, which only happens once admin-api is up.
+        # Using the *.fly.dev hostname (not the brandable one) so we don't
+        # race the per-trial Let's Encrypt cert issuance.
+        readiness_url = f"https://{fly_url}/api/v1/license"
+        ready = await _wait_for_readiness(trial_id, readiness_url)
+        if not ready:
+            logger.warning("[%s] readiness timeout after %ds — marking active anyway", trial_id, READINESS_TIMEOUT_S)
+
         # 6. Mark active.
         expires = datetime.now(timezone.utc) + timedelta(days=TRIAL_LIFETIME_DAYS)
         async with _db_pool.acquire() as conn:
@@ -345,7 +450,25 @@ async def _provision(trial_id: str) -> None:
         logger.info("[%s] trial active at https://%s (expires %s)", trial_id, fqdn, expires.isoformat())
 
     except Exception as e:  # noqa: BLE001
-        logger.exception("[%s] provisioning failed", trial_id)
+        # Decide whether to park as failed (hard) or leave at provisioning
+        # for the sweeper to retry (transient). We default to retry-friendly
+        # because Fly/Cloudflare 5xx + network blips are far more common than
+        # genuine misconfiguration. The sweeper enforces PROVISION_MAX_ATTEMPTS
+        # so a truly broken row eventually parks at 'failed' with the error.
+        attempts = await _bump_attempts_and_get(trial_id, e)
+        retryable = _is_retryable_error(e) and attempts < PROVISION_MAX_ATTEMPTS
+        if retryable:
+            logger.warning(
+                "[%s] provision attempt %d failed (transient): %s — sweeper will retry",
+                trial_id,
+                attempts,
+                e,
+            )
+            # Leave status at 'provisioning' so the sweeper picks it up. We
+            # only stamped provision_error so the user sees current diagnostic
+            # text on the /try status poll.
+            return
+        logger.exception("[%s] provisioning failed permanently after %d attempts", trial_id, attempts)
         async with _db_pool.acquire() as conn:
             await conn.execute(
                 """
@@ -357,6 +480,178 @@ async def _provision(trial_id: str) -> None:
                 trial_id,
                 f"{type(e).__name__}: {str(e)[:500]}",
             )
+
+
+# ----------------------------------------------------------------------------
+# provisioning helpers — idempotency + retry classification
+
+
+def _is_already_exists(e: FlyAPIError) -> bool:
+    """True if a Fly API error indicates the resource already exists.
+
+    Fly returns 422 with a body like 'Validation failed: Name has already been taken'
+    for duplicate apps, and similar for volumes. The exact wording isn't part
+    of an API contract, so match defensively on common substrings.
+    """
+    body = getattr(e, "body", "") or ""
+    msg = str(e).lower()
+    body_l = body.lower()
+    needles = ("already been taken", "already exists", "name_taken", "duplicate")
+    return any(n in msg or n in body_l for n in needles)
+
+
+def _is_retryable_error(e: BaseException) -> bool:
+    """Classify an exception as transient (worth retrying) vs hard.
+
+    Retryable: network errors, Fly/CF 5xx, timeouts, anything not clearly
+    a 4xx misconfiguration we can't fix by retrying.
+    """
+    if isinstance(e, (httpx.HTTPError, httpx.TimeoutException, ConnectionError, OSError)):
+        return True
+    if isinstance(e, FlyAPIError):
+        return e.status >= 500 or e.status == 429
+    if isinstance(e, CloudflareAPIError):
+        # CF status codes can be HTTP or their internal numeric codes; play safe
+        # and retry anything that's not obviously auth/validation.
+        return e.status >= 500 or e.status == 429
+    return False
+
+
+async def _bump_attempts_and_get(trial_id: str, exc: BaseException) -> int:
+    """Stamp provision_error and increment a counter held in provision_error
+    via attempt-tag prefix. We don't have a dedicated column, so we encode
+    attempts inline at the front of provision_error: '[attempt=N] <msg>'.
+
+    Returns the new attempt count.
+    """
+    if not _db_pool:
+        return PROVISION_MAX_ATTEMPTS  # caller treats as hard-fail
+    async with _db_pool.acquire() as conn:
+        existing = await conn.fetchval("SELECT provision_error FROM trial_instances WHERE id = $1", trial_id)
+    attempts = 1
+    if existing and isinstance(existing, str) and existing.startswith("[attempt="):
+        try:
+            n = int(existing.split("[attempt=", 1)[1].split("]", 1)[0])
+            attempts = n + 1
+        except (ValueError, IndexError):
+            pass
+    tagged = f"[attempt={attempts}] {type(exc).__name__}: {str(exc)[:480]}"
+    async with _db_pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE trial_instances SET provision_error = $2 WHERE id = $1",
+            trial_id,
+            tagged,
+        )
+    return attempts
+
+
+async def _find_existing_volume(app_name: str) -> Optional[Dict[str, Any]]:
+    """Look up an existing 'data' volume on an app, if any."""
+    if not _fly:
+        return None
+    try:
+        client = await _fly._client()  # noqa: SLF001 — internal helper, single-process
+        resp = await client.get(f"/apps/{app_name}/volumes")
+        if resp.status_code == 200:
+            for v in resp.json() or []:
+                if v.get("name") == "data":
+                    return v
+    except Exception as e:  # noqa: BLE001
+        logger.warning("could not list volumes on %s: %s", app_name, e)
+    return None
+
+
+async def _list_machines(app_name: str) -> List[Dict[str, Any]]:
+    """List machines on an app. Empty list on error (treat as 'no machines')."""
+    if not _fly:
+        return []
+    try:
+        client = await _fly._client()  # noqa: SLF001
+        resp = await client.get(f"/apps/{app_name}/machines")
+        if resp.status_code == 200:
+            return resp.json() or []
+    except Exception as e:  # noqa: BLE001
+        logger.warning("could not list machines on %s: %s", app_name, e)
+    return []
+
+
+# ----------------------------------------------------------------------------
+# provisioning sweeper — durability net for the verify→provision handoff
+
+
+async def _provisioning_sweeper_loop() -> None:
+    """Periodically scan for stuck 'provisioning' rows and re-run them.
+
+    Catches three failure modes that would otherwise leave a trial wedged:
+      a) NOTIFY was emitted while the listener was disconnected (LISTEN
+         delivery is best-effort; reconnect doesn't replay).
+      b) provisioner process restarted between NOTIFY and provision start.
+      c) provision crashed mid-flow (e.g. Fly transient 5xx) and is now in a
+         retryable state.
+    """
+    # Initial delay so a freshly-started listener has time to drain real
+    # NOTIFYs before the sweeper starts second-guessing it.
+    await asyncio.sleep(PROVISIONING_SWEEP_INTERVAL_S)
+    while True:
+        try:
+            if _db_pool:
+                cutoff = datetime.now(timezone.utc) - timedelta(seconds=PROVISIONING_STUCK_AFTER_S)
+                rows = await _db_pool.fetch(
+                    """
+                    SELECT id::text AS id
+                    FROM trial_instances
+                    WHERE status = 'provisioning'
+                      AND verified_at IS NOT NULL
+                      AND verified_at < $1
+                    ORDER BY verified_at
+                    """,
+                    cutoff,
+                )
+                for row in rows:
+                    trial_id = row["id"]
+                    if trial_id in _provision_in_flight:
+                        continue
+                    logger.info(
+                        "[sweeper] resuming stuck trial %s (verified > %ds ago)",
+                        trial_id,
+                        PROVISIONING_STUCK_AFTER_S,
+                    )
+                    asyncio.create_task(_provision(trial_id))
+        except asyncio.CancelledError:
+            return
+        except Exception as e:  # noqa: BLE001
+            logger.warning("provisioning sweeper iteration failed: %s", e)
+        await asyncio.sleep(PROVISIONING_SWEEP_INTERVAL_S)
+
+
+async def _wait_for_readiness(trial_id: str, url: str) -> bool:
+    """Poll the trial URL until it returns a 2xx/4xx (= the real stack is up).
+
+    Returns True on success, False on timeout. We accept any 2xx OR a 4xx —
+    a 401/403/404 from admin-api means the FastAPI process is alive and
+    routing requests, which is what we care about. The /booting fallback
+    page returns 200 too but with content-type=text/html (not JSON), so we
+    additionally require the JSON content-type to confirm we hit admin-api
+    rather than the still-booting nginx fallback.
+    """
+    deadline = asyncio.get_event_loop().time() + READINESS_TIMEOUT_S
+    async with httpx.AsyncClient(
+        timeout=10.0,
+        follow_redirects=True,
+        verify=True,  # CF/Fly cert chain; trust default CA bundle
+    ) as client:
+        while asyncio.get_event_loop().time() < deadline:
+            try:
+                r = await client.get(url)
+                ctype = r.headers.get("content-type", "")
+                if "json" in ctype.lower():
+                    logger.info("[%s] readiness check passed: %s → %d", trial_id, url, r.status_code)
+                    return True
+                logger.debug("[%s] readiness probe got %d (ctype=%s) — still booting", trial_id, r.status_code, ctype)
+            except (httpx.HTTPError, httpx.HTTPStatusError):
+                pass  # connection refused / TLS handshake failure — retry
+            await asyncio.sleep(READINESS_POLL_S)
+    return False
 
 
 # ----------------------------------------------------------------------------

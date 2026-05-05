@@ -8,6 +8,16 @@ set -euo pipefail
 
 log() { echo "[scutum-monolith] $(date -Iseconds) $*"; }
 
+# 0. Start the front-of-house nginx FIRST so the public :80 has something to
+# serve during the dockerd + stack boot. Its config has a /booting error_page
+# fallback (see nginx.conf), so any inbound request gets the friendly waiting
+# page rather than connection-refused / Fly 502 splash. Without this, when
+# /try redirects the user to the trial URL the moment the Fly machine reports
+# ready, the first few requests would error out before nginx had started.
+log "starting front-of-house nginx on :80 (booting page until upstreams are up)"
+nginx &
+NGINX_PID=$!
+
 # 1. Start dockerd in the background (dind base image entrypoint normally
 # does this, but we want full control of the boot sequence).
 log "starting dockerd (storage-driver=fuse-overlayfs for nested-VM support)..."
@@ -55,21 +65,17 @@ cd "$SCUTUM_DIR/scutum"
 log "bringing up the Scutum stack via scutum CLI"
 ./scutum up || true
 
-# Wait until admin-ui responds — that's the primary user-facing surface.
+# Wait until admin-ui responds — purely informational at this point. nginx is
+# already serving the /booting fallback to anyone who hits :80 in the meantime;
+# once admin-ui returns 200, normal proxy_pass takes over automatically.
 log "waiting for admin-ui to come online..."
-for i in $(seq 1 120); do
+for i in $(seq 1 300); do
     if curl -fsS -o /dev/null --max-time 2 http://localhost:5173/ 2>/dev/null; then
         log "admin-ui ready after ${i}s"
         break
     fi
     sleep 1
 done
-
-# 4. Start the front-of-house nginx that maps :80 inbound to the right
-# internal service.
-log "starting front-of-house nginx on :80"
-nginx -g 'daemon off;' &
-NGINX_PID=$!
 
 # 5. Tail the combined Scutum logs as the foreground process so Fly's log
 # stream picks up everything.

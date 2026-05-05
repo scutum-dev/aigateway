@@ -16,13 +16,15 @@ A unified control plane that sits on top of **LiteLLM** (LLM proxy, port 4000) a
 
 ```bash
 # Bring up services (profiles stack additively)
-make up                  # core: postgres, redis, litellm, admin-api, admin-ui, landing, deck, docs, playground
+make up                  # customer-safe core: postgres, redis, litellm, admin-api, admin-ui, docs-site
 make up-observability    # + otel-collector, prometheus, grafana, jaeger
 make up-workflows        # + temporal, temporal-ui, workflow-engine, a2a-runtime
 make up-finops           # + cost-predictor, budget-webhook
+make up-sre              # + sre-agent
+make up-marketing        # + landing-ui, landing-backend, deck-ui, playground-ui, trial-provisioner (scutum.dev only)
 make up-full             # everything (including agent gateway, vault, nginx)
 make down                # stop everything
-make logs-litellm / logs-admin
+make logs-litellm / logs-admin / logs-sre
 
 # Database
 make migrate             # alembic upgrade head inside admin-api container
@@ -50,10 +52,11 @@ Raw `docker compose` always needs the env file: `docker compose --env-file confi
 Default `make up` is **customer-safe**: only platform services (postgres, redis, litellm, admin-api, admin-ui, docs-site). Customers should never see scutum.dev marketing.
 
 The `marketing` profile gates everything scutum.dev-specific:
-- `landing-ui` (the public scutum.dev page)
-- `landing-backend` (Cal.com Book-a-Demo)
+- `landing-ui` (the public scutum.dev page, including the `/try` signup at `ui/landing/try/`)
+- `landing-backend` (Cal.com Book-a-Demo + verification email sender)
 - `deck-ui` (sales presentation)
 - `playground-ui` (demo playground)
+- `trial-provisioner` (Fly + Cloudflare API caller for hosted trials — see "Hosted-trial flow" below)
 
 Plus the env vars `CALCOM_*`, `DEMO_INBOX/FROM/REPLY_TO`, scutum.dev Resend SMTP creds — all must stay below the "scutum.dev MARKETING SURFACES" header in `.env.example` and only get set on the scutum.dev VM, never on customer envs.
 
@@ -64,21 +67,28 @@ Plus the env vars `CALCOM_*`, `DEMO_INBOX/FROM/REPLY_TO`, scutum.dev Resend SMTP
 ## Architecture: how a config change flows
 
 1. User clicks something in Admin UI (`ui/admin`, React Query hooks in `src/api/hooks.ts` → `src/api/client.ts`).
-2. Request hits Admin API (`src/admin-api/main.py`), routed to one of ~25 domain routers in `src/admin-api/routers/`.
+2. Request hits Admin API (`src/admin-api/main.py`), routed to one of ~30 domain routers in `src/admin-api/routers/`.
 3. Router auth-gates via `deps.require_admin` (mutations) or `auth.get_current_user` (reads), writes to Postgres with **asyncpg + parameterized SQL** (no ORM, no string interpolation), and calls `audit.log_audit_event()`.
 4. For MCP/A2A/guardrail changes: `gateway_sync.py` materializes Postgres rows → `config.yaml` on the shared volume. LiteLLM/Agent Gateway file-watch and hot-reload.
 5. Keys/teams/budgets/models routers are **proxies** to LiteLLM's own API — we do not duplicate that state.
 
 ## Service map (docker-compose profiles)
 
-Core: `postgres`, `redis`, `litellm` (4000), `admin-api` (8086), `admin-ui` (5173), `landing-ui` (9999), `deck-ui` (6002), `playground-ui` (6001), `docs-site` (8089).
+Core (customer-safe): `postgres`, `redis`, `litellm` (4000), `admin-api` (8086), `admin-ui` (5173), `docs-site` (8089).
+`marketing` (scutum.dev only): `landing-ui` (9999), `landing-backend`, `deck-ui` (6002), `playground-ui` (6001), `trial-provisioner`.
 `observability`: otel-collector, prometheus (9090), grafana (3030), jaeger (16686).
 `workflows`: temporal, temporal-ui (8088), `workflow-engine` (8085, LangGraph), `a2a-runtime` (8087, Temporal agents).
-`finops`: `cost-predictor` (8080, tiktoken/pricing), `budget-webhook` (8081, pre/post LiteLLM hooks).
+`finops`: `cost-predictor` (8080, tiktoken/pricing), `budget-webhook` (8081, pre/post LiteLLM hooks), `finops-reporter`.
+`sre`: `sre-agent` (incident-remediation agent).
 `local-models`: `gpu-stub` (8090, Ollama-compat).
+`infra`: vault, nginx.
 `full` = all of the above + agent gateway (9000, admin UI 15000).
 
+Other services in `src/` not always wired into compose: `gateway-abstraction` (provider-agnostic LLM SDK), `config-loader` (YAML hydration helper).
+
 Custom Python services all share code via `src/shared/` (injected as docker build context `--build-context shared=./src/shared`). `src/` is on `sys.path` for tests via `tests/conftest.py`.
+
+`docker-compose.override.{dev,staging,production}.yaml` layer on top of `docker-compose.yaml` for env-specific tweaks; the OCI deploy script picks the right override via `-f`. They are *not* picked up automatically by plain `make up` — only by deploy scripts.
 
 ## Code conventions (beyond what ruff/eslint check)
 
@@ -120,7 +130,31 @@ Every customer deploy needs a license JWT. Validation runs offline against a pub
 - **Mint a license**: `python scripts/issue-license.py --email X --tier {trial,team,business,enterprise} --days 30`.
 - **Validator**: `src/admin-api/license.py` — soft-fail (expired/missing licenses never crash admin-api). Loaded in lifespan from `LICENSE_KEY` env → `licenses` table → none. Background task re-validates every 5 min.
 - **Endpoints**: `GET /api/v1/license` (public, for UI activation prompt) and `POST /api/v1/license/activate` (admin, for in-place rotation).
-- **Migration**: 026 created `licenses` table. Most-recent active row is operative.
+- **Migration**: 026 created `licenses` table. Most-recent active row is operative. (See `src/admin-api/alembic/versions/` for the latest revision number — don't pin it in docs.)
+
+## Hosted-trial flow (`/try` → Fly machine)
+
+Marketing-profile-only feature for the public scutum.dev funnel. **Customers running their own Scutum do not get this** — the whole pipeline is gated behind the `marketing` profile.
+
+End-to-end flow:
+1. Visitor fills the form at `ui/landing/try/index.html` (Cloudflare Turnstile bot-check).
+2. `POST /api/v1/trial-signup` (router `src/admin-api/routers/trial_signup.py`) creates `users` + `organizations` + `trial_instances` rows in `pending_verification`, sends a verification email via `landing-backend`'s Resend SMTP creds.
+3. Verification link → `GET /api/v1/trial-signup/{id}/verify?token=...` flips status to `provisioning` and emits `pg_notify('trial_provision', trial_id)`.
+4. `src/trial-provisioner/` (FastAPI + asyncpg LISTEN loop) consumes the notify and calls Fly + Cloudflare APIs in sequence: `fly apps create` → `fly volumes create` → `fly machines create` (image: `ghcr.io/scutum-dev/scutum-monolith:<ver>`) → `fly certs create` → Cloudflare CNAME for `<id>.scutum.dev`. On success, sets `fqdn` + `fly_app_name`, flips status to `active`, stamps `expires_at = now() + TRIAL_LIFETIME_DAYS` (default 30).
+5. The `/try` page polls `GET /api/v1/trial-signup/{id}/status` while waiting.
+6. A lifecycle scheduler (in trial-provisioner) scans `(status, expires_at)` to send 3-day reminder emails and to delete past-expiry trials. Deleted rows are retained with `status='deleted'` for funnel attribution.
+
+Per-trial machine image: `infra/fly-monolith/` — single `docker:dind`-based image that runs the **entire** customer release compose inside one 2GB Fly VM (postgres + redis + litellm + admin-api + admin-ui + nginx, all sharing one OS). Front-of-house nginx maps `/` → admin-ui, `/api/*` → admin-api, `/v1/*` → litellm, `/docs/*` → docs-site. Cold-start (auto-stopped machine waking) is ~30–60 s while dockerd + containers boot. Built by `.github/workflows/build-monolith.yml`.
+
+DB schema: migration 027 created `trial_instances` with the lifecycle states `pending_verification → provisioning → active → expired | deleted | failed`.
+
+Env vars (trial-provisioner only): `FLY_API_TOKEN`, `FLY_REGION` (default `iad`), `FLY_VOLUME_GB` (default 5), `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`, `TRIAL_BASE_DOMAIN` (default `scutum.dev`), `TRIAL_LIFETIME_DAYS` (default 30), `MACHINE_IMAGE` (override the per-trial image — useful in staging). All under the marketing section of `.env.example`.
+
+Operator escape hatches:
+- Failed provisions: row stays at `status='failed'` with `provision_error` populated. Manually clean up via Fly + Cloudflare dashboards, then flip back to `provisioning` and re-emit the NOTIFY to retry.
+- Fly shared-cpu machines cap at 2GB/vCPU — `FLY_VM_CPUS` is auto-derived from memory in the provisioner (see commit `fa4925b`).
+- Fly LE certs need a DNS-01 validation CNAME; provisioner adds it automatically (commit `0874872`).
+- Fly storage driver: monolith image needs `fuse-overlayfs` (not the default `vfs`/`overlay2`) for nested-VM support (commit `1869198`).
 
 ## Release & customer distribution
 
