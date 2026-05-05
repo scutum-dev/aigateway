@@ -56,7 +56,10 @@ TRIAL_BASE_DOMAIN = os.getenv("TRIAL_BASE_DOMAIN", "trial.scutum.dev")
 TRIAL_LIFETIME_DAYS = int(os.getenv("TRIAL_LIFETIME_DAYS", "30"))
 FLY_REGION = os.getenv("FLY_REGION", "iad")  # us-east default; matches lowest-latency for US/EU mix
 FLY_VOLUME_GB = int(os.getenv("FLY_VOLUME_GB", "5"))
-MACHINE_IMAGE = os.getenv("MACHINE_IMAGE", "nginxinc/nginx-unprivileged:alpine")
+# Default placeholder is nginx:alpine (listens on 80; runs as root inside the
+# isolated Fly micro-VM which is fine for a trial). The unprivileged variant
+# listens on 8080 and would mismatch our internal_port=80 below.
+MACHINE_IMAGE = os.getenv("MACHINE_IMAGE", "nginx:alpine")
 MACHINE_MEMORY_MB = int(os.getenv("MACHINE_MEMORY_MB", "2048"))
 SCHEDULER_INTERVAL_S = int(os.getenv("SCHEDULER_INTERVAL_S", "3600"))
 
@@ -211,7 +214,16 @@ async def _provision(trial_id: str) -> None:
         logger.info("[%s] creating Fly app %s", trial_id, app_name)
         await _fly.create_app(app_name)
 
-        # 2. Persistent volume (so postgres data inside the trial survives sleeps).
+        # 2. Public IPs. Without these the app gets only private 6PN routing
+        # and *.fly.dev doesn't resolve. shared_v4 is free; v6 is free + dedicated.
+        try:
+            logger.info("[%s] allocating shared IPv4 + IPv6", trial_id)
+            await _fly.allocate_shared_ipv4(app_name)
+            await _fly.allocate_ipv6(app_name)
+        except FlyAPIError as e:
+            logger.warning("[%s] IP allocation non-fatal: %s", trial_id, e)
+
+        # 3. Persistent volume (so postgres data inside the trial survives sleeps).
         logger.info("[%s] creating volume", trial_id)
         vol = await _fly.create_volume(
             app_name=app_name,
@@ -221,7 +233,7 @@ async def _provision(trial_id: str) -> None:
         )
         volume_id = vol.get("id")
 
-        # 3. Machine: scale-to-zero, mounts the volume.
+        # 4. Machine: scale-to-zero, mounts the volume.
         logger.info("[%s] starting machine (image=%s)", trial_id, MACHINE_IMAGE)
         await _fly.run_machine(
             app_name=app_name,

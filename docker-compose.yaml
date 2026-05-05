@@ -645,7 +645,7 @@ services:
       TRIAL_BASE_DOMAIN: ${TRIAL_BASE_DOMAIN:-trial.scutum.dev}
       TRIAL_LIFETIME_DAYS: ${TRIAL_LIFETIME_DAYS:-30}
       # Phase 1: placeholder image; replace with the Scutum monolith later.
-      MACHINE_IMAGE: ${MACHINE_IMAGE:-nginxinc/nginx-unprivileged:alpine}
+      MACHINE_IMAGE: ${MACHINE_IMAGE:-nginx:alpine}
       MACHINE_MEMORY_MB: ${MACHINE_MEMORY_MB:-2048}
       FLY_VOLUME_GB: ${FLY_VOLUME_GB:-5}
     depends_on:

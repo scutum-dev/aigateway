@@ -23,6 +23,9 @@ import httpx
 logger = logging.getLogger(__name__)
 
 FLY_API_BASE = "https://api.machines.dev/v1"
+# IP allocation + cert mgmt only live on the legacy GraphQL endpoint;
+# the new Machines REST API doesn't expose them.
+FLY_GRAPHQL_BASE = "https://api.fly.io"
 
 
 class FlyAPIError(RuntimeError):
@@ -151,14 +154,62 @@ class FlyClient:
             raise FlyAPIError(resp.status_code, resp.text, op="run_machine")
         return resp.json()
 
-    # ---- certificates (custom hostname) ---------------------------------------
+    # ---- IPs + certs live on the legacy GraphQL endpoint ----------------------
+
+    async def _graphql(self, query: str, variables: Dict[str, Any], *, op: str) -> Dict[str, Any]:
+        """Run a GraphQL mutation against api.fly.io. Used for IP + cert ops."""
+        async with httpx.AsyncClient(
+            base_url=FLY_GRAPHQL_BASE,
+            headers={
+                "Authorization": f"Bearer {self.api_token}",
+                "Content-Type": "application/json",
+            },
+            timeout=30.0,
+        ) as gql:
+            resp = await gql.post("/graphql", json={"query": query, "variables": variables})
+            if resp.status_code != 200:
+                raise FlyAPIError(resp.status_code, resp.text, op=op)
+            body = resp.json()
+            if body.get("errors"):
+                raise FlyAPIError(200, str(body["errors"])[:300], op=op)
+            return body.get("data", {})
+
+    async def allocate_shared_ipv4(self, app_name: str) -> Dict[str, Any]:
+        """Allocate a free shared-v4 IP so the app is reachable from the public internet.
+
+        Without this, machines start fine but have only private (6PN) IPs and
+        nothing resolves to them. Shared IPv4 is free; dedicated v4 is $2/mo.
+        """
+        query = """
+        mutation($input: AllocateIPAddressInput!) {
+          allocateIpAddress(input: $input) {
+            ipAddress { address type }
+          }
+        }
+        """
+        return await self._graphql(
+            query, {"input": {"appId": app_name, "type": "shared_v4"}}, op="allocate_shared_ipv4"
+        )
+
+    async def allocate_ipv6(self, app_name: str) -> Dict[str, Any]:
+        """Allocate a v6 IP (free, dedicated). Pairs with shared_v4 to satisfy
+        clients that prefer or require v6."""
+        query = """
+        mutation($input: AllocateIPAddressInput!) {
+          allocateIpAddress(input: $input) {
+            ipAddress { address type }
+          }
+        }
+        """
+        return await self._graphql(query, {"input": {"appId": app_name, "type": "v6"}}, op="allocate_ipv6")
 
     async def create_certificate(self, app_name: str, hostname: str) -> Dict[str, Any]:
-        client = await self._client()
-        resp = await client.post(
-            f"/apps/{app_name}/certificates",
-            json={"hostname": hostname},
-        )
-        if resp.status_code not in (200, 201):
-            raise FlyAPIError(resp.status_code, resp.text, op="create_certificate")
-        return resp.json()
+        """Register a custom hostname on the app (Let's Encrypt cert auto-issued)."""
+        query = """
+        mutation($appId: ID!, $hostname: String!) {
+          addCertificate(appId: $appId, hostname: $hostname) {
+            certificate { hostname dnsValidationTarget configured }
+          }
+        }
+        """
+        return await self._graphql(query, {"appId": app_name, "hostname": hostname}, op="create_certificate")
