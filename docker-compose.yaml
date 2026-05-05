@@ -624,6 +624,39 @@ services:
       - gateway-network
     restart: unless-stopped
 
+  # Worker that consumes pg_notify('trial_provision') and provisions a real
+  # Fly app + Cloudflare DNS record per verified trial. Marketing-profile
+  # only — customers running their own Scutum don't need this service.
+  trial-provisioner:
+    build:
+      context: ./src/trial-provisioner
+      dockerfile: Dockerfile
+    container_name: trial-provisioner
+    profiles: ["marketing", "full"]
+    ports:
+      - "${TRIAL_PROVISIONER_PORT:-8094}:8094"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-litellm}@postgres:5432/${POSTGRES_DB:-litellm}
+      FLY_API_TOKEN: ${FLY_API_TOKEN:-}
+      FLY_ORG_SLUG: ${FLY_ORG_SLUG:-personal}
+      FLY_REGION: ${FLY_REGION:-iad}
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
+      CLOUDFLARE_ZONE_ID: ${CLOUDFLARE_ZONE_ID:-}
+      TRIAL_BASE_DOMAIN: ${TRIAL_BASE_DOMAIN:-trial.scutum.dev}
+      TRIAL_LIFETIME_DAYS: ${TRIAL_LIFETIME_DAYS:-30}
+      # Phase 1: placeholder image; replace with the Scutum monolith later.
+      MACHINE_IMAGE: ${MACHINE_IMAGE:-nginxinc/nginx-unprivileged:alpine}
+      MACHINE_MEMORY_MB: ${MACHINE_MEMORY_MB:-2048}
+      FLY_VOLUME_GB: ${FLY_VOLUME_GB:-5}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      admin-api:
+        condition: service_started
+    networks:
+      - gateway-network
+    restart: unless-stopped
+
   deck-ui:
     build:
       context: ./ui/deck
