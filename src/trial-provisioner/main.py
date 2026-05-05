@@ -207,7 +207,14 @@ async def _provision(trial_id: str) -> None:
     # globally unique; the 12-char hex suffix is plenty.
     short_id = trial_id.split("-")[0]
     app_name = f"scutum-trial-{short_id}"
-    fqdn = f"trial-{short_id}.{TRIAL_BASE_DOMAIN}"
+    # Phase 1: surface the *.fly.dev URL to the user — Fly's wildcard cert
+    # covers it, no extra issuance step. The custom hostname `trial-{id}.
+    # trial.scutum.dev` still gets created (Cloudflare CNAME below) but is
+    # only useful once Fly issues a Let's Encrypt cert for it (manual today;
+    # follow-up). Until then, the fly.dev URL is what works in the browser.
+    fly_url = f"{app_name}.fly.dev"
+    custom_fqdn = f"trial-{short_id}.{TRIAL_BASE_DOMAIN}"
+    fqdn = fly_url
 
     try:
         # 1. Fly app.
@@ -246,27 +253,24 @@ async def _provision(trial_id: str) -> None:
             volume_mount_path="/data",
         )
 
-        # 4. Custom hostname certificate. Best-effort: if Cloudflare DNS
-        # propagation hasn't kicked in yet, Fly will retry the LE issuance
-        # on its own.
-        logger.info("[%s] registering custom hostname %s", trial_id, fqdn)
+        # 5. Custom hostname (best-effort, non-fatal):
+        #    a. fly addCertificate — triggers LE issuance for the CNAME target.
+        #    b. cloudflare CNAME pointing the pretty subdomain at <app>.fly.dev.
+        # Until the cert is configured (can take minutes for DNS validation),
+        # the user is served the working fly.dev URL — see fqdn assignment above.
         try:
-            await _fly.create_certificate(app_name, fqdn)
+            await _fly.create_certificate(app_name, custom_fqdn)
+            logger.info("[%s] custom-hostname cert requested for %s", trial_id, custom_fqdn)
         except FlyAPIError as e:
-            # Cert can be (re)created later; don't fail the whole provision.
-            logger.warning("[%s] cert create non-fatal failure: %s", trial_id, e)
-
-        # 5. Cloudflare DNS: CNAME the pretty subdomain at the Fly app.
+            logger.warning("[%s] cert create non-fatal: %s", trial_id, e)
         try:
-            await _cf.create_cname(name=fqdn, target=f"{app_name}.fly.dev", proxied=False)
-            logger.info("[%s] DNS CNAME %s → %s.fly.dev", trial_id, fqdn, app_name)
+            await _cf.create_cname(name=custom_fqdn, target=fly_url, proxied=False)
+            logger.info("[%s] DNS CNAME %s → %s", trial_id, custom_fqdn, fly_url)
         except CloudflareAPIError as e:
-            # If the record already exists (idempotent re-run), Cloudflare returns
-            # a specific error; treat duplicate-name as success.
             if "already exists" in str(e).lower() or e.status == 81057:
                 logger.info("[%s] DNS record already exists, ok", trial_id)
             else:
-                raise
+                logger.warning("[%s] DNS create non-fatal: %s", trial_id, e)
 
         # 6. Mark active.
         expires = datetime.now(timezone.utc) + timedelta(days=TRIAL_LIFETIME_DAYS)
