@@ -13,7 +13,10 @@ COPY privacy /usr/share/nginx/html/privacy
 COPY terms /usr/share/nginx/html/terms
 COPY dpa /usr/share/nginx/html/dpa
 COPY changelog /usr/share/nginx/html/changelog
+# /try landing — kept as a .template so envsubst can interpolate TURNSTILE_SITE_KEY.
+COPY try/index.html /usr/share/nginx/html/try/index.html.template
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-RUN printf '#!/bin/sh\nenvsubst '"'"'$LITELLM_KEY'"'"' < /usr/share/nginx/html/index.html.template > /usr/share/nginx/html/index.html\n' \
+# Two envsubst passes: $LITELLM_KEY into / (existing), $TURNSTILE_SITE_KEY into /try/.
+RUN printf '#!/bin/sh\nenvsubst '"'"'$LITELLM_KEY'"'"' < /usr/share/nginx/html/index.html.template > /usr/share/nginx/html/index.html\nenvsubst '"'"'$TURNSTILE_SITE_KEY'"'"' < /usr/share/nginx/html/try/index.html.template > /usr/share/nginx/html/try/index.html\n' \
     > /docker-entrypoint.d/40-envsubst-html.sh && chmod +x /docker-entrypoint.d/40-envsubst-html.sh
 EXPOSE 80
