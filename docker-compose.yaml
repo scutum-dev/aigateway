@@ -144,7 +144,7 @@ services:
       # Server-side Turnstile validation (public site key lives on landing-ui).
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
       # Trial lifecycle knobs.
-      TRIAL_BASE_DOMAIN: ${TRIAL_BASE_DOMAIN:-trial.scutum.dev}
+      TRIAL_BASE_DOMAIN: ${TRIAL_BASE_DOMAIN:-scutum.dev}
       TRIAL_LIFETIME_DAYS: ${TRIAL_LIFETIME_DAYS:-30}
     volumes:
       - gateway-config:/app/gateway-config
@@ -642,7 +642,7 @@ services:
       FLY_REGION: ${FLY_REGION:-iad}
       CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
       CLOUDFLARE_ZONE_ID: ${CLOUDFLARE_ZONE_ID:-}
-      TRIAL_BASE_DOMAIN: ${TRIAL_BASE_DOMAIN:-trial.scutum.dev}
+      TRIAL_BASE_DOMAIN: ${TRIAL_BASE_DOMAIN:-scutum.dev}
       TRIAL_LIFETIME_DAYS: ${TRIAL_LIFETIME_DAYS:-30}
       # Phase 1: placeholder image; replace with the Scutum monolith later.
       MACHINE_IMAGE: ${MACHINE_IMAGE:-nginx:alpine}
