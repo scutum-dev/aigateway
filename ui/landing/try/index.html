@@ -191,15 +191,35 @@
 </main>
 
 <script>
+// Detect whether Turnstile is actually configured for this deploy. The widget
+// div has its data-sitekey envsubst'd at container start; if the env var was
+// unset, the attribute is empty (or still the literal "${TURNSTILE_SITE_KEY}"
+// if the substitution step was skipped). In either case, hide the widget and
+// skip the bot-check on submit. The server's dev-mode fallback accepts any
+// non-empty token when TURNSTILE_SECRET_KEY is also unset, which is the
+// matching condition.
+const _turnstileDiv = document.querySelector('.cf-turnstile');
+const _siteKey = _turnstileDiv ? (_turnstileDiv.getAttribute('data-sitekey') || '') : '';
+const _turnstileConfigured = _siteKey && !_siteKey.startsWith('${');
+if (!_turnstileConfigured && _turnstileDiv) {
+    _turnstileDiv.style.display = 'none';
+}
+
 async function submitSignup(ev) {
     ev.preventDefault();
     const form = document.getElementById('signup-form');
     const btn = document.getElementById('submit-btn');
     const errEl = document.getElementById('signup-error');
     const email = document.getElementById('email').value.trim();
-    // Cloudflare Turnstile injects a hidden input named cf-turnstile-response after solving.
-    const tokenEl = form.querySelector('input[name="cf-turnstile-response"]');
-    const token = tokenEl ? tokenEl.value : '';
+    // Cloudflare Turnstile injects a hidden input named cf-turnstile-response
+    // after solving. When the widget isn't configured (dev mode), send a
+    // sentinel string so the server's pydantic min_length=1 still passes;
+    // the server's dev-mode fallback then accepts it.
+    let token = 'dev-no-turnstile';
+    if (_turnstileConfigured) {
+        const tokenEl = form.querySelector('input[name="cf-turnstile-response"]');
+        token = tokenEl ? tokenEl.value : '';
+    }
 
     errEl.classList.remove('show');
     if (!email) {
@@ -207,7 +227,7 @@ async function submitSignup(ev) {
         errEl.classList.add('show');
         return false;
     }
-    if (!token) {
+    if (_turnstileConfigured && !token) {
         errEl.textContent = 'Bot-check failed — please retry the challenge above.';
         errEl.classList.add('show');
         return false;
