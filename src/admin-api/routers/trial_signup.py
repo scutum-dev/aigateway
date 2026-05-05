@@ -22,7 +22,7 @@ import os
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import deps
 import httpx
@@ -169,20 +169,44 @@ async def _send_verification_email(email: str, trial_id: str, token: str) -> boo
         return False
 
     verify_url = f"{PUBLIC_BASE_URL}/api/v1/trial-signup/{trial_id}/verify?token={token}"
-    body = (
-        "You're a click away from your Scutum trial.\n\n"
-        f"Verify your email and we'll start provisioning your instance:\n\n"
+    text_body = (
+        "You're one click away from your Scutum trial.\n\n"
+        "Verify your email and we'll start provisioning your instance:\n\n"
         f"{verify_url}\n\n"
         f"This link expires in {VERIFICATION_TTL_HOURS} hours.\n\n"
         "If you didn't request this, ignore the email — nothing was created.\n\n"
-        "— Scutum"
+        "— Scutum\n"
+        "https://scutum.dev/"
     )
+    # Minimal inline-styled HTML so the email looks intentional in any client.
+    html_body = f"""\
+<!DOCTYPE html>
+<html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 560px; margin: 32px auto; padding: 0 24px; color: #0A0A0A; line-height: 1.6;">
+  <p style="font-family: 'Iowan Old Style', Georgia, serif; font-style: italic; font-size: 28px; margin: 0 0 24px;">Scutum</p>
+  <p>You're one click away from your Scutum trial.</p>
+  <p style="margin: 32px 0;">
+    <a href="{verify_url}" style="background: #0A0A0A; color: #FFFFFF; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 500;">Verify email and start trial</a>
+  </p>
+  <p style="font-size: 13px; color: #525252;">
+    Or paste this link into your browser:<br>
+    <a href="{verify_url}" style="color: #525252; word-break: break-all;">{verify_url}</a>
+  </p>
+  <p style="font-size: 13px; color: #525252;">This link expires in {VERIFICATION_TTL_HOURS} hours. If you didn't request a trial, ignore this email — nothing was created.</p>
+  <hr style="border: none; border-top: 1px solid #E5E5E5; margin: 32px 0;">
+  <p style="font-size: 12px; color: #6B7280;">
+    Scutum · <a href="https://scutum.dev/" style="color: #6B7280;">scutum.dev</a>
+  </p>
+</body></html>
+"""
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "Verify your Scutum trial"
     msg["From"] = os.getenv("DEMO_FROM", "hello@scutum.dev")
     msg["To"] = email
     msg["Reply-To"] = os.getenv("DEMO_REPLY_TO", "hello@scutum.dev")
-    msg.attach(MIMEText(body, "plain"))
+    # Order matters: the last attachment is the preferred one shown to the
+    # client. text first, html second → HTML rendered when supported.
+    msg.attach(MIMEText(text_body, "plain"))
+    msg.attach(MIMEText(html_body, "html"))
 
     try:
         await aiosmtplib.send(
@@ -307,19 +331,29 @@ async def create_trial_signup(data: TrialSignupRequest, request: Request) -> Tri
 
 
 @router.get("/trial-signup/{trial_id}/verify")
-async def verify_trial_signup(trial_id: str, token: str, request: Request) -> Dict[str, Any]:
-    """Click-target for the verification email. Flips status → provisioning + NOTIFY.
+async def verify_trial_signup(trial_id: str, token: str, request: Request):
+    """Click-target for the verification email.
 
-    Returns a tiny HTML response that auto-redirects the user back to /try?trial_id=...
-    so they can watch the provisioning progress.
+    Flips trial status pending_verification → provisioning, emits
+    `pg_notify('trial_provision', trial_id)` so the trial-provisioner picks
+    the row up, then 302-redirects to /try/?trial_id=... so the user lands on
+    a friendly status page rather than seeing JSON.
     """
+    from fastapi.responses import RedirectResponse
+
+    def _redirect(suffix: str) -> RedirectResponse:
+        # 303 See Other — proper status for a successful POST/GET that hands
+        # the user off to a viewable page (some browsers re-execute the GET
+        # on a 302; 303 forces a clean GET on the destination).
+        return RedirectResponse(url=f"{PUBLIC_BASE_URL}/try/{suffix}", status_code=303)
+
     if not deps.db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
 
     try:
         uuid.UUID(trial_id)  # noqa: BLE001 — just want the validity check
     except (ValueError, TypeError):
-        raise HTTPException(status_code=400, detail="Invalid trial id.") from None
+        return _redirect("?error=invalid")
 
     async with deps.db_pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -331,16 +365,20 @@ async def verify_trial_signup(trial_id: str, token: str, request: Request) -> Di
             trial_id,
         )
         if not row:
-            raise HTTPException(status_code=404, detail="Trial not found.")
+            return _redirect("?error=not_found")
+
         if row["status"] != "pending_verification":
             # Idempotent — clicking the link a second time after we've moved on
-            # is a no-op rather than an error.
-            return {"trial_id": trial_id, "status": row["status"]}
+            # is a no-op. Redirect into /try with the trial id so the polling
+            # picks up wherever it currently is.
+            return _redirect(f"?trial_id={trial_id}")
+
         if not secrets.compare_digest(row["verification_token"] or "", token):
-            raise HTTPException(status_code=400, detail="Invalid verification token.")
+            return _redirect("?error=invalid_token")
+
         expires_at = row["verification_expires_at"]
         if expires_at and expires_at < datetime.now(timezone.utc):
-            raise HTTPException(status_code=410, detail="Verification link expired; sign up again.")
+            return _redirect("?error=expired")
 
         # Flip status, clear the token, stamp verified_at, then NOTIFY so the
         # provisioner picks it up.
@@ -367,7 +405,7 @@ async def verify_trial_signup(trial_id: str, token: str, request: Request) -> Di
             request=request,
         )
 
-    return {"trial_id": trial_id, "status": "provisioning"}
+    return _redirect(f"?trial_id={trial_id}")
 
 
 @router.get("/trial-signup/{trial_id}/status", response_model=TrialStatusResponse)

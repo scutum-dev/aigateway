@@ -262,6 +262,47 @@ async function submitSignup(ev) {
     return false;
 }
 
+// On page load: handle query params from the verify-email redirect.
+// - ?trial_id=<id>: user just clicked the verify link in their email; jump
+//   straight to the polling state for that trial. They never see the form again.
+// - ?error=<code>: verify failed for some reason; surface a friendly message.
+(function handleVerifyRedirect() {
+    const params = new URLSearchParams(window.location.search);
+    const trialId = params.get('trial_id');
+    const error = params.get('error');
+    const headline = document.getElementById('status-headline');
+    const detail = document.getElementById('status-detail');
+    const form = document.getElementById('signup-form');
+    const status = document.getElementById('status-block');
+
+    if (error) {
+        // Hide form, show an error in the status block.
+        form.style.display = 'none';
+        status.classList.add('show');
+        // Hide the spinner — there's nothing happening.
+        const spinner = status.querySelector('.spinner');
+        if (spinner) spinner.style.display = 'none';
+        const messages = {
+            'invalid': 'That verification link looks malformed. Try signing up again.',
+            'invalid_token': 'That verification link is no longer valid. Try signing up again.',
+            'expired': 'That verification link has expired. Sign up again to get a fresh one.',
+            'not_found': 'We couldn\'t find that trial. Try signing up again.',
+        };
+        headline.textContent = 'Verification failed';
+        detail.textContent = messages[error] || 'Something went wrong. Email hello@scutum.dev.';
+        return;
+    }
+
+    if (trialId) {
+        // Email verified — pick up the polling.
+        form.style.display = 'none';
+        status.classList.add('show');
+        headline.textContent = 'Email verified — provisioning your instance';
+        detail.textContent = 'Setting up your Scutum stack. Usually under a minute.';
+        pollStatus(trialId);
+    }
+})();
+
 async function pollStatus(trialId) {
     const headline = document.getElementById('status-headline');
     const detail = document.getElementById('status-detail');

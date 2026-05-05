@@ -127,6 +127,21 @@ services:
       SRE_AGENT_URL: ${SRE_AGENT_URL:-http://sre-agent:8092}
       LICENSE_KEY: ${LICENSE_KEY:-}
       LICENSE_PUBLIC_KEY_PATH: /app/config/license-public.pem
+      # Used by trial-signup router to mint absolute verify-email URLs.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://scutum.dev}
+      # SMTP for the trial-signup verification email flow. Same vars
+      # landing-backend uses for the demo-request alert.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      DEMO_FROM: ${DEMO_FROM:-hello@scutum.dev}
+      DEMO_REPLY_TO: ${DEMO_REPLY_TO:-hello@scutum.dev}
+      # Server-side Turnstile validation (public site key lives on landing-ui).
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      # Trial lifecycle knobs.
+      TRIAL_BASE_DOMAIN: ${TRIAL_BASE_DOMAIN:-trial.scutum.dev}
+      TRIAL_LIFETIME_DAYS: ${TRIAL_LIFETIME_DAYS:-30}
     volumes:
       - gateway-config:/app/gateway-config
     depends_on:

@@ -210,6 +210,10 @@ class TestSignupCreate:
 
 
 class TestSignupVerify:
+    """Verify endpoint is the email-click target. After this PR it 303-redirects
+    to /try?... so users land on a viewable page; the asserts check redirect
+    targets rather than JSON bodies."""
+
     @pytest.mark.asyncio
     async def test_valid_token_flips_to_provisioning(self, client):
         token = "valid-verification-token"
@@ -225,16 +229,16 @@ class TestSignupVerify:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.get(f"/api/v1/trial-signup/{_trial_id()}/verify?token={token}")
+            resp = await client.get(f"/api/v1/trial-signup/{_trial_id()}/verify?token={token}", follow_redirects=False)
 
-        assert resp.status_code == 200, resp.text
-        assert resp.json()["status"] == "provisioning"
+        assert resp.status_code == 303
+        assert f"trial_id={_trial_id()}" in resp.headers["location"]
         # The route must NOTIFY so the provisioner picks the row up.
         notify_calls = [c for c in conn.execute.call_args_list if "pg_notify" in str(c)]
         assert len(notify_calls) == 1, "expected exactly one pg_notify call after verification"
 
     @pytest.mark.asyncio
-    async def test_bad_token_returns_400(self, client):
+    async def test_bad_token_redirects_with_invalid_error(self, client):
         conn = AsyncMock()
         conn.fetchrow.return_value = {
             "id": _trial_id(),
@@ -247,11 +251,14 @@ class TestSignupVerify:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.get(f"/api/v1/trial-signup/{_trial_id()}/verify?token=wrong-token")
-        assert resp.status_code == 400
+            resp = await client.get(
+                f"/api/v1/trial-signup/{_trial_id()}/verify?token=wrong-token", follow_redirects=False
+            )
+        assert resp.status_code == 303
+        assert "error=invalid_token" in resp.headers["location"]
 
     @pytest.mark.asyncio
-    async def test_expired_token_returns_410(self, client):
+    async def test_expired_token_redirects_with_expired_error(self, client):
         token = "expired-token"
         conn = AsyncMock()
         conn.fetchrow.return_value = {
@@ -266,12 +273,13 @@ class TestSignupVerify:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.get(f"/api/v1/trial-signup/{_trial_id()}/verify?token={token}")
-        assert resp.status_code == 410
+            resp = await client.get(f"/api/v1/trial-signup/{_trial_id()}/verify?token={token}", follow_redirects=False)
+        assert resp.status_code == 303
+        assert "error=expired" in resp.headers["location"]
 
     @pytest.mark.asyncio
     async def test_already_verified_is_idempotent(self, client):
-        """Clicking the link twice doesn't crash — second click is a no-op."""
+        """Clicking the link twice doesn't crash — second click redirects without re-firing NOTIFY."""
         conn = AsyncMock()
         conn.fetchrow.return_value = {
             "id": _trial_id(),
@@ -284,26 +292,31 @@ class TestSignupVerify:
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.get(f"/api/v1/trial-signup/{_trial_id()}/verify?token=anything")
-        assert resp.status_code == 200
-        assert resp.json()["status"] == "active"
+            resp = await client.get(f"/api/v1/trial-signup/{_trial_id()}/verify?token=anything", follow_redirects=False)
+        assert resp.status_code == 303
+        assert f"trial_id={_trial_id()}" in resp.headers["location"]
+        # Idempotent: no NOTIFY on a re-click.
+        notify_calls = [c for c in conn.execute.call_args_list if "pg_notify" in str(c)]
+        assert len(notify_calls) == 0
 
     @pytest.mark.asyncio
-    async def test_unknown_trial_returns_404(self, client):
+    async def test_unknown_trial_redirects_with_not_found(self, client):
         conn = AsyncMock()
         conn.fetchrow.return_value = None
         deps.db_pool = _make_pool(conn)
 
         async with client:
-            resp = await client.get(f"/api/v1/trial-signup/{_trial_id()}/verify?token=x")
-        assert resp.status_code == 404
+            resp = await client.get(f"/api/v1/trial-signup/{_trial_id()}/verify?token=x", follow_redirects=False)
+        assert resp.status_code == 303
+        assert "error=not_found" in resp.headers["location"]
 
     @pytest.mark.asyncio
-    async def test_invalid_uuid_returns_400(self, client):
+    async def test_invalid_uuid_redirects_with_invalid(self, client):
         deps.db_pool = _make_pool(AsyncMock())
         async with client:
-            resp = await client.get("/api/v1/trial-signup/not-a-uuid/verify?token=x")
-        assert resp.status_code == 400
+            resp = await client.get("/api/v1/trial-signup/not-a-uuid/verify?token=x", follow_redirects=False)
+        assert resp.status_code == 303
+        assert "error=invalid" in resp.headers["location"]
 
 
 # ---- GET /api/v1/trial-signup/{id}/status ----------------------------------
