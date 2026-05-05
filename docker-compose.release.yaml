@@ -57,6 +57,20 @@ services:
   litellm:
     image: ghcr.io/scutum-dev/scutum-litellm:${SCUTUM_VERSION:-0.1.0}
     container_name: scutum-proxy
+    # Override default CMD to add --use_prisma_db_push. With `migrate deploy`
+    # (the default), LiteLLM hits a 60s timeout × 3 retries followed by a
+    # baseline-migration recovery path = ~6 min wasted at first boot. `db push`
+    # syncs the entire schema in one shot — non-destructive to non-Prisma
+    # tables (admin-api's alembic-managed schema is left alone). Critical for
+    # the trial-monolith Fly machines where boot time is user-visible.
+    command:
+      - "--config"
+      - "/etc/litellm/config.yaml"
+      - "--port"
+      - "4000"
+      - "--num_workers"
+      - "4"
+      - "--use_prisma_db_push"
     ports:
       - "${LITELLM_PORT:-4000}:4000"
     environment:
