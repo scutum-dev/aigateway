@@ -10,10 +10,13 @@ log() { echo "[scutum-monolith] $(date -Iseconds) $*"; }
 
 # 1. Start dockerd in the background (dind base image entrypoint normally
 # does this, but we want full control of the boot sequence).
-log "starting dockerd..."
+log "starting dockerd (storage-driver=fuse-overlayfs for nested-VM support)..."
+# overlay2 doesn't work inside Fly's Firecracker micro-VM (kernel doesn't
+# expose nested overlayfs upperdir). fuse-overlayfs runs in userspace and
+# works in nested-virtualization environments.
 dockerd-entrypoint.sh dockerd \
     --host=unix:///var/run/docker.sock \
-    --storage-driver=overlay2 \
+    --storage-driver=fuse-overlayfs \
     >/var/log/dockerd.log 2>&1 &
 DOCKERD_PID=$!
 

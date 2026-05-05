@@ -17,7 +17,7 @@ FROM docker:27-dind
 
 # Tools we need: bash for the install script, curl for fetching artifacts,
 # nginx for the per-trial reverse proxy, plus standard coreutils.
-RUN apk add --no-cache bash curl ca-certificates nginx
+RUN apk add --no-cache bash curl ca-certificates nginx fuse-overlayfs e2fsprogs
 
 # Bundle the same release compose + installer the customers get. SCUTUM_VERSION
 # pins to whatever was current at image build time; can be overridden at run.
