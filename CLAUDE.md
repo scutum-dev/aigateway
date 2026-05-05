@@ -129,7 +129,7 @@ The customer-shippable surface is **separate** from the dev clone path. Customer
 | Path | What it is | Who edits it |
 |---|---|---|
 | `docker-compose.yaml` | Dev compose with `build:` directives, all profiles | contributors |
-| `docker-compose.release.yaml` | Image-only customer compose, references `ghcr.io/deosha/scutum-*:${SCUTUM_VERSION}` | release-engineering — keep in lockstep with the dev compose for env vars |
+| `docker-compose.release.yaml` | Image-only customer compose, references `ghcr.io/scutum-dev/scutum-*:${SCUTUM_VERSION}` | release-engineering — keep in lockstep with the dev compose for env vars |
 | `scripts/install.sh` | POSIX-sh installer hosted at `https://scutum.dev/install.sh` | only edit when changing the install UX |
 | `scripts/scutum` | 12-verb operator CLI (up/down/logs/upgrade/backup/etc.) shipped to customers | edit when adding a verb |
 | `ui/landing/release/v0.1.0/` | Versioned mirror of install.sh, scutum CLI, compose, .env template, license public key — **served from scutum.dev** because the repo is private and `raw.githubusercontent.com` 404s for unauth | bumped on each release tag |
@@ -141,7 +141,7 @@ The customer-shippable surface is **separate** from the dev clone path. Customer
 2. Copy current files into `ui/landing/release/v0.X.Y/` (symlink doesn't work — Docker COPY follows but the rsync to OCI may not preserve).
 3. Update `ui/landing/nginx.conf`'s redirect target to v0.X.Y.
 4. `git tag -a v0.X.Y -m "..."` and push the tag — GHA workflow publishes images.
-5. Verify pull: `docker pull ghcr.io/deosha/scutum-admin-api:0.X.Y` (requires the package to be public — flip in GitHub UI per package).
+5. Verify pull: `docker pull ghcr.io/scutum-dev/scutum-admin-api:0.X.Y` (requires the package to be public — flip in GitHub UI per package).
 6. Smoke-test `curl -fsSL https://scutum.dev/install.sh | sh` on a fresh dir.
 7. `gh release create v0.X.Y` with the changelog body.
 
@@ -162,6 +162,6 @@ Conventional commits: `feat:`, `fix:`, `docs:`, `ci:`, `refactor:`. Branch names
 - `.gitleaks.toml` allowlists `$LITELLM_KEY` and `sk-generated-key-\d+` in `docs/`, `examples/`, `tests/`, `scripts/`, `ui/landing/index.html` — real secrets elsewhere will still fail the hook.
 - GCP deploy from Apple Silicon builds with `--platform linux/amd64` automatically (Makefile `_build` target).
 - Migration 007 (`cost_tracking_daily` view) races with LiteLLM's Prisma init on cold-boot — handled defensively (skip-if-table-missing + savepoint + `_ensure_cost_view` background recovery in admin-api). Don't add similar dependencies on LiteLLM-managed tables without the same defensive pattern.
-- Container images for the customer release are at `ghcr.io/deosha/scutum-*:<version>`. Will move to `ghcr.io/scutum-dev/scutum-*` once the GitHub org is claimed — use `${{ github.repository_owner }}` in CI not a hardcoded owner.
+- Container images for the customer release are at `ghcr.io/scutum-dev/scutum-*:<version>`. Will move to `ghcr.io/scutum-dev/scutum-*` once the GitHub org is claimed — use `${{ github.repository_owner }}` in CI not a hardcoded owner.
 - `nginx.conf` location ordering matters: prefix locations with `^~` modifier win over regex. The `/docs/` and `/release/` proxies need `^~` to beat the asset-extension regex (`\.(js|css|png|...)$`); without it, asset requests under those paths get hijacked.
 - The repo is **private**. Customer-installable artifacts (install.sh, scutum CLI, release compose, license public key, env template) are mirrored to `ui/landing/release/v*/` so they ship from scutum.dev — `raw.githubusercontent.com` 404s for unauthenticated pulls.

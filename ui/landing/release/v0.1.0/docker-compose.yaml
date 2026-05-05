@@ -55,7 +55,7 @@ services:
   # Scutum proxy (OpenAI-compatible LLM endpoint, port 4000)
   # ---------------------------------------------------------------------------
   litellm:
-    image: ghcr.io/deosha/scutum-litellm:${SCUTUM_VERSION:-0.1.0}
+    image: ghcr.io/scutum-dev/scutum-litellm:${SCUTUM_VERSION:-0.1.0}
     container_name: scutum-proxy
     ports:
       - "${LITELLM_PORT:-4000}:4000"
@@ -92,7 +92,7 @@ services:
   # Control plane (admin API + UI + docs)
   # ---------------------------------------------------------------------------
   admin-api:
-    image: ghcr.io/deosha/scutum-admin-api:${SCUTUM_VERSION:-0.1.0}
+    image: ghcr.io/scutum-dev/scutum-admin-api:${SCUTUM_VERSION:-0.1.0}
     container_name: scutum-admin-api
     ports:
       - "${ADMIN_API_PORT:-8086}:8086"
@@ -117,7 +117,7 @@ services:
     restart: unless-stopped
 
   admin-ui:
-    image: ghcr.io/deosha/scutum-admin-ui:${SCUTUM_VERSION:-0.1.0}
+    image: ghcr.io/scutum-dev/scutum-admin-ui:${SCUTUM_VERSION:-0.1.0}
     container_name: scutum-admin-ui
     ports:
       - "${ADMIN_UI_PORT:-5173}:80"
@@ -134,7 +134,7 @@ services:
     restart: unless-stopped
 
   docs-site:
-    image: ghcr.io/deosha/scutum-docs:${SCUTUM_VERSION:-0.1.0}
+    image: ghcr.io/scutum-dev/scutum-docs:${SCUTUM_VERSION:-0.1.0}
     container_name: scutum-docs
     ports:
       - "${DOCS_SITE_PORT:-8089}:80"
@@ -150,7 +150,7 @@ services:
   # Optional profiles — enable with `scutum up --profile <name>`
   # ---------------------------------------------------------------------------
   sre-agent:
-    image: ghcr.io/deosha/scutum-sre-agent:${SCUTUM_VERSION:-0.1.0}
+    image: ghcr.io/scutum-dev/scutum-sre-agent:${SCUTUM_VERSION:-0.1.0}
     container_name: scutum-sre-agent
     profiles: ["sre", "full"]
     environment:
@@ -167,7 +167,7 @@ services:
     restart: unless-stopped
 
   cost-predictor:
-    image: ghcr.io/deosha/scutum-cost-predictor:${SCUTUM_VERSION:-0.1.0}
+    image: ghcr.io/scutum-dev/scutum-cost-predictor:${SCUTUM_VERSION:-0.1.0}
     container_name: scutum-cost-predictor
     profiles: ["finops", "full"]
     environment:
@@ -176,7 +176,7 @@ services:
     restart: unless-stopped
 
   budget-webhook:
-    image: ghcr.io/deosha/scutum-budget-webhook:${SCUTUM_VERSION:-0.1.0}
+    image: ghcr.io/scutum-dev/scutum-budget-webhook:${SCUTUM_VERSION:-0.1.0}
     container_name: scutum-budget-webhook
     profiles: ["finops", "full"]
     environment:

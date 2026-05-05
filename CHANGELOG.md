@@ -11,7 +11,7 @@ First customer-shippable release.
 ### Added — release plumbing
 - **One-line installer**: `curl -fsSL https://scutum.dev/install.sh | sh` — verifies docker-or-podman, fetches the release-tagged compose file and license public key, generates fresh random secrets, drops a `scutum` operator CLI.
 - **`scutum` operator CLI** (`scripts/scutum`) — 12 verbs: `up`, `down`, `restart`, `logs`, `ps`, `pull`, `upgrade`, `backup`, `restore`, `activate`, `license`, `exec`, `config`. POSIX `sh`, runs under `docker compose` or `podman-compose`.
-- **`docker-compose.release.yaml`** — image-only customer-safe compose, no `build:` directives, references pre-built `ghcr.io/deosha/scutum-*` images at the pinned `${SCUTUM_VERSION}`. 6 services up by default; optional `--profile sre|finops|observability|full` for the rest.
+- **`docker-compose.release.yaml`** — image-only customer-safe compose, no `build:` directives, references pre-built `ghcr.io/scutum-dev/scutum-*` images at the pinned `${SCUTUM_VERSION}`. 6 services up by default; optional `--profile sre|finops|observability|full` for the rest.
 - **GitHub Actions release pipeline** (`.github/workflows/release-images.yml`) — on `v*` tag push, builds and pushes 7 multi-arch (amd64+arm64) service images to GHCR with both `:version` and `:latest` tags.
 
 ### Added — license enforcement

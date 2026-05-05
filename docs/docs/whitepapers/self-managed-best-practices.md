@@ -102,7 +102,7 @@ The cost of doing this on day one is fifteen lines of SQL. The cost of doing it 
 A safe upgrade looks like:
 
 1. **Stage**. Spin a copy of the current deployment with the same data. Run `./scutum upgrade <NEW_VERSION>` there first.
-2. **Migration check**. The first thing the new version does is run alembic. Watch admin-api logs for migration completion before sending traffic. We engineer migrations to be cold-start-safe (see the [`007_replace_cost_tracking_with_view.py`](https://github.com/deosha/aigateway/blob/main/src/admin-api/alembic/versions/007_replace_cost_tracking_with_view.py) defensive pattern), but verify on your data.
+2. **Migration check**. The first thing the new version does is run alembic. Watch admin-api logs for migration completion before sending traffic. We engineer migrations to be cold-start-safe (see the [`007_replace_cost_tracking_with_view.py`](https://github.com/scutum-dev/aigateway/blob/main/src/admin-api/alembic/versions/007_replace_cost_tracking_with_view.py) defensive pattern), but verify on your data.
 3. **Smoke test**. Hit `/health`, `/api/v1/license`, `/v1/chat/completions` (one model per provider you care about), `/api/v1/audit-logs?limit=1`. All should return their expected shapes.
 4. **Promote**. `./scutum upgrade <NEW_VERSION>` on production. Watch error rate for 30 minutes; rollback is `./scutum upgrade <OLD_VERSION>` if needed (data is forward-compatible across patch versions; minor versions document any breaking schema in the changelog).
 
