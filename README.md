@@ -1,6 +1,6 @@
 # Scutum
 
-[![Release](https://img.shields.io/github/v/release/deosha/aigateway?label=release&color=black)](https://github.com/deosha/aigateway/releases)
+[![Release](https://img.shields.io/github/v/release/scutum-dev/aigateway?label=release&color=black)](https://github.com/scutum-dev/aigateway/releases)
 [![License](https://img.shields.io/badge/license-proprietary-black)](#licensing)
 [![Compose-spec compatible](https://img.shields.io/badge/compose--spec-compatible-black)](https://compose-spec.io/)
 
@@ -10,7 +10,7 @@ Run on your own cluster, your own keys, your own data.
 
 **Public site**: [scutum.dev](https://scutum.dev/) · **Docs**: [scutum.dev/docs](https://scutum.dev/docs/) · **Operated by**: Scuti Marketplace India (OPC) Pvt Ltd
 
-> **Latest release**: [`v0.1.0`](https://github.com/deosha/aigateway/releases/tag/v0.1.0) — first customer-shippable build. See [CHANGELOG.md](./CHANGELOG.md) for what's in it.
+> **Latest release**: [`v0.1.0`](https://github.com/scutum-dev/aigateway/releases/tag/v0.1.0) — first customer-shippable build. See [CHANGELOG.md](./CHANGELOG.md) for what's in it.
 
 **Core idea**: best-of-breed open components ([LiteLLM](https://docs.litellm.ai) for LLM proxying, [Agent Gateway](https://agentgateway.dev) for MCP/A2A) wrapped with the Admin UI, governance, audit, and SRE machinery enterprises need on top.
 

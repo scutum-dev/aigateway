@@ -132,7 +132,7 @@ When a buyer's CISO sends us their security questionnaire, the answers cluster:
 
 - **"Where does our data go?"** Self-hosted on your infrastructure. Provider API calls go to whichever providers you configure. We — Scutum the company — never see your data.
 - **"What's your SOC 2 status?"** SOC 2 Type I planned for Q3 2026; Type II Q1 2027. We document compensating controls in the meantime.
-- **"How do you handle vulnerabilities in upstream components?"** We track LiteLLM, FastAPI, asyncpg, the Python and Node base images. Critical CVEs trigger an out-of-band patch release within 7 days; high-severity within 30. Our changelog ([CHANGELOG.md](https://github.com/deosha/aigateway/blob/main/CHANGELOG.md)) lists CVE references on relevant releases.
+- **"How do you handle vulnerabilities in upstream components?"** We track LiteLLM, FastAPI, asyncpg, the Python and Node base images. Critical CVEs trigger an out-of-band patch release within 7 days; high-severity within 30. Our changelog ([CHANGELOG.md](https://github.com/scutum-dev/aigateway/blob/main/CHANGELOG.md)) lists CVE references on relevant releases.
 - **"Can we audit a build?"** Image labels include `org.opencontainers.image.source` (this repo) and `org.opencontainers.image.version`. We sign release images with cosign on the roadmap; not yet shipped.
 - **"Do you have a bug bounty?"** Not yet. Responsible disclosures to `security@scutum.dev` get a response within 48h and a coordinated patch within the windows above.
 
