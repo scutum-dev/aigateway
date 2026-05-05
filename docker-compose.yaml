@@ -137,6 +137,10 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       DEMO_FROM: ${DEMO_FROM:-hello@scutum.dev}
       DEMO_REPLY_TO: ${DEMO_REPLY_TO:-hello@scutum.dev}
+      # Sender / reply-to for trial-signup emails (kept separate from DEMO_*
+      # so the inbox lineage is distinct from book-a-demo flows).
+      TRIAL_FROM: ${TRIAL_FROM:-trial@scutum.dev}
+      TRIAL_REPLY_TO: ${TRIAL_REPLY_TO:-trial@scutum.dev}
       # Server-side Turnstile validation (public site key lives on landing-ui).
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
       # Trial lifecycle knobs.

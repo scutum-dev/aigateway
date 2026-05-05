@@ -200,9 +200,12 @@ async def _send_verification_email(email: str, trial_id: str, token: str) -> boo
 """
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "Verify your Scutum trial"
-    msg["From"] = os.getenv("DEMO_FROM", "hello@scutum.dev")
+    # Dedicated trial sender so the inbox lineage is clean — TRIAL_FROM falls
+    # back to DEMO_FROM for any deploy that hasn't set it yet, then to a sane
+    # default. Same for Reply-To.
+    msg["From"] = os.getenv("TRIAL_FROM") or os.getenv("DEMO_FROM") or "trial@scutum.dev"
     msg["To"] = email
-    msg["Reply-To"] = os.getenv("DEMO_REPLY_TO", "hello@scutum.dev")
+    msg["Reply-To"] = os.getenv("TRIAL_REPLY_TO") or os.getenv("DEMO_REPLY_TO") or "trial@scutum.dev"
     # Order matters: the last attachment is the preferred one shown to the
     # client. text first, html second → HTML rendered when supported.
     msg.attach(MIMEText(text_body, "plain"))
