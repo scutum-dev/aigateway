@@ -61,6 +61,10 @@ FLY_VOLUME_GB = int(os.getenv("FLY_VOLUME_GB", "5"))
 # listens on 8080 and would mismatch our internal_port=80 below.
 MACHINE_IMAGE = os.getenv("MACHINE_IMAGE", "nginx:alpine")
 MACHINE_MEMORY_MB = int(os.getenv("MACHINE_MEMORY_MB", "2048"))
+# Fly shared-cpu sizing rule: max memory_mb is cpus*2048 (2 GiB per vCPU on
+# the shared class). Auto-derive cpus from the configured memory so an
+# operator can just set MACHINE_MEMORY_MB and we pick the right cpu_kind.
+MACHINE_CPUS = max(1, (MACHINE_MEMORY_MB + 2047) // 2048)
 SCHEDULER_INTERVAL_S = int(os.getenv("SCHEDULER_INTERVAL_S", "3600"))
 
 # Module-level state set in lifespan.
@@ -251,6 +255,7 @@ async def _provision(trial_id: str) -> None:
             env={"TRIAL_ID": trial_id, "PORT": "80"},
             ports=[{"port": 443, "handlers": ["tls", "http"]}, {"port": 80, "handlers": ["http"]}],
             memory_mb=MACHINE_MEMORY_MB,
+            cpus=MACHINE_CPUS,
             volume_id=volume_id,
             volume_mount_path="/data",
         )
