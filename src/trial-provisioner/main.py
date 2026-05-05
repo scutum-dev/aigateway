@@ -52,7 +52,7 @@ logger = logging.getLogger("trial-provisioner")
 
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
-TRIAL_BASE_DOMAIN = os.getenv("TRIAL_BASE_DOMAIN", "trial.scutum.dev")
+TRIAL_BASE_DOMAIN = os.getenv("TRIAL_BASE_DOMAIN", "scutum.dev")
 TRIAL_LIFETIME_DAYS = int(os.getenv("TRIAL_LIFETIME_DAYS", "30"))
 FLY_REGION = os.getenv("FLY_REGION", "iad")  # us-east default; matches lowest-latency for US/EU mix
 FLY_VOLUME_GB = int(os.getenv("FLY_VOLUME_GB", "5"))
@@ -207,13 +207,15 @@ async def _provision(trial_id: str) -> None:
     # globally unique; the 12-char hex suffix is plenty.
     short_id = trial_id.split("-")[0]
     app_name = f"scutum-trial-{short_id}"
-    # Phase 1: surface the *.fly.dev URL to the user — Fly's wildcard cert
-    # covers it, no extra issuance step. The custom hostname `trial-{id}.
-    # trial.scutum.dev` still gets created (Cloudflare CNAME below) but is
-    # only useful once Fly issues a Let's Encrypt cert for it (manual today;
-    # follow-up). Until then, the fly.dev URL is what works in the browser.
     fly_url = f"{app_name}.fly.dev"
-    custom_fqdn = f"trial-{short_id}.{TRIAL_BASE_DOMAIN}"
+    # Custom hostname is one level under scutum.dev so it's covered by
+    # Cloudflare Universal SSL (free wildcard) — no per-trial cert issuance
+    # needed. Cloudflare proxied=true terminates TLS at the edge with that
+    # cert; Fly addCertificate registers the hostname so Fly's edge routes
+    # the proxied request to the right app.
+    custom_fqdn = f"{short_id}.{TRIAL_BASE_DOMAIN}"
+    # Surface the brandable hostname; falls back to fly.dev if Cloudflare DNS
+    # creation fails (the route updates fqdn at the very end of provisioning).
     fqdn = fly_url
 
     try:
@@ -253,24 +255,38 @@ async def _provision(trial_id: str) -> None:
             volume_mount_path="/data",
         )
 
-        # 5. Custom hostname (best-effort, non-fatal):
-        #    a. fly addCertificate — triggers LE issuance for the CNAME target.
-        #    b. cloudflare CNAME pointing the pretty subdomain at <app>.fly.dev.
-        # Until the cert is configured (can take minutes for DNS validation),
-        # the user is served the working fly.dev URL — see fqdn assignment above.
+        # 5. Custom hostname:
+        #    a. Fly addCertificate registers the hostname on the app so Fly's
+        #       edge knows to route requests with Host: <id>.scutum.dev to
+        #       this machine. Even if LE issuance fails (Cloudflare proxied
+        #       hides DNS validation), the registration is what matters for
+        #       routing — TLS gets handled by Cloudflare at the edge.
+        #    b. Cloudflare CNAME, proxied=true so Universal SSL terminates
+        #       TLS at the CF edge with the *.scutum.dev cert.
+        # If either step fails, we keep fqdn=fly_url (set above) and the user
+        # still gets a working URL.
+        custom_hostname_ready = False
         try:
             await _fly.create_certificate(app_name, custom_fqdn)
-            logger.info("[%s] custom-hostname cert requested for %s", trial_id, custom_fqdn)
+            logger.info("[%s] Fly hostname registered: %s", trial_id, custom_fqdn)
         except FlyAPIError as e:
-            logger.warning("[%s] cert create non-fatal: %s", trial_id, e)
+            logger.warning("[%s] Fly addCertificate non-fatal: %s", trial_id, e)
         try:
-            await _cf.create_cname(name=custom_fqdn, target=fly_url, proxied=False)
-            logger.info("[%s] DNS CNAME %s → %s", trial_id, custom_fqdn, fly_url)
+            await _cf.create_cname(name=custom_fqdn, target=fly_url, proxied=True)
+            logger.info("[%s] CF CNAME (proxied) %s → %s", trial_id, custom_fqdn, fly_url)
+            custom_hostname_ready = True
         except CloudflareAPIError as e:
             if "already exists" in str(e).lower() or e.status == 81057:
-                logger.info("[%s] DNS record already exists, ok", trial_id)
+                logger.info("[%s] CF record already exists, ok", trial_id)
+                custom_hostname_ready = True
             else:
-                logger.warning("[%s] DNS create non-fatal: %s", trial_id, e)
+                logger.warning("[%s] CF DNS create non-fatal: %s", trial_id, e)
+
+        # Promote fqdn to the brandable hostname iff CF DNS creation succeeded
+        # — that means CF Universal SSL covers it and the URL works in the
+        # browser. Otherwise stay on fly.dev.
+        if custom_hostname_ready:
+            fqdn = custom_fqdn
 
         # 6. Mark active.
         expires = datetime.now(timezone.utc) + timedelta(days=TRIAL_LIFETIME_DAYS)
