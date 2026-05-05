@@ -78,8 +78,27 @@ def upgrade() -> None:
         WHERE verification_token IS NOT NULL
     """)
 
+    # Per-IP rate-limit accounting for /api/v1/trial-signup. A row per attempt
+    # (success or failure). Lets us count attempts in a rolling window without
+    # needing Redis on the marketing VM.
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS trial_signup_attempts (
+            id BIGSERIAL PRIMARY KEY,
+            source_ip TEXT NOT NULL,
+            email TEXT,
+            success BOOLEAN NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    op.execute("""
+        CREATE INDEX IF NOT EXISTS idx_trial_signup_attempts_ip_time
+        ON trial_signup_attempts (source_ip, created_at DESC)
+    """)
+
 
 def downgrade() -> None:
+    op.execute("DROP INDEX IF EXISTS idx_trial_signup_attempts_ip_time")
+    op.execute("DROP TABLE IF EXISTS trial_signup_attempts CASCADE")
     op.execute("DROP INDEX IF EXISTS idx_trial_instances_verification_token")
     op.execute("DROP INDEX IF EXISTS idx_trial_instances_fly_app_name")
     op.execute("DROP INDEX IF EXISTS idx_trial_instances_one_per_user")
