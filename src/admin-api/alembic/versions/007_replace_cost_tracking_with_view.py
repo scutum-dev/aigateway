@@ -44,8 +44,27 @@ GROUP BY "startTime"::date, "user", team_id, model, custom_llm_provider
 def upgrade() -> None:
     bind = op.get_bind()
 
-    op.execute("DROP VIEW IF EXISTS cost_tracking_daily CASCADE")
-    op.execute("DROP TABLE IF EXISTS cost_tracking_daily CASCADE")
+    # Type-agnostic drop: DROP VIEW IF EXISTS errors out when the object is
+    # a TABLE (and vice-versa) — Postgres won't ignore the wrong-type case.
+    # Earlier migrations created cost_tracking_daily as a table, so on a
+    # fresh DB we must drop the table form here. Use a DO block that picks
+    # the right DROP based on information_schema.
+    op.execute("""
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables
+                       WHERE table_schema = 'public'
+                         AND table_name = 'cost_tracking_daily'
+                         AND table_type = 'BASE TABLE') THEN
+                EXECUTE 'DROP TABLE cost_tracking_daily CASCADE';
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.views
+                       WHERE table_schema = 'public'
+                         AND table_name = 'cost_tracking_daily') THEN
+                EXECUTE 'DROP VIEW cost_tracking_daily CASCADE';
+            END IF;
+        END $$
+    """)
     op.execute("DROP INDEX IF EXISTS idx_cost_tracking_date")
     op.execute("DROP INDEX IF EXISTS idx_cost_tracking_user")
     op.execute("DROP INDEX IF EXISTS idx_cost_tracking_team")
