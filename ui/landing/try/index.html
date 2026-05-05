@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Try Scutum — free, runs on us</title>
+    <meta name="description" content="Sign up for a free Scutum trial. We provision a personal instance for you in about a minute. Yours for 30 days. No credit card.">
+    <link rel="canonical" href="https://scutum.dev/try/">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" type="image/svg+xml" href="/scutum-mark.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Cloudflare Turnstile widget script. The site key is rendered server-side
+         from TURNSTILE_SITE_KEY env (envsubst step on the landing-ui container). -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <style>
+        :root {
+            --bg: #FFFFFF; --bg-elevated: #FAFAFA;
+            --border: #E5E5E5; --border-hi: #D4D4D4;
+            --text: #0A0A0A; --text-muted: #525252; --text-subtle: #6B7280;
+            --success: #16A34A; --danger: #B91C1C;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg); color: var(--text);
+            line-height: 1.65; font-size: 15px;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--border-hi); }
+        a:hover { border-bottom-color: var(--text); }
+        nav.top { border-bottom: 1px solid var(--border); padding: 16px 24px; }
+        nav.top a.logo {
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-size: 22px; font-weight: 400; font-style: italic;
+            display: inline-flex; align-items: center; gap: 8px; border: none;
+        }
+        nav.top a.logo img { height: 22px; width: 22px; }
+        main { max-width: 640px; margin: 0 auto; padding: 64px 24px 96px; }
+        .eyebrow {
+            font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--text-subtle); margin-bottom: 12px;
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+        }
+        h1 {
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-size: 56px; font-weight: 400; font-style: italic;
+            margin: 0 0 16px; letter-spacing: -0.02em; line-height: 1.05;
+        }
+        p.lede {
+            font-size: 18px; color: var(--text-muted);
+            margin: 0 0 40px; line-height: 1.55;
+        }
+        form.signup {
+            display: flex; flex-direction: column; gap: 16px;
+            padding: 32px; border: 1px solid var(--border);
+            border-radius: 8px; background: var(--bg-elevated);
+        }
+        form.signup label {
+            font-size: 13px; font-weight: 500;
+            color: var(--text-muted);
+        }
+        form.signup input[type="email"] {
+            font-family: inherit; font-size: 15px;
+            padding: 12px 14px; border: 1px solid var(--border-hi);
+            border-radius: 6px; background: var(--bg); color: var(--text);
+            outline: none;
+        }
+        form.signup input[type="email"]:focus {
+            border-color: var(--text);
+        }
+        form.signup button {
+            font-family: inherit; font-size: 15px; font-weight: 500;
+            padding: 12px 24px; border: none; border-radius: 6px;
+            background: var(--text); color: var(--bg);
+            cursor: pointer;
+        }
+        form.signup button:disabled {
+            opacity: 0.55; cursor: not-allowed;
+        }
+        form.signup button:hover:not(:disabled) {
+            background: #000;
+        }
+        .signup-error {
+            font-size: 13px; color: var(--danger);
+            display: none;
+        }
+        .signup-error.show { display: block; }
+        .what-you-get {
+            margin-top: 56px; padding-top: 32px;
+            border-top: 1px solid var(--border);
+        }
+        .what-you-get h2 {
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-size: 24px; font-weight: 400; font-style: italic;
+            margin: 0 0 16px;
+        }
+        .what-you-get ul {
+            list-style: none; padding: 0; margin: 0;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px;
+        }
+        @media (max-width: 560px) {
+            .what-you-get ul { grid-template-columns: 1fr; }
+            h1 { font-size: 44px; }
+        }
+        .what-you-get li {
+            font-size: 14px; color: var(--text-muted);
+            padding-left: 20px; position: relative;
+        }
+        .what-you-get li::before {
+            content: "✓"; position: absolute; left: 0;
+            color: var(--success); font-weight: 600;
+        }
+        /* Status / polling state, swapped in once the form is submitted. */
+        .status { display: none; padding: 24px; border: 1px solid var(--border); border-radius: 8px; }
+        .status.show { display: block; }
+        .status-title { font-weight: 600; margin-bottom: 8px; font-size: 15px; }
+        .status-detail { color: var(--text-muted); font-size: 14px; }
+        .spinner {
+            display: inline-block; width: 14px; height: 14px;
+            margin-right: 8px; border: 2px solid var(--border-hi);
+            border-top-color: var(--text); border-radius: 50%;
+            animation: spin 0.8s linear infinite; vertical-align: -3px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .meta-line {
+            color: var(--text-subtle); font-size: 13px;
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            margin-top: 24px;
+        }
+    </style>
+</head>
+<body>
+<nav class="top">
+    <a class="logo" href="/">
+        <img src="/scutum-mark.svg" alt="">
+        Scutum
+    </a>
+</nav>
+
+<main>
+    <p class="eyebrow">Trial · 30 days · runs on us</p>
+    <h1>Try Scutum, free.</h1>
+    <p class="lede">
+        Sign up below. We provision a personal Scutum instance for you in about a minute.
+        Full stack, all 100+ models, real audit log. Yours for 30 days. No credit card.
+    </p>
+
+    <!-- Signup form. Submits to /api/v1/trial-signup; the JS swaps to a polling
+         status block on success, then redirects to the trial URL when it's ready. -->
+    <form class="signup" id="signup-form" onsubmit="return submitSignup(event)">
+        <label for="email">Work email</label>
+        <input type="email" id="email" name="email" autocomplete="email" required placeholder="you@company.com">
+
+        <!-- Cloudflare Turnstile widget. Empty data-sitekey is replaced at
+             container start by envsubst. The script auto-renders into this div. -->
+        <div class="cf-turnstile" data-sitekey="${TURNSTILE_SITE_KEY}" data-theme="light"></div>
+
+        <button type="submit" id="submit-btn">Launch trial</button>
+        <p class="signup-error" id="signup-error"></p>
+    </form>
+
+    <!-- Post-submit polling state, hidden until signup succeeds. -->
+    <div class="status" id="status-block">
+        <p class="status-title"><span class="spinner"></span> <span id="status-headline">Check your email</span></p>
+        <p class="status-detail" id="status-detail">
+            We sent a verification link to your address. Click it and we'll start provisioning.
+            This page will redirect to your trial when it's ready.
+        </p>
+    </div>
+
+    <section class="what-you-get">
+        <h2>What you get</h2>
+        <ul>
+            <li>Full Scutum stack</li>
+            <li>All 100+ models</li>
+            <li>MCP &amp; A2A gateway</li>
+            <li>Pre-call cost prediction</li>
+            <li>Real audit log</li>
+            <li>Autonomous SRE agent</li>
+            <li>30-day lifetime</li>
+            <li>Sleeps when idle (free)</li>
+        </ul>
+    </section>
+
+    <p class="meta-line">
+        Already have a trial? It's at the URL we emailed you. Lost it? <a href="mailto:hello@scutum.dev">hello@scutum.dev</a>.
+    </p>
+</main>
+
+<script>
+async function submitSignup(ev) {
+    ev.preventDefault();
+    const form = document.getElementById('signup-form');
+    const btn = document.getElementById('submit-btn');
+    const errEl = document.getElementById('signup-error');
+    const email = document.getElementById('email').value.trim();
+    // Cloudflare Turnstile injects a hidden input named cf-turnstile-response after solving.
+    const tokenEl = form.querySelector('input[name="cf-turnstile-response"]');
+    const token = tokenEl ? tokenEl.value : '';
+
+    errEl.classList.remove('show');
+    if (!email) {
+        errEl.textContent = 'Email required.';
+        errEl.classList.add('show');
+        return false;
+    }
+    if (!token) {
+        errEl.textContent = 'Bot-check failed — please retry the challenge above.';
+        errEl.classList.add('show');
+        return false;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+
+    try {
+        const resp = await fetch('/api/v1/trial-signup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email, turnstile_token: token}),
+        });
+        const body = await resp.json();
+        if (!resp.ok) {
+            errEl.textContent = body.detail || `Signup failed (${resp.status}).`;
+            errEl.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = 'Launch trial';
+            return false;
+        }
+        // Hide form, show status block, start polling.
+        form.style.display = 'none';
+        document.getElementById('status-block').classList.add('show');
+        pollStatus(body.trial_id);
+    } catch (err) {
+        errEl.textContent = 'Network error — try again in a moment.';
+        errEl.classList.add('show');
+        btn.disabled = false;
+        btn.textContent = 'Launch trial';
+    }
+    return false;
+}
+
+async function pollStatus(trialId) {
+    const headline = document.getElementById('status-headline');
+    const detail = document.getElementById('status-detail');
+    let attempts = 0;
+    const interval = setInterval(async () => {
+        attempts++;
+        try {
+            const resp = await fetch(`/api/v1/trial-signup/${trialId}/status`);
+            if (!resp.ok) return;
+            const body = await resp.json();
+            if (body.status === 'pending_verification') {
+                // Still waiting for the user to click the email link — keep polling silently.
+                return;
+            }
+            if (body.status === 'provisioning') {
+                headline.textContent = 'Provisioning your instance';
+                detail.textContent = 'Setting up your Scutum stack on Fly. Usually under a minute.';
+            }
+            if (body.status === 'active' && body.url) {
+                clearInterval(interval);
+                headline.textContent = 'Ready — redirecting…';
+                detail.textContent = body.url;
+                setTimeout(() => { window.location.href = body.url; }, 800);
+            }
+            if (body.status === 'failed') {
+                clearInterval(interval);
+                headline.textContent = 'Provisioning hit a snag';
+                detail.textContent = body.error || 'Email hello@scutum.dev and we\'ll sort it out.';
+            }
+        } catch (_) { /* ignore transient errors */ }
+        // Stop after ~10 minutes — provisioning shouldn't take that long.
+        if (attempts > 200) clearInterval(interval);
+    }, 3000);
+}
+</script>
+</body>
+</html>

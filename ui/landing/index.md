@@ -4,6 +4,7 @@
 
 Drop-in OpenAI-compatible proxy across 100+ models. Native MCP and A2A with Cedar policy enforcement. Pre-call cost prediction with per-team budget gates. An autonomous SRE agent that watches the stack and proposes remediations for human approval. Self-hosted by default — your data, your keys, your audit log.
 
+- **Try a free hosted instance**: <https://scutum.dev/try/> — sign up, we provision a personal Scutum on Fly in about a minute. 30 days, no credit card.
 - **Public site**: <https://scutum.dev/>
 - **Documentation**: <https://scutum.dev/docs/>
 - **Status**: v0.1.0, open early access (May 2026)

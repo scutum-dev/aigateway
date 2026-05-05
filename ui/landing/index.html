@@ -834,7 +834,7 @@
     // keys, and operational ownership. SRE agent is an opt-in add-on.
     // Self-hosted: 3 tiers. Voice is brand-led; promises stay scoped to what's underwritten.
     const PRICING_SELFHOSTED = [
-        { name: 'Free Trial', price: '$0', period: 'first 30 days', tagline: 'Full features. No credit card.', cta: 'Request trial access',
+        { name: 'Free Trial', price: '$0', period: 'first 30 days', tagline: 'One click. Runs on us. No credit card.', cta: 'Launch trial', ctaHref: '/try/',
           features: ['All 100+ models, MCP & A2A', 'Unlimited team members', 'Pre-call cost prediction + per-team budgets', 'OpenTelemetry, Grafana dashboards', 'Onboarding session included'] },
         { name: 'License', price: '$99', period: '/month', tagline: 'You run it. Licensed by us.', featured: true, cta: 'Book a demo',
           features: ['Unlimited team members', 'All providers, all models', 'Cost dashboards + per-team budgets', 'OIDC SSO (Google, Okta, Azure AD)', 'Configurable audit retention', 'Email support', 'Self-hosted on your infrastructure'] },
@@ -912,7 +912,10 @@
             <a href="#research">Research</a>
             <a href="/changelog/" target="_blank">Changelog</a>
             <a href="/docs/" target="_blank">Docs</a>
-            <a class="btn btn-nav" onclick="openDemoModal()">Book a Demo</a>
+            <!-- Try is the new low-friction CTA in the nav too. Promoted to the right edge
+                 (most visible spot); Book a Demo demoted to a plain link before it. -->
+            <a onclick="openDemoModal()" style="cursor:pointer;">Book a Demo</a>
+            <a class="btn btn-nav" href="/try/">Try Now</a>
         </div>
     </div>
 </nav>
@@ -932,7 +935,13 @@
             and proposes remediations for human approval. <strong>Self-hosted by default</strong> — your data, your keys, your audit log.
         </p>
         <div class="hero-ctas">
-            <button class="btn btn-primary btn-lg" onclick="openDemoModal()">
+            <!-- Try Now is the new low-friction CTA — no demo call needed; provisions a real
+                 trial on Fly in about a minute. Promoted to primary so it's the first thing
+                 visitors see. Book a Demo demoted to secondary alongside Read the Docs. -->
+            <a class="btn btn-primary btn-lg" href="/try/">
+                <i class="fa-solid fa-rocket"></i> Try Now
+            </a>
+            <button class="btn btn-secondary btn-lg" onclick="openDemoModal()">
                 <i class="fa-solid fa-calendar-check"></i> Book a Demo
             </button>
             <a class="btn btn-secondary btn-lg" href="/docs/" target="_blank">
@@ -1316,18 +1325,19 @@ $ curl localhost:4000/v1/models | jq</pre>
             <!-- 3-card grid; promises stay scoped to what's underwritten. -->
             <div class="pricing-grid pricing-grid--3" id="pricing-grid-selfhosted">
                 <div class="price-card">
+                    <!-- "Setup call required" replaced by self-serve /try flow on Fly. -->
                     <div class="price-name">Free Trial</div>
                     <div class="price-amt">$0<small> first 30 days</small></div>
-                    <div class="price-tagline">Full features. Setup call required.</div>
+                    <div class="price-tagline">One click. Runs on us. No credit card.</div>
                     <ul class="price-features">
                             <li><i class="fa-solid fa-check"></i> All 100+ models, MCP &amp; A2A</li>
                             <li><i class="fa-solid fa-check"></i> Unlimited team members</li>
                             <li><i class="fa-solid fa-check"></i> Pre-call cost prediction + per-team budgets</li>
                             <li><i class="fa-solid fa-check"></i> OpenTelemetry, Grafana dashboards</li>
-                            <!-- Replaced "30-min onboarding with the founder" — voice is brand-led, never founder-named. -->
                             <li><i class="fa-solid fa-check"></i> Onboarding session included</li>
                     </ul>
-                    <button class="btn btn-secondary" onclick="openDemoModal()">Request trial access</button>
+                    <!-- CTA points at the self-serve /try flow now. -->
+                    <a class="btn btn-secondary" href="/try/" style="text-align:center;">Launch trial</a>
                 </div>
                 <div class="price-card featured">
                     <div class="price-name">License</div>
@@ -1675,7 +1685,9 @@ $ curl localhost:4000/v1/models | jq</pre>
                     <ul class="price-features">
                         ${tier.features.map(f => '<li><i class="fa-solid fa-check"></i> ' + f + '</li>').join('')}
                     </ul>
-                    <button class="btn ${tier.featured ? 'btn-primary' : 'btn-secondary'}" onclick="openDemoModal()">${tier.cta}</button>
+                    ${tier.ctaHref
+                        ? '<a class="btn ' + (tier.featured ? 'btn-primary' : 'btn-secondary') + '" style="text-align:center;" href="' + tier.ctaHref + '">' + tier.cta + '</a>'
+                        : '<button class="btn ' + (tier.featured ? 'btn-primary' : 'btn-secondary') + '" onclick="openDemoModal()">' + tier.cta + '</button>'}
                 `;
                 grid.appendChild(card);
             }

@@ -65,6 +65,7 @@ from routers import sla as sla_router
 from routers import sre as sre_router
 from routers import sso as sso_router
 from routers import teams as teams_router
+from routers import trial_signup as trial_signup_router
 from routers import workflows as workflows_router
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
@@ -791,6 +792,7 @@ app.include_router(routing_router.router, prefix="/api/v1", tags=["Routing"])
 app.include_router(sre_router.router, prefix="/api/v1", tags=["SRE Agent"])
 app.include_router(leads_router.router, prefix="/api/v1", tags=["Leads"])
 app.include_router(license_router.router, prefix="/api/v1", tags=["License"])
+app.include_router(trial_signup_router.router, prefix="/api/v1", tags=["Trial Signup"])
 
 
 if __name__ == "__main__":

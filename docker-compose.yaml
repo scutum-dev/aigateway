@@ -558,8 +558,13 @@ services:
       - "${LANDING_UI_PORT:-9999}:80"
     environment:
       LITELLM_KEY: ${LITELLM_MASTER_KEY}
+      # Cloudflare Turnstile site key for the /try signup form. Public value
+      # (safe to embed in HTML); the secret-key counterpart lives in admin-api.
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
     depends_on:
       - landing-backend
+      # admin-api hosts /api/v1/trial-signup; nginx proxies /api/v1/trial-signup → admin-api.
+      - admin-api
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
       interval: 10s
