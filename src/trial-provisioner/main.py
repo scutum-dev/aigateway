@@ -255,25 +255,39 @@ async def _provision(trial_id: str) -> None:
             volume_mount_path="/data",
         )
 
-        # 5. Custom hostname:
-        #    a. Fly addCertificate registers the hostname on the app so Fly's
-        #       edge knows to route requests with Host: <id>.scutum.dev to
-        #       this machine. Even if LE issuance fails (Cloudflare proxied
-        #       hides DNS validation), the registration is what matters for
-        #       routing — TLS gets handled by Cloudflare at the edge.
-        #    b. Cloudflare CNAME, proxied=true so Universal SSL terminates
-        #       TLS at the CF edge with the *.scutum.dev cert.
-        # If either step fails, we keep fqdn=fly_url (set above) and the user
-        # still gets a working URL.
+        # 5. Custom hostname — three steps, each best-effort:
+        #    a. Fly addCertificate registers the hostname for routing AND
+        #       returns the DNS-01 validation target (Fly uses LE DNS-01).
+        #    b. Cloudflare CNAME (DNS-only) so traffic resolves to Fly.
+        #    c. Cloudflare CNAME for `_acme-challenge.<id>.scutum.dev` →
+        #       <flydns.net> so Let's Encrypt validates the cert request.
+        #
+        # Once (c) is in place, Fly's LE poll picks it up within ~30 seconds
+        # and the per-trial cert is live. Until then, traffic falls through
+        # CF's Universal SSL on cached resolvers (still HTTPS, just CF cert
+        # instead of Fly cert). Either way the user sees a green padlock.
+        #
+        # SSL mode note: Cloudflare proxied=true would also work, but the
+        # CF→Fly leg would need zone-wide SSL set to "Full" (not Flexible).
+        # We can't change zone-wide SSL without breaking the Flexible-mode
+        # marketing site at scutum.dev → OCI. Per-hostname overrides need Pro.
         custom_hostname_ready = False
+        validation_record = None  # filled by addCertificate response
         try:
-            await _fly.create_certificate(app_name, custom_fqdn)
-            logger.info("[%s] Fly hostname registered: %s", trial_id, custom_fqdn)
+            cert_resp = await _fly.create_certificate(app_name, custom_fqdn)
+            cert_data = (cert_resp.get("addCertificate") or {}).get("certificate") or {}
+            validation_record = cert_data.get("dnsValidationTarget")
+            logger.info(
+                "[%s] Fly hostname registered: %s (validation_target=%s)",
+                trial_id,
+                custom_fqdn,
+                validation_record,
+            )
         except FlyAPIError as e:
             logger.warning("[%s] Fly addCertificate non-fatal: %s", trial_id, e)
         try:
-            await _cf.create_cname(name=custom_fqdn, target=fly_url, proxied=True)
-            logger.info("[%s] CF CNAME (proxied) %s → %s", trial_id, custom_fqdn, fly_url)
+            await _cf.create_cname(name=custom_fqdn, target=fly_url, proxied=False)
+            logger.info("[%s] CF CNAME (DNS-only) %s → %s", trial_id, custom_fqdn, fly_url)
             custom_hostname_ready = True
         except CloudflareAPIError as e:
             if "already exists" in str(e).lower() or e.status == 81057:
@@ -281,6 +295,22 @@ async def _provision(trial_id: str) -> None:
                 custom_hostname_ready = True
             else:
                 logger.warning("[%s] CF DNS create non-fatal: %s", trial_id, e)
+        # ACME DNS-01 validation record so Fly's LE flow can issue the cert.
+        if validation_record:
+            try:
+                await _cf.create_cname(
+                    name=f"_acme-challenge.{custom_fqdn}",
+                    target=validation_record,
+                    proxied=False,
+                )
+                logger.info(
+                    "[%s] ACME validation CNAME _acme-challenge.%s → %s", trial_id, custom_fqdn, validation_record
+                )
+            except CloudflareAPIError as e:
+                if "already exists" in str(e).lower() or e.status == 81057:
+                    logger.info("[%s] ACME validation CNAME already exists, ok", trial_id)
+                else:
+                    logger.warning("[%s] ACME validation CNAME create non-fatal: %s", trial_id, e)
 
         # Promote fqdn to the brandable hostname iff CF DNS creation succeeded
         # — that means CF Universal SSL covers it and the URL works in the
