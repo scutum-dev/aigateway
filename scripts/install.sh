@@ -112,10 +112,14 @@ if [ ! -f config/.env ]; then
 
     # Replace each CHANGE-ME-... placeholder with a fresh random value so the
     # customer never accidentally runs production with the example secrets.
-    SCUTUM_KEY="sk-$(randhex 32)"
-    JWT_KEY="$(randhex 32)"
-    INTERNAL_KEY="$(randhex 32)"
-    PG_PASS="$(randhex 16)"
+    # If a value is already in the shell environment (e.g. trial-monolith
+    # passes SCUTUM_API_KEY, JWT_SECRET_KEY etc. via Fly machine env vars
+    # so the trial-provisioner can hand the user a working credential),
+    # honour the pre-set value instead of randomising.
+    SCUTUM_KEY="${SCUTUM_API_KEY:-sk-$(randhex 32)}"
+    JWT_KEY="${JWT_SECRET_KEY:-$(randhex 32)}"
+    INTERNAL_KEY="${INTERNAL_SERVICE_KEY:-$(randhex 32)}"
+    PG_PASS="${POSTGRES_PASSWORD:-$(randhex 16)}"
 
     # POSIX-portable in-place edit (sed -i differs between BSD and GNU)
     tmpfile="$(mktemp)"

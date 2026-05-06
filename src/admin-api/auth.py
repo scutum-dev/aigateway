@@ -46,6 +46,19 @@ class LoginRequest(BaseModel):
     api_key: str
 
 
+class BootstrapRequest(BaseModel):
+    """One-shot magic-link login for hosted trial machines.
+
+    The trial-provisioner generates a random BOOTSTRAP_TOKEN per trial and
+    injects it as an env var on the Fly machine (alongside SCUTUM_API_KEY).
+    The /try page redirects the user to /admin/?bootstrap=<token>; admin-ui
+    POSTs that token here, exchanges it for a JWT, then drops into the
+    dashboard. The token is one-shot — see validate_bootstrap_token.
+    """
+
+    token: str
+
+
 class TokenResponse(BaseModel):
     """JWT token response."""
 
@@ -109,6 +122,66 @@ async def validate_api_key(api_key: str) -> Optional[dict]:
         logger.error(f"Failed to validate API key: {e}")
 
     return None
+
+
+# Marker file path for one-shot bootstrap-token consumption. Lives on the
+# /etc/scutum volume so it persists across machine restarts (the token can
+# only ever be consumed once, even if the user clicks the magic link, the
+# admin-api restarts, and they click again).
+BOOTSTRAP_CONSUMED_PATH = os.getenv("BOOTSTRAP_CONSUMED_PATH", "/etc/scutum/bootstrap-consumed")
+
+
+def validate_bootstrap_token(token: str) -> Optional[dict]:
+    """Validate a one-shot bootstrap token from the trial magic-link URL.
+
+    Returns the same admin-user dict shape as validate_api_key's master-key
+    path on success. Returns None if:
+      - the token has already been consumed (marker file exists),
+      - BOOTSTRAP_TOKEN env is unset on this admin-api,
+      - the supplied token doesn't match.
+
+    On success, atomically creates the marker file. Subsequent attempts
+    (refresh, second tab, leaked URL) get None and the user has to log in
+    with their persistent SCUTUM_API_KEY.
+    """
+    expected = os.getenv("BOOTSTRAP_TOKEN", "")
+    if not expected:
+        return None
+    if not token:
+        return None
+    if os.path.exists(BOOTSTRAP_CONSUMED_PATH):
+        logger.info("bootstrap token rejected: already consumed")
+        return None
+    if not hmac.compare_digest(token, expected):
+        logger.info("bootstrap token rejected: mismatch")
+        return None
+
+    # Mark consumed atomically. O_EXCL fails if the file appeared between
+    # the existence check above and the create call (race), in which case
+    # another request beat us to it — treat as already-consumed.
+    try:
+        fd = os.open(BOOTSTRAP_CONSUMED_PATH, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        logger.info("bootstrap token rejected: race-lost to concurrent exchange")
+        return None
+    except OSError as e:
+        # The /etc/scutum directory may not exist (rare — install.sh always
+        # creates it). Surface the failure rather than silently logging the
+        # user in without a consume mark.
+        logger.error("could not mark bootstrap token consumed: %s", e)
+        return None
+    try:
+        os.write(fd, datetime.now(timezone.utc).isoformat().encode())
+    finally:
+        os.close(fd)
+
+    logger.info("bootstrap token accepted, marker written; admin JWT will be issued")
+    return {
+        "user_id": "admin",
+        "role": "admin",
+        "is_admin": True,
+        "key": "bootstrap",
+    }
 
 
 def create_access_token(user_info: dict) -> tuple[str, datetime]:
@@ -265,6 +338,29 @@ async def login(request: LoginRequest) -> TokenResponse:
     # Create JWT token
     token, expires_at = create_access_token(user_info)
 
+    return TokenResponse(
+        access_token=token,
+        expires_in=JWT_EXPIRATION_HOURS * 3600,
+        expires_at=expires_at.isoformat(),
+    )
+
+
+async def bootstrap_login(request: BootstrapRequest) -> TokenResponse:
+    """Exchange a one-shot bootstrap token for an admin JWT.
+
+    Used only by hosted-trial machines: trial-provisioner injects a random
+    BOOTSTRAP_TOKEN env var on machine create, embeds the token in the URL
+    the user is redirected to after email verification, and the admin-ui
+    auto-calls this endpoint on page load. See validate_bootstrap_token for
+    the one-shot semantics.
+    """
+    user_info = validate_bootstrap_token(request.token)
+    if not user_info:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or already-used bootstrap token",
+        )
+    token, expires_at = create_access_token(user_info)
     return TokenResponse(
         access_token=token,
         expires_in=JWT_EXPIRATION_HOURS * 3600,

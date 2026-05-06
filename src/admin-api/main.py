@@ -28,7 +28,7 @@ import httpx
 import redis.asyncio as aioredis
 from alembic import command
 from alembic.config import Config
-from auth import LoginRequest, TokenResponse, UserInfo, get_current_user, login
+from auth import BootstrapRequest, LoginRequest, TokenResponse, UserInfo, bootstrap_login, get_current_user, login
 from event_publisher import publish_event
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -155,7 +155,7 @@ async def _get_global_rate_limit() -> Optional[int]:
 class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
     """Enforce global_rate_limit from platform_settings using Redis sliding window."""
 
-    EXEMPT_PATHS = {"/health", "/healthz", "/ready", "/auth/login"}
+    EXEMPT_PATHS = {"/health", "/healthz", "/ready", "/auth/login", "/auth/bootstrap"}
 
     async def dispatch(self, request: Request, call_next):
         if request.url.path in self.EXEMPT_PATHS:
@@ -727,6 +727,17 @@ async def health_check():
 async def auth_login(request: LoginRequest):
     """Authenticate and get JWT token."""
     return await login(request)
+
+
+@app.post("/auth/bootstrap", response_model=TokenResponse)
+async def auth_bootstrap(request: BootstrapRequest):
+    """Exchange a one-shot magic-link bootstrap token for an admin JWT.
+
+    Used only by hosted-trial machines (the trial-provisioner injects
+    BOOTSTRAP_TOKEN as an env var on machine create). Token is consumed on
+    first successful exchange — see auth.validate_bootstrap_token.
+    """
+    return await bootstrap_login(request)
 
 
 @app.get("/auth/me", response_model=UserInfo)

@@ -30,6 +30,14 @@ COPY nginx.conf /etc/nginx/nginx.conf
 COPY welcome.html /var/www/welcome/index.html
 RUN chmod +x /app/entrypoint.sh
 
+# Golden-image cache: a docker-save tarball of postgres/redis + the 4
+# scutum-* service images, produced by the build-monolith.yml workflow.
+# entrypoint.sh `docker load`s it on first boot (gated by a marker file
+# on the persistent volume) so per-trial cold start skips the 5-7 min
+# ghcr.io pull. The tarball is deleted from the volume after load to
+# reclaim disk. Image grows ~140 MB → ~1.5 GB; Fly caches per region.
+COPY scutum-images.tar.gz /opt/scutum-images.tar.gz
+
 # /var/lib/docker is a Fly volume mount target; postgres/redis state lives
 # there under their respective named volumes inside the dind daemon.
 VOLUME /var/lib/docker
