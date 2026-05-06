@@ -4,6 +4,7 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { UIMessage } from "ai";
 import type { SearchResult } from "@/lib/search";
+import Artifact from "./Artifact";
 
 type MessageProps = {
   message: UIMessage<{ sources?: SearchResult[] }>;
@@ -48,7 +49,35 @@ export default function Message({ message }: MessageProps) {
             part.type === "dynamic-tool" ||
             (typeof part.type === "string" && part.type.startsWith("tool-"))
           ) {
-            return <ToolCallIndicator key={i} part={part as ToolPart} />;
+            const tp = part as ToolPart;
+            const name =
+              tp.toolName ??
+              (tp.type.startsWith("tool-")
+                ? tp.type.slice("tool-".length)
+                : "");
+            // Generative-UI artifact: render the model's React inline.
+            if (name === "render_artifact") {
+              const code =
+                typeof tp.input?.code === "string"
+                  ? (tp.input.code as string)
+                  : "";
+              const title =
+                typeof tp.input?.title === "string"
+                  ? (tp.input.title as string)
+                  : undefined;
+              const pending =
+                tp.state === "input-streaming" ||
+                (tp.state === "input-available" && !code);
+              return (
+                <Artifact
+                  key={i}
+                  title={title}
+                  code={code}
+                  pending={pending}
+                />
+              );
+            }
+            return <ToolCallIndicator key={i} part={tp} />;
           }
           // Future: render reasoning, files. Skip silently for now.
           return null;
