@@ -452,7 +452,11 @@ async def _provision_inner(trial_id: str) -> None:
                 memory_mb=MACHINE_MEMORY_MB,
                 cpus=MACHINE_CPUS,
                 volume_id=volume_id,
-                volume_mount_path="/data",
+                # Mount the Fly persistent volume directly at /var/lib/docker
+                # — see pool.warm_one_machine for rationale. Briefly: it's
+                # what makes dockerd image cache + state survive a Fly
+                # config PATCH (claim time). Old /data mount was unused.
+                volume_mount_path="/var/lib/docker",
             )
 
         # 5. Custom hostname — three steps, each best-effort:

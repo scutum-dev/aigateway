@@ -38,10 +38,14 @@ RUN chmod +x /app/entrypoint.sh
 # reclaim disk. Image grows ~140 MB → ~1.5 GB; Fly caches per region.
 COPY scutum-images.tar.gz /opt/scutum-images.tar.gz
 
-# /var/lib/docker is a Fly volume mount target; postgres/redis state lives
-# there under their respective named volumes inside the dind daemon.
-VOLUME /var/lib/docker
-VOLUME /etc/scutum
+# DO NOT declare `VOLUME /var/lib/docker` or `VOLUME /etc/scutum` here —
+# Fly Machines treats anonymous Docker volumes as ephemeral (a config
+# PATCH / machine update gives the container a fresh writable layer and
+# tosses anon volumes). The trial-provisioner mounts the Fly persistent
+# volume directly at /var/lib/docker so dockerd state, image cache, and
+# our golden-loaded marker (kept inside /var/lib/docker/scutum-state/)
+# all survive PATCH-driven restarts. Without this, every claim_warm
+# re-runs the 8-min docker-load from scratch.
 
 EXPOSE 80
 ENTRYPOINT ["/app/entrypoint.sh"]

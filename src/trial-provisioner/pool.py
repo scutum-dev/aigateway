@@ -161,7 +161,14 @@ async def warm_one_machine(
                 memory_mb=memory_mb,
                 cpus=cpus,
                 volume_id=volume_id,
-                volume_mount_path="/data",
+                # Mount the Fly persistent volume directly at /var/lib/docker
+                # so dockerd state (image cache, container volumes) survives
+                # the writable-layer reset that Fly does on every config
+                # PATCH. The previous /data mount was unused; the warmup
+                # work landed on anonymous Docker volumes that got tossed
+                # at claim time, forcing every claim to re-run the 8-min
+                # docker-load. See entrypoint.sh notes.
+                volume_mount_path="/var/lib/docker",
                 # Critical: warming machines have no real concurrency, so Fly's
                 # edge proxy SIGTERMs them ~9 min into boot ("excess capacity")
                 # — interrupting the docker-load mid-stream. Disable autostop
