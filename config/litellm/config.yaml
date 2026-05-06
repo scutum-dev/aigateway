@@ -18,6 +18,36 @@
 model_list:
 
   # ===========================================
+  # Scutum-curated aliases (used by chat.scutum.dev)
+  # ===========================================
+  # These wrap real provider models behind product-named aliases so the chat
+  # app and any external research integrations call `scutum-research` /
+  # `scutum-fast` rather than naming a specific provider model. Lets us swap
+  # the underlying model (Sonnet → Opus, Haiku → GPT-5-mini, etc.) without
+  # touching client code or invalidating customer prompts.
+
+  # Default for chat.scutum.dev. Tuned for "answer + citations" style.
+  # Sonnet-class is the right balance of reasoning quality + cost for
+  # search-augmented Q&A. Swap to Opus for harder reasoning tasks.
+  - model_name: "scutum-research"
+    litellm_params:
+      model: "claude-sonnet-4-6"
+      timeout: 180
+    model_info:
+      id: "scutum-research"
+      mode: "chat"
+
+  # Cheap + fast lane for intent classification, follow-up disambiguation,
+  # and "Quick mode" answers where we don't need long reasoning chains.
+  - model_name: "scutum-fast"
+    litellm_params:
+      model: "claude-haiku-4-5"
+      timeout: 60
+    model_info:
+      id: "scutum-fast"
+      mode: "chat"
+
+  # ===========================================
   # OpenAI Models
   # ===========================================
   # Docs: https://platform.openai.com/docs/models

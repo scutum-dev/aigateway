@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+/* Match the existing scutum.dev landing palette so chat.scutum.dev feels
+   like a sibling product, not a separate brand. */
+@theme {
+  --color-bg: #ffffff;
+  --color-bg-elevated: #fafafa;
+  --color-border: #e5e5e5;
+  --color-border-strong: #d4d4d4;
+  --color-text: #0a0a0a;
+  --color-text-muted: #525252;
+  --color-text-subtle: #6b7280;
+  --color-accent: #0a0a0a;
+  --font-sans:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+    sans-serif;
+  --font-serif: "Instrument Serif", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Citation marker rendered inline by the Markdown renderer; small + linked. */
+.citation {
+  display: inline-block;
+  vertical-align: super;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  margin: 0 1px;
+}
+.citation:hover {
+  color: var(--color-text);
+}
