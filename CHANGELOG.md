@@ -43,6 +43,13 @@ First customer-shippable release.
 
 ## [Unreleased]
 
+### Added — chat.scutum.dev v0.2 (generative UI + hybrid search + GHA deploy)
+- **Generative UI** — `render_artifact` tool lets the model emit interactive React components inline with answers. Curated react-live scope (React hooks + full Recharts primitive set, no `fetch`/`localStorage`/`document` access). Synthetic server-side `execute()` returns `{rendered: true}` so multi-turn replays don't fail AI SDK v6's tool-result validation. Charts, calculators, comparison tables, mini-explorers all work in a single chat turn.
+- **Brave Search adapter + hybrid mode** — `lib/search.ts` now dispatches on `SEARCH_PROVIDER=tavily|brave|hybrid|none`. Hybrid runs both providers in parallel, dedupes by normalised URL (lowercase host + trailing-slash strip + fragment strip), round-robin interleaves so neither dominates the top-N. Recommended default.
+- **Tavily MCP integration** (`lib/mcp.ts`, optional, off by default) — when `TAVILY_MCP_URL` is set, the model gets `tavily_search` / `tavily_extract` follow-up tools on top of the prefetched sources. System prompt instructs "use sparingly — 1–2 follow-ups."
+- **GitHub Actions deploy workflow** — `.github/workflows/deploy-chat.yml` runs `vercel pull → vercel build --prod → vercel deploy --prebuilt --prod` on every push to `main` that touches `ui/chat/**`. Replaces Vercel Git auto-deploy, which Hobby plan doesn't support for private org-owned repos. Concurrency is `cancel-in-progress` so only the latest commit deploys; manual trigger via Actions tab.
+- **Tool-call indicators in `Message.tsx`** — inline "🔍 Searched: …" / "✓ Read: …" badges for each MCP tool call, so users see what the model is doing mid-stream.
+
 ### Added — Scutum Research (chat.scutum.dev)
 - **New product surface**: search-with-citations chat at [chat.scutum.dev](https://chat.scutum.dev), deployed on Vercel. Calls the Scutum gateway for the LLM (so every query lands in the audit log) and Tavily for the search step. Streams answers via Vercel AI SDK v6 with inline `[^N]` citations + footer source list.
 - LiteLLM aliases `scutum-research` (Sonnet-class for chat) and `scutum-fast` (Haiku-class for classification / Quick mode) — defined in `config/litellm/config.yaml`. Retargetable without code changes.
@@ -76,6 +83,14 @@ First customer-shippable release.
 ### Changed — top nav + URL surface
 - Landing nav reduced from 11 items to 6 (removed within-page anchor links).
 - `chat.scutum.dev` Cloudflare CNAME proxied (orange cloud) with a Configuration Rule overriding zone-wide Flexible SSL → `Full` for that hostname only.
+
+### Fixed — chat.scutum.dev
+- `??` → `||` for URL/string env-var fallbacks in `app/layout.tsx` and `app/api/chat/route.ts`. Vercel's `vercel pull` returns blank values for defined-but-empty entries, which slip through `??` and reach `new URL("")` → `next build` fails at page-data collection for `/_not-found` with `ERR_INVALID_URL`.
+- `@ai-sdk/openai-compatible` `^1` → `^2`. v1 is LanguageModelV2-only; the AI SDK v6 tool loop needs V3, so steps were terminating after the first tool call (the "specificationVersion compatibility mode" warning was the tell).
+- `render_artifact` synthetic `execute()` — without a tool result, multi-turn replays failed with "Tool result is missing for tool call …" because the assistant's previous turn referenced a `toolCallId` with no matching tool-result message.
+- Hybrid prefetch is the default search path again. With MCP search tools fully exposed, Claude over-searched on ambiguous queries (4 sequential `tavily_search` + 2 `tavily_extract` on "Vercel Ship 2025" before exhausting `MAX_TOOL_STEPS=5`). Prefetch keeps sources deterministic and the model focused on writing.
+- AI SDK v6 generic shape: `useChat<{messageMetadata: T}>` was wrong; correct is `useChat<UIMessage<T>>`.
+- `package.json` `overrides.ai` set to `$ai` to dedupe the dual-version pull from `@ai-sdk/react`'s nested `ai` dependency.
 
 ### Fixed — trial provisioning
 - Fly Machines API field rename: `auto_stop_machines` → `autostop`, `auto_start_machines` → `autostart`. Old names were silently dropped → trials never auto-stopped, ran 24/7.
