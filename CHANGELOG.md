@@ -43,6 +43,51 @@ First customer-shippable release.
 
 ## [Unreleased]
 
+### Added — Scutum Research (chat.scutum.dev)
+- **New product surface**: search-with-citations chat at [chat.scutum.dev](https://chat.scutum.dev), deployed on Vercel. Calls the Scutum gateway for the LLM (so every query lands in the audit log) and Tavily for the search step. Streams answers via Vercel AI SDK v6 with inline `[^N]` citations + footer source list.
+- LiteLLM aliases `scutum-research` (Sonnet-class for chat) and `scutum-fast` (Haiku-class for classification / Quick mode) — defined in `config/litellm/config.yaml`. Retargetable without code changes.
+- `ui/chat/` Next.js 16 + Tailwind 4 + AI SDK v6 app (~530 LoC, 14 files). React-markdown rendering with custom citation parser; auto-strip footnote-definition lines.
+- `/v1/*` proxy added to landing nginx (`ui/landing/nginx.conf`) so `https://scutum.dev/v1/chat/completions` reaches LiteLLM through Cloudflare → landing-ui → litellm:4000.
+- New docs page `/docs/guides/scutum-research/` with architecture, API surface, citations rendering, configuration, roadmap.
+
+### Added — hosted-trial warm pool + magic-link
+- **Warm pool fast path**: trial-provisioner keeps `WARM_POOL_MIN_SIZE` (default 3) Fly machines pre-booted and stopped. Verify-click → claim a `ready` slot → PATCH per-trial env → start machine → user in dashboard in **~1 minute** (vs ~10 min cold start). Tunables: `WARM_POOL_*` env vars on trial-provisioner. Slow path remains as fallback when pool is empty.
+- Migration 029: `warm_machines` table (state machine: `warming → ready → claimed`, plus `failed → recycled`).
+- Migration 028: per-trial `bootstrap_token`, `api_key`, `jwt_secret` columns on `trial_instances`.
+- **Magic-link auto-login**: `/api/v1/trial-signup/{id}/status` returns `https://<id>.scutum.dev/admin/?bootstrap=<token>` on `active`. Admin-ui `Login.tsx` detects `?bootstrap=`, exchanges via new `POST /auth/bootstrap` endpoint, mints a JWT, drops user in dashboard. Token is one-shot (consumed-marker in `/tmp/`).
+- **Welcome email** sent from `trial@scutum.dev` after a trial flips to `active` — contains the trial URL, persistent API key, and expiry date so users can log in from any device.
+- **Golden-image bake** in `build-monolith.yml`: pulls + tarballs the 6 Scutum service images into the monolith image at build time. Per-trial cold start drops from ~7-min `docker compose pull` to ~30-sec `docker load` once the volume is warmed.
+
+### Added — landing-page surfaces
+- New "NEW · Scutum Research is here" pill above the hero linking to chat.scutum.dev.
+- New "Built-in tools" section — 4 cards for Research (featured), Workflows, Playground, MCP/A2A.
+- Hero CTA reorder: `Open Research` is now primary, `Try Now` secondary.
+- Top nav adds `Open Research ↗` link to chat.scutum.dev.
+- SEO: title, meta description, OG/Twitter tags now mention Scutum Research; sitemap adds `/try` and `chat.scutum.dev`; robots.txt registers chat.scutum.dev sitemap.
+
+### Changed — reliability & boot-path hardening
+- Trial-monolith Fly volume now mounts at `/var/lib/docker` (NOT `/data`). Anonymous Docker volumes were ephemeral on Fly machine updates → markers + image cache wiped on every claim → repeat 8-min docker-load. State markers + install bundle moved to `/var/lib/docker/scutum-state/`.
+- Front-of-house nginx in monolith starts FIRST (before dockerd) so `:80` serves a `/booting` page during the slow boot instead of connection-refused.
+- `entrypoint.sh` adds: 5-attempt compose-up retry, background dockerd + compose watchdog every 30s, SIGTERM trap for graceful shutdown.
+- `entrypoint.sh` syncs host env → `config/.env` on every boot for the per-trial secrets — ensures `compose --env-file` reads the values that `claim_warm_machine` PATCHed onto the Fly machine, not the warmup placeholders that install.sh wrote on first boot.
+- `litellm` healthcheck switched from `wget` (not in image) to `curl ‖ wget` fallback chain. Same change for `admin-ui` and `docs-site`. Removed cascading `condition: service_healthy` deadlocks.
+- LiteLLM in trial monolith now starts with `--use_prisma_db_push` — skips the migrate-deploy retry loop that wasted ~6 min on every cold boot when Prisma found a non-empty schema.
+
+### Changed — top nav + URL surface
+- Landing nav reduced from 11 items to 6 (removed within-page anchor links).
+- `chat.scutum.dev` Cloudflare CNAME proxied (orange cloud) with a Configuration Rule overriding zone-wide Flexible SSL → `Full` for that hostname only.
+
+### Fixed — trial provisioning
+- Fly Machines API field rename: `auto_stop_machines` → `autostop`, `auto_start_machines` → `autostart`. Old names were silently dropped → trials never auto-stopped, ran 24/7.
+- `autostop=False` during warmup. Fly's edge proxy SIGTERMs warming machines at ~9 min ("excess capacity"), interrupting the docker-load mid-stream. Re-enabled at claim time so user trials still scale to zero.
+- Catch Fly's `"uniqueness constraint violated"` 422 in `_is_already_exists` so partial provisioning failures resume idempotently.
+- Bootstrap-marker path moved to `/tmp/` — admin-api runs as uid 1000 and `/etc/` is root-owned. Marker creation was permission-denied, validate_bootstrap_token returned None, all magic-link clicks 401'd.
+- React Router `basename="/admin"` mismatch — landing on `/` rendered nothing. Front-of-house nginx now 302s `/` → `/admin/` and strips the `/admin/` prefix when forwarding to admin-ui.
+- `BOOTSTRAP_TOKEN` env now forwarded into the admin-api container via the release compose `environment:` block. Without this admin-api saw `os.getenv("BOOTSTRAP_TOKEN", "")` as empty → 401.
+- Fly autostop on warm machines fixed (rename + boolean form) — pool slots actually cycle to zero when idle.
+- Pool warmer recycler SQL: `||` concat doesn't accept int4 without an explicit `::text` cast — caused an "invalid input for query argument" loop on every tick.
+- Pool warmer throttled to `WARM_POOL_CONCURRENCY=1` (default) — parallel warmups multiplied failure blast radius (we burned 19 Fly machines in a 1.5h failure loop before adding the throttle).
+
 ### Added
 - **Routing policies**: Fallback chains, model groups, routing strategy, and conditional rules — configured via Admin UI, synced to LiteLLM
 - Migration 023 for `routing_policies` table
