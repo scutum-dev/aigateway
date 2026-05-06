@@ -47,10 +47,12 @@ export async function GET() {
   return new Response(null, { status: 204 });
 }
 
-const SCUTUM_API_URL = process.env.SCUTUM_API_URL ?? "https://scutum.dev/v1";
+// `||` (not `??`) so empty-string env vars fall through to defaults — see
+// the same note in app/layout.tsx for why this matters at build time.
+const SCUTUM_API_URL = process.env.SCUTUM_API_URL || "https://scutum.dev/v1";
 const SCUTUM_API_KEY = process.env.SCUTUM_API_KEY ?? "";
-const DEFAULT_MODEL = process.env.SCUTUM_DEFAULT_MODEL ?? "scutum-research";
-const MAX_TOOL_STEPS = parseInt(process.env.MAX_TOOL_STEPS ?? "5", 10);
+const DEFAULT_MODEL = process.env.SCUTUM_DEFAULT_MODEL || "scutum-research";
+const MAX_TOOL_STEPS = parseInt(process.env.MAX_TOOL_STEPS || "5", 10);
 
 const scutum = createOpenAICompatible({
   name: "scutum",
