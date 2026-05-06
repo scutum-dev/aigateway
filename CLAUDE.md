@@ -197,28 +197,68 @@ Boot ordering in `entrypoint.sh`:
 
 ## Chat product (`chat.scutum.dev` → Vercel)
 
-Source: `ui/chat/` (Next.js 16, AI SDK v6, Tailwind 4, ~530 LoC). Deployed separately on Vercel — not in docker-compose.
+Source: `ui/chat/` (Next.js 16 + AI SDK v6 + Tailwind 4 + react-live + Recharts). Deployed separately on Vercel — not in docker-compose. Two capabilities live here that the rest of the stack doesn't have:
 
-Per-request flow (`app/api/chat/route.ts`):
+1. **Search-with-citations** — every answer grounded in fresh web sources (Tavily + Brave hybrid), inline `[^N]` citations, source panel below.
+2. **Generative UI** — the model can return interactive React components (charts, calculators, comparisons) inline with prose via the `render_artifact` tool. This is the differentiator vs Perplexity / ChatGPT-search, which both can only return prose.
+
+### Per-request flow (`app/api/chat/route.ts`)
+
 1. Take latest user message text.
-2. Call Tavily (`lib/search.ts`) for web search; up to 5 results.
-3. Inject sources as numbered list in the system prompt with instruction to cite as `[^N]`.
-4. `streamText` from `@ai-sdk/openai-compatible` against `https://scutum.dev/v1/chat/completions` with `model: scutum-research` — keeps every chat query in the gateway's audit log + cost report.
-5. Sources attached as `messageMetadata` on the streamed UIMessage so the client renders a sources panel synchronized with the streaming text.
+2. **Hybrid prefetch** — single-shot search via `lib/search.ts` honouring `SEARCH_PROVIDER` (`tavily` / `brave` / `hybrid` / `none`). Hybrid runs both providers in parallel, dedupes by normalised URL, round-robin interleaves. Default + recommended: `hybrid`.
+3. Build the toolset: `render_artifact` always, plus Tavily MCP search/extract tools when `TAVILY_MCP_URL` is set. **MCP is opt-in** — Claude with full MCP latitude over-searched ambiguous queries and burned `MAX_TOOL_STEPS` before writing prose. Hybrid prefetch is the default for predictability.
+4. `buildSystemPrompt(initialSources, mcpAvailable)` — injects sources with stable `[^N]` numbering. Instructs the model to cite inline. If MCP is wired, adds a "use sparingly — 1–2 follow-ups" clause.
+5. `streamText({ tools, stopWhen: stepCountIs(MAX_TOOL_STEPS) })` against `https://scutum.dev/v1/chat/completions` with `model: scutum-research`. Every chat query lands in the gateway's audit log + cost report.
+6. Sources accumulate from prefetch + any MCP tool results, deduped by URL, attached as `messageMetadata` on the streamed UIMessage.
 
-`ui/chat/components/Message.tsx` runs assistant text through `react-markdown` + `remark-gfm`, with a custom link component that styles `[^N]`-derived links as superscript citation markers.
+### `render_artifact` (generative UI)
 
-LiteLLM aliases for chat (`config/litellm/config.yaml`):
-- `scutum-research` → Claude Sonnet 4.6 (default for chat)
-- `scutum-fast` → Claude Haiku 4.5 (intent classifier / Quick mode)
+Model emits a `{title, code}` payload. `code` is JSX/TSX in react-live `noInline` form (define a component, end with `render(<X />)`). Client-side, `Artifact.tsx` mounts it inside `react-live`'s `<LivePreview/>` with a curated scope: React hooks (`useState`/`useEffect`/`useMemo`) + the full Recharts primitive set. **No `fetch`, `XMLHttpRequest`, `localStorage`, `document`, or `window` in scope** — the model has nothing dangerous to call. An ErrorBoundary catches syntax errors so a broken artifact doesn't blank the chat.
 
-`/v1/*` proxy on the landing nginx routes `https://scutum.dev/v1/...` → `litellm:4000/v1/...` with streaming-friendly settings (`proxy_buffering off`, 600s read/send timeout). PR #52.
+The tool has a synthetic server-side `execute()` returning `{rendered: true, title}`. Without it, AI SDK v6 leaves the conversation in a pending-tool state and the next user turn fails with "Tool result is missing for tool call …".
 
-Rate limiting: at the **Cloudflare edge**, not in the Vercel app. Proxy `chat.scutum.dev` orange-cloud + add a CF rate-limit rule on `/api/chat` (free plan: 1 rule, 10k matched/mo). No in-app middleware needed.
+Threat model today is "model writes broken JSX," not "user is the attacker." For multi-tenant deployments accepting user-supplied code, the artifact would need to move into a sandboxed iframe with strict CSP — tracked as a follow-up.
 
-Env vars (chat-ui only, set in Vercel project): `SCUTUM_API_URL`, `SCUTUM_API_KEY` (use a chat-scoped key from admin UI, NOT the master key), `SCUTUM_DEFAULT_MODEL=scutum-research`, `TAVILY_API_KEY`, `SEARCH_PROVIDER=tavily`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SITE_NAME`. See `ui/chat/.env.example`.
+### LiteLLM aliases (`config/litellm/config.yaml`)
 
-For the route handler to be reached, a chat client also needs a `/api/chat` GET handler that returns 204 — AI SDK v6's `useChat` probes for stream-resume on mount and 405s otherwise.
+- `scutum-research` → Claude Sonnet 4.6 (default for chat).
+- `scutum-fast` → Claude Haiku 4.5 (intent classifier / Quick mode placeholder).
+
+`/v1/*` proxy on the landing nginx routes `https://scutum.dev/v1/...` → `litellm:4000/v1/...` with streaming-friendly settings (`proxy_buffering off`, 600s read/send timeout).
+
+### Deployment — GitHub Actions, not Vercel Git auto-deploy
+
+Vercel **Hobby plan blocks Git auto-deploy from private org-owned repos**, so chat ships via `.github/workflows/deploy-chat.yml`: on every push to `main` that touches `ui/chat/**`, the workflow runs `vercel pull → vercel build --prod → vercel deploy --prebuilt --prod` using the Vercel CLI. Concurrency is `cancel-in-progress` so only the latest commit deploys. Manual trigger via the Actions tab `workflow_dispatch`.
+
+Three repo secrets must be set at `Settings → Secrets and variables → Actions`:
+- `VERCEL_TOKEN` — from Vercel → Account → Settings → Tokens.
+- `VERCEL_ORG_ID` + `VERCEL_PROJECT_ID` — from `ui/chat/.vercel/project.json` after `npx vercel link`, or from the project's General settings.
+
+Env vars are managed on the **Vercel side**, not this repo. `vercel env add NAME production` from `ui/chat/` is the canonical CLI; the dashboard works too. The GHA workflow's `vercel pull` step grabs them at build time.
+
+### Env vars (Vercel project, production)
+
+Required:
+- `SCUTUM_API_URL` (default `https://scutum.dev/v1`).
+- `SCUTUM_API_KEY` — chat-scoped key from Admin UI → API Keys, **not** the master key. Lets you cap monthly spend on chat traffic and rotate without affecting other clients.
+- `SCUTUM_DEFAULT_MODEL` (default `scutum-research`).
+- `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SITE_NAME` — used in metadataBase + OG tags.
+
+Search:
+- `SEARCH_PROVIDER=hybrid` (recommended) — Tavily + Brave in parallel, deduped.
+- `TAVILY_API_KEY` + `BRAVE_API_KEY` — both needed for hybrid; if either is unset that branch silently returns empty.
+- `MAX_TOOL_STEPS=8` — multi-step cap on the streamText loop. 5 is too tight when MCP is enabled.
+
+Optional:
+- `TAVILY_MCP_URL=https://mcp.tavily.com/mcp/?tavilyApiKey=...` — when set, adds `tavily_search` / `tavily_extract` follow-up tools on top of prefetch. **Off by default.** Treat the URL as a secret (the API key is embedded).
+
+### Gotchas
+
+- **Empty-string env vars must use `||` for defaults, not `??`** — Vercel's `vercel pull` can return blank values for defined-but-empty entries, which slip through `??` and reach `new URL("")` later in `metadataBase`. See `app/layout.tsx`.
+- **AI SDK v6 + OpenAI-compatible** — `@ai-sdk/openai-compatible` `^1` is V2-only and breaks the v6 tool loop after the first tool call (the "specificationVersion compatibility mode" warning is the tell). Stay on `^2`.
+- **Tools without `execute()`** are fully supported (client-side rendering pattern) but require the client to submit a tool result back, otherwise multi-turn replays fail. We give `render_artifact` a synthetic server-side `execute()` instead — simpler than wiring `addToolOutput` from the client.
+- **`/api/chat` GET handler must return 204** — AI SDK v6's `useChat` probes for stream-resume on mount and surfaces "Method Not Allowed" otherwise.
+- **Rate limiting** lives at the **Cloudflare edge**, not in the Vercel app. Proxy chat.scutum.dev orange-cloud and add a CF rate-limit rule on `/api/chat` (free plan: 1 rule, 10k matched/mo). No in-app middleware needed.
 
 ## Release & customer distribution
 

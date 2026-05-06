@@ -76,26 +76,45 @@ There are also two related aliases:
 ## Architecture
 
 ```
-┌────────────────────────┐                    ┌────────────────────────────┐
-│  chat.scutum.dev       │                    │  Your Scutum gateway        │
-│  (Next.js, Vercel)     │                    │  (LiteLLM @ your /v1/...)  │
-│                        │                    │                            │
-│  ┌──────────────────┐  │                    │  ┌──────────────────────┐ │
-│  │ /api/chat        │──┼─search─►Tavily     │  │ scutum-research      │ │
-│  │  route handler   │  │                    │  │ alias → claude-sonnet│ │
-│  │                  │──┼──/v1/chat/───►─────┼─►│                      │ │
-│  │  + AI SDK v6     │  │   completions      │  │  (audit log entry)   │ │
-│  │    streaming     │  │   (auth: bearer)   │  │  (cost tracking)     │ │
-│  └──────────────────┘  │                    │  └──────────────────────┘ │
-│           │            │                    │                            │
-│           ▼            │                    │                            │
-│   user's browser       │                    │                            │
-│   streaming response   │                    │                            │
-│   with [^N] citations  │                    │                            │
-└────────────────────────┘                    └────────────────────────────┘
+┌────────────────────────┐         ┌─────────────┐  ┌─────────────┐
+│  chat.scutum.dev       │ ─search ┤   Tavily    │  │    Brave    │
+│  (Next.js, Vercel)     │ ────────┴─────────────┴──┤             │
+│                        │ hybrid: parallel search, dedupe by URL │
+│  ┌──────────────────┐  │                                        │
+│  │ /api/chat        │  │         ┌────────────────────────────┐ │
+│  │  route handler   │──┼─/v1/────►   Your Scutum gateway      │ │
+│  │  + AI SDK v6     │  │         │   LiteLLM @ /v1/chat/...   │ │
+│  │  + render_artifact tool       │   scutum-research alias    │ │
+│  └──────────────────┘  │         │   (audit log + cost track) │ │
+│         │              │         └────────────────────────────┘ │
+│         ▼              │                                        │
+│   user's browser       │                                        │
+│   ┌──────────────────┐ │                                        │
+│   │ streaming markdown │                                        │
+│   │ + inline [^N]      │                                        │
+│   │ + interactive      │                                        │
+│   │   React artifacts  │ ◄── react-live + Recharts rendered     │
+│   │   (charts, calcs)  │     from model-emitted JSX             │
+│   └──────────────────┘ │                                        │
+└────────────────────────┘                                        │
 ```
 
 The chat app is **stateless** — no chat history persistence in v0, no auth. Conversations live in browser memory. (Both come back with auth + a Postgres-backed thread store; deferred until product-market-fit signal.)
+
+## Generative UI — interactive React in answers
+
+The headline differentiator vs Perplexity / ChatGPT-search: the model can return real, interactive React components inline with prose, not just markdown.
+
+When you ask `Build me a tip calculator for a 6-person dinner`, the model emits a `render_artifact` tool call with full JSX. The browser mounts it inside `react-live`'s `<LivePreview/>` with a curated scope (React hooks + Recharts primitives). The result is a working calculator — sliders, state, real-time math — embedded in the chat turn.
+
+What this enables:
+
+- **Charts** with hover/tooltip/legend, not screenshots: "Show me a bar chart of top 10 AI companies by 2024 revenue"
+- **Calculators**: "Build me an AWS Lambda cost calculator with sliders for memory and request count"
+- **Comparison tables** where you can sort columns: "Side-by-side of GPT-5 vs Claude Opus 4.7 vs Gemini 3 Pro"
+- **Mini-explorers**: "Interactive periodic table where I can click any element"
+
+The model's scope is locked to safe primitives — no `fetch`, no `localStorage`, no `document` — so the worst it can do is render bad UI, which an ErrorBoundary catches. For multi-tenant deployments accepting user-supplied code, the artifact would need to move into a sandboxed iframe with strict CSP.
 
 ## What's coming next
 
@@ -133,10 +152,24 @@ The chat-ui itself (env vars in `ui/chat/.env.example`) needs:
 | `SCUTUM_API_URL` | Where to call (your gateway's `/v1`) |
 | `SCUTUM_API_KEY` | Bearer for the gateway. Use a chat-scoped key with a monthly budget cap, not the master |
 | `SCUTUM_DEFAULT_MODEL` | Defaults to `scutum-research` |
-| `SEARCH_PROVIDER` + `TAVILY_API_KEY` | Which search service to use, and credentials |
-| `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SITE_NAME` | Public branding |
+| `SEARCH_PROVIDER` | `tavily` / `brave` / `hybrid` (recommended) / `none` |
+| `TAVILY_API_KEY`, `BRAVE_API_KEY` | Both required for `hybrid` mode; either alone fine for single-provider modes |
+| `MAX_TOOL_STEPS` | Multi-step cap (default 5; 8 if `TAVILY_MCP_URL` is also set) |
+| `TAVILY_MCP_URL` | Optional. When set, the model gets `tavily_search`/`tavily_extract` tools on top of prefetched sources for follow-up research. Off by default — Claude with full search latitude tends to over-search and burn step budget. |
+| `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SITE_NAME` | Public branding (used in metadataBase + OG tags) |
 
 Rate limiting: handled at the Cloudflare edge, not in the app. Configure under Rules → Rate limiting; e.g. 10 req/min/IP on `/api/chat`. Free CF plan supports 1 rule + 10k matched requests/month, plenty for an MVP.
+
+### Deployment
+
+Vercel **Hobby plan blocks Git auto-deploy from private org-owned repos**. The chat product ships via `.github/workflows/deploy-chat.yml`: on every push to `main` that touches `ui/chat/**`, the workflow runs `vercel pull → vercel build --prod → vercel deploy --prebuilt --prod`. Manual trigger via the Actions tab `workflow_dispatch`.
+
+Three repo secrets needed (`Settings → Secrets and variables → Actions`):
+
+- `VERCEL_TOKEN` — Vercel → Account → Settings → Tokens.
+- `VERCEL_ORG_ID` + `VERCEL_PROJECT_ID` — from `ui/chat/.vercel/project.json` after `npx vercel link`, or from the project's General settings.
+
+Env vars are managed on the Vercel side via `vercel env add NAME production` from `ui/chat/` (or the dashboard). The GHA workflow's `vercel pull` step grabs them at build time.
 
 ## Citations: how they work
 
@@ -149,5 +182,9 @@ Hallucinated citations (a `[^7]` when only 5 sources were retrieved) render as p
 - Chat UI: `ui/chat/` in the [main repo](https://github.com/scutum-dev/aigateway)
 - Model aliases: `config/litellm/config.yaml`
 - Server-side route: `ui/chat/app/api/chat/route.ts`
+- Search adapter: `ui/chat/lib/search.ts` (Tavily + Brave + hybrid)
+- MCP adapter: `ui/chat/lib/mcp.ts` (optional follow-up search tools)
+- Generative-UI component: `ui/chat/components/Artifact.tsx`
+- Deploy workflow: `.github/workflows/deploy-chat.yml`
 
-The whole thing is ~530 lines of TypeScript on top of the gateway you already run.
+A focused ~1k LoC of TypeScript on top of the gateway you already run.

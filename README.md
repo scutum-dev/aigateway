@@ -151,7 +151,7 @@ Agent Gateway v0.12+ has: MCP federation, A2A routing, LLM inference proxy, buil
 | Surface | Where it runs | What it is |
 |---------|---------------|------------|
 | **scutum.dev** | OCI VM (`landing-ui` container) | Marketing site, install.sh, /try signup |
-| **chat.scutum.dev** | **Vercel** (Next.js, source at `ui/chat/`) | Search-augmented chat (Perplexity-shaped) — calls scutum.dev/v1 for the LLM, every query lands in your gateway's audit log |
+| **chat.scutum.dev** | **Vercel** (Next.js, source at `ui/chat/`) | Search-augmented chat with **generative UI** — answers can include interactive React artifacts (charts, calculators, comparisons) inline. Hybrid Tavily+Brave prefetch for citations. Deploys via `.github/workflows/deploy-chat.yml` (Vercel Hobby blocks Git auto-deploy from private org repos). |
 | **`<short>.scutum.dev`** (per-trial) | Fly machine (monolith image, source at `infra/fly-monolith/`) | Each free-trial signup gets their own self-hosted Scutum instance, sub-minute provisioning via warm pool |
 
 ## Customer install (one-liner)
