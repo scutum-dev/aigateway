@@ -66,6 +66,7 @@ nav:
       - Comparison: guides/comparison.md
   - Features:
       - Model Routing: guides/model-routing.md
+      - Scutum Research (chat): guides/scutum-research.md
       - Guardrails: guides/guardrails.md
       - Semantic Caching: guides/semantic-caching.md
       - MCP Servers: guides/mcp-servers.md

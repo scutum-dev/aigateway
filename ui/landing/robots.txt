@@ -40,3 +40,4 @@ Allow: /
 
 Sitemap: https://scutum.dev/sitemap.xml
 Sitemap: https://scutum.dev/docs/sitemap.xml
+Sitemap: https://chat.scutum.dev/sitemap.xml

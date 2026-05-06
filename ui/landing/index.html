@@ -3,10 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scutum — Unified LLM, MCP & A2A Infrastructure</title>
-    <meta name="description" content="The unified control plane for AI infrastructure. LLM proxy, MCP/A2A gateway, agent workflows, SRE auto-remediation. Self-hosted. Audit log on every mutation. Ed25519 offline license.">
+    <title>Scutum — Self-hosted AI control plane with built-in research, agents & workflows</title>
+    <meta name="description" content="Self-hosted control plane for AI infrastructure. LLM proxy across 100+ models, MCP/A2A gateway, multi-agent workflows, SRE auto-remediation, and Scutum Research — search-with-citations chat. Every query in your audit log. Ed25519 offline license.">
 
     <!-- SEO: canonical + indexing -->
+    <!-- Subdomain for the search-with-citations chat product. Linked from the
+         landing-page hero CTA, surfaced separately in the sitemap. -->
+    <link rel="alternate" href="https://chat.scutum.dev/" title="Scutum Research">
+
     <link rel="canonical" href="https://scutum.dev/">
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <meta name="theme-color" content="#0A0A0A">
@@ -18,8 +22,8 @@
     <!-- OpenGraph (Slack, LinkedIn, Facebook, iMessage) -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Scutum">
-    <meta property="og:title" content="Scutum — The unified control plane for AI infrastructure">
-    <meta property="og:description" content="LLM proxy, MCP/A2A gateway, agent workflows, FinOps controls, and SRE auto-remediation — one platform, self-hosted.">
+    <meta property="og:title" content="Scutum — Self-hosted AI control plane with built-in research & agents">
+    <meta property="og:description" content="LLM proxy, MCP/A2A gateway, multi-agent workflows, FinOps controls, SRE auto-remediation, and Scutum Research (chat with citations, routed through your gateway) — one platform, self-hosted.">
     <meta property="og:url" content="https://scutum.dev/">
     <meta property="og:image" content="https://scutum.dev/og-image.png">
     <meta property="og:image:width" content="1200">
@@ -31,8 +35,8 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:site" content="@scutum_dev">
     <meta name="twitter:creator" content="@scutum_dev">
-    <meta name="twitter:title" content="Scutum — The unified control plane for AI infrastructure">
-    <meta name="twitter:description" content="LLM proxy, MCP/A2A gateway, agent workflows, FinOps controls, SRE auto-remediation. Self-hosted.">
+    <meta name="twitter:title" content="Scutum — Self-hosted AI control plane with built-in research & agents">
+    <meta name="twitter:description" content="LLM proxy, MCP/A2A gateway, multi-agent workflows, and Scutum Research — chat with citations, all routed through your audit log. Self-hosted by default.">
     <meta name="twitter:image" content="https://scutum.dev/og-image.png">
     <meta name="twitter:image:alt" content="Scutum — the unified control plane for AI infrastructure">
 
@@ -984,21 +988,21 @@
             Scutum
         </a>
         <div class="nav-links">
-            <a href="#engineering">Engineering</a>
-            <a href="#startups">Startups</a>
-            <a href="#enterprise">Enterprise</a>
-            <a href="#comparison">Comparison</a>
+            <!-- Nav stays minimal: only the destinations a visitor commonly wants.
+                 Removed the four within-page anchor links (Engineering / Startups /
+                 Enterprise / Comparison) — they cluttered the bar, are reachable by
+                 scrolling, and don't survive across page reloads cleanly. The
+                 "Research" anchor (#research = research-roadmap section) was
+                 removed because it conflicts with Scutum Research (the product) —
+                 visitors who want the roadmap can scroll. -->
             <a href="#pricing">Pricing</a>
-            <a href="#research">Research</a>
-            <a href="/changelog/" target="_blank">Changelog</a>
             <a href="/docs/" target="_blank">Docs</a>
-            <!-- Try is the new low-friction CTA in the nav too. Promoted to the right edge
-                 (most visible spot); Book a Demo demoted to a plain link before it. -->
+            <a href="/changelog/" target="_blank">Changelog</a>
             <a onclick="openDemoModal()" style="cursor:pointer;">Book a Demo</a>
-            <!-- Open Research is the highest-conversion top-of-funnel CTA: 5-second wow,
-                 no signup, no demo call. Drives more chat sessions than /try drives trial
-                 provisions, by an order of magnitude. -->
-            <a href="https://chat.scutum.dev" target="_blank">Research <span style="font-size:11px;opacity:.7;">↗</span></a>
+            <!-- Open Research is the highest-conversion top-of-funnel CTA: 5-second
+                 wow, no signup, no demo call. Drives more chat sessions than /try
+                 drives trial provisions, by an order of magnitude. -->
+            <a href="https://chat.scutum.dev" target="_blank">Open Research <span style="font-size:11px;opacity:.7;">↗</span></a>
             <a class="btn btn-nav" href="/try/">Try Now</a>
         </div>
     </div>

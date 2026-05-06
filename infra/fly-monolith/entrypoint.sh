@@ -102,6 +102,35 @@ if [ ! -d "$SCUTUM_DIR/scutum" ]; then
 fi
 cd "$SCUTUM_DIR/scutum"
 
+# 3b. Sync host env vars into config/.env for the per-trial secrets.
+# install.sh wrote these from the FIRST-BOOT env values; if the warm pool's
+# claim flow PATCHed the Fly machine env afterwards, the host env has the
+# real per-trial values but config/.env still has the warmup placeholders.
+# `docker compose --env-file config/.env` reads the file on disk, so without
+# this sync admin-api boots with stale secrets — user types their emailed
+# API key and gets 401 because LITELLM_MASTER_KEY is the warmup placeholder.
+# Run on every boot; cheap (no-op when values match).
+ENV_FILE="$SCUTUM_DIR/scutum/config/.env"
+if [ -f "$ENV_FILE" ]; then
+    for var in SCUTUM_API_KEY BOOTSTRAP_TOKEN JWT_SECRET_KEY; do
+        host_val="$(printenv "$var" || true)"
+        [ -z "$host_val" ] && continue
+        if grep -q "^${var}=" "$ENV_FILE"; then
+            # awk for portable in-place edit — sed -i differs between BSD/GNU
+            # and special chars in the secret would break naive sed escaping.
+            tmp="$(mktemp)"
+            awk -v var="$var" -v val="$host_val" -F= '
+                BEGIN { OFS = "=" }
+                $1 == var { print var "=" val; next }
+                { print }
+            ' "$ENV_FILE" > "$tmp" && mv "$tmp" "$ENV_FILE"
+        else
+            printf "%s=%s\n" "$var" "$host_val" >> "$ENV_FILE"
+        fi
+    done
+    log "synced per-trial secrets from host env into config/.env"
+fi
+
 # 4. Bring up the stack with a retry loop. Without retry, a transient
 # pull/network blip permanently broke the trial — `|| true` swallowed the
 # error and the readiness probe just timed out. The retry gives us 5
