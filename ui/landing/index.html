@@ -178,6 +178,86 @@
             color: var(--text-muted); font-size: 12px; font-weight: 500; margin-bottom: 28px;
             letter-spacing: 0.005em;
         }
+        /* "New" pill above the hero — announces Scutum Research without rewriting
+           the hero copy. Same shape as .hero-eyebrow but in accent colour, as a
+           clickable link with subtle hover + a leading "NEW" tag. */
+        .hero-new-pill {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 6px 14px 6px 6px; border-radius: 999px;
+            background: var(--bg); border: 1px solid var(--border-hi);
+            color: var(--text); font-size: 13px; font-weight: 500;
+            text-decoration: none; margin-bottom: 16px;
+            transition: border-color .15s ease, transform .15s ease;
+        }
+        .hero-new-pill:hover {
+            border-color: var(--text); transform: translateY(-1px);
+        }
+        .hero-new-pill__tag {
+            background: var(--accent); color: #fff;
+            padding: 2px 8px; border-radius: 999px;
+            font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+        }
+        @media (max-width: 640px) {
+            .hero-new-pill { font-size: 12px; padding: 5px 12px 5px 5px; }
+            .hero-new-pill__tag { font-size: 9px; }
+        }
+
+        /* ========== TOOLS SECTION ========== */
+        .tools { padding: 80px 0; background: var(--bg); border-top: 1px solid var(--border); }
+        .tools-header { text-align: center; margin-bottom: 48px; }
+        .tools-eyebrow {
+            font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
+            text-transform: uppercase; color: var(--text-subtle); margin: 0 0 8px;
+        }
+        .tools-header h2 {
+            font-size: clamp(28px, 4vw, 40px);
+            line-height: 1.1; margin: 0 auto; max-width: 720px;
+        }
+        .tools-header h2 .em { font-style: italic; font-family: var(--serif); }
+        .tools-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 16px; max-width: 960px; margin: 0 auto;
+        }
+        .tools-card {
+            position: relative; display: block;
+            padding: 24px 28px; border-radius: 8px;
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            color: var(--text); text-decoration: none;
+            transition: border-color .15s ease, transform .15s ease;
+        }
+        .tools-card:hover {
+            border-color: var(--border-hi);
+        }
+        a.tools-card:hover {
+            border-color: var(--text); transform: translateY(-2px);
+        }
+        .tools-card--featured {
+            border-color: var(--border-hi);
+        }
+        .tools-card__tag {
+            position: absolute; top: 16px; right: 16px;
+            background: var(--accent); color: #fff;
+            padding: 2px 8px; border-radius: 999px;
+            font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+        }
+        .tools-card h3 {
+            font-size: 18px; font-weight: 600; margin: 0 0 8px;
+        }
+        .tools-card p {
+            font-size: 14px; line-height: 1.55; color: var(--text-muted);
+            margin: 0 0 12px;
+        }
+        .tools-card__cta {
+            font-size: 13px; color: var(--text);
+            margin: 0 !important;
+        }
+        a.tools-card .tools-card__cta {
+            color: var(--text); font-weight: 500;
+        }
+        @media (max-width: 720px) {
+            .tools-grid { grid-template-columns: 1fr; }
+            .tools { padding: 56px 0; }
+        }
         .hero h1 {
             font-size: clamp(44px, 6.5vw, 76px);
             line-height: 1.02; max-width: 880px; margin: 0 auto 28px;
@@ -915,6 +995,10 @@
             <!-- Try is the new low-friction CTA in the nav too. Promoted to the right edge
                  (most visible spot); Book a Demo demoted to a plain link before it. -->
             <a onclick="openDemoModal()" style="cursor:pointer;">Book a Demo</a>
+            <!-- Open Research is the highest-conversion top-of-funnel CTA: 5-second wow,
+                 no signup, no demo call. Drives more chat sessions than /try drives trial
+                 provisions, by an order of magnitude. -->
+            <a href="https://chat.scutum.dev" target="_blank">Research <span style="font-size:11px;opacity:.7;">↗</span></a>
             <a class="btn btn-nav" href="/try/">Try Now</a>
         </div>
     </div>
@@ -922,6 +1006,13 @@
 
 <section class="hero">
     <div class="container">
+        <!-- "New" pill: announces Scutum Research without rewriting the H1. Click jumps
+             to chat.scutum.dev — fastest 'see the product' path on the page. -->
+        <a href="https://chat.scutum.dev" target="_blank" class="hero-new-pill">
+            <span class="hero-new-pill__tag">NEW</span>
+            Scutum Research is here — search with citations, routed through your gateway
+            <span style="opacity:.6">↗</span>
+        </a>
         <span class="hero-eyebrow">
             <i class="fa-solid fa-shield-halved"></i>
             Self-hosted · v0.1.0 · Open early access
@@ -935,10 +1026,13 @@
             and proposes remediations for human approval. <strong>Self-hosted by default</strong> — your data, your keys, your audit log.
         </p>
         <div class="hero-ctas">
-            <!-- Try Now is the new low-friction CTA — no demo call needed; provisions a real
-                 trial on Fly in about a minute. Promoted to primary so it's the first thing
-                 visitors see. Book a Demo demoted to secondary alongside Read the Docs. -->
-            <a class="btn btn-primary btn-lg" href="/try/">
+            <!-- Open Research is the new top-of-funnel CTA — 5-second wow, no signup
+                 needed. Try Now stays as the conversion CTA for buyers who want the
+                 self-hosted experience. Book a Demo + Read the Docs are tertiary. -->
+            <a class="btn btn-primary btn-lg" href="https://chat.scutum.dev" target="_blank">
+                <i class="fa-solid fa-magnifying-glass"></i> Open Research
+            </a>
+            <a class="btn btn-secondary btn-lg" href="/try/">
                 <i class="fa-solid fa-rocket"></i> Try Now
             </a>
             <button class="btn btn-secondary btn-lg" onclick="openDemoModal()">
@@ -999,6 +1093,43 @@
                      dropped until production data accumulates. Customers who need more talk to us. -->
                 <p>Per-customer namespace in a region of your choice (US East/West, EU, India, SE Asia). Automated backups and zero-downtime upgrades. Managed is in early access — best-effort uptime, no SLA promises until production data justifies them.</p>
                 <p class="modes-cta"><a href="/docs/whitepapers/managed-vs-self-hosted/" target="_blank">Compare modes →</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Built-in tools — the platform isn't bare infra. Four product surfaces ride
+     on top of the gateway: Research (chat.scutum.dev), Workflows, Playground, and
+     the MCP/A2A control surface. Each is included with the gateway, not a paid
+     add-on. The Research card has a NEW tag because it's the freshest acquisition
+     CTA we want visitors to click. -->
+<div class="tools">
+    <div class="container">
+        <div class="tools-header">
+            <p class="tools-eyebrow">More than infrastructure</p>
+            <h2>The platform comes with <span class="em">tools your team uses</span>.</h2>
+        </div>
+        <div class="tools-grid">
+            <a class="tools-card tools-card--featured" href="https://chat.scutum.dev" target="_blank">
+                <span class="tools-card__tag">NEW</span>
+                <h3>Scutum Research</h3>
+                <p>Perplexity-style search + chat. Every query goes through your gateway → in your audit log, on your provider keys, with model routing you control. Self-hosted alternative for teams that can't send queries to a startup's cloud.</p>
+                <p class="tools-card__cta">Open chat.scutum.dev →</p>
+            </a>
+            <div class="tools-card">
+                <h3>Scutum Workflows</h3>
+                <p>Multi-step LangGraph + Temporal templates: research, coding agents, data analysis. Crash-safe durable execution; every LLM call routes through the gateway with Cedar-policy authorisation.</p>
+                <p class="tools-card__cta">Bundled in install</p>
+            </div>
+            <div class="tools-card">
+                <h3>Scutum Playground</h3>
+                <p>Run one prompt across 100+ models side-by-side. See output diff, token cost, latency at a glance. All calls share the same audit trail as production traffic, so you can promote from playground to prod without re-keying.</p>
+                <p class="tools-card__cta">Bundled in install</p>
+            </div>
+            <div class="tools-card">
+                <h3>MCP &amp; A2A Gateway</h3>
+                <p>Hot-reload MCP tool servers + agent-to-agent coordination behind Cedar policies. Every tool call, every agent handoff, every guardrail decision recorded. Add tools without restarting; deny the wrong agent before it calls.</p>
+                <p class="tools-card__cta">Read about Cedar →</p>
             </div>
         </div>
     </div>
