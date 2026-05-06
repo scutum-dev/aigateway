@@ -44,8 +44,13 @@ MAX_POOL_SIZE = int(os.getenv("WARM_POOL_MAX_SIZE", "10"))
 POOL_REGION = os.getenv("FLY_REGION", "iad")
 POOL_RECYCLE_AFTER_DAYS = int(os.getenv("WARM_POOL_RECYCLE_AFTER_DAYS", "14"))
 WARMING_TIMEOUT_S = int(os.getenv("WARM_POOL_WARMING_TIMEOUT_S", "1800"))  # 30 min
-WARM_READINESS_TIMEOUT_S = int(os.getenv("WARM_POOL_READINESS_TIMEOUT_S", "900"))  # 15 min
+WARM_READINESS_TIMEOUT_S = int(os.getenv("WARM_POOL_READINESS_TIMEOUT_S", "1800"))  # 30 min
 CLAIM_READINESS_TIMEOUT_S = int(os.getenv("WARM_POOL_CLAIM_READINESS_TIMEOUT_S", "300"))  # 5 min
+# Cap concurrent warmups. Each one does ~10 min docker-load + alembic so
+# parallel doesn't save time, just multiplies failure cost (we burned 19
+# Fly machines in a 1.5h failure loop before fixing autostop). Default
+# 1 means a fresh provisioner takes MIN_POOL_SIZE × ~10 min to fill.
+WARM_POOL_CONCURRENCY = int(os.getenv("WARM_POOL_CONCURRENCY", "1"))
 
 
 def _is_already_exists_err(e: BaseException) -> bool:
@@ -157,6 +162,13 @@ async def warm_one_machine(
                 cpus=cpus,
                 volume_id=volume_id,
                 volume_mount_path="/data",
+                # Critical: warming machines have no real concurrency, so Fly's
+                # edge proxy SIGTERMs them ~9 min into boot ("excess capacity")
+                # — interrupting the docker-load mid-stream. Disable autostop
+                # for the warmup phase. We explicitly stop_machine() at the
+                # end of warmup, and claim_warm_machine() re-enables autostop
+                # when handing the machine to a user.
+                autostop=False,
             )
             machine_id = machine.get("id")
 
@@ -304,9 +316,19 @@ async def claim_warm_machine(
     logger.info("[claim %s] claimed warm machine %s (app=%s)", trial_id, row["id"], warm_app)
 
     try:
-        # 1. Fetch current machine config + PATCH per-trial env.
+        # 1. Fetch current machine config, PATCH per-trial env, AND re-enable
+        # autostop so the user's idle trial scales to zero. The warmup phase
+        # ran with autostop=False to prevent Fly's "excess capacity" SIGTERM
+        # mid-load; once the user owns the machine, real concurrency drives
+        # the autostop decision and scale-to-zero is the right behaviour.
         machine = await fly.get_machine(warm_app, warm_machine_id)
         current_config = machine.get("config", {})
+        # Mutate services in place — update_machine_env round-trips the whole
+        # config so service-level changes persist alongside env changes.
+        services = current_config.get("services", [])
+        if services:
+            services[0]["autostop"] = True
+            services[0]["autostart"] = True
         await fly.update_machine_env(
             warm_app,
             warm_machine_id,
@@ -318,7 +340,7 @@ async def claim_warm_machine(
                 "JWT_SECRET_KEY": jwt_secret,
             },
         )
-        logger.info("[claim %s] machine env patched with per-trial secrets", trial_id)
+        logger.info("[claim %s] machine env + autostop patched", trial_id)
 
         # 2. Add the brandable hostname → Fly cert + Cloudflare CNAME.
         custom_hostname_ready = False
@@ -476,31 +498,52 @@ async def pool_warmer_loop(
 ) -> None:
     """Long-running task: keep (warming + ready) >= MIN_POOL_SIZE.
 
-    Runs the recycler every tick + spawns warm_one_machine tasks until the
-    pool is at target size. Warmups run concurrently — at startup with an
-    empty pool we'll spawn MIN_POOL_SIZE in parallel.
+    Runs the recycler every tick + spawns warm_one_machine tasks up to
+    WARM_POOL_CONCURRENCY in parallel. Conservative default of 1: each
+    warmup is ~10 min and parallel doesn't save real time on the same
+    Fly host (image pulls compete for I/O), but it does multiply the
+    blast radius of a bug — we burned 19 Fly machines in a 1.5h failure
+    loop before throttling.
+
+    Eventually fills the pool over MIN_POOL_SIZE × (10 min / concurrency)
+    wall clock. With min=3, concurrency=1, that's ~30 min from cold.
     """
     logger.info(
-        "pool warmer started (region=%s, min=%d, max=%d, recycle=%dd)",
+        "pool warmer started (region=%s, min=%d, max=%d, concurrency=%d, recycle=%dd)",
         POOL_REGION,
         MIN_POOL_SIZE,
         MAX_POOL_SIZE,
+        WARM_POOL_CONCURRENCY,
         POOL_RECYCLE_AFTER_DAYS,
     )
     while True:
         try:
             await recycle_stale(db_pool, fly)
             async with db_pool.acquire() as conn:
-                count = await conn.fetchval(
-                    """
-                    SELECT COUNT(*) FROM warm_machines
-                    WHERE status IN ('warming', 'ready') AND region = $1
-                    """,
+                ready_count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM warm_machines WHERE status = 'ready' AND region = $1",
                     POOL_REGION,
                 )
-            need = MIN_POOL_SIZE - (count or 0)
+                warming_count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM warm_machines WHERE status = 'warming' AND region = $1",
+                    POOL_REGION,
+                )
+            ready_count = ready_count or 0
+            warming_count = warming_count or 0
+            # We want (warming + ready) up to MIN_POOL_SIZE, but spawn at
+            # most CONCURRENCY new warmups per tick beyond what's already
+            # warming. Prevents a flood when an outage clears.
+            target = MIN_POOL_SIZE - (ready_count + warming_count)
+            spawnable = max(0, WARM_POOL_CONCURRENCY - warming_count)
+            need = min(target, spawnable)
             if need > 0:
-                logger.info("[pool] %d active, need %d more — spawning warmups", count or 0, need)
+                logger.info(
+                    "[pool] ready=%d warming=%d target=%d spawning=%d",
+                    ready_count,
+                    warming_count,
+                    MIN_POOL_SIZE,
+                    need,
+                )
                 for _ in range(need):
                     asyncio.create_task(
                         warm_one_machine(db_pool, fly, image=image, memory_mb=memory_mb, cpus=cpus, volume_gb=volume_gb)
