@@ -1,16 +1,18 @@
 /**
- * POST /api/chat — streaming chat endpoint with optional web-search RAG.
+ * POST /api/chat — streaming chat endpoint with web-search RAG.
  *
- * Flow per request:
- *   1. Take the latest user message.
- *   2. Run a web search via lib/search (Tavily by default).
- *   3. Inject sources as a system-prompt prefix instructing the model to
- *      cite using `[^N]` matching the numbered list.
- *   4. Stream the completion from scutum.dev/v1/chat/completions via the
- *      Vercel AI SDK's OpenAI-compatible provider — so we get streaming +
- *      tool-call protocol + retries for free.
- *   5. Attach the source list to the response as data annotations so the UI
- *      can render the footer panel + hover cards.
+ * Two modes, picked at request time:
+ *
+ *   tools mode (preferred, when TAVILY_MCP_URL is set):
+ *     The model gets MCP tools (`tavily_search`, `tavily_extract`, ...)
+ *     and decides when to call them. Multi-hop is allowed up to N steps.
+ *     Sources are extracted from tool results and attached as messageMetadata
+ *     so the UI's source panel still renders.
+ *
+ *   prefetch mode (fallback):
+ *     We run a single web search up-front via lib/search (Tavily / Brave /
+ *     hybrid REST), inject the sources as a system-prompt prefix, and stream
+ *     a grounded answer. No tool calls.
  *
  * Why call scutum.dev/v1 instead of Anthropic/OpenAI directly: every chat
  * query becomes a row in your audit log, picks up your routing config, and
@@ -19,19 +21,24 @@
  */
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { streamText, convertToModelMessages, type UIMessage } from "ai";
-import { searchWeb, formatSourcesForPrompt } from "@/lib/search";
+import {
+  streamText,
+  convertToModelMessages,
+  stepCountIs,
+  type UIMessage,
+} from "ai";
+import { searchWeb, formatSourcesForPrompt, type SearchResult } from "@/lib/search";
+import { openTavilyMCP } from "@/lib/mcp";
 
-// Allow streams to run for up to 5 minutes; long research answers take
-// time. Vercel hobby tier caps this at 10s and pro at 300s — match pro.
+// Allow streams to run for up to 5 minutes; long research answers take time.
+// Vercel hobby tier caps this at 10s and pro at 300s — match pro.
 export const maxDuration = 300;
 
 /**
  * GET /api/chat — used by AI SDK v6 useChat() to probe for an in-flight
  * stream to resume on page reload. We don't persist streams (stateless
- * MVP), so respond with a no-content 200 to signal "nothing to resume."
- * Without this handler, Next.js returns 405 Method Not Allowed and the
- * client surfaces "Something went wrong: Method Not Allowed".
+ * MVP), so respond with a 204 to signal "nothing to resume." Without this
+ * handler Next.js returns 405 and the client surfaces "Method Not Allowed".
  */
 export async function GET() {
   return new Response(null, { status: 204 });
@@ -40,6 +47,7 @@ export async function GET() {
 const SCUTUM_API_URL = process.env.SCUTUM_API_URL ?? "https://scutum.dev/v1";
 const SCUTUM_API_KEY = process.env.SCUTUM_API_KEY ?? "";
 const DEFAULT_MODEL = process.env.SCUTUM_DEFAULT_MODEL ?? "scutum-research";
+const MAX_TOOL_STEPS = parseInt(process.env.MAX_TOOL_STEPS ?? "5", 10);
 
 const scutum = createOpenAICompatible({
   name: "scutum",
@@ -59,6 +67,21 @@ than inventing facts.
 ${sourcesBlock}
 `;
 
+const SYSTEM_TOOLS = `\
+You are Scutum Research, a helpful AI search assistant with web-search tools.
+
+When the user asks something that benefits from up-to-date or external
+information, call \`tavily_search\` to retrieve sources before answering.
+Prefer concise queries; you can call multiple times to follow up. For pages
+where the snippet isn't enough, call \`tavily_extract\` on the URL.
+
+Cite sources inline using [^N] markers, where N matches the order in which
+sources first appeared across your tool calls (1-indexed). Only cite sources
+you actually retrieved. If a tool returns no useful results, say so plainly
+rather than inventing facts. For purely conversational turns ("hi", "thanks")
+skip the search entirely.
+`;
+
 const SYSTEM_UNGROUNDED = `\
 You are Scutum Research, a helpful AI assistant. Answer the user's question
 clearly and concisely. If you don't know something, say so.
@@ -73,9 +96,6 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  // The AI SDK v6 DefaultChatTransport may send {messages: UIMessage[]} or
-  // {message: UIMessage, ...} depending on protocol version. Be tolerant —
-  // if we can't find a messages array, log the body shape so we can adapt.
   let messages: UIMessage[] = Array.isArray(body?.messages) ? body.messages : [];
   if (messages.length === 0 && body?.message) {
     messages = [body.message as UIMessage];
@@ -88,9 +108,17 @@ export async function POST(req: Request) {
     );
   }
 
-  // Pull the latest user message text for the search query. Multi-modal
-  // (images/files) future-proofing left to a later pass — for now we just
-  // glue any string parts together.
+  const modelMessages = await convertToModelMessages(messages);
+
+  // Try MCP tool-call mode first. If the URL isn't set or the connection
+  // fails, fall through to prefetch mode so we never break the chat.
+  const mcp = await openTavilyMCP();
+
+  if (mcp) {
+    return runToolsMode(modelMessages, mcp);
+  }
+
+  // ----- prefetch mode (legacy, kept as fallback) -----
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   const queryText =
     lastUser?.parts
@@ -99,30 +127,154 @@ export async function POST(req: Request) {
       .join(" ")
       .trim() ?? "";
 
-  // Run search in the background of building the request. If it fails or
-  // times out we fall through to ungrounded answer rather than blocking.
   const sources = queryText ? await searchWeb(queryText) : [];
   const sourcesBlock = formatSourcesForPrompt(sources);
-
-  // convertToModelMessages is async in AI SDK v6 — it returns a Promise that
-  // must be awaited before passing to streamText. Skipping the await passes
-  // a Promise object instead of an array, and streamText internally calls
-  // messages.some(...) → "messages.some is not a function".
-  const modelMessages = await convertToModelMessages(messages);
 
   const result = streamText({
     model: scutum.chatModel(DEFAULT_MODEL),
     system: sourcesBlock ? SYSTEM_GROUNDED(sourcesBlock) : SYSTEM_UNGROUNDED,
     messages: modelMessages,
     temperature: 0.3,
-    onError: ({ error }) => {
-      console.error("[chat] streamText error:", error);
-    },
+    onError: ({ error }) => console.error("[chat] streamText error:", error),
   });
 
-  // Send sources as a custom data part on the stream so the client can
-  // render a citation panel synchronized with the streaming text.
   return result.toUIMessageStreamResponse({
     messageMetadata: () => ({ sources }),
   });
+}
+
+/**
+ * Streaming run with MCP tools. Sources are accumulated from each tool
+ * result and emitted via messageMetadata so the source-panel UI works
+ * exactly the same as in prefetch mode — only the *origin* of the sources
+ * differs.
+ */
+function runToolsMode(
+  modelMessages: Awaited<ReturnType<typeof convertToModelMessages>>,
+  mcp: NonNullable<Awaited<ReturnType<typeof openTavilyMCP>>>,
+) {
+  const sources: SearchResult[] = [];
+  const seenUrls = new Set<string>();
+  const addSources = (newOnes: SearchResult[]) => {
+    for (const s of newOnes) {
+      const key = s.url.toLowerCase();
+      if (!key || seenUrls.has(key)) continue;
+      seenUrls.add(key);
+      sources.push(s);
+    }
+  };
+
+  const result = streamText({
+    model: scutum.chatModel(DEFAULT_MODEL),
+    system: SYSTEM_TOOLS,
+    messages: modelMessages,
+    tools: mcp.tools,
+    stopWhen: stepCountIs(MAX_TOOL_STEPS),
+    temperature: 0.3,
+    onStepFinish: async (step) => {
+      for (const r of step.toolResults ?? []) {
+        if (process.env.DEBUG_MCP === "1") {
+          console.log("[chat] toolResult keys:", Object.keys(r as object));
+          console.log("[chat] toolResult sample:", JSON.stringify(r).slice(0, 800));
+        }
+        addSources(extractSources(r));
+      }
+    },
+    onFinish: async () => {
+      await mcp.close();
+    },
+    onAbort: async () => {
+      await mcp.close();
+    },
+    onError: ({ error }) => console.error("[chat] streamText error:", error),
+  });
+
+  return result.toUIMessageStreamResponse({
+    messageMetadata: () => ({ sources }),
+  });
+}
+
+/**
+ * Pull SearchResult-shaped entries out of an MCP tool result. We don't know
+ * the exact wire shape — Tavily's MCP server may return a parsed object or
+ * MCP-spec content blocks (`[{type: 'text', text: 'JSON-stringified'}]`).
+ * We try both and silently fall through if neither matches.
+ */
+function extractSources(result: unknown): SearchResult[] {
+  const payload = unwrapToolPayload(result);
+  if (!payload) return [];
+
+  // Tavily search response shape: { results: [{title, url, content, ...}] }.
+  const arr = (payload as { results?: unknown }).results;
+  if (!Array.isArray(arr)) return [];
+
+  return arr
+    .map((r): SearchResult | null => {
+      if (!r || typeof r !== "object") return null;
+      const obj = r as Record<string, unknown>;
+      const url = typeof obj.url === "string" ? obj.url : "";
+      if (!url) return null;
+      const rawSnippet =
+        typeof obj.content === "string"
+          ? obj.content
+          : typeof obj.snippet === "string"
+            ? obj.snippet
+            : typeof obj.raw_content === "string"
+              ? obj.raw_content
+              : "";
+      return {
+        title: typeof obj.title === "string" ? obj.title : url,
+        url,
+        // tavily_extract returns full page text in raw_content — truncate
+        // to a snippet-sized chunk so source-panel hover cards stay readable
+        // and the model's prompt context doesn't bloat on re-cite.
+        snippet: rawSnippet.slice(0, 400),
+      };
+    })
+    .filter((s): s is SearchResult => s !== null);
+}
+
+/**
+ * MCP tool results can arrive in several shapes:
+ *   - already-parsed object on `.output`
+ *   - array of content blocks `[{type: 'text', text: '<json>'}]`
+ *   - plain string of JSON
+ * Best-effort flatten to a parsed object.
+ */
+function unwrapToolPayload(result: unknown): unknown {
+  if (!result || typeof result !== "object") return null;
+  const obj = result as Record<string, unknown>;
+  let candidate: unknown = obj.output ?? obj.result ?? obj;
+
+  // MCP tool results land as `{ content: [{type: 'text', text: '<json>'}] }`
+  // — peel one extra layer if we see that shape.
+  if (
+    candidate &&
+    typeof candidate === "object" &&
+    !Array.isArray(candidate) &&
+    Array.isArray((candidate as Record<string, unknown>).content)
+  ) {
+    candidate = (candidate as Record<string, unknown>).content;
+  }
+
+  if (Array.isArray(candidate)) {
+    const text = candidate
+      .map((c) =>
+        c && typeof c === "object" && "text" in c
+          ? String((c as { text: unknown }).text ?? "")
+          : "",
+      )
+      .join("");
+    return tryParse(text) ?? candidate;
+  }
+  if (typeof candidate === "string") return tryParse(candidate);
+  return candidate;
+}
+
+function tryParse(s: string): unknown {
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
 }

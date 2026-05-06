@@ -44,7 +44,13 @@ export default function Message({ message }: MessageProps) {
               />
             );
           }
-          // Future: render tool calls, reasoning, files. Skip silently for now.
+          if (
+            part.type === "dynamic-tool" ||
+            (typeof part.type === "string" && part.type.startsWith("tool-"))
+          ) {
+            return <ToolCallIndicator key={i} part={part as ToolPart} />;
+          }
+          // Future: render reasoning, files. Skip silently for now.
           return null;
         })}
       </div>
@@ -231,6 +237,48 @@ function SourceList({ sources }: { sources: SearchResult[] }) {
         ))}
       </ol>
     </details>
+  );
+}
+
+type ToolPart = {
+  type: string;
+  toolName?: string;
+  state?: string;
+  input?: { query?: unknown; url?: unknown } & Record<string, unknown>;
+};
+
+function ToolCallIndicator({ part }: { part: ToolPart }) {
+  const name =
+    part.toolName ??
+    (part.type.startsWith("tool-") ? part.type.slice("tool-".length) : "tool");
+  const query =
+    typeof part.input?.query === "string"
+      ? (part.input.query as string)
+      : typeof part.input?.url === "string"
+        ? (part.input.url as string)
+        : "";
+  const inFlight =
+    part.state === "input-streaming" || part.state === "input-available";
+  const verb =
+    name.includes("search")
+      ? "Searched"
+      : name.includes("extract")
+        ? "Read"
+        : name.includes("crawl")
+          ? "Crawled"
+          : name;
+  return (
+    <div className="my-2 flex items-center gap-2 text-xs text-[var(--color-text-subtle)]">
+      <span>{inFlight ? "🔍" : "✓"}</span>
+      <span>
+        {verb}
+        {query ? ": " : ""}
+        {query && (
+          <span className="text-[var(--color-text-muted)]">{query}</span>
+        )}
+        {inFlight ? "…" : ""}
+      </span>
+    </div>
   );
 }
 
