@@ -26,8 +26,11 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-const SITE = process.env.NEXT_PUBLIC_SITE_NAME ?? "Scutum Research";
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://chat.scutum.dev";
+// `||` (not `??`) so empty-string env vars also fall through to defaults —
+// Vercel's `vercel pull` can return blank values for vars defined-but-unset,
+// and `new URL("")` later in metadataBase throws `ERR_INVALID_URL` on build.
+const SITE = process.env.NEXT_PUBLIC_SITE_NAME || "Scutum Research";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://chat.scutum.dev";
 
 export const metadata: Metadata = {
   title: `${SITE} — search with citations, routed through your AI control plane`,
