@@ -86,6 +86,8 @@ Core (customer-safe): `postgres`, `redis`, `litellm` (4000), `admin-api` (8086),
 
 Other services in `src/` not always wired into compose: `gateway-abstraction` (provider-agnostic LLM SDK), `config-loader` (YAML hydration helper).
 
+**Chat product (`chat.scutum.dev`) is a separate Vercel deploy**, not in compose. Source lives at `ui/chat/` (Next.js 16 + AI SDK v6). It calls the gateway at `https://scutum.dev/v1/chat/completions` — same authoritative LiteLLM behind everything else. See "Chat product" section below for env + deployment.
+
 Custom Python services all share code via `src/shared/` (injected as docker build context `--build-context shared=./src/shared`). `src/` is on `sys.path` for tests via `tests/conftest.py`.
 
 `docker-compose.override.{dev,staging,production}.yaml` layer on top of `docker-compose.yaml` for env-specific tweaks; the OCI deploy script picks the right override via `-f`. They are *not* picked up automatically by plain `make up` — only by deploy scripts.
@@ -132,29 +134,91 @@ Every customer deploy needs a license JWT. Validation runs offline against a pub
 - **Endpoints**: `GET /api/v1/license` (public, for UI activation prompt) and `POST /api/v1/license/activate` (admin, for in-place rotation).
 - **Migration**: 026 created `licenses` table. Most-recent active row is operative. (See `src/admin-api/alembic/versions/` for the latest revision number — don't pin it in docs.)
 
-## Hosted-trial flow (`/try` → Fly machine)
+## Hosted-trial flow (`/try` → Fly machine, with warm pool + magic-link)
 
-Marketing-profile-only feature for the public scutum.dev funnel. **Customers running their own Scutum do not get this** — the whole pipeline is gated behind the `marketing` profile.
+Marketing-profile-only feature for the public scutum.dev funnel. **Customers running their own Scutum do not get this** — gated behind the `marketing` profile.
 
 End-to-end flow:
-1. Visitor fills the form at `ui/landing/try/index.html` (Cloudflare Turnstile bot-check).
-2. `POST /api/v1/trial-signup` (router `src/admin-api/routers/trial_signup.py`) creates `users` + `organizations` + `trial_instances` rows in `pending_verification`, sends a verification email via `landing-backend`'s Resend SMTP creds.
-3. Verification link → `GET /api/v1/trial-signup/{id}/verify?token=...` flips status to `provisioning` and emits `pg_notify('trial_provision', trial_id)`.
-4. `src/trial-provisioner/` (FastAPI + asyncpg LISTEN loop) consumes the notify and calls Fly + Cloudflare APIs in sequence: `fly apps create` → `fly volumes create` → `fly machines create` (image: `ghcr.io/scutum-dev/scutum-monolith:<ver>`) → `fly certs create` → Cloudflare CNAME for `<id>.scutum.dev`. On success, sets `fqdn` + `fly_app_name`, flips status to `active`, stamps `expires_at = now() + TRIAL_LIFETIME_DAYS` (default 30).
-5. The `/try` page polls `GET /api/v1/trial-signup/{id}/status` while waiting.
-6. A lifecycle scheduler (in trial-provisioner) scans `(status, expires_at)` to send 3-day reminder emails and to delete past-expiry trials. Deleted rows are retained with `status='deleted'` for funnel attribution.
+1. Visitor fills `ui/landing/try/index.html` (Cloudflare Turnstile bot-check).
+2. `POST /api/v1/trial-signup` (router `src/admin-api/routers/trial_signup.py`) creates `users` + `organizations` + `trial_instances` rows at `pending_verification`, sends a verification email via `landing-backend`'s Resend SMTP creds. Generates a per-trial `bootstrap_token` and `api_key` in the trial_instances row.
+3. Verification click → `GET /api/v1/trial-signup/{id}/verify?token=...` flips status to `provisioning` and emits `pg_notify('trial_provision', trial_id)`.
+4. `src/trial-provisioner/` consumes the notify. **Fast path** (`pool.claim_warm_machine`): `SELECT FOR UPDATE SKIP LOCKED` a `ready` row from the warm pool, PATCH the Fly machine's env (`SCUTUM_API_KEY`/`BOOTSTRAP_TOKEN`/`JWT_SECRET_KEY`), add Cloudflare CNAME + Fly cert for `<short>.scutum.dev`, start the machine, wait for readiness. Total **~1 minute**. **Slow path** (legacy, only when pool is empty): `fly apps create` → IPs → volume → machine → cert → CF DNS from scratch (~10 min). The slow path is the fallback so signup never blocks.
+5. The `/try` page polls `GET /api/v1/trial-signup/{id}/status` until status=active. The active URL is `https://<short>.scutum.dev/admin/?bootstrap=<token>` — page redirects there.
+6. Trial admin-ui's `Login.tsx` detects `?bootstrap=` on mount → `POST /admin/auth/bootstrap` (auth.py `validate_bootstrap_token`) compares with env, mints JWT, writes `/var/lib/docker/scutum-state/bootstrap-consumed` marker for one-shot semantics. User lands in dashboard. Total verify→dashboard: ~1 min via warm pool.
+7. Lifecycle scheduler (trial-provisioner background task) sweeps `(status, expires_at)` to send 3-day reminders + delete past-expiry trials. Deleted rows retained with `status='deleted'` for funnel attribution.
 
-Per-trial machine image: `infra/fly-monolith/` — single `docker:dind`-based image that runs the **entire** customer release compose inside one 2GB Fly VM (postgres + redis + litellm + admin-api + admin-ui + nginx, all sharing one OS). Front-of-house nginx maps `/` → admin-ui, `/api/*` → admin-api, `/v1/*` → litellm, `/docs/*` → docs-site. Cold-start (auto-stopped machine waking) is ~30–60 s while dockerd + containers boot. Built by `.github/workflows/build-monolith.yml`.
+### Warm pool (PR #45)
 
-DB schema: migration 027 created `trial_instances` with the lifecycle states `pending_verification → provisioning → active → expired | deleted | failed`.
+Background loop in trial-provisioner keeps `WARM_POOL_MIN_SIZE` (default 3) Fly machines pre-booted and stopped. Each warm machine has fully run dockerd + golden-image load + alembic + LiteLLM `db push` once, so claim time becomes a 30-second config PATCH + start instead of a 10-minute cold boot.
 
-Env vars (trial-provisioner only): `FLY_API_TOKEN`, `FLY_REGION` (default `iad`), `FLY_VOLUME_GB` (default 5), `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`, `TRIAL_BASE_DOMAIN` (default `scutum.dev`), `TRIAL_LIFETIME_DAYS` (default 30), `MACHINE_IMAGE` (override the per-trial image — useful in staging). All under the marketing section of `.env.example`.
+State machine (migration 029 `warm_machines` table):
+```
+warming → ready → claimed (FK on trial_instances)
+   ↘  failed → recycled
+```
 
-Operator escape hatches:
-- Failed provisions: row stays at `status='failed'` with `provision_error` populated. Manually clean up via Fly + Cloudflare dashboards, then flip back to `provisioning` and re-emit the NOTIFY to retry.
-- Fly shared-cpu machines cap at 2GB/vCPU — `FLY_VM_CPUS` is auto-derived from memory in the provisioner (see commit `fa4925b`).
-- Fly LE certs need a DNS-01 validation CNAME; provisioner adds it automatically (commit `0874872`).
-- Fly storage driver: monolith image needs `fuse-overlayfs` (not the default `vfs`/`overlay2`) for nested-VM support (commit `1869198`).
+Tunables (env vars on trial-provisioner): `WARM_POOL_MIN_SIZE`, `WARM_POOL_MAX_SIZE`, `WARM_POOL_CONCURRENCY` (default 1 — sequential warmups; parallel multiplied failure blast radius), `WARM_POOL_READINESS_TIMEOUT_S` (1800), `WARM_POOL_RECYCLE_AFTER_DAYS` (14). `WARM_POOL_MIN_SIZE=0` halts the warmer without rebuild.
+
+### Per-trial monolith image
+
+`infra/fly-monolith/` — single `docker:dind`-based image. The Fly persistent volume mounts at `/var/lib/docker` (NOT `/data` — anonymous volumes there are reset on every machine update; PR #50 fix). Inside dind: postgres + redis + litellm + admin-api + admin-ui + nginx + docs all share one OS. Front-of-house nginx maps `/admin/` → admin-ui (with prefix-strip), `/api/*` → admin-api, `/v1/*` → litellm, `/docs/*` → docs-site, `/` → 302 to `/admin/` (matches the `BrowserRouter basename="/admin"`).
+
+Golden-image load: `docker save` of all 6 service images is baked into the monolith at build time (`build-monolith.yml` workflow). On first boot inside the trial machine, `entrypoint.sh` `docker load`s the tarball into dind's image cache (~7–8 min on Fly's fuse-overlayfs storage). Marker file `/var/lib/docker/scutum-state/golden-loaded` written on success — subsequent restarts skip the load.
+
+Boot ordering in `entrypoint.sh`:
+1. nginx FIRST (serves `/booting` HTML on `:80` while everything else comes up)
+2. dockerd
+3. golden-image load (first-boot only, gated by marker)
+4. install.sh (first-boot only — downloads release artifacts from scutum.dev)
+5. `docker compose up` with 5-attempt retry loop
+6. background watchdog every 30 s — restarts dockerd if `docker info` fails, re-runs `compose up` if any service drops
+
+### Fly autostop semantics (gotcha)
+
+`autostop` and `autostart` are **booleans**, not strings (Fly renamed `auto_stop_machines` → `autostop`; old names silently dropped). Warm machines run with `autostop=false` during warmup — Fly's edge proxy SIGTERMs idle warming machines at ~9 min ("excess capacity") and a half-loaded golden image leaves the marker unwritten, infinite loop. Claim time flips `autostop=true` so the user's idle trial scales to zero.
+
+### DB schema (relevant migrations)
+
+- 027 `trial_instances` — lifecycle: `pending_verification → provisioning → active → expired | deleted | failed`.
+- 028 `trial_instances` cols: `bootstrap_token`, `api_key`, `jwt_secret` (per-trial secrets the trial-provisioner generates and PATCHes onto the Fly machine env).
+- 029 `warm_machines` — pool state.
+
+### Env vars (trial-provisioner)
+
+`FLY_API_TOKEN`, `FLY_REGION` (default `iad`), `FLY_VOLUME_GB` (default 5), `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`, `TRIAL_BASE_DOMAIN` (default `scutum.dev`), `TRIAL_LIFETIME_DAYS` (default 30), `MACHINE_IMAGE`, plus the `WARM_POOL_*` tunables above. All under the marketing section of `.env.example`.
+
+### Operator escape hatches
+
+- Failed provisions: row stays at `failed` with `provision_error` populated. Manually clean Fly + CF, flip back to `provisioning`, re-emit NOTIFY.
+- Stale warm slot (compose downloaded before a release-compose change): mark as `failed` so recycler reaps; warmer rebuilds with current scutum.dev compose.
+- Fly shared-cpu sizing rule: max memory is `cpus * 2048` MB. Provisioner auto-derives cpus from memory (`fa4925b`).
+- Fly LE certs need DNS-01 validation CNAME — provisioner adds it (`0874872`).
+- fuse-overlayfs (not overlay2) is required for nested-VM support (`1869198`).
+
+## Chat product (`chat.scutum.dev` → Vercel)
+
+Source: `ui/chat/` (Next.js 16, AI SDK v6, Tailwind 4, ~530 LoC). Deployed separately on Vercel — not in docker-compose.
+
+Per-request flow (`app/api/chat/route.ts`):
+1. Take latest user message text.
+2. Call Tavily (`lib/search.ts`) for web search; up to 5 results.
+3. Inject sources as numbered list in the system prompt with instruction to cite as `[^N]`.
+4. `streamText` from `@ai-sdk/openai-compatible` against `https://scutum.dev/v1/chat/completions` with `model: scutum-research` — keeps every chat query in the gateway's audit log + cost report.
+5. Sources attached as `messageMetadata` on the streamed UIMessage so the client renders a sources panel synchronized with the streaming text.
+
+`ui/chat/components/Message.tsx` runs assistant text through `react-markdown` + `remark-gfm`, with a custom link component that styles `[^N]`-derived links as superscript citation markers.
+
+LiteLLM aliases for chat (`config/litellm/config.yaml`):
+- `scutum-research` → Claude Sonnet 4.6 (default for chat)
+- `scutum-fast` → Claude Haiku 4.5 (intent classifier / Quick mode)
+
+`/v1/*` proxy on the landing nginx routes `https://scutum.dev/v1/...` → `litellm:4000/v1/...` with streaming-friendly settings (`proxy_buffering off`, 600s read/send timeout). PR #52.
+
+Rate limiting: at the **Cloudflare edge**, not in the Vercel app. Proxy `chat.scutum.dev` orange-cloud + add a CF rate-limit rule on `/api/chat` (free plan: 1 rule, 10k matched/mo). No in-app middleware needed.
+
+Env vars (chat-ui only, set in Vercel project): `SCUTUM_API_URL`, `SCUTUM_API_KEY` (use a chat-scoped key from admin UI, NOT the master key), `SCUTUM_DEFAULT_MODEL=scutum-research`, `TAVILY_API_KEY`, `SEARCH_PROVIDER=tavily`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SITE_NAME`. See `ui/chat/.env.example`.
+
+For the route handler to be reached, a chat client also needs a `/api/chat` GET handler that returns 204 — AI SDK v6's `useChat` probes for stream-resume on mount and 405s otherwise.
 
 ## Release & customer distribution
 
