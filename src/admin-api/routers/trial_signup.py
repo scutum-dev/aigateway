@@ -264,7 +264,7 @@ async def create_trial_signup(data: TrialSignupRequest, request: Request) -> Tri
                     status_code=409,
                     detail=(
                         "A trial already exists for this email. Check your inbox for the verification "
-                        "link, or email hello@scutum.dev if you've lost the URL."
+                        "link, or email trial@scutum.dev if you've lost the URL."
                     ),
                 )
 
