@@ -122,17 +122,23 @@ class FlyClient:
     ) -> Dict[str, Any]:
         """Boot a machine with auto-stop-on-idle + auto-start-on-traffic.
 
-        The combination of `auto_stop_machines=stop` + `auto_start_machines=true`
-        + `min_machines_running=0` is the scale-to-zero primitive — no cost
-        when idle, ~300 ms wake on incoming traffic.
+        The combination of `autostop=stop` + `autostart=true` + `min_machines_running=0`
+        is the scale-to-zero primitive — no compute cost when idle, ~300 ms wake on
+        incoming traffic.
+
+        Field-name note: Fly renamed `auto_stop_machines` → `autostop` (string enum
+        "off"|"stop"|"suspend") and `auto_start_machines` → `autostart` (boolean) in
+        the Machines API. The old names are silently dropped — without this rename
+        every trial stayed running indefinitely (we burned a machine for 8 hours
+        before noticing on the orphan trial 1342eb7b).
         """
         services = [
             {
                 "ports": ports,
                 "protocol": "tcp",
                 "internal_port": 80,
-                "auto_stop_machines": "stop",
-                "auto_start_machines": True,
+                "autostop": "stop",
+                "autostart": True,
                 "min_machines_running": 0,
             }
         ]
