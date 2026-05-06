@@ -60,27 +60,8 @@ const scutum = createOpenAICompatible({
   headers: { Authorization: `Bearer ${SCUTUM_API_KEY}` },
 });
 
-const SYSTEM_GROUNDED = (sourcesBlock: string) => `\
-You are Scutum Research, a helpful AI search assistant. Answer the user's
-question using the sources provided below. Cite sources inline using
-[^N] markers that match the numbered list. Do not invent citations — only
-use [^N] for sources actually listed.
-
-If the sources don't contain enough information, say so explicitly rather
-than inventing facts.
-
-${sourcesBlock}
-`;
-
-const SYSTEM_TOOLS = `\
-You are Scutum Research, a helpful AI search assistant with two kinds of tools:
-
-WEB SEARCH (Tavily MCP)
-- \`tavily_search\` — when the user asks something that benefits from
-  up-to-date or external information. Prefer concise queries; you can call
-  multiple times to follow up.
-- \`tavily_extract\` — when a search snippet isn't enough; pass the URL.
-- For conversational turns ("hi", "thanks") skip the search entirely.
+const SYSTEM_TOOLS_HEADER = `\
+You are Scutum Research, a helpful AI search and research assistant.
 
 INTERACTIVE ARTIFACTS (\`render_artifact\`)
 - Call \`render_artifact\` to render a real, interactive React component
@@ -112,17 +93,30 @@ INTERACTIVE ARTIFACTS (\`render_artifact\`)
 - Use Tailwind utility classes for styling (className="..."). Don't import
   any libraries, don't fetch from URLs, don't access window/document directly.
 - Keep components self-contained and under ~150 lines.
-
-CITATIONS
-Cite web sources inline using [^N] markers, where N matches the order in
-which sources first appeared across your tool calls (1-indexed). Only cite
-sources you actually retrieved.
+- Skip artifacts entirely for purely conversational turns ("hi", "thanks").
 `;
 
-const SYSTEM_UNGROUNDED = `\
-You are Scutum Research, a helpful AI assistant. Answer the user's question
-clearly and concisely. If you don't know something, say so.
-`;
+/**
+ * Build the system prompt for a request. We always inject the prefetched
+ * sources (deterministic, stable [^N] numbering). MCP follow-up tools are
+ * mentioned only when actually wired, so the model can't hallucinate
+ * available tools when MCP is offline.
+ */
+function buildSystemPrompt(
+  prefetched: SearchResult[],
+  mcpAvailable: boolean,
+): string {
+  const sourcesBlock = formatSourcesForPrompt(prefetched);
+  const grounding = sourcesBlock
+    ? `WEB SOURCES (already retrieved for this question)\n\n${sourcesBlock}\n\nCite these inline with [^N] markers (1-indexed). Don't invent citations — only cite a source actually listed above. If the sources don't cover the question, say so plainly rather than guessing.\n`
+    : `No web sources were retrieved for this turn. Answer from your training data, and say so if you're uncertain.\n`;
+
+  const mcpSection = mcpAvailable
+    ? `\nADDITIONAL WEB TOOLS (use sparingly — at most 1–2 follow-ups)\n- \`tavily_search\` — only if the prefetched sources are clearly insufficient. Prefer 1 focused query.\n- \`tavily_extract\` — when a snippet isn't enough; pass the URL.\nDo NOT spend the whole step budget searching. Aim to write the answer within 2–3 steps.\n`
+    : "";
+
+  return `${SYSTEM_TOOLS_HEADER}\n${grounding}${mcpSection}`;
+}
 
 export async function POST(req: Request) {
   if (!SCUTUM_API_KEY) {
@@ -147,11 +141,27 @@ export async function POST(req: Request) {
 
   const modelMessages = await convertToModelMessages(messages);
 
-  // Always run in tools mode — render_artifact is available unconditionally,
-  // Tavily MCP search tools layer on top when TAVILY_MCP_URL is configured.
-  // The system prompt adapts to whatever's wired up.
+  // Run a deterministic single-shot search up-front (Tavily / Brave / hybrid
+  // via SEARCH_PROVIDER) so sources always populate fast — Claude with full
+  // MCP search latitude tends to over-search and burn step budget. The model
+  // gets the sources injected into the system prompt and can focus on
+  // composing the answer.
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const queryText =
+    lastUser?.parts
+      ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join(" ")
+      .trim() ?? "";
+  const initialSources = queryText ? await searchWeb(queryText) : [];
+
+  // MCP is optional now — when TAVILY_MCP_URL is set, the model gets
+  // tavily_extract + follow-up tavily_search on top of the prefetched
+  // sources. Otherwise we ship just render_artifact + the prefetched
+  // sources via the system prompt. Either way render_artifact is always
+  // available so artifacts work even with no search at all.
   const mcp = await openTavilyMCP();
-  return runToolsMode(modelMessages, mcp);
+  return runToolsMode(modelMessages, mcp, initialSources);
 }
 
 /**
@@ -163,6 +173,7 @@ export async function POST(req: Request) {
 function runToolsMode(
   modelMessages: Awaited<ReturnType<typeof convertToModelMessages>>,
   mcp: Awaited<ReturnType<typeof openTavilyMCP>>,
+  initialSources: SearchResult[] = [],
 ) {
   const sources: SearchResult[] = [];
   const seenUrls = new Set<string>();
@@ -174,6 +185,8 @@ function runToolsMode(
       sources.push(s);
     }
   };
+  // Prefetched sources go into the panel first so they're stable [^1..N].
+  addSources(initialSources);
 
   const tools: ToolSet = {
     ...(mcp?.tools ?? {}),
@@ -199,7 +212,7 @@ function runToolsMode(
 
   const result = streamText({
     model: scutum.chatModel(DEFAULT_MODEL),
-    system: SYSTEM_TOOLS,
+    system: buildSystemPrompt(initialSources, mcp != null),
     messages: modelMessages,
     tools,
     stopWhen: stepCountIs(MAX_TOOL_STEPS),
