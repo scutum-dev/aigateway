@@ -524,14 +524,24 @@ async def _provision_inner(trial_id: str) -> None:
 def _is_already_exists(e: FlyAPIError) -> bool:
     """True if a Fly API error indicates the resource already exists.
 
-    Fly returns 422 with a body like 'Validation failed: Name has already been taken'
-    for duplicate apps, and similar for volumes. The exact wording isn't part
-    of an API contract, so match defensively on common substrings.
+    Fly returns several different 422 bodies for the duplicate case depending
+    on which resource and how the constraint surfaces. Observed in the wild:
+      - 'Validation failed: Name has already been taken'  (apps, REST)
+      - '{"error":"uniqueness constraint violated"}'      (apps, Postgres surfaced)
+      - 'name_taken'                                       (some legacy paths)
+    The exact wording isn't part of an API contract, so match defensively on
+    common substrings rather than parsing.
     """
     body = getattr(e, "body", "") or ""
     msg = str(e).lower()
     body_l = body.lower()
-    needles = ("already been taken", "already exists", "name_taken", "duplicate")
+    needles = (
+        "already been taken",
+        "already exists",
+        "name_taken",
+        "duplicate",
+        "uniqueness constraint",
+    )
     return any(n in msg or n in body_l for n in needles)
 
 
