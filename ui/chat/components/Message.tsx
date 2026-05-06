@@ -1,5 +1,7 @@
 "use client";
 
+import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { UIMessage } from "ai";
 import type { SearchResult } from "@/lib/search";
 
@@ -8,29 +10,37 @@ type MessageProps = {
 };
 
 /**
- * Renders one chat turn. The user message is plain. The assistant message
- * walks the `parts` array (text/tool/etc.), parses `[^N]` citation markers
- * inside text parts, and renders them as superscript links to the source
- * URL. A footer shows the de-duplicated source list when present.
+ * Renders one chat turn. Assistant messages go through a markdown renderer
+ * (headings, bold, lists, code, links) plus a pre-pass that turns `[^N]`
+ * citation markers into markdown links pointing at the matching source.
+ *
+ * We also strip the model's bottom-of-message footnote-definition lines
+ * (e.g. `[1]: https://...`) because we render the source list separately
+ * in a styled details element.
  */
 export default function Message({ message }: MessageProps) {
   const isUser = message.role === "user";
   const sources = message.metadata?.sources ?? [];
 
   return (
-    <div className={isUser ? "" : "border-l-2 border-[var(--color-border-strong)] pl-4"}>
+    <div
+      className={
+        isUser ? "" : "border-l-2 border-[var(--color-border-strong)] pl-4"
+      }
+    >
       <div className="text-xs uppercase tracking-wider text-[var(--color-text-subtle)] mb-2">
         {isUser ? "You" : "Scutum"}
       </div>
 
-      <div className="prose prose-sm max-w-none">
+      <div className="prose-sm max-w-none">
         {message.parts.map((part, i) => {
           if (part.type === "text") {
             return (
-              <TextWithCitations
+              <MarkdownWithCitations
                 key={i}
                 text={part.text}
                 sources={sources}
+                isUser={isUser}
               />
             );
           }
@@ -45,65 +55,161 @@ export default function Message({ message }: MessageProps) {
 }
 
 /**
- * Parses `[^N]` markers and replaces them with clickable superscripts that
- * link to the matching source. We match the simplest markdown-footnote-ish
- * shape because most well-aligned models produce exactly that with the
- * system prompt we pass.
+ * Strip footnote-definition lines like `[1]: https://...` and `[^1]: ...`
+ * that some models emit at the bottom of an answer. We render the source
+ * list ourselves from the metadata, so these definitions are noise.
  */
-function TextWithCitations({
+function stripFootnoteDefinitions(text: string): string {
+  return text
+    .split("\n")
+    .filter((line) => !/^\s*\[\^?\d+\]:\s*\S+/.test(line))
+    .join("\n");
+}
+
+/**
+ * Inject [^N] citation markers as markdown links to the matching source URL.
+ * Both `[^1]` (markdown-footnote shape we ask for) and bare `[1]` (which
+ * some models prefer) are recognized. Links render inline; we style them
+ * as superscript via the link component override below.
+ */
+function injectCitations(text: string, sources: SearchResult[]): string {
+  return text.replace(/\[\^?(\d+)\](?!\()/g, (_, n) => {
+    const idx = parseInt(n, 10) - 1;
+    const src = sources[idx];
+    if (!src) return `[${n}]`;
+    // Output as a markdown link whose visible label is `[N]`. We escape the
+    // brackets so the markdown parser treats them as literal text inside
+    // the link, not as another link/footnote.
+    return `[\\[${n}\\]](${src.url} "${escapeForTitle(src.title || src.url)}")`;
+  });
+}
+
+function escapeForTitle(s: string) {
+  return s.replace(/"/g, "'");
+}
+
+const markdownComponents = (sources: SearchResult[]): Components => ({
+  // Citation links: visible label is `[N]`; render as superscript.
+  a({ children, href, title, ...rest }) {
+    const isCitation =
+      typeof children === "string"
+        ? /^\[\d+\]$/.test(children.trim())
+        : Array.isArray(children) &&
+          children.length === 1 &&
+          typeof children[0] === "string" &&
+          /^\[\d+\]$/.test((children[0] as string).trim());
+    if (isCitation && href) {
+      return (
+        <a
+          href={href}
+          title={title}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="citation"
+          {...rest}
+        >
+          {children}
+        </a>
+      );
+    }
+    return (
+      <a
+        href={href}
+        title={title}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline hover:no-underline"
+        {...rest}
+      >
+        {children}
+      </a>
+    );
+  },
+  // Headings — soft shrink so they don't dominate the chat bubble.
+  h1: ({ children }) => (
+    <h1 className="text-xl font-semibold mt-4 mb-2">{children}</h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="text-lg font-semibold mt-3 mb-2">{children}</h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="text-base font-semibold mt-3 mb-1">{children}</h3>
+  ),
+  // Lists with a bit of room.
+  ul: ({ children }) => (
+    <ul className="list-disc pl-5 my-2 space-y-1">{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="list-decimal pl-5 my-2 space-y-1">{children}</ol>
+  ),
+  // Inline + block code.
+  code: ({ className, children, ...rest }) => {
+    const isInline = !className;
+    if (isInline) {
+      return (
+        <code
+          className="px-1 py-0.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded text-[0.85em]"
+          {...rest}
+        >
+          {children}
+        </code>
+      );
+    }
+    return (
+      <code
+        className="block p-3 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded text-[0.85em] overflow-x-auto"
+        {...rest}
+      >
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children }) => <pre className="my-2">{children}</pre>,
+  blockquote: ({ children }) => (
+    <blockquote className="border-l-2 border-[var(--color-border-strong)] pl-3 italic text-[var(--color-text-muted)] my-2">
+      {children}
+    </blockquote>
+  ),
+  p: ({ children }) => <p className="my-2 leading-relaxed">{children}</p>,
+  // We strip them in stripFootnoteDefinitions but keep the override defensive.
+  hr: () => <hr className="border-[var(--color-border)] my-3" />,
+  // Reference sources var so the closure stays "useful" if we add more
+  // logic that depends on the active source list.
+  ...(sources.length === 0 ? {} : {}),
+});
+
+function MarkdownWithCitations({
   text,
   sources,
+  isUser,
 }: {
   text: string;
   sources: SearchResult[];
+  isUser: boolean;
 }) {
-  const parts: Array<string | { n: number }> = [];
-  const regex = /\[\^(\d+)\]/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    parts.push({ n: parseInt(match[1], 10) });
-    lastIndex = match.index + match[0].length;
+  // User messages: render literal text without markdown semantics. Avoids
+  // accidental italics from a stray `*`, code from backticks, etc. — chat
+  // input is most natural as plain text.
+  if (isUser) {
+    return <p className="whitespace-pre-wrap leading-relaxed">{text}</p>;
   }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+
+  const cleaned = stripFootnoteDefinitions(text);
+  const withCitations = injectCitations(cleaned, sources);
 
   return (
-    <p className="whitespace-pre-wrap leading-relaxed">
-      {parts.map((p, i) => {
-        if (typeof p === "string") return <span key={i}>{p}</span>;
-        const source = sources[p.n - 1];
-        if (!source) {
-          // Stray citation that doesn't map to any source — render as plain
-          // marker so the user can see the model hallucinated it.
-          return (
-            <span key={i} className="citation" title="unknown source">
-              [{p.n}]
-            </span>
-          );
-        }
-        return (
-          <a
-            key={i}
-            href={source.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="citation"
-            title={`${source.title}\n${source.url}`}
-          >
-            [{p.n}]
-          </a>
-        );
-      })}
-    </p>
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={markdownComponents(sources)}
+    >
+      {withCitations}
+    </ReactMarkdown>
   );
 }
 
 function SourceList({ sources }: { sources: SearchResult[] }) {
   return (
-    <details className="mt-4 text-sm">
+    <details className="mt-4 text-sm" open={sources.length <= 5}>
       <summary className="cursor-pointer text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
         {sources.length} {sources.length === 1 ? "source" : "sources"}
       </summary>
@@ -119,11 +225,19 @@ function SourceList({ sources }: { sources: SearchResult[] }) {
               {s.title || s.url}
             </a>
             <span className="text-xs ml-2 text-[var(--color-text-subtle)]">
-              {new URL(s.url).hostname}
+              {hostname(s.url)}
             </span>
           </li>
         ))}
       </ol>
     </details>
   );
+}
+
+function hostname(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
 }
