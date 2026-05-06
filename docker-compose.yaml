@@ -655,6 +655,15 @@ services:
       WARM_POOL_CONCURRENCY: ${WARM_POOL_CONCURRENCY:-1}
       WARM_POOL_READINESS_TIMEOUT_S: ${WARM_POOL_READINESS_TIMEOUT_S:-1800}
       WARM_POOL_RECYCLE_AFTER_DAYS: ${WARM_POOL_RECYCLE_AFTER_DAYS:-14}
+      # SMTP for the post-provisioning welcome email. Same Resend credentials
+      # the landing-backend / admin-api use; reuse rather than maintain a
+      # second SMTP secret.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      TRIAL_FROM: ${TRIAL_FROM:-trial@scutum.dev}
+      TRIAL_REPLY_TO: ${TRIAL_REPLY_TO:-trial@scutum.dev}
     depends_on:
       postgres:
         condition: service_healthy
