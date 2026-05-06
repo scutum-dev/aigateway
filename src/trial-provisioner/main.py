@@ -378,6 +378,7 @@ async def _provision_inner(trial_id: str) -> None:
                 claim["fqdn"],
                 expires.isoformat(),
             )
+            await _send_welcome_email(trial_id)
             return
         logger.info("[%s] pool empty — falling back to slow create-from-scratch path", trial_id)
 
@@ -557,6 +558,7 @@ async def _provision_inner(trial_id: str) -> None:
                 expires,
             )
         logger.info("[%s] trial active at https://%s (expires %s)", trial_id, fqdn, expires.isoformat())
+        await _send_welcome_email(trial_id)
 
     except Exception as e:  # noqa: BLE001
         # Decide whether to park as failed (hard) or leave at provisioning
@@ -741,6 +743,112 @@ async def _provisioning_sweeper_loop() -> None:
         except Exception as e:  # noqa: BLE001
             logger.warning("provisioning sweeper iteration failed: %s", e)
         await asyncio.sleep(PROVISIONING_SWEEP_INTERVAL_S)
+
+
+async def _send_welcome_email(trial_id: str) -> None:
+    """Send the post-provisioning welcome email — trial URL + persistent
+    API key + expiry date. Sent from `trial@scutum.dev` (or whatever
+    TRIAL_FROM env points at) after the trial flips to 'active'.
+
+    The user already saw the magic-link redirect into their dashboard,
+    but the magic-link is one-shot. The API key in this email is the
+    durable credential they use for future logins from any device.
+    """
+    if not _db_pool:
+        return
+    try:
+        async with _db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT t.fqdn, t.api_key, t.expires_at, u.email
+                FROM trial_instances t JOIN users u ON u.id = t.user_id
+                WHERE t.id = $1
+                """,
+                trial_id,
+            )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("[%s] welcome email skipped — db lookup failed: %s", trial_id, e)
+        return
+    if not row or not row["fqdn"] or not row["api_key"] or not row["email"]:
+        logger.info("[%s] welcome email skipped — missing fqdn/api_key/email", trial_id)
+        return
+
+    smtp_host = os.getenv("SMTP_HOST", "")
+    if not smtp_host:
+        logger.info("[%s] welcome email skipped — SMTP_HOST unset", trial_id)
+        return
+
+    try:
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        import aiosmtplib
+    except ImportError:
+        logger.warning("[%s] welcome email skipped — aiosmtplib not installed", trial_id)
+        return
+
+    fqdn = row["fqdn"]
+    api_key = row["api_key"]
+    expires = row["expires_at"]
+    email = row["email"]
+    expires_str = expires.strftime("%B %-d, %Y") if expires else "in 30 days"
+    trial_url = f"https://{fqdn}/admin/"
+
+    text_body = (
+        "Your Scutum trial is ready.\n\n"
+        f"URL:        {trial_url}\n"
+        f"API key:    {api_key}\n\n"
+        "Save the API key — you'll use it to log in if the magic-link\n"
+        "tab is closed. The trial expires on " + expires_str + ".\n\n"
+        "After expiry the instance + all data is destroyed automatically.\n\n"
+        "Need help? Reply to this email — trial@scutum.dev.\n\n"
+        "— Scutum\n"
+        "https://scutum.dev/\n"
+    )
+
+    html_body = f"""\
+<!DOCTYPE html>
+<html><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 560px; margin: 32px auto; padding: 0 24px; color: #0A0A0A; line-height: 1.6;">
+  <p style="font-family: 'Iowan Old Style', Georgia, serif; font-style: italic; font-size: 28px; margin: 0 0 24px;">Scutum</p>
+  <p>Your Scutum trial is ready.</p>
+  <p style="margin: 32px 0;">
+    <a href="{trial_url}" style="background: #0A0A0A; color: #FFFFFF; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 500;">Open your trial</a>
+  </p>
+  <p style="font-size: 13px; color: #525252;">Or paste this URL: <a href="{trial_url}" style="color: #525252; word-break: break-all;">{trial_url}</a></p>
+  <p>Your API key — save this; you'll need it to log in from any device:</p>
+  <pre style="background: #FAFAFA; border: 1px solid #E5E5E5; padding: 12px; border-radius: 6px; word-break: break-all; font-size: 13px; font-family: 'JetBrains Mono', ui-monospace, monospace;">{api_key}</pre>
+  <p style="font-size: 13px; color: #525252;">The trial expires on <strong>{expires_str}</strong>. After that, the instance and all data are destroyed automatically.</p>
+  <hr style="border: none; border-top: 1px solid #E5E5E5; margin: 32px 0;">
+  <p style="font-size: 12px; color: #6B7280;">
+    Scutum · <a href="https://scutum.dev/" style="color: #6B7280;">scutum.dev</a> · Reply to <a href="mailto:trial@scutum.dev" style="color: #6B7280;">trial@scutum.dev</a> for help.
+  </p>
+</body></html>
+"""
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "Your Scutum trial is ready"
+    msg["From"] = os.getenv("TRIAL_FROM") or "trial@scutum.dev"
+    msg["To"] = email
+    msg["Reply-To"] = os.getenv("TRIAL_REPLY_TO") or "trial@scutum.dev"
+    # text first, html second → clients that support HTML render that one.
+    msg.attach(MIMEText(text_body, "plain"))
+    msg.attach(MIMEText(html_body, "html"))
+
+    try:
+        await aiosmtplib.send(
+            msg,
+            hostname=smtp_host,
+            port=int(os.getenv("SMTP_PORT", "587")),
+            username=os.getenv("SMTP_USER") or None,
+            password=os.getenv("SMTP_PASSWORD") or None,
+            start_tls=True,
+        )
+        logger.info("[%s] welcome email sent to %s", trial_id, email)
+    except Exception as e:  # noqa: BLE001
+        # Non-fatal — the trial is already active and the user has the
+        # magic-link redirect. We just don't have the API key in their inbox.
+        # Log so an operator can re-send manually if needed.
+        logger.warning("[%s] welcome email send failed: %s", trial_id, e)
 
 
 async def _wait_for_readiness(trial_id: str, url: str) -> bool:

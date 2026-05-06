@@ -159,15 +159,21 @@ def validate_bootstrap_token(token: str) -> Optional[dict]:
     # Mark consumed atomically. O_EXCL fails if the file appeared between
     # the existence check above and the create call (race), in which case
     # another request beat us to it — treat as already-consumed.
+    #
+    # The marker dir (/etc/scutum) is NOT guaranteed to exist inside the
+    # admin-api container — install.sh runs on the HOST monolith filesystem,
+    # not inside dind. Create it lazily on first successful exchange.
+    try:
+        os.makedirs(os.path.dirname(BOOTSTRAP_CONSUMED_PATH), exist_ok=True)
+    except OSError as e:
+        logger.error("could not create bootstrap marker dir: %s", e)
+        return None
     try:
         fd = os.open(BOOTSTRAP_CONSUMED_PATH, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     except FileExistsError:
         logger.info("bootstrap token rejected: race-lost to concurrent exchange")
         return None
     except OSError as e:
-        # The /etc/scutum directory may not exist (rare — install.sh always
-        # creates it). Surface the failure rather than silently logging the
-        # user in without a consume mark.
         logger.error("could not mark bootstrap token consumed: %s", e)
         return None
     try:
