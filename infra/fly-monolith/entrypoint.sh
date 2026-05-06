@@ -59,25 +59,37 @@ fi
 # 2. Golden-image cache load (first boot only). The Dockerfile COPYs a
 # docker-save tarball of all 6 Scutum service images into /opt; loading it
 # into dind's image cache eliminates the per-trial 5-7 min ghcr.io pull.
-# Marker file lives on the persistent /etc/scutum volume so subsequent
-# restarts (idle wake, machine update) skip the load.
+#
+# State (markers + install bundle) lives under /var/lib/docker/scutum-state/.
+# The trial-provisioner mounts the Fly persistent volume AT /var/lib/docker,
+# so this path survives Fly machine update / PATCH restarts. The previous
+# location (/etc/scutum) was an anonymous Docker volume that got tossed
+# whenever Fly created a fresh writable layer (= every config PATCH), which
+# made every claim re-run the 8-min docker-load from scratch.
+SCUTUM_STATE=/var/lib/docker/scutum-state
+mkdir -p "$SCUTUM_STATE"
 GOLDEN_TARBALL=/opt/scutum-images.tar.gz
-GOLDEN_MARKER=/etc/scutum/golden-loaded
-mkdir -p "$(dirname "$GOLDEN_MARKER")"
+GOLDEN_MARKER="$SCUTUM_STATE/golden-loaded"
 if [ -f "$GOLDEN_TARBALL" ] && [ ! -f "$GOLDEN_MARKER" ]; then
     log "loading golden image cache from $GOLDEN_TARBALL into dind"
     if gunzip -c "$GOLDEN_TARBALL" | docker load; then
         touch "$GOLDEN_MARKER"
-        rm -f "$GOLDEN_TARBALL"
-        log "golden image cache loaded; tarball removed to reclaim volume space"
+        # Don't rm the tarball: it's part of the image layer and will
+        # reappear on every fresh writable layer anyway. The marker is
+        # the durable record that we already loaded these images into
+        # /var/lib/docker (which IS now persistent).
+        log "golden image cache loaded; marker written to $GOLDEN_MARKER"
     else
         log "WARN: docker load failed — falling back to runtime ghcr.io pulls"
     fi
+elif [ -f "$GOLDEN_MARKER" ]; then
+    log "golden image cache already loaded (marker present) — skipping"
 fi
 
 # 3. Drop the install bundle on first boot. Skip if already installed (this
-# is just an idempotent re-fetch of the release artifacts).
-SCUTUM_DIR=/etc/scutum/install
+# is just an idempotent re-fetch of the release artifacts). Bundle lives
+# under /var/lib/docker/scutum-state/install/ so it survives PATCH restarts.
+SCUTUM_DIR="$SCUTUM_STATE/install"
 if [ ! -d "$SCUTUM_DIR/scutum" ]; then
     log "first boot: running install.sh"
     mkdir -p "$SCUTUM_DIR"
