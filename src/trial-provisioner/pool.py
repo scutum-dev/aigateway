@@ -406,15 +406,18 @@ async def recycle_stale(db_pool: asyncpg.Pool, fly: FlyClient) -> None:
     """
     cutoff_warming = datetime.now(timezone.utc) - timedelta(seconds=WARMING_TIMEOUT_S)
     async with db_pool.acquire() as conn:
+        # `||` is string concat in postgres; asyncpg sends ints as int4, which
+        # `||` rejects without an explicit ::text cast. Render the timeout
+        # into the SQL inline (it's a module constant, not user input — safe).
         await conn.execute(
-            """
+            f"""
             UPDATE warm_machines
             SET status = 'failed',
-                last_warm_error = COALESCE(last_warm_error, '') || ' [stuck warming > ' || $2 || ' s]'
+                last_warm_error = COALESCE(last_warm_error, '') ||
+                    ' [stuck warming > {WARMING_TIMEOUT_S} s]'
             WHERE status = 'warming' AND created_at < $1
             """,
             cutoff_warming,
-            WARMING_TIMEOUT_S,
         )
 
         await conn.execute(
