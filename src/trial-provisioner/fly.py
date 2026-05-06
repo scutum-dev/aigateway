@@ -161,6 +161,72 @@ class FlyClient:
             raise FlyAPIError(resp.status_code, resp.text, op="run_machine")
         return resp.json()
 
+    async def stop_machine(self, app_name: str, machine_id: str) -> None:
+        """Stop a running machine. Fly preserves the machine config + volume —
+        a subsequent start_machine() resumes from the existing dind state in
+        ~20-30s instead of a full cold boot.
+
+        Idempotent: 404 + already-stopped responses treated as success.
+        """
+        client = await self._client()
+        resp = await client.post(f"/apps/{app_name}/machines/{machine_id}/stop")
+        if resp.status_code in (200, 202, 204, 404):
+            return
+        # "machine is already stopped" or similar — treat as success
+        body_l = resp.text.lower()
+        if "stopped" in body_l or "already" in body_l:
+            return
+        raise FlyAPIError(resp.status_code, resp.text, op="stop_machine")
+
+    async def start_machine(self, app_name: str, machine_id: str) -> None:
+        """Start a stopped machine. Wake-from-stopped is ~20-30s for our
+        monolith (dockerd + container restart from existing volume state).
+        """
+        client = await self._client()
+        resp = await client.post(f"/apps/{app_name}/machines/{machine_id}/start")
+        if resp.status_code in (200, 202):
+            return
+        body_l = resp.text.lower()
+        if "already started" in body_l or "running" in body_l:
+            return
+        raise FlyAPIError(resp.status_code, resp.text, op="start_machine")
+
+    async def update_machine_env(
+        self, app_name: str, machine_id: str, current_config: Dict[str, Any], env_overrides: Dict[str, str]
+    ) -> Dict[str, Any]:
+        """Merge env_overrides into the machine's config and PATCH back.
+
+        Fly's update endpoint replaces the entire config, so we round-trip
+        the existing one (passed by caller — usually fetched from
+        get_machine) with our env overrides applied. Used when claiming a
+        warm machine: the warmer started it with placeholder env, claim
+        injects the real per-trial SCUTUM_API_KEY/BOOTSTRAP_TOKEN/JWT_SECRET_KEY.
+
+        After PATCH the machine restarts automatically with the new config.
+        """
+        new_config = dict(current_config)
+        new_env = dict(new_config.get("env", {}))
+        new_env.update(env_overrides)
+        new_config["env"] = new_env
+        client = await self._client()
+        resp = await client.post(
+            f"/apps/{app_name}/machines/{machine_id}",
+            json={"config": new_config},
+        )
+        if resp.status_code not in (200, 201):
+            raise FlyAPIError(resp.status_code, resp.text, op="update_machine_env")
+        return resp.json()
+
+    async def get_machine(self, app_name: str, machine_id: str) -> Dict[str, Any]:
+        """Fetch a machine's full record (config + state). Needed before
+        update_machine_env to capture the current config for round-trip.
+        """
+        client = await self._client()
+        resp = await client.get(f"/apps/{app_name}/machines/{machine_id}")
+        if resp.status_code != 200:
+            raise FlyAPIError(resp.status_code, resp.text, op="get_machine")
+        return resp.json()
+
     # ---- IPs + certs live on the legacy GraphQL endpoint ----------------------
 
     async def _graphql(self, query: str, variables: Dict[str, Any], *, op: str) -> Dict[str, Any]:
