@@ -124,11 +124,18 @@ async def validate_api_key(api_key: str) -> Optional[dict]:
     return None
 
 
-# Marker file path for one-shot bootstrap-token consumption. Lives on the
-# /etc/scutum volume so it persists across machine restarts (the token can
-# only ever be consumed once, even if the user clicks the magic link, the
-# admin-api restarts, and they click again).
-BOOTSTRAP_CONSUMED_PATH = os.getenv("BOOTSTRAP_CONSUMED_PATH", "/etc/scutum/bootstrap-consumed")
+# Marker file path for one-shot bootstrap-token consumption.
+#
+# Lives in /tmp/ — admin-api runs as uid 1000 (non-root) and /etc/ is
+# root-owned + non-writable. /tmp/ is always world-writable. Trade-off:
+# the marker is ephemeral across container restarts, so a magic-link
+# token COULD be re-used after an admin-api restart. In practice that
+# matters only if the same browser tab is left open across a deploy,
+# and the URL embeds the token only briefly (Login.tsx strips it via
+# history.replaceState immediately after exchange). Acceptable for v0.
+# Override via BOOTSTRAP_CONSUMED_PATH env if you mount a persistent
+# volume into the admin-api container at a writable path.
+BOOTSTRAP_CONSUMED_PATH = os.getenv("BOOTSTRAP_CONSUMED_PATH", "/tmp/scutum-bootstrap-consumed")
 
 
 def validate_bootstrap_token(token: str) -> Optional[dict]:
