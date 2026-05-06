@@ -648,6 +648,13 @@ services:
       MACHINE_IMAGE: ${MACHINE_IMAGE:-nginx:alpine}
       MACHINE_MEMORY_MB: ${MACHINE_MEMORY_MB:-2048}
       FLY_VOLUME_GB: ${FLY_VOLUME_GB:-5}
+      # Warm-pool tunables. Set WARM_POOL_MIN_SIZE=0 to halt the warmer
+      # without a rebuild — useful when investigating bugs in production.
+      WARM_POOL_MIN_SIZE: ${WARM_POOL_MIN_SIZE:-3}
+      WARM_POOL_MAX_SIZE: ${WARM_POOL_MAX_SIZE:-10}
+      WARM_POOL_CONCURRENCY: ${WARM_POOL_CONCURRENCY:-1}
+      WARM_POOL_READINESS_TIMEOUT_S: ${WARM_POOL_READINESS_TIMEOUT_S:-1800}
+      WARM_POOL_RECYCLE_AFTER_DAYS: ${WARM_POOL_RECYCLE_AFTER_DAYS:-14}
     depends_on:
       postgres:
         condition: service_healthy

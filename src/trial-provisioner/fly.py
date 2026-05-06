@@ -119,27 +119,35 @@ class FlyClient:
         memory_mb: int = 2048,
         volume_id: Optional[str] = None,
         volume_mount_path: Optional[str] = None,
+        autostop: bool = True,
     ) -> Dict[str, Any]:
-        """Boot a machine with auto-stop-on-idle + auto-start-on-traffic.
+        """Boot a machine with optional auto-stop-on-idle + auto-start-on-traffic.
 
         The combination of `autostop=true` + `autostart=true` + `min_machines_running=0`
         is the scale-to-zero primitive — no compute cost when idle, ~300 ms wake on
-        incoming traffic.
+        incoming traffic. Used for real trial machines after a user claims them.
+
+        autostop=False is used during warm-pool warmup: a half-booted machine has
+        no real concurrency, Fly's edge proxy sees "excess capacity" and SIGTERMs
+        the machine ~9 min into the boot — interrupting the docker-load mid-stream
+        so the next wake re-runs the whole load (golden-loaded marker only writes
+        on full completion). With autostop=False the machine stays alive through
+        the slow warmup; the warmer explicitly calls stop_machine() once readiness
+        passes, and claim_warm_machine() re-enables autostop for the real user.
 
         Field-name note: Fly renamed `auto_stop_machines` → `autostop` and
         `auto_start_machines` → `autostart` in the Machines API. The old names are
         silently dropped — without this rename every trial stayed running indefinitely
         (we burned a machine for 8 hours before noticing on the orphan trial 1342eb7b).
-        Both fields are booleans; passing the legacy string "stop" works (Fly coerces
-        to true) but the boolean form documents the actual API contract.
+        Both fields are booleans.
         """
         services = [
             {
                 "ports": ports,
                 "protocol": "tcp",
                 "internal_port": 80,
-                "autostop": True,
-                "autostart": True,
+                "autostop": autostop,
+                "autostart": autostop,
                 "min_machines_running": 0,
             }
         ]
