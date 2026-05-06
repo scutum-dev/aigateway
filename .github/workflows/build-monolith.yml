@@ -63,6 +63,31 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Pull + bundle Scutum service images (golden-image cache)
+        # Pre-fetches all 6 service images and writes them as a docker-save
+        # tarball into the build context. The Dockerfile COPYs this tarball
+        # into the image; entrypoint.sh `docker load`s it on first boot,
+        # eliminating the per-trial 5-7 min ghcr.io pull from inside dind.
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.tags.outputs.version }}"
+          OWNER="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          IMAGES=(
+            postgres:16-alpine
+            redis:7-alpine
+            "ghcr.io/${OWNER}/scutum-litellm:${VERSION}"
+            "ghcr.io/${OWNER}/scutum-admin-api:${VERSION}"
+            "ghcr.io/${OWNER}/scutum-admin-ui:${VERSION}"
+            "ghcr.io/${OWNER}/scutum-docs:${VERSION}"
+          )
+          for img in "${IMAGES[@]}"; do
+            echo "▸ docker pull $img"
+            docker pull "$img"
+          done
+          echo "▸ docker save → infra/fly-monolith/scutum-images.tar.gz"
+          docker save "${IMAGES[@]}" | gzip --fast > infra/fly-monolith/scutum-images.tar.gz
+          ls -lh infra/fly-monolith/scutum-images.tar.gz
+
       - name: Build & push scutum-monolith
         uses: docker/build-push-action@v5
         with:

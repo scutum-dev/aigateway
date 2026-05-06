@@ -31,6 +31,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import secrets
 import sys
 import uuid
 from contextlib import asynccontextmanager
@@ -270,21 +271,45 @@ async def _provision_inner(trial_id: str) -> None:
     # creation fails (the route updates fqdn at the very end of provisioning).
     fqdn = fly_url
 
-    # Claim ownership of this app name immediately. If the row had a previous
-    # fly_app_name set (mid-flow crash), we keep using that one — never
-    # generate a new name for the same trial id.
+    # Claim ownership of this app name + provision the per-trial credentials
+    # immediately. If the row had a previous fly_app_name set (mid-flow crash),
+    # we keep using that one and reuse the same secrets — never generate new
+    # tokens for the same trial id, since the Fly machine is already booted
+    # against the previous values.
+    #
+    # Three secrets fed to the trial machine via Fly env so install.sh respects
+    # them (it has a `${VAR:-randhex}` fallback):
+    #   - SCUTUM_API_KEY     — long-lived admin credential the user keeps,
+    #   - BOOTSTRAP_TOKEN    — one-shot, exchanged at /auth/bootstrap for a JWT,
+    #   - JWT_SECRET_KEY     — pinned so admin-api signs tokens deterministically
+    #                          (would otherwise be randomised per install).
     async with _db_pool.acquire() as conn:
-        existing_name = await conn.fetchval("SELECT fly_app_name FROM trial_instances WHERE id = $1", trial_id)
-        if existing_name:
-            app_name = existing_name
+        row = await conn.fetchrow(
+            "SELECT fly_app_name, api_key, bootstrap_token, jwt_secret FROM trial_instances WHERE id = $1",
+            trial_id,
+        )
+        api_key = row["api_key"] if row and row["api_key"] else f"sk-{secrets.token_hex(32)}"
+        bootstrap_token = row["bootstrap_token"] if row and row["bootstrap_token"] else secrets.token_hex(32)
+        jwt_secret = row["jwt_secret"] if row and row["jwt_secret"] else secrets.token_hex(32)
+        if row and row["fly_app_name"]:
+            app_name = row["fly_app_name"]
             fly_url = f"{app_name}.fly.dev"
             fqdn = fly_url
-        else:
-            await conn.execute(
-                "UPDATE trial_instances SET fly_app_name = $2 WHERE id = $1",
-                trial_id,
-                app_name,
-            )
+        await conn.execute(
+            """
+            UPDATE trial_instances
+            SET fly_app_name = COALESCE(fly_app_name, $2),
+                api_key = $3,
+                bootstrap_token = $4,
+                jwt_secret = $5
+            WHERE id = $1
+            """,
+            trial_id,
+            app_name,
+            api_key,
+            bootstrap_token,
+            jwt_secret,
+        )
 
     try:
         # 1. Fly app — idempotent. "Already exists" means a previous run got
@@ -342,7 +367,17 @@ async def _provision_inner(trial_id: str) -> None:
                 app_name=app_name,
                 image=MACHINE_IMAGE,
                 region=FLY_REGION,
-                env={"TRIAL_ID": trial_id, "PORT": "80"},
+                env={
+                    "TRIAL_ID": trial_id,
+                    "PORT": "80",
+                    # install.sh reads these via ${VAR:-randhex N} so the
+                    # injected values win over random generation. Without
+                    # this, the trial admin-api would have an unknown master
+                    # key and the user could never log in.
+                    "SCUTUM_API_KEY": api_key,
+                    "BOOTSTRAP_TOKEN": bootstrap_token,
+                    "JWT_SECRET_KEY": jwt_secret,
+                },
                 ports=[{"port": 443, "handlers": ["tls", "http"]}, {"port": 80, "handlers": ["http"]}],
                 memory_mb=MACHINE_MEMORY_MB,
                 cpus=MACHINE_CPUS,

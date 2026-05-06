@@ -425,7 +425,7 @@ async def trial_status(trial_id: str) -> TrialStatusResponse:
     async with deps.db_pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            SELECT status, fqdn, provision_error, expires_at
+            SELECT status, fqdn, provision_error, expires_at, bootstrap_token
             FROM trial_instances
             WHERE id = $1
             """,
@@ -434,10 +434,23 @@ async def trial_status(trial_id: str) -> TrialStatusResponse:
     if not row:
         raise HTTPException(status_code=404, detail="Trial not found.")
 
-    url = f"https://{row['fqdn']}" if row["fqdn"] else None
+    # On 'active' transition, hand the user a URL that auto-logs them in via
+    # the one-shot bootstrap token. Login.tsx detects ?bootstrap= on mount and
+    # exchanges it for a JWT at /auth/bootstrap. Token is one-shot and
+    # consumed by the trial machine on first exchange — safe to include in URL.
+    url: Optional[str] = None
+    if row["status"] == "active" and row["fqdn"]:
+        if row["bootstrap_token"]:
+            url = f"https://{row['fqdn']}/admin/?bootstrap={row['bootstrap_token']}"
+        else:
+            # Older trial rows (provisioned before migration 028) won't have a
+            # bootstrap_token. Fall back to the bare fqdn — the user lands on
+            # the Login form and types in their API key.
+            url = f"https://{row['fqdn']}"
+
     return TrialStatusResponse(
         status=row["status"],
-        url=url if row["status"] == "active" else None,
+        url=url,
         error=row["provision_error"] if row["status"] == "failed" else None,
         expires_at=row["expires_at"].isoformat() if row["expires_at"] else None,
     )

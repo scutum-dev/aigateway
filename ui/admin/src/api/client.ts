@@ -134,6 +134,14 @@ export const authApi = {
     const response = await axios.post(`${basePath}/auth/login`, { api_key: apiKey })
     return response.data
   },
+  // One-shot magic-link exchange used by hosted trial machines. The
+  // trial-provisioner injects BOOTSTRAP_TOKEN as an env var on the trial Fly
+  // machine; /try redirects the user to /admin/?bootstrap=<token>; Login.tsx
+  // detects the param on mount and calls this to skip the credential form.
+  bootstrap: async (token: string): Promise<LoginResponse> => {
+    const response = await axios.post(`${basePath}/auth/bootstrap`, { token })
+    return response.data
+  },
   me: async (): Promise<UserInfo> => {
     const response = await api.get('/auth/me')
     return response.data

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { authApi } from '../api/client'
 import { BoltIcon } from '@heroicons/react/24/solid'
 
@@ -10,6 +10,51 @@ export default function Login({ onLogin }: LoginProps) {
   const [apiKey, setApiKey] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  // True while we're auto-exchanging a magic-link bootstrap token from the
+  // URL. Renders a "Logging you in…" overlay so the user doesn't briefly
+  // see a credentials form they don't need.
+  const [isBootstrapping, setIsBootstrapping] = useState(false)
+
+  // On mount, check for a magic-link bootstrap token in the URL. The
+  // trial-provisioner injects BOOTSTRAP_TOKEN into the trial Fly machine's
+  // env and redirects the user to /admin/?bootstrap=<token>. We exchange
+  // that for a JWT here and drop straight into the dashboard. On any
+  // failure (already consumed, expired, server down) we fall through to
+  // the normal API-key login form with a friendly banner.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const bootstrapToken = params.get('bootstrap')
+    if (!bootstrapToken) return
+
+    setIsBootstrapping(true)
+    // Strip the token from the URL immediately so a refresh doesn't retry
+    // (it's one-shot — the second attempt always fails) and so the token
+    // doesn't sit in browser history / referrer headers for screen-shares.
+    params.delete('bootstrap')
+    const newSearch = params.toString()
+    window.history.replaceState(
+      {},
+      '',
+      window.location.pathname + (newSearch ? `?${newSearch}` : '') + window.location.hash,
+    )
+
+    authApi
+      .bootstrap(bootstrapToken)
+      .then((response) => {
+        onLogin(response.access_token, response.expires_at)
+      })
+      .catch((err: unknown) => {
+        const axiosErr = err as { response?: { data?: { detail?: string } } }
+        setError(
+          axiosErr.response?.data?.detail ||
+            'Trial activation link expired or already used. Log in with your API key from the welcome email.',
+        )
+      })
+      .finally(() => {
+        setIsBootstrapping(false)
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,6 +70,17 @@ export default function Login({ onLogin }: LoginProps) {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (isBootstrapping) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-900 to-indigo-900">
+        <div className="text-center text-white">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white mx-auto"></div>
+          <p className="mt-4">Logging you in…</p>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -104,3 +104,8 @@ terraform/environments/demo-ephemeral/terraform.tfvars
 # are public; only the actual .env (with secrets) stays gitignored.
 !config/.env.example
 !config/.env.release.example
+
+# Golden-image cache: produced by .github/workflows/build-monolith.yml at
+# build time and COPYd into the monolith image. Never commit this — it's
+# ~1.5 GB of docker-saved Scutum service images.
+infra/fly-monolith/scutum-images.tar.gz
