@@ -203,10 +203,17 @@ function runToolsMode(
             "JSX/TSX source. Available scope: useState, useEffect, useMemo, and Recharts primitives (LineChart, BarChart, etc). End with render(<Component />). Don't import anything. Don't fetch.",
           ),
       }),
-      // No execute — the model emits the code and we render it client-side.
-      // AI SDK treats tools without execute as "client-side": the tool call
-      // streams to the UI as a tool-input-available part, the UI renders it,
-      // and the model continues with the input as confirmation.
+      // Synthetic server-side execute: the artifact actually renders in the
+      // browser from the tool input, but AI SDK v6 requires every tool call
+      // to have a matching tool-result message — without that, the next user
+      // turn fails with "Tool result is missing for tool call ...". Returning
+      // a tiny confirmation here closes the loop, lets the model write
+      // follow-up text after rendering, and keeps multi-turn conversations
+      // valid.
+      execute: async ({ title }) => ({
+        rendered: true,
+        title,
+      }),
     }),
   };
 
