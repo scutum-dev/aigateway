@@ -53,11 +53,20 @@ vercel deploy --prod
 - **Sources attached as `messageMetadata`** on the AI SDK stream so the UI panel and citation hyperlinks stay in sync with the streaming text.
 - **Stateless for MVP.** Conversation lives in browser memory only. Refresh = fresh chat. Persistence + auth are the next milestones (see `.env.example` optional block).
 
+## Rate limiting
+
+Done at the **Cloudflare edge**, not in this app. Proxy the `chat.scutum.dev` CNAME (orange cloud) and add a CF rate-limit rule:
+
+- Path: `chat.scutum.dev/api/chat`
+- Limit: `10 requests / 1 minute / IP`
+- Action: `Block` for `60s`
+
+That blocks abuse before it ever reaches Vercel — saves both invocation budget and ~10ms latency vs an in-app Upstash check. Free CF plan supports 1 rate-limit rule + 10k matched requests/month, which is plenty for MVP. Layer Upstash inside the app later only when adding **per-user** limits after auth.
+
 ## What's next (not built yet)
 
 - [ ] Auth via Clerk (anon-friendly, sign-in to save threads)
 - [ ] Persistence in Vercel Postgres / Supabase
-- [ ] Rate limiting (Upstash) — required before going public
 - [ ] **Pro Search** (multi-agent: planner → searchers → writer) using existing `src/workflow-engine`
 - [ ] **Deep Research** (Temporal-backed) using `src/a2a-runtime`
 - [ ] Domain restriction / source allowlist (enterprise feature)

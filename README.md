@@ -135,14 +135,24 @@ Agent Gateway v0.12+ has: MCP federation, A2A routing, LLM inference proxy, buil
 | **Admin API** | 8086 | FastAPI — JWT auth, CRUD, gateway sync |
 | **Admin UI** | 5173 | React — unified management dashboard |
 | **Workflow Engine** | 8085 | LangGraph + Temporal — multi-step AI workflows |
+| **A2A Runtime** | 8087 | Temporal-backed agent-to-agent orchestration |
 | **SRE Agent** | 8092 | LLM-driven incident remediation, human-in-loop, risk-scored |
 | **Cost Predictor** | 8080 | Per-request cost estimation |
 | **Budget Webhook** | 8081 | Soft/hard budget enforcement with alerts |
+| **Trial Provisioner** | 8094 | Hosted-trial pipeline — Fly + Cloudflare orchestration, warm pool, magic-link |
 | **PostgreSQL** | 5432 | Source of truth for all config |
 | **Redis** | 6379 | Caching, rate limiting |
 | **Prometheus** | 9090 | Metrics collection |
 | **Grafana** | 3030 | Dashboards and visualization |
 | **Jaeger** | 16686 | Distributed tracing |
+
+### Public-facing surfaces (deployed separately, not in this compose)
+
+| Surface | Where it runs | What it is |
+|---------|---------------|------------|
+| **scutum.dev** | OCI VM (`landing-ui` container) | Marketing site, install.sh, /try signup |
+| **chat.scutum.dev** | **Vercel** (Next.js, source at `ui/chat/`) | Search-augmented chat (Perplexity-shaped) — calls scutum.dev/v1 for the LLM, every query lands in your gateway's audit log |
+| **`<short>.scutum.dev`** (per-trial) | Fly machine (monolith image, source at `infra/fly-monolith/`) | Each free-trial signup gets their own self-hosted Scutum instance, sub-minute provisioning via warm pool |
 
 ## Customer install (one-liner)
 
