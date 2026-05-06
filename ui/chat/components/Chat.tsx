@@ -1,17 +1,16 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import { useState } from "react";
 import Message from "./Message";
 import type { SearchResult } from "@/lib/search";
 
 type ScutumMessageMetadata = { sources?: SearchResult[] };
+type ScutumUIMessage = UIMessage<ScutumMessageMetadata>;
 
 export default function Chat() {
-  const { messages, sendMessage, status, error } = useChat<{
-    messageMetadata: ScutumMessageMetadata;
-  }>({
+  const { messages, sendMessage, status, error } = useChat<ScutumUIMessage>({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
   const [input, setInput] = useState("");
