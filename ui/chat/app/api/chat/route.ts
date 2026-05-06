@@ -25,8 +25,11 @@ import {
   streamText,
   convertToModelMessages,
   stepCountIs,
+  tool,
   type UIMessage,
+  type ToolSet,
 } from "ai";
+import { z } from "zod";
 import { searchWeb, formatSourcesForPrompt, type SearchResult } from "@/lib/search";
 import { openTavilyMCP } from "@/lib/mcp";
 
@@ -68,18 +71,50 @@ ${sourcesBlock}
 `;
 
 const SYSTEM_TOOLS = `\
-You are Scutum Research, a helpful AI search assistant with web-search tools.
+You are Scutum Research, a helpful AI search assistant with two kinds of tools:
 
-When the user asks something that benefits from up-to-date or external
-information, call \`tavily_search\` to retrieve sources before answering.
-Prefer concise queries; you can call multiple times to follow up. For pages
-where the snippet isn't enough, call \`tavily_extract\` on the URL.
+WEB SEARCH (Tavily MCP)
+- \`tavily_search\` — when the user asks something that benefits from
+  up-to-date or external information. Prefer concise queries; you can call
+  multiple times to follow up.
+- \`tavily_extract\` — when a search snippet isn't enough; pass the URL.
+- For conversational turns ("hi", "thanks") skip the search entirely.
 
-Cite sources inline using [^N] markers, where N matches the order in which
-sources first appeared across your tool calls (1-indexed). Only cite sources
-you actually retrieved. If a tool returns no useful results, say so plainly
-rather than inventing facts. For purely conversational turns ("hi", "thanks")
-skip the search entirely.
+INTERACTIVE ARTIFACTS (\`render_artifact\`)
+- Call \`render_artifact\` to render a real, interactive React component
+  inline with your answer. Use it whenever a UI beats prose: data
+  visualisations (charts, comparisons over time), calculators, side-by-side
+  feature tables, decision trees, mini-explorers. Don't use it for static
+  prose that markdown could already render.
+- The \`code\` field must be valid JSX/TSX in react-live \`noInline\` form:
+  define one or more components, then call \`render(<MyComponent />)\` at
+  the end. Example:
+    function Demo() {
+      const [n, setN] = useState(0);
+      return (
+        <div className="p-4">
+          <p className="text-2xl font-semibold">{n}</p>
+          <button className="px-3 py-1 border rounded" onClick={() => setN(n + 1)}>+1</button>
+        </div>
+      );
+    }
+    render(<Demo />);
+- Available scope (already imported, do NOT import them):
+  React hooks: useState, useEffect, useMemo
+  Recharts: LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie,
+            Cell, RadarChart, Radar, ScatterChart, Scatter, XAxis, YAxis,
+            ZAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+            PolarGrid, PolarAngleAxis, PolarRadiusAxis, RadialBarChart,
+            RadialBar
+- For charts wrap in \`<ResponsiveContainer width="100%" height={300}>\`.
+- Use Tailwind utility classes for styling (className="..."). Don't import
+  any libraries, don't fetch from URLs, don't access window/document directly.
+- Keep components self-contained and under ~150 lines.
+
+CITATIONS
+Cite web sources inline using [^N] markers, where N matches the order in
+which sources first appeared across your tool calls (1-indexed). Only cite
+sources you actually retrieved.
 `;
 
 const SYSTEM_UNGROUNDED = `\
@@ -164,11 +199,33 @@ function runToolsMode(
     }
   };
 
+  const tools: ToolSet = {
+    ...mcp.tools,
+    render_artifact: tool({
+      description:
+        "Render a real, interactive React component inline in the chat. Use for visualisations, charts, calculators, comparisons — anything where a UI beats prose. Code must be react-live noInline form: define components then call render(<MyComponent />) at the end.",
+      inputSchema: z.object({
+        title: z
+          .string()
+          .describe("Short label shown above the artifact (e.g. 'GDP by country')."),
+        code: z
+          .string()
+          .describe(
+            "JSX/TSX source. Available scope: useState, useEffect, useMemo, and Recharts primitives (LineChart, BarChart, etc). End with render(<Component />). Don't import anything. Don't fetch.",
+          ),
+      }),
+      // No execute — the model emits the code and we render it client-side.
+      // AI SDK treats tools without execute as "client-side": the tool call
+      // streams to the UI as a tool-input-available part, the UI renders it,
+      // and the model continues with the input as confirmation.
+    }),
+  };
+
   const result = streamText({
     model: scutum.chatModel(DEFAULT_MODEL),
     system: SYSTEM_TOOLS,
     messages: modelMessages,
-    tools: mcp.tools,
+    tools,
     stopWhen: stepCountIs(MAX_TOOL_STEPS),
     temperature: 0.3,
     onStepFinish: async (step) => {
