@@ -145,37 +145,11 @@ export async function POST(req: Request) {
 
   const modelMessages = await convertToModelMessages(messages);
 
-  // Try MCP tool-call mode first. If the URL isn't set or the connection
-  // fails, fall through to prefetch mode so we never break the chat.
+  // Always run in tools mode — render_artifact is available unconditionally,
+  // Tavily MCP search tools layer on top when TAVILY_MCP_URL is configured.
+  // The system prompt adapts to whatever's wired up.
   const mcp = await openTavilyMCP();
-
-  if (mcp) {
-    return runToolsMode(modelMessages, mcp);
-  }
-
-  // ----- prefetch mode (legacy, kept as fallback) -----
-  const lastUser = [...messages].reverse().find((m) => m.role === "user");
-  const queryText =
-    lastUser?.parts
-      ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
-      .map((p) => p.text)
-      .join(" ")
-      .trim() ?? "";
-
-  const sources = queryText ? await searchWeb(queryText) : [];
-  const sourcesBlock = formatSourcesForPrompt(sources);
-
-  const result = streamText({
-    model: scutum.chatModel(DEFAULT_MODEL),
-    system: sourcesBlock ? SYSTEM_GROUNDED(sourcesBlock) : SYSTEM_UNGROUNDED,
-    messages: modelMessages,
-    temperature: 0.3,
-    onError: ({ error }) => console.error("[chat] streamText error:", error),
-  });
-
-  return result.toUIMessageStreamResponse({
-    messageMetadata: () => ({ sources }),
-  });
+  return runToolsMode(modelMessages, mcp);
 }
 
 /**
@@ -186,7 +160,7 @@ export async function POST(req: Request) {
  */
 function runToolsMode(
   modelMessages: Awaited<ReturnType<typeof convertToModelMessages>>,
-  mcp: NonNullable<Awaited<ReturnType<typeof openTavilyMCP>>>,
+  mcp: Awaited<ReturnType<typeof openTavilyMCP>>,
 ) {
   const sources: SearchResult[] = [];
   const seenUrls = new Set<string>();
@@ -200,7 +174,7 @@ function runToolsMode(
   };
 
   const tools: ToolSet = {
-    ...mcp.tools,
+    ...(mcp?.tools ?? {}),
     render_artifact: tool({
       description:
         "Render a real, interactive React component inline in the chat. Use for visualisations, charts, calculators, comparisons — anything where a UI beats prose. Code must be react-live noInline form: define components then call render(<MyComponent />) at the end.",
@@ -238,10 +212,10 @@ function runToolsMode(
       }
     },
     onFinish: async () => {
-      await mcp.close();
+      if (mcp) await mcp.close();
     },
     onAbort: async () => {
-      await mcp.close();
+      if (mcp) await mcp.close();
     },
     onError: ({ error }) => console.error("[chat] streamText error:", error),
   });
