@@ -48,6 +48,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from cloudflare import CloudflareAPIError, CloudflareClient  # noqa: E402
 from fly import FlyAPIError, FlyClient  # noqa: E402
+from pool import claim_warm_machine, pool_warmer_loop  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("trial-provisioner")
@@ -92,6 +93,7 @@ _cf: Optional[CloudflareClient] = None
 _listener_task: Optional[asyncio.Task] = None
 _scheduler_task: Optional[asyncio.Task] = None
 _provisioning_sweeper_task: Optional[asyncio.Task] = None
+_pool_warmer_task: Optional[asyncio.Task] = None
 # In-process guard against concurrent _provision() runs for the same trial id.
 # (Postgres advisory lock would be more robust, but an in-process set covers
 # the common case — sweeper firing while listener is also running.)
@@ -121,6 +123,20 @@ async def lifespan(app: FastAPI):
     # the durability guarantee for the verify→provision handoff: even if a
     # NOTIFY is dropped, the row is picked up within ~60s.
     _provisioning_sweeper_task = asyncio.create_task(_provisioning_sweeper_loop())
+    # Warm-pool warmer: keeps N pre-booted Fly machines stopped so signups
+    # land in ~1 min instead of the ~10 min cold start. Running it in the
+    # provisioner means we don't need a separate service.
+    global _pool_warmer_task
+    _pool_warmer_task = asyncio.create_task(
+        pool_warmer_loop(
+            _db_pool,
+            _fly,
+            image=MACHINE_IMAGE,
+            memory_mb=MACHINE_MEMORY_MB,
+            cpus=MACHINE_CPUS,
+            volume_gb=FLY_VOLUME_GB,
+        )
+    )
     logger.info(
         "trial-provisioner started (region=%s, image=%s, base_domain=%s, sweep_interval=%ds)",
         FLY_REGION,
@@ -132,7 +148,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        for t in (_listener_task, _scheduler_task, _provisioning_sweeper_task):
+        for t in (_listener_task, _scheduler_task, _provisioning_sweeper_task, _pool_warmer_task):
             if t and not t.done():
                 t.cancel()
         if _fly:
@@ -310,6 +326,60 @@ async def _provision_inner(trial_id: str) -> None:
             bootstrap_token,
             jwt_secret,
         )
+
+    # Fast path: try to claim a pre-warmed machine from the pool. Drops
+    # the user-visible provision time from ~10 min (cold start) to ~1 min
+    # (PATCH env + machine start). Returns None if the pool is empty in
+    # this region, in which case we fall through to the slow path below
+    # — never blocks signup.
+    #
+    # Only attempt the fast path if we haven't already started a slow-path
+    # provision for this trial (row's fly_app_name still matches the slot
+    # we just reserved). On a sweeper retry where fly_app_name was already
+    # claimed against scutum-trial-<id>, the row "owns" that app and we
+    # must continue along the slow path to keep things consistent.
+    fast_path_eligible = not (row and row["fly_app_name"])
+    if fast_path_eligible:
+        claim = await claim_warm_machine(
+            _db_pool,
+            _fly,
+            _cf,
+            trial_id=trial_id,
+            short_id=short_id,
+            custom_fqdn=custom_fqdn,
+            api_key=api_key,
+            bootstrap_token=bootstrap_token,
+            jwt_secret=jwt_secret,
+        )
+        if claim is not None:
+            # Pool fast path succeeded — point the trial row at the warm app
+            # and mark active. No slow-path Fly resource creation needed.
+            expires = datetime.now(timezone.utc) + timedelta(days=TRIAL_LIFETIME_DAYS)
+            async with _db_pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    UPDATE trial_instances
+                    SET status = 'active',
+                        fly_app_name = $2,
+                        fqdn = $3,
+                        activated_at = CURRENT_TIMESTAMP,
+                        expires_at = $4,
+                        provision_error = NULL
+                    WHERE id = $1
+                    """,
+                    trial_id,
+                    claim["fly_app_name"],
+                    claim["fqdn"],
+                    expires,
+                )
+            logger.info(
+                "[%s] trial active via warm pool at https://%s (expires %s)",
+                trial_id,
+                claim["fqdn"],
+                expires.isoformat(),
+            )
+            return
+        logger.info("[%s] pool empty — falling back to slow create-from-scratch path", trial_id)
 
     try:
         # 1. Fly app — idempotent. "Already exists" means a previous run got
