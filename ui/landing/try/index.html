@@ -118,13 +118,35 @@
         .status.show { display: block; }
         .status-title { font-weight: 600; margin-bottom: 8px; font-size: 15px; }
         .status-detail { color: var(--text-muted); font-size: 14px; }
+        .status-detail #status-email {
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            color: var(--text); font-size: 13px;
+        }
+        .status-meta {
+            color: var(--text-subtle); font-size: 13px; margin-top: 12px;
+        }
+        .status-meta a { color: var(--text-subtle); }
+        .status-meta a:hover { color: var(--text); }
+        .status-icon {
+            display: inline-block; margin-right: 8px; font-size: 16px;
+            vertical-align: -2px; color: var(--text-muted);
+        }
+        .status-icon.is-spinner {
+            width: 14px; height: 14px; vertical-align: -3px;
+            border: 2px solid var(--border-hi); border-top-color: var(--text);
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+            font-size: 0;
+        }
+        .status-icon.is-success { color: var(--success); }
+        .status-icon.is-danger  { color: var(--danger); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* legacy alias for any leftover .spinner references in this file */
         .spinner {
             display: inline-block; width: 14px; height: 14px;
             margin-right: 8px; border: 2px solid var(--border-hi);
             border-top-color: var(--text); border-radius: 50%;
             animation: spin 0.8s linear infinite; vertical-align: -3px;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
         .meta-line {
             color: var(--text-subtle); font-size: 13px;
             font-family: 'JetBrains Mono', ui-monospace, monospace;
@@ -162,12 +184,26 @@
         <p class="signup-error" id="signup-error"></p>
     </form>
 
-    <!-- Post-submit polling state, hidden until signup succeeds. -->
+    <!-- Post-submit polling state, hidden until signup succeeds. The icon
+         and copy switch based on what's actually happening server-side:
+         - pending_verification: static envelope icon, "check email" copy.
+           No work is happening on our side — a spinner here would mislead
+           the user into thinking we're doing something.
+         - provisioning:        spinner, "spinning up" copy.
+         - failed:              warning, surface error.
+         - active:              checkmark, redirect imminent. -->
     <div class="status" id="status-block">
-        <p class="status-title"><span class="spinner"></span> <span id="status-headline">Check your email</span></p>
+        <p class="status-title">
+            <span class="status-icon" id="status-icon">✉</span>
+            <span id="status-headline">Check your email</span>
+        </p>
         <p class="status-detail" id="status-detail">
-            We sent a verification link to your address. Click it and we'll start provisioning.
-            This page will redirect to your trial when it's ready.
+            We sent a verification link to <span id="status-email"></span>.
+            Click it and we'll start provisioning. This page redirects when ready.
+        </p>
+        <p class="status-meta" id="status-meta">
+            Didn't get it? Check spam, or
+            <a href="#" id="status-retry">try again with a different email</a>.
         </p>
     </div>
 
@@ -186,7 +222,7 @@
     </section>
 
     <p class="meta-line">
-        Already have a trial? It's at the URL we emailed you. Lost it? <a href="mailto:hello@scutum.dev">hello@scutum.dev</a>.
+        Already have a trial? It's at the URL we emailed you. Lost it? <a href="mailto:trial@scutum.dev">trial@scutum.dev</a>.
     </p>
 </main>
 
@@ -249,8 +285,11 @@ async function submitSignup(ev) {
             btn.textContent = 'Launch trial';
             return false;
         }
-        // Hide form, show status block, start polling.
+        // Hide form, show status block in 'pending_verification' state.
         form.style.display = 'none';
+        const emailEl = document.getElementById('status-email');
+        if (emailEl) emailEl.textContent = email;
+        setStatusIcon('envelope');
         document.getElementById('status-block').classList.add('show');
         pollStatus(body.trial_id);
     } catch (err) {
@@ -261,6 +300,37 @@ async function submitSignup(ev) {
     }
     return false;
 }
+
+// Swap the status icon between three visual states based on what's actually
+// happening. `envelope` = static (we're waiting on the user, no work in
+// flight). `spinner` = active provisioning. `success`/`danger` = terminal.
+function setStatusIcon(state) {
+    const icon = document.getElementById('status-icon');
+    if (!icon) return;
+    icon.className = 'status-icon';
+    if (state === 'envelope') {
+        icon.textContent = '✉';
+    } else if (state === 'spinner') {
+        icon.classList.add('is-spinner');
+        icon.textContent = '';
+    } else if (state === 'success') {
+        icon.classList.add('is-success');
+        icon.textContent = '✓';
+    } else if (state === 'danger') {
+        icon.classList.add('is-danger');
+        icon.textContent = '!';
+    }
+}
+
+// Wire the "try again with a different email" link — refreshes the page
+// without query params so the user lands back on the form.
+document.addEventListener('click', function (ev) {
+    const t = ev.target;
+    if (t && t.id === 'status-retry') {
+        ev.preventDefault();
+        window.location.href = window.location.pathname;
+    }
+});
 
 // On page load: handle query params from the verify-email redirect.
 // - ?trial_id=<id>: user just clicked the verify link in their email; jump
@@ -279,9 +349,9 @@ async function submitSignup(ev) {
         // Hide form, show an error in the status block.
         form.style.display = 'none';
         status.classList.add('show');
-        // Hide the spinner — there's nothing happening.
-        const spinner = status.querySelector('.spinner');
-        if (spinner) spinner.style.display = 'none';
+        setStatusIcon('danger');
+        // Hide the meta-line ("didn't get it...") — the form is gone, retry
+        // link still works because it just reloads the page.
         const messages = {
             'invalid': 'That verification link looks malformed. Try signing up again.',
             'invalid_token': 'That verification link is no longer valid. Try signing up again.',
@@ -289,16 +359,19 @@ async function submitSignup(ev) {
             'not_found': 'We couldn\'t find that trial. Try signing up again.',
         };
         headline.textContent = 'Verification failed';
-        detail.textContent = messages[error] || 'Something went wrong. Email hello@scutum.dev.';
+        detail.textContent = messages[error] || 'Something went wrong. Email trial@scutum.dev.';
         return;
     }
 
     if (trialId) {
-        // Email verified — pick up the polling.
+        // Email verified — pick up the polling. Active provisioning now.
         form.style.display = 'none';
         status.classList.add('show');
+        setStatusIcon('spinner');
         headline.textContent = 'Email verified — provisioning your instance';
         detail.textContent = 'Setting up your Scutum stack. This usually takes 2–4 minutes.';
+        const meta = document.getElementById('status-meta');
+        if (meta) meta.style.display = 'none';
         pollStatus(trialId);
     }
 })();
@@ -314,23 +387,30 @@ async function pollStatus(trialId) {
             if (!resp.ok) return;
             const body = await resp.json();
             if (body.status === 'pending_verification') {
-                // Still waiting for the user to click the email link — keep polling silently.
+                // Still waiting for the user to click the email link — keep
+                // polling silently. The static envelope icon is already in
+                // place; no animation, since no work is happening server-side.
                 return;
             }
             if (body.status === 'provisioning') {
+                setStatusIcon('spinner');
                 headline.textContent = 'Provisioning your instance';
-                detail.textContent = 'Setting up your Scutum stack on Fly. This usually takes 2–4 minutes.';
+                detail.textContent = 'Setting up your Scutum stack on Fly. This usually takes 1–2 minutes.';
+                const meta = document.getElementById('status-meta');
+                if (meta) meta.style.display = 'none';
             }
             if (body.status === 'active' && body.url) {
                 clearInterval(interval);
+                setStatusIcon('success');
                 headline.textContent = 'Ready — redirecting…';
                 detail.textContent = body.url;
                 setTimeout(() => { window.location.href = body.url; }, 800);
             }
             if (body.status === 'failed') {
                 clearInterval(interval);
+                setStatusIcon('danger');
                 headline.textContent = 'Provisioning hit a snag';
-                detail.textContent = body.error || 'Email hello@scutum.dev and we\'ll sort it out.';
+                detail.textContent = body.error || 'Email trial@scutum.dev and we\'ll sort it out.';
             }
         } catch (_) { /* ignore transient errors */ }
         // Stop after ~15 minutes — provisioning includes Fly cold-boot +
