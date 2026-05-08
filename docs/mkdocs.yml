@@ -1,5 +1,5 @@
-site_name: Scutum Docs
-site_description: Scutum — unified LLM, MCP & A2A infrastructure. Self-hosted control plane with cost governance, audit, and policy.
+site_name: Scutum
+site_description: Scutum — self-hosted LLM gateway with audit, routing, and cost governance.
 site_url: https://scutum.dev/docs/
 site_author: Scutum
 
@@ -8,29 +8,32 @@ theme:
   language: en
   logo: assets/scutum-mark.svg
   favicon: assets/scutum-mark.svg
+
+  # Dark-only — match the landing-page commitment to a single palette.
+  # No toggle, no media query that could flip on a user's system pref.
+  # `slate` is Material's dark scheme; `primary: custom` lets our
+  # scutum.css override pick exact landing tokens.
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: black
-      accent: black
-      toggle:
-        icon: material/weather-night
-        name: Switch to dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: black
-      accent: white
-      toggle:
-        icon: material/weather-sunny
-        name: Switch to light mode
+    scheme: slate
+    primary: custom
+    accent: blue
+
+  # Inter for body, JetBrains Mono for code — same fonts the landing uses.
   font:
-    text: Helvetica Neue
+    text: Inter
     code: JetBrains Mono
+
   features:
-    - navigation.tracking
+    # Top-level nav becomes horizontal tabs at the top of the page; cuts
+    # the dense vertical sidebar and matches what most modern docs do.
+    - navigation.tabs
+    - navigation.tabs.sticky
+    # Group children under section headers in the sidebar.
     - navigation.sections
+    - navigation.tracking
     - navigation.top
     - navigation.indexes
+    - navigation.path
     - toc.follow
     - search.suggest
     - search.highlight
@@ -49,22 +52,33 @@ extra_javascript:
 
 extra:
   homepage: https://scutum.dev/
+  # Footer social — only public-facing destinations. No GitHub link
+  # (the repo is private and pointing crawlers at the org page is
+  # not useful). Email keeps a contact channel one click away.
   social:
     - icon: fontawesome/solid/globe
       link: https://scutum.dev/
       name: scutum.dev
-    - icon: fontawesome/brands/github
-      link: https://github.com/scutum-dev
-      name: GitHub
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/scutum-ai
+      name: LinkedIn
+    - icon: fontawesome/brands/x-twitter
+      link: https://x.com/scutum_ai
+      name: X
   generator: false
 
+# Four top-level sections only. Material's `navigation.tabs` renders these
+# as horizontal tabs; nested groups become sidebar section headers within
+# each tab. Pages and ordering preserved end-to-end — no markdown moved.
 nav:
   - Home: index.md
+
   - Getting Started:
       - Quickstart: guides/quickstart.md
       - API Integration: guides/api-integration.md
       - Comparison: guides/comparison.md
-  - Features:
+
+  - Reference:
       - Model Routing: guides/model-routing.md
       - Scutum Research (chat): guides/scutum-research.md
       - Guardrails: guides/guardrails.md
@@ -73,36 +87,40 @@ nav:
       - Workflows: guides/workflows.md
       - SRE Agent: guides/sre-agent.md
       - Cost Management: guides/cost-management.md
+
   - Operations:
-      - Admin Guide: guides/admin-guide.md
-      - Licensing: operations/licensing.md
-      - Observability: guides/observability.md
-      - Cloud Deployment: operations/cloud-deployment.md
-  - Production:
-      - Production Readiness: production/production-readiness.md
-      - Sizing Guide: production/sizing-guide.md
-      - HA Patterns: production/ha-patterns.md
-  - Security:
-      - Threat Model: security/threat-model.md
-      - Secret Rotation: security/secret-rotation.md
-  - FinOps:
-      - KPI Definitions: finops/kpi-definitions.md
-  - Whitepapers:
-      - whitepapers/index.md
-      - Self-Managed Best Practices: whitepapers/self-managed-best-practices.md
-      - Gateway Security: whitepapers/gateway-security.md
-      - Managed vs Self-Hosted: whitepapers/managed-vs-self-hosted.md
-      - Platform Internals: whitepapers/platform-internals.md
-      - Risk-Bounded Autonomous Remediation: whitepapers/risk-bounded-remediation.md
-      - Cost-Aware Multi-Provider Routing: whitepapers/cost-aware-routing.md
-  - Research:
-      - research/index.md
-      - AI Safety: research/ai-safety.md
-      - Explainable AI: research/explainable-ai.md
-      - Context Window Management: research/context-windows.md
-      - RAG Performance: research/rag-performance.md
-      - Multi-Agent Evaluations: research/multi-agent-evaluations.md
-      - Self-Learning Platform: research/self-learning.md
+      - Admin:
+          - Admin Guide: guides/admin-guide.md
+          - Licensing: operations/licensing.md
+          - Observability: guides/observability.md
+          - Cloud Deployment: operations/cloud-deployment.md
+      - Production:
+          - Production Readiness: production/production-readiness.md
+          - Sizing Guide: production/sizing-guide.md
+          - HA Patterns: production/ha-patterns.md
+      - Security:
+          - Threat Model: security/threat-model.md
+          - Secret Rotation: security/secret-rotation.md
+      - FinOps:
+          - KPI Definitions: finops/kpi-definitions.md
+
+  - Reading:
+      - Whitepapers:
+          - whitepapers/index.md
+          - Self-Managed Best Practices: whitepapers/self-managed-best-practices.md
+          - Gateway Security: whitepapers/gateway-security.md
+          - Managed vs Self-Hosted: whitepapers/managed-vs-self-hosted.md
+          - Platform Internals: whitepapers/platform-internals.md
+          - Risk-Bounded Autonomous Remediation: whitepapers/risk-bounded-remediation.md
+          - Cost-Aware Multi-Provider Routing: whitepapers/cost-aware-routing.md
+      - Research:
+          - research/index.md
+          - AI Safety: research/ai-safety.md
+          - Explainable AI: research/explainable-ai.md
+          - Context Window Management: research/context-windows.md
+          - RAG Performance: research/rag-performance.md
+          - Multi-Agent Evaluations: research/multi-agent-evaluations.md
+          - Self-Learning Platform: research/self-learning.md
 
 markdown_extensions:
   - admonition
