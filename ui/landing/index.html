@@ -4,20 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- ===== Page metadata ===== -->
   <title>Scutum — Self-hosted LLM gateway with audit, routing, and cost governance</title>
   <meta name="description" content="Self-hosted LLM gateway. 100+ models behind one OpenAI-compatible endpoint. Cost tracking, audit logs, offline license. Run on your own infra." />
   <link rel="canonical" href="https://scutum.dev/" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
   <meta name="theme-color" content="#0A0A0B" />
 
-  <!-- Favicon (SVG for crisp scaling). The mark file ships from the OCI VM
-       static volume; same asset used across landing, docs, chat. -->
   <link rel="icon" type="image/svg+xml" href="/scutum-mark.svg" />
   <link rel="apple-touch-icon" href="/scutum-mark.svg" />
 
-  <!-- OpenGraph / Twitter card. og-image.png is the existing 1200×630 dark
-       hero asset already on disk — reuse rather than placeholder a new file. -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Scutum" />
   <meta property="og:title" content="Scutum — Self-hosted LLM control plane" />
@@ -31,12 +26,8 @@
   <meta name="twitter:description" content="Run 100+ LLMs through one endpoint. Audit every query, route by cost, govern by team — on your own infrastructure." />
   <meta name="twitter:image" content="https://scutum.dev/og-image.png" />
 
-  <!-- Companion product on a separate subdomain. Surfaced in sitemap.xml + via
-       the in-page CTA. Crawlers follow alternate links to discover both. -->
   <link rel="alternate" href="https://chat.scutum.dev/" title="Scutum Research" />
 
-  <!-- Schema.org Organization — single source of brand identity for crawlers,
-       sameAs array points search-engine knowledge graphs at our profiles. -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -52,48 +43,48 @@
   }
   </script>
 
-  <!-- Fonts: Inter (body + headings) and JetBrains Mono (code + terminal).
-       Loaded via Google Fonts; preconnect cuts the DNS+TLS round-trip cost. -->
+  <!-- Inter (body+headings) + JetBrains Mono (code+terminal) + Instrument
+       Serif (italic accent words and the pull-quote — used sparingly, as
+       single-word emphases the way Vercel and Stripe do). -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
 
   <style>
     /* ============================================================
-       Design system — every token from the brief lives here as a
-       CSS variable. Components below reference them by name only,
-       so a one-line palette swap updates the whole page.
+       Design tokens — single source of truth. Every component below
+       references them; one-line palette swap updates the whole page.
        ============================================================ */
     :root {
       --bg-primary:    #0A0A0B;
       --bg-secondary:  #111114;
       --bg-tertiary:   #1A1A1F;
+      --bg-elevated:   #161A20;
       --border:        #27272A;
+      --border-strong: #3F3F46;
       --text-primary:  #FAFAFA;
       --text-secondary:#A1A1AA;
       --text-tertiary: #71717A;
       --accent:        #3B82F6;
       --accent-hover:  #60A5FA;
+      --accent-soft:   rgba(59, 130, 246, 0.10);
       --success:       #10B981;
 
       --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      --font-serif:"Instrument Serif", Georgia, serif;
       --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
       --content-max: 1280px;
-      --bleed-max:   1440px;
       --pad-x-mobile:24px;
       --pad-x-tablet:48px;
       --pad-x-desk:  64px;
 
-      /* Major-section vertical rhythm. Doubled at desktop per brief. */
       --section-y-mobile: 96px;
       --section-y-desk:   128px;
     }
 
     *, *::before, *::after { box-sizing: border-box; }
-
     html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
-
     body {
       margin: 0;
       background: var(--bg-primary);
@@ -105,44 +96,88 @@
       -moz-osx-font-smoothing: grayscale;
       text-rendering: optimizeLegibility;
     }
-
     img, video { max-width: 100%; height: auto; display: block; }
-
     a { color: inherit; text-decoration: none; }
     a:hover { color: var(--accent-hover); }
 
     /* ============================================================
-       Typography scale — fluid clamps so heading sizes interpolate
-       smoothly between mobile (380px) and desktop (1440px) without
-       breakpoint discontinuities.
+       Typography — bigger, more dramatic. Hero now goes up to 104px
+       instead of 80px. Tighter tracking. Mixed-family treatment for
+       the hero h1 (Inter 600 + a single Instrument Serif italic
+       accent) gives the page its "designed" feel without a screenshot.
        ============================================================ */
     h1 {
-      font-size: clamp(48px, 6vw, 80px);
+      font-size: clamp(48px, 8vw, 104px);
       font-weight: 600;
-      line-height: 1.05;
-      letter-spacing: -0.04em;
+      line-height: 1.0;
+      letter-spacing: -0.045em;
       margin: 0;
+    }
+    h1 em {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-weight: 400;
+      letter-spacing: -0.025em;
+      color: var(--text-primary);
+      /* Slight visual weight match — serif italics read "lighter" so
+         we bump size a hair to balance against Inter 600. */
+      font-size: 1.04em;
     }
     h2 {
-      font-size: clamp(32px, 4vw, 48px);
+      font-size: clamp(32px, 4.5vw, 56px);
       font-weight: 600;
-      line-height: 1.1;
-      letter-spacing: -0.03em;
+      line-height: 1.05;
+      letter-spacing: -0.035em;
       margin: 0;
     }
+    h2 em {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      font-size: 1.04em;
+    }
     h3 {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 600;
-      line-height: 1.2;
+      line-height: 1.25;
       letter-spacing: -0.02em;
       margin: 0;
     }
-    .body-lg  { font-size: 18px; line-height: 1.6; }
+    .body-lg  { font-size: 19px; line-height: 1.55; }
     .body     { font-size: 16px; line-height: 1.6; }
     .small    { font-size: 14px; line-height: 1.5; }
-    .label    { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .label    {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-feature-settings: "tnum";
+    }
     .muted    { color: var(--text-secondary); }
     .subtle   { color: var(--text-tertiary); }
+
+    /* Section number — small monospaced "01 / Routing" labels above
+       every major section. Stripe-docs / Vercel-blog trick. They give
+       the page rhythm and a sense of structure without heavy headers. */
+    .section-num {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      color: var(--text-tertiary);
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .section-num::before {
+      content: "";
+      display: inline-block;
+      width: 24px;
+      height: 1px;
+      background: var(--border-strong);
+    }
 
     /* ============================================================
        Layout primitives
@@ -154,54 +189,39 @@
       padding-left:  var(--pad-x-mobile);
       padding-right: var(--pad-x-mobile);
     }
-    @media (min-width: 768px) {
-      .container { padding-left: var(--pad-x-tablet);  padding-right: var(--pad-x-tablet); }
-    }
-    @media (min-width: 1024px) {
-      .container { padding-left: var(--pad-x-desk); padding-right: var(--pad-x-desk); }
-    }
+    @media (min-width: 768px)  { .container { padding-left: var(--pad-x-tablet);  padding-right: var(--pad-x-tablet); } }
+    @media (min-width: 1024px) { .container { padding-left: var(--pad-x-desk);   padding-right: var(--pad-x-desk); } }
 
     section { padding-top: var(--section-y-mobile); padding-bottom: var(--section-y-mobile); }
-    @media (min-width: 1024px) {
-      section { padding-top: var(--section-y-desk); padding-bottom: var(--section-y-desk); }
-    }
+    @media (min-width: 1024px) { section { padding-top: var(--section-y-desk); padding-bottom: var(--section-y-desk); } }
 
     /* ============================================================
        Components
        ============================================================ */
-
-    /* Button — accent fill (primary) and transparent + 1px border (secondary).
-       150ms transitions, no shadow (depth via borders only per brief). */
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 12px 24px;
-      border-radius: 12px;
+      padding: 12px 22px;
+      border-radius: 10px;
       font-family: var(--font-sans);
       font-size: 15px;
       font-weight: 500;
       letter-spacing: -0.01em;
       cursor: pointer;
-      transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+      transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
       border: 1px solid transparent;
       text-decoration: none;
       white-space: nowrap;
     }
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-    }
-    .btn-primary:hover { background: var(--accent-hover); color: #fff; }
-    .btn-secondary {
-      background: transparent;
-      color: var(--text-primary);
-      border-color: var(--border);
-    }
-    .btn-secondary:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+    .btn-primary { background: var(--text-primary); color: var(--bg-primary); }
+    .btn-primary:hover { background: #ffffff; color: var(--bg-primary); }
+    .btn-secondary { background: transparent; color: var(--text-primary); border-color: var(--border); }
+    .btn-secondary:hover { border-color: var(--text-secondary); }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-accent:hover { background: var(--accent-hover); color: #fff; }
 
-    /* Card — dark surface, hairline border, generous radius + padding. */
     .card {
       background: var(--bg-secondary);
       border: 1px solid var(--border);
@@ -209,15 +229,15 @@
       padding: 32px;
     }
 
-    /* TerminalBlock — monospaced "$ command" with a copy button that confirms
-       via a brief inline checkmark (no popup, never an alert). */
+    /* TerminalBlock — no change, just slightly bigger + a different
+       header strip with a "command label" in mono. */
     .terminal {
       position: relative;
       background: var(--bg-secondary);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 24px 28px;
-      padding-right: 64px; /* leave room for the copy button */
+      padding: 22px 28px;
+      padding-right: 64px;
       font-family: var(--font-mono);
       font-size: 14px;
       line-height: 1.6;
@@ -227,10 +247,10 @@
     .terminal .prompt { color: var(--accent); user-select: none; }
     .terminal .copy {
       position: absolute;
-      top: 12px;
-      right: 12px;
+      top: 10px;
+      right: 10px;
       padding: 6px 10px;
-      border-radius: 8px;
+      border-radius: 7px;
       border: 1px solid var(--border);
       background: var(--bg-tertiary);
       color: var(--text-secondary);
@@ -243,66 +263,169 @@
     .terminal .copy:hover { color: var(--text-primary); border-color: var(--text-secondary); }
     .terminal .copy.copied { color: var(--success); border-color: var(--success); }
 
-    /* Hero radial — single subtle blue ellipse behind the H1. Pure decoration,
-       no animation per brief; transparent at 50% so the page settles cleanly. */
+    /* ============================================================
+       Hero — now a 2-column layout on desktop. Left: copy + install.
+       Right: a stylised "live config" panel that acts as the visual
+       product anchor (Vercel always pairs hero copy with a real UI
+       surface). The panel is just HTML/CSS — no images, no JS.
+       Behind everything: a subtle multi-radial mesh gradient.
+       ============================================================ */
     .hero {
       position: relative;
       isolation: isolate;
       overflow: hidden;
       padding-top: 64px;
+      padding-bottom: 96px;
     }
+    /* Multi-radial mesh, mostly imperceptible. The page reads dark, but
+       up close there's a low-saturation blue + cool-grey wash that
+       gives depth without any specific gradient being "the gradient."
+       Three stops, each at <12% opacity. */
     .hero::before {
       content: "";
       position: absolute;
       inset: 0;
       z-index: -1;
-      background: radial-gradient(ellipse at top, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
+      background:
+        radial-gradient(50% 60% at 70% 0%, rgba(59,130,246,0.16) 0%, transparent 60%),
+        radial-gradient(40% 50% at 20% 30%, rgba(99,102,241,0.10) 0%, transparent 60%),
+        radial-gradient(60% 70% at 50% 100%, rgba(20,30,50,0.40) 0%, transparent 70%);
       pointer-events: none;
     }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 56px;
+      align-items: center;
+    }
+    @media (min-width: 1024px) {
+      .hero-grid { grid-template-columns: 1.1fr 0.9fr; gap: 64px; }
+    }
+    .hero-eyebrow { color: var(--text-tertiary); margin-bottom: 24px; }
+    .hero h1 { max-width: 14ch; margin-bottom: 28px; }
+    .hero-subhead {
+      max-width: 56ch;
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+    }
+    .hero-cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+    .hero-secondary-link {
+      display: inline-block;
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-top: 16px;
+    }
+    .hero-secondary-link:hover { color: var(--text-primary); }
+    .hero-secondary-link .arrow { color: var(--accent); }
 
-    /* Sticky nav with backdrop-blur. Solid-ish so the hero text below stays
-       readable as it scrolls under. */
+    /* Hero "config preview" panel — Vercel-style product anchor.
+       Stack of micro-cards showing routing rule + budget + audit row.
+       Pure HTML/CSS — no real screenshot needed. */
+    .preview {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+    .preview-header .dots {
+      display: flex;
+      gap: 6px;
+    }
+    .preview-header .dots span {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+    }
+    .preview-header .title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+    .preview-row {
+      display: grid;
+      grid-template-columns: 80px 1fr auto;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      align-items: center;
+    }
+    .preview-row .key {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .preview-row .val { color: var(--text-primary); }
+    .preview-row .val .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: var(--accent-soft);
+      color: var(--accent-hover);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      margin-right: 4px;
+    }
+    .preview-row .val .arrow {
+      color: var(--text-tertiary);
+      margin: 0 4px;
+      font-family: var(--font-mono);
+    }
+    .preview-row .meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-tertiary);
+      white-space: nowrap;
+    }
+    .preview-row .meta .ok { color: var(--success); }
+
+    /* Sticky nav — same as before but slightly tighter. */
     .nav {
       position: sticky;
       top: 0;
       z-index: 50;
-      background: rgba(10, 10, 11, 0.8);
-      backdrop-filter: saturate(180%) blur(12px);
-      -webkit-backdrop-filter: saturate(180%) blur(12px);
+      background: rgba(10, 10, 11, 0.72);
+      backdrop-filter: saturate(180%) blur(14px);
+      -webkit-backdrop-filter: saturate(180%) blur(14px);
       border-bottom: 1px solid var(--border);
     }
-    .nav-inner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 64px;
-    }
-    .nav-brand {
-      font-size: 18px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      color: var(--text-primary);
-    }
-    .nav-links {
-      display: none;
-      gap: 32px;
-      align-items: center;
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-    .nav-links a {
-      color: var(--text-secondary);
-      font-size: 14px;
-      font-weight: 500;
-    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+    .nav-brand { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-primary); display: inline-flex; align-items: center; gap: 8px; }
+    .nav-brand img { width: 18px; height: 18px; }
+    .nav-links { display: none; gap: 28px; align-items: center; list-style: none; margin: 0; padding: 0; }
+    .nav-links a { color: var(--text-secondary); font-size: 14px; font-weight: 500; }
     .nav-links a:hover { color: var(--text-primary); }
     .nav-cta { display: none; }
     @media (min-width: 768px) {
       .nav-links { display: flex; }
       .nav-cta { display: inline-flex; }
     }
-
     .nav-burger {
       display: inline-flex;
       align-items: center;
@@ -324,50 +447,76 @@
       background: var(--bg-primary);
     }
     .nav-mobile-panel.open { display: flex; }
-    .nav-mobile-panel a {
-      padding: 12px 0;
-      color: var(--text-secondary);
-      font-size: 16px;
-    }
+    .nav-mobile-panel a { padding: 12px 0; color: var(--text-secondary); font-size: 16px; }
     .nav-mobile-panel a:hover { color: var(--text-primary); }
 
-    /* Hero content layout */
-    .hero-eyebrow {
-      color: var(--text-tertiary);
-      margin-bottom: 24px;
-    }
-    .hero h1 { max-width: 18ch; margin-bottom: 28px; }
-    .hero-subhead { max-width: 60ch; color: var(--text-secondary); margin-bottom: 36px; }
-    .hero-terminal { max-width: 600px; margin-bottom: 12px; }
-    .hero-cap { color: var(--text-tertiary); margin-bottom: 28px; }
-    .hero-secondary-link {
-      display: inline-block;
-      color: var(--text-secondary);
-    }
-    .hero-secondary-link:hover { color: var(--text-primary); }
-    .hero-secondary-link .arrow { color: var(--accent); }
-
-    /* Trust strip */
+    /* Trust strip — slightly more deliberate, with a vertical hairline
+       between each phrase to read as a "spec strip." */
     .trust {
-      padding: 64px var(--pad-x-mobile);
+      padding: 56px var(--pad-x-mobile);
       text-align: center;
       color: var(--text-tertiary);
       border-top: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
     }
+    .trust .row {
+      display: inline-flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 12px 24px;
+      max-width: 900px;
+    }
+    .trust .row span { font-size: 13px; letter-spacing: 0.01em; }
+    .trust .row .div { color: var(--border-strong); }
 
-    /* Three-feature grid */
-    .feature-grid {
+    /* ============================================================
+       Bento — feature blocks, asymmetric on desktop. 6-col grid:
+         A: cols 1-3, rows 1-2 (tall left)
+         B: cols 4-6, row 1
+         C: cols 4-6, row 2
+       Mobile: stacked 1-up. Different sizes communicate "designed,
+       not ad-hoc." Card 1 gets the most prose; B+C are tighter.
+       ============================================================ */
+    .bento {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 20px;
+      gap: 16px;
     }
     @media (min-width: 1024px) {
-      .feature-grid { grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+      .bento {
+        grid-template-columns: repeat(6, 1fr);
+        grid-auto-rows: minmax(220px, auto);
+        gap: 20px;
+      }
+      .bento .b1 { grid-column: span 3; grid-row: span 2; }
+      .bento .b2 { grid-column: span 3; }
+      .bento .b3 { grid-column: span 3; }
     }
-    .feature-card h3 { margin-bottom: 16px; }
-    .feature-card p { color: var(--text-secondary); margin: 0 0 20px; }
-    .feature-card .cap { color: var(--text-tertiary); margin: 0; }
+    .bento .card {
+      display: flex;
+      flex-direction: column;
+      transition: border-color 150ms ease, background 150ms ease;
+    }
+    .bento .card:hover { border-color: var(--border-strong); background: var(--bg-elevated); }
+    .bento .card h3 { margin-bottom: 14px; }
+    .bento .card p { color: var(--text-secondary); margin: 0 0 16px; }
+    .bento .card .cap { color: var(--text-tertiary); margin: auto 0 0; padding-top: 16px; border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.02em; }
+    .bento .b1 .ascii {
+      margin-top: 14px;
+      padding: 14px 16px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .bento .b1 .ascii .ok { color: var(--success); }
+    .bento .b1 .ascii .blk { color: #f97316; }
 
     /* Code-proof section */
     .proof-grid {
@@ -377,9 +526,7 @@
       align-items: center;
       margin-top: 48px;
     }
-    @media (min-width: 1024px) {
-      .proof-grid { grid-template-columns: 60fr 40fr; gap: 48px; }
-    }
+    @media (min-width: 1024px) { .proof-grid { grid-template-columns: 60fr 40fr; gap: 48px; } }
     .proof-code {
       background: var(--bg-secondary);
       border: 1px solid var(--border);
@@ -390,17 +537,16 @@
       line-height: 1.7;
       overflow-x: auto;
     }
-    .proof-code .kw { color: #c084fc; }      /* keyword */
-    .proof-code .fn { color: #60a5fa; }      /* function call */
-    .proof-code .str { color: #a5e3a1; }     /* string */
-    .proof-code .com { color: var(--text-tertiary); font-style: italic; }
+    .proof-code .kw { color: #c084fc; }
+    .proof-code .fn { color: #60a5fa; }
+    .proof-code .str { color: #a5e3a1; }
     .proof-cap { color: var(--text-secondary); font-size: 18px; line-height: 1.6; }
 
-    /* Demo section */
+    /* Demo */
     .demo-video {
       max-width: 1100px;
       margin: 48px auto 24px;
-      border-radius: 12px;
+      border-radius: 14px;
       border: 1px solid var(--border);
       display: block;
       width: 100%;
@@ -414,63 +560,77 @@
     }
     .demo-cta { text-align: center; margin-bottom: 56px; }
     .pull-quote {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       text-align: center;
-      font-size: 22px;
-      line-height: 1.4;
-      color: var(--text-secondary);
+      font-family: var(--font-serif);
       font-style: italic;
+      font-size: clamp(24px, 3vw, 32px);
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
     }
+    .pull-quote span { color: var(--text-tertiary); }
 
     /* Self-hosted prose */
     .prose-block { max-width: 760px; }
-    .prose-block p {
-      color: var(--text-secondary);
-      margin: 0 0 24px;
-    }
+    .prose-block p { color: var(--text-secondary); margin: 0 0 24px; }
     .prose-block p:last-child { margin-bottom: 0; }
 
-    /* Capabilities strip */
+    /* Capabilities — bento for the two columns + an inline product chip
+       row at the top showing supported providers. Stripe-style "we run
+       on top of all the things you already know" pattern. */
+    .caps-providers {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 32px 0 56px;
+    }
+    .caps-providers span {
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      letter-spacing: 0.02em;
+    }
     .caps-grid {
       display: grid;
       grid-template-columns: 1fr;
       gap: 32px;
-      margin-top: 48px;
     }
-    @media (min-width: 768px) {
-      .caps-grid { grid-template-columns: 1fr 1fr; gap: 64px; }
-    }
-    .caps-col h4.label { color: var(--text-tertiary); margin: 0 0 20px; font-weight: 500; }
-    .caps-col ul {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
+    @media (min-width: 768px) { .caps-grid { grid-template-columns: 1fr 1fr; gap: 56px; } }
+    .caps-col h4.label { color: var(--text-tertiary); margin: 0 0 18px; font-weight: 500; }
+    .caps-col ul { list-style: none; margin: 0; padding: 0; }
     .caps-col li {
-      padding: 10px 0;
+      padding: 12px 0;
       border-bottom: 1px solid var(--border);
       color: var(--text-secondary);
       font-size: 14px;
+      display: flex;
+      gap: 12px;
+      align-items: baseline;
     }
     .caps-col li:last-child { border-bottom: 0; }
-    .caps-footer-link {
-      display: block;
-      text-align: center;
-      margin-top: 32px;
-      color: var(--text-secondary);
+    .caps-col li::before {
+      content: "→";
+      color: var(--text-tertiary);
+      font-family: var(--font-mono);
+      font-size: 13px;
     }
+    .caps-footer-link { display: block; text-align: center; margin-top: 40px; color: var(--text-secondary); }
     .caps-footer-link:hover { color: var(--accent-hover); }
 
     /* Pricing */
     .pricing-grid {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 20px;
+      gap: 16px;
       margin-top: 48px;
     }
     @media (min-width: 1024px) {
-      .pricing-grid { grid-template-columns: 1fr 1fr 1fr; gap: 24px; align-items: stretch; }
+      .pricing-grid { grid-template-columns: 1fr 1fr 1fr; gap: 20px; align-items: stretch; }
     }
     .tier {
       background: var(--bg-secondary);
@@ -479,95 +639,60 @@
       padding: 32px;
       display: flex;
       flex-direction: column;
+      transition: border-color 150ms ease;
     }
-    .tier.featured { border-color: var(--accent); }
+    .tier:hover { border-color: var(--border-strong); }
+    .tier.featured {
+      border-color: var(--accent);
+      background:
+        linear-gradient(180deg, rgba(59,130,246,0.05) 0%, transparent 50%),
+        var(--bg-secondary);
+    }
     .tier-name { color: var(--text-tertiary); margin: 0 0 12px; }
-    .tier-price {
-      font-size: 32px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      margin: 0 0 24px;
-    }
-    .tier ul {
-      list-style: none;
-      padding: 0;
-      margin: 0 0 32px;
-      flex-grow: 1;
-    }
-    .tier ul li {
-      padding: 8px 0;
-      color: var(--text-secondary);
-      font-size: 14px;
-      border-bottom: 1px solid var(--border);
-    }
+    .tier-price { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 24px; }
+    .tier ul { list-style: none; padding: 0; margin: 0 0 32px; flex-grow: 1; }
+    .tier ul li { padding: 8px 0; color: var(--text-secondary); font-size: 14px; border-bottom: 1px solid var(--border); }
     .tier ul li:last-child { border-bottom: 0; }
     .tier .btn { width: 100%; }
-    .pricing-foot {
-      text-align: center;
-      color: var(--text-tertiary);
-      margin-top: 32px;
-    }
+    .pricing-foot { text-align: center; color: var(--text-tertiary); margin-top: 32px; }
 
     /* Final CTA band */
-    .cta-band {
-      border-top: 1px solid var(--border);
-      text-align: center;
-    }
+    .cta-band { border-top: 1px solid var(--border); text-align: center; }
     .cta-band h2 { margin-bottom: 32px; }
     .cta-band .terminal { max-width: 700px; margin: 0 auto 24px; text-align: left; }
-    .cta-links {
-      display: inline-flex;
-      gap: 12px;
-      align-items: center;
-      color: var(--text-secondary);
-    }
+    .cta-links { display: inline-flex; gap: 12px; align-items: center; color: var(--text-secondary); }
     .cta-links a:hover { color: var(--accent-hover); }
     .cta-links .dot { color: var(--text-tertiary); }
 
     /* Footer */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 64px var(--pad-x-mobile) 32px;
-    }
+    footer { border-top: 1px solid var(--border); padding: 64px var(--pad-x-mobile) 32px; }
     @media (min-width: 768px) { footer { padding: 64px var(--pad-x-tablet) 32px; } }
     @media (min-width: 1024px) { footer { padding: 64px var(--pad-x-desk) 32px; } }
     .footer-inner { max-width: var(--content-max); margin: 0 auto; }
-    .footer-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 32px;
-      margin-bottom: 48px;
-    }
-    @media (min-width: 768px) { .footer-grid { grid-template-columns: 1fr 1fr 1fr; } }
+    .footer-grid { display: grid; grid-template-columns: 1fr; gap: 32px; margin-bottom: 48px; }
+    @media (min-width: 768px) { .footer-grid { grid-template-columns: 1.5fr 1fr 1fr; } }
+    .footer-brand { display: flex; flex-direction: column; gap: 16px; max-width: 320px; }
+    .footer-brand .name { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+    .footer-brand p { font-size: 13px; color: var(--text-tertiary); margin: 0; }
     .footer-col h4 { color: var(--text-tertiary); margin: 0 0 20px; font-weight: 500; }
     .footer-col ul { list-style: none; margin: 0; padding: 0; }
     .footer-col li { margin-bottom: 12px; }
     .footer-col a { color: var(--text-secondary); font-size: 14px; }
     .footer-col a:hover { color: var(--text-primary); }
-    .footer-social {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
+    .footer-social { display: flex; gap: 12px; margin-top: 8px; }
     .footer-social a {
-      width: 40px; height: 40px;
+      width: 36px; height: 36px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 8px;
       color: var(--text-secondary);
       transition: color 150ms ease, border-color 150ms ease;
     }
     .footer-social a:hover { color: var(--text-primary); border-color: var(--text-secondary); }
-    .footer-social svg { width: 18px; height: 18px; fill: currentColor; }
-    .footer-bottom {
-      padding-top: 32px;
-      border-top: 1px solid var(--border);
-      text-align: center;
-      color: var(--text-tertiary);
-      font-size: 13px;
-    }
+    .footer-social svg { width: 16px; height: 16px; fill: currentColor; }
+    .footer-bottom { padding-top: 32px; border-top: 1px solid var(--border); text-align: center; color: var(--text-tertiary); font-size: 13px; }
   </style>
 </head>
 <body>
@@ -575,8 +700,10 @@
   <!-- ===== TOP NAV ===== -->
   <header class="nav" role="banner">
     <div class="container nav-inner">
-      <a href="/" class="nav-brand">Scutum</a>
-
+      <a href="/" class="nav-brand">
+        <img src="/scutum-mark.svg" alt="" />
+        Scutum
+      </a>
       <nav aria-label="Primary">
         <ul class="nav-links">
           <li><a href="/#gateway">Gateway</a></li>
@@ -585,9 +712,7 @@
           <li><a href="/#pricing">Pricing</a></li>
         </ul>
       </nav>
-
       <a href="/#install" class="btn btn-primary nav-cta">Get started</a>
-
       <button class="nav-burger" id="nav-burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav-mobile">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
@@ -604,63 +729,120 @@
   <!-- ===== HERO ===== -->
   <section class="hero" id="gateway">
     <div class="container">
-      <p class="hero-eyebrow label">Self-hosted · OpenAI-compatible · Offline license</p>
-      <h1>Run every LLM through one self-hosted gateway.</h1>
-      <p class="body-lg hero-subhead">
-        100+ models behind one OpenAI-compatible endpoint. Per-team budgets enforced before tokens burn.
-        Every query auditable. Postgres as source of truth. Your data never leaves your infra.
-      </p>
-      <div class="hero-terminal">
-        <div class="terminal" data-copy="curl -fsSL https://scutum.dev/install.sh | sh">
-          <span class="prompt">$ </span>curl -fsSL https://scutum.dev/install.sh | sh
-          <button class="copy" type="button" aria-label="Copy install command">Copy</button>
+      <div class="hero-grid">
+        <div>
+          <p class="hero-eyebrow label">Self-hosted · OpenAI-compatible · Offline license</p>
+          <h1>Run <em>every</em> LLM through one self-hosted gateway.</h1>
+          <p class="body-lg hero-subhead">
+            100+ models behind one OpenAI-compatible endpoint. Per-team budgets enforced before tokens burn.
+            Every query auditable. Postgres as source of truth. Your data never leaves your infra.
+          </p>
+
+          <div class="hero-cta-row">
+            <a href="/try/" class="btn btn-accent">Start 30-day trial →</a>
+            <a href="/docs/" class="btn btn-secondary">Read the docs</a>
+          </div>
+
+          <div style="max-width: 540px;">
+            <div class="terminal" data-copy="curl -fsSL https://scutum.dev/install.sh | sh">
+              <span class="prompt">$ </span>curl -fsSL https://scutum.dev/install.sh | sh
+              <button class="copy" type="button" aria-label="Copy install command">Copy</button>
+            </div>
+          </div>
+
+          <a href="https://chat.scutum.dev/" class="hero-secondary-link">
+            Not a developer? Try our AI search product <span class="arrow">→</span> chat.scutum.dev
+          </a>
+        </div>
+
+        <!-- Visual product anchor — a "live config" panel made entirely of
+             HTML. No image, no JS. Stripe / Vercel use real product surfaces
+             as the hero anchor; here, a stylised one. -->
+        <div>
+          <div class="preview" aria-hidden="true">
+            <div class="preview-header">
+              <span class="title">scutum / routing.yaml</span>
+              <span class="dots"><span></span><span></span><span></span></span>
+            </div>
+
+            <div class="preview-row">
+              <span class="key">Route</span>
+              <span class="val">
+                <span class="pill">claude-sonnet-4</span>
+                <span class="arrow">→</span>
+                <span class="pill">gpt-5</span>
+                <span class="arrow">→</span>
+                <span class="pill">gemini-3</span>
+              </span>
+              <span class="meta"><span class="ok">●</span> healthy</span>
+            </div>
+
+            <div class="preview-row">
+              <span class="key">Budget</span>
+              <span class="val">team:engineering · $2,400 / $4,000 (60%)</span>
+              <span class="meta">enforced</span>
+            </div>
+
+            <div class="preview-row">
+              <span class="key">Audit</span>
+              <span class="val">12,438 calls · last query @ 09:41 UTC</span>
+              <span class="meta">streaming</span>
+            </div>
+
+            <div class="preview-row">
+              <span class="key">Cache</span>
+              <span class="val">semantic · 24% hit rate · saved $312 today</span>
+              <span class="meta">on</span>
+            </div>
+          </div>
         </div>
       </div>
-      <p class="small hero-cap">
-        Installs in under 60 seconds. Docker or Podman. Linux, macOS, ARM64 supported.
-      </p>
-      <a href="https://chat.scutum.dev/" class="hero-secondary-link">
-        Not a developer? Try our AI search product <span class="arrow">→</span> chat.scutum.dev
-      </a>
     </div>
   </section>
 
   <!-- ===== TRUST STRIP ===== -->
   <div class="trust">
-    <p class="small" style="margin:0">
-      OpenAI-compatible API · 100+ models · Postgres source of truth · Ed25519 offline license · Self-hosted
-    </p>
+    <div class="row">
+      <span>OpenAI-compatible</span>
+      <span class="div">/</span>
+      <span>100+ models</span>
+      <span class="div">/</span>
+      <span>Postgres source of truth</span>
+      <span class="div">/</span>
+      <span>Ed25519 offline license</span>
+      <span class="div">/</span>
+      <span>Self-hosted</span>
+    </div>
   </div>
 
-  <!-- ===== THREE FEATURE BLOCKS ===== -->
+  <!-- ===== FEATURE BENTO (3 cards, asymmetric) ===== -->
   <section>
     <div class="container">
-      <div class="feature-grid">
-        <article class="card feature-card">
+      <span class="section-num">01 / Why Scutum</span>
+      <h2 style="margin-bottom: 56px; max-width: 24ch;">One control plane, <em>built</em> for self-hosted teams.</h2>
+
+      <div class="bento">
+        <article class="card b1">
           <h3>Cost predicted before tokens burn</h3>
-          <p>
-            Per-team budgets enforced pre-request, not after the bill arrives. tiktoken-based prediction
-            refuses calls that would breach budget — before they cost you anything.
-          </p>
-          <p class="small cap">Built as a LiteLLM hook.</p>
+          <p>Per-team budgets enforced pre-request, not after the bill arrives. tiktoken-based prediction refuses calls that would breach budget — before they cost you anything.</p>
+
+          <pre class="ascii"><span class="ok">✓</span> team:eng     prompt → 1,240 tok ≈ $0.018  <span class="ok">allow</span>
+<span class="ok">✓</span> team:eng     prompt → 8,400 tok ≈ $0.121  <span class="ok">allow</span>
+<span class="blk">✗</span> team:demo    prompt →  420 tok ≈ $0.006  <span class="blk">block</span> (over $50/day)</pre>
+
+          <p class="cap">Built as a LiteLLM hook.</p>
         </article>
 
-        <article class="card feature-card">
+        <article class="card b2">
           <h3>Your data, your infra, your audit log</h3>
-          <p>
-            Every request logged with team, project, user, model, cost, and latency. Postgres is the
-            single source of truth. Ed25519 offline licensing — no phone-home, no vendor cloud.
-          </p>
-          <p class="small cap">Air-gapped deployments supported.</p>
+          <p>Every request logged with team, project, user, model, cost, and latency. Postgres is the single source of truth. Ed25519 offline licensing — no phone-home, no vendor cloud.</p>
+          <p class="cap">Air-gapped deployments supported.</p>
         </article>
 
-        <article class="card feature-card">
+        <article class="card b3">
           <h3>100+ models behind one API</h3>
-          <p>
-            OpenAI, Anthropic, Google, Meta, Mistral, Cohere, xAI, DeepSeek, plus self-hosted via
-            Ollama and vLLM. Routing policies in Cedar. Fallback chains, semantic caching, A/B traffic splits.
-          </p>
-          <p class="small cap">Drop-in replacement for any OpenAI SDK call.</p>
+          <p>OpenAI, Anthropic, Google, Meta, Mistral, Cohere, xAI, DeepSeek, plus self-hosted via Ollama and vLLM. Routing in Cedar. Fallbacks, caching, A/B splits.</p>
+          <p class="cap">Drop-in replacement for any OpenAI SDK call.</p>
         </article>
       </div>
     </div>
@@ -669,10 +851,10 @@
   <!-- ===== CODE PROOF ===== -->
   <section>
     <div class="container">
-      <h2>A drop-in replacement, not a rewrite</h2>
-      <p class="body-lg muted" style="max-width:60ch; margin-top:20px;">
-        Point your existing OpenAI SDK at Scutum. Get cost tracking, audit, routing, and budgets — without
-        touching your application code.
+      <span class="section-num">02 / Drop-in</span>
+      <h2 style="max-width: 22ch;">A drop-in replacement, not a rewrite.</h2>
+      <p class="body-lg muted" style="max-width:60ch; margin-top:24px;">
+        Point your existing OpenAI SDK at Scutum. Get cost tracking, audit, routing, and budgets — without touching your application code.
       </p>
 
       <div class="proof-grid">
@@ -698,18 +880,13 @@ response = client.chat.completions.<span class="fn">create</span>(
   <!-- ===== LIVE DEMO ===== -->
   <section>
     <div class="container">
-      <h2>See Scutum running. Live.</h2>
-      <p class="body-lg muted" style="max-width:80ch; margin-top:20px;">
-        chat.scutum.dev is a Perplexity-style search product running on Scutum gateway. Ask any question
-        and the answer can be an interactive component — calculators, charts, comparison tables — rendered
-        in real React, sandboxed, with sources cited inline. Every query routes through your gateway, every
-        model is swappable, every answer hits your audit log.
+      <span class="section-num">03 / Live demo</span>
+      <h2 style="max-width: 20ch;">See Scutum running. <em>Live.</em></h2>
+      <p class="body-lg muted" style="max-width:80ch; margin-top:24px;">
+        chat.scutum.dev is a Perplexity-style search product running on Scutum gateway. Ask any question and the answer can be an interactive component — calculators, charts, comparison tables — rendered in real React, sandboxed, with sources cited inline. Every query routes through your gateway, every model is swappable, every answer hits your audit log.
       </p>
 
       <video class="demo-video" autoplay loop muted playsinline poster="/demo-sprint-planner-poster.jpg">
-        <!-- ?v=1 cache-bust forces Cloudflare's edge cache to fetch fresh
-             when we updated the asset; bump the integer next time the
-             video changes. -->
         <source src="/demo-sprint-planner.mp4?v=1" type="video/mp4" />
         Your browser doesn't support inline video — visit
         <a href="https://chat.scutum.dev/">chat.scutum.dev</a> to try it.
@@ -720,11 +897,11 @@ response = client.chat.completions.<span class="fn">create</span>(
       </p>
 
       <div class="demo-cta">
-        <a href="https://chat.scutum.dev/" class="btn btn-primary">Try chat.scutum.dev →</a>
+        <a href="https://chat.scutum.dev/" class="btn btn-accent">Try chat.scutum.dev →</a>
       </div>
 
       <p class="pull-quote">
-        Powered by Scutum. Every query is auditable. Every model is pluggable.
+        Powered by Scutum. Every query is <em>auditable.</em> <span>·</span> Every model is <em>pluggable.</em>
       </p>
     </div>
   </section>
@@ -732,18 +909,14 @@ response = client.chat.completions.<span class="fn">create</span>(
   <!-- ===== WHY SELF-HOSTED ===== -->
   <section>
     <div class="container">
-      <h2>Built for teams that can't send data to a vendor cloud</h2>
+      <span class="section-num">04 / Self-hosted</span>
+      <h2 style="max-width: 22ch;">Built for teams that <em>can't</em> send data to a vendor cloud.</h2>
       <div class="prose-block" style="margin-top: 40px;">
         <p class="body-lg">
-          If you're in fintech, healthcare, defense, or any team handling proprietary code or customer data,
-          sending every LLM call through Portkey or Helicone isn't an option. You need the same control
-          plane those products offer — cost governance, audit logs, multi-model routing — but running on
-          infrastructure you control.
+          If you're in fintech, healthcare, defense, or any team handling proprietary code or customer data, sending every LLM call through Portkey or Helicone isn't an option. You need the same control plane those products offer — cost governance, audit logs, multi-model routing — but running on infrastructure you control.
         </p>
         <p class="body-lg">
-          Scutum is that control plane. Postgres as the source of truth. Ed25519-signed offline licenses.
-          Air-gapped deployments supported. Same enterprise features as the SaaS alternatives, none of the
-          data exfiltration risk.
+          Scutum is that control plane. Postgres as the source of truth. Ed25519-signed offline licenses. Air-gapped deployments supported. Same enterprise features as the SaaS alternatives, none of the data exfiltration risk.
         </p>
       </div>
     </div>
@@ -752,7 +925,12 @@ response = client.chat.completions.<span class="fn">create</span>(
   <!-- ===== CAPABILITIES ===== -->
   <section>
     <div class="container">
-      <h2>Everything in one control plane</h2>
+      <span class="section-num">05 / Capabilities</span>
+      <h2 style="max-width: 22ch;">Everything in <em>one</em> control plane.</h2>
+
+      <div class="caps-providers">
+        <span>OpenAI</span><span>Anthropic</span><span>Google</span><span>Meta</span><span>Mistral</span><span>Cohere</span><span>xAI</span><span>DeepSeek</span><span>Bedrock</span><span>Vertex</span><span>Azure</span><span>Ollama</span><span>vLLM</span>
+      </div>
 
       <div class="caps-grid">
         <div class="caps-col">
@@ -766,7 +944,6 @@ response = client.chat.completions.<span class="fn">create</span>(
             <li>Conditional rules per team or cost band</li>
           </ul>
         </div>
-
         <div class="caps-col">
           <h4 class="label">Governance &amp; Compliance</h4>
           <ul>
@@ -788,7 +965,8 @@ response = client.chat.completions.<span class="fn">create</span>(
   <!-- ===== PRICING ===== -->
   <section id="pricing">
     <div class="container">
-      <h2>Simple pricing. Self-hosted always.</h2>
+      <span class="section-num">06 / Pricing</span>
+      <h2 style="max-width: 24ch;">Simple pricing. <em>Self-hosted</em> always.</h2>
 
       <div class="pricing-grid">
         <article class="tier">
@@ -812,7 +990,7 @@ response = client.chat.completions.<span class="fn">create</span>(
             <li>Semantic caching</li>
             <li>Chat Team for your org</li>
           </ul>
-          <a href="/try/" class="btn btn-primary">Start 30-day trial →</a>
+          <a href="/try/" class="btn btn-accent">Start 30-day trial →</a>
         </article>
 
         <article class="tier">
@@ -838,7 +1016,7 @@ response = client.chat.completions.<span class="fn">create</span>(
   <!-- ===== FINAL CTA ===== -->
   <section class="cta-band" id="install">
     <div class="container">
-      <h2>Run it on your infra in under a minute.</h2>
+      <h2 style="max-width: 24ch; margin: 0 auto 32px;">Run it on your infra in <em>under a minute.</em></h2>
       <div class="terminal" data-copy="curl -fsSL https://scutum.dev/install.sh | sh">
         <span class="prompt">$ </span>curl -fsSL https://scutum.dev/install.sh | sh
         <button class="copy" type="button" aria-label="Copy install command">Copy</button>
@@ -855,6 +1033,19 @@ response = client.chat.completions.<span class="fn">create</span>(
   <footer>
     <div class="footer-inner">
       <div class="footer-grid">
+        <div class="footer-brand">
+          <span class="name">Scutum</span>
+          <p>Self-hosted LLM control plane. Audit, routing, cost governance — running on infrastructure you control.</p>
+          <div class="footer-social">
+            <a href="https://www.linkedin.com/company/scutum-ai" aria-label="LinkedIn" rel="noopener">
+              <svg viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+            </a>
+            <a href="https://x.com/scutum_ai" aria-label="Twitter / X" rel="noopener">
+              <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </a>
+          </div>
+        </div>
+
         <div class="footer-col">
           <h4 class="label">Product</h4>
           <ul>
@@ -874,19 +1065,6 @@ response = client.chat.completions.<span class="fn">create</span>(
             <li><a href="/terms/">Terms</a></li>
           </ul>
         </div>
-
-        <div class="footer-col">
-          <h4 class="label">Stay in touch</h4>
-          <div class="footer-social">
-            <a href="https://www.linkedin.com/company/scutum-ai" aria-label="LinkedIn" rel="noopener">
-              <svg viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
-            </a>
-            <a href="https://x.com/scutum_ai" aria-label="Twitter / X" rel="noopener">
-              <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-            </a>
-          </div>
-          <p class="small subtle" style="margin:0;">Updates ~once a month, no spam.</p>
-        </div>
       </div>
 
       <div class="footer-bottom">
@@ -895,18 +1073,8 @@ response = client.chat.completions.<span class="fn">create</span>(
     </div>
   </footer>
 
-  <!--
-    ============================================================
-    Inline JS — only what the brief actually requires:
-      1. Mobile-menu toggle
-      2. Copy-to-clipboard for terminal blocks with visual confirm
-    No analytics, no animations, no third-party tags.
-    ============================================================
-  -->
   <script>
     (function () {
-      // Mobile menu toggle. Sets aria-expanded so the hamburger button
-      // round-trips correctly with screen readers.
       var burger = document.getElementById('nav-burger');
       var panel  = document.getElementById('nav-mobile');
       if (burger && panel) {
@@ -914,8 +1082,6 @@ response = client.chat.completions.<span class="fn">create</span>(
           var open = panel.classList.toggle('open');
           burger.setAttribute('aria-expanded', open ? 'true' : 'false');
         });
-        // Close on link tap so the user lands on the section without
-        // having to dismiss the menu manually.
         panel.addEventListener('click', function (e) {
           if (e.target.tagName === 'A') {
             panel.classList.remove('open');
@@ -924,10 +1090,6 @@ response = client.chat.completions.<span class="fn">create</span>(
         });
       }
 
-      // Copy-to-clipboard for any element with [data-copy]. The button
-      // briefly shows "Copied ✓" via the .copied modifier, then reverts.
-      // Falls back to a textarea + execCommand on older browsers where
-      // navigator.clipboard isn't available (e.g. iOS PWAs in older WebViews).
       document.querySelectorAll('[data-copy]').forEach(function (el) {
         var btn = el.querySelector('.copy');
         if (!btn) return;
@@ -953,7 +1115,6 @@ response = client.chat.completions.<span class="fn">create</span>(
           }
         });
       });
-
       function fallbackCopy(text) {
         var ta = document.createElement('textarea');
         ta.value = text;
