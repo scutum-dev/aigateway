@@ -330,9 +330,52 @@
     .hero-secondary-link:hover { color: var(--text-primary); }
     .hero-secondary-link .arrow { color: var(--accent); }
 
-    /* Hero "config preview" panel — Vercel-style product anchor.
-       Stack of micro-cards showing routing rule + budget + audit row.
-       Pure HTML/CSS — no real screenshot needed. */
+    /* Hero shot — real admin-ui screenshot wrapped in a stylised browser
+       chrome (3 dots + URL bar). Replaces the previous CSS-only "preview"
+       panel; the actual product surface is more convincing than any
+       mockup. Frame is pure CSS, image is a 3000×1700 PNG that renders
+       crisp at retina without an explicit srcset. */
+    .hero-shot { width: 100%; }
+    .shot-frame {
+      margin: 0;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 200ms ease;
+    }
+    .shot-frame:hover { border-color: var(--border-strong); }
+    .shot-chrome {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border);
+    }
+    .shot-dots { display: flex; gap: 6px; }
+    .shot-dots span {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+    }
+    .shot-url {
+      flex: 1;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-tertiary);
+      letter-spacing: 0.02em;
+    }
+    .shot-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    /* Legacy preview panel styles (kept around in case we ever want to
+       fall back to the CSS-only mockup; not used currently). */
     .preview {
       background: var(--bg-secondary);
       border: 1px solid var(--border);
@@ -764,43 +807,27 @@
         <!-- Visual product anchor — a "live config" panel made entirely of
              HTML. No image, no JS. Stripe / Vercel use real product surfaces
              as the hero anchor; here, a stylised one. -->
-        <div>
-          <div class="preview" aria-hidden="true">
-            <div class="preview-header">
-              <span class="title">scutum / routing.yaml</span>
-              <span class="dots"><span></span><span></span><span></span></span>
+        <div class="hero-shot">
+          <!-- Real admin-ui screenshot wrapped in a stylised browser chrome
+               (3 dots + a fake address-bar). The chrome is pure CSS — no
+               extra image needed — and it visually frames the screenshot
+               as "this is the actual product UI" rather than a hero
+               graphic. The PNG is 3000×1700 (retina), source set so it
+               renders crisp at 1x and 2x without bloating mobile. -->
+          <figure class="shot-frame">
+            <div class="shot-chrome">
+              <span class="shot-dots"><span></span><span></span><span></span></span>
+              <span class="shot-url">scutum.your-company.com / cost</span>
             </div>
-
-            <div class="preview-row">
-              <span class="key">Route</span>
-              <span class="val">
-                <span class="pill">claude-sonnet-4</span>
-                <span class="arrow">→</span>
-                <span class="pill">gpt-5</span>
-                <span class="arrow">→</span>
-                <span class="pill">gemini-3</span>
-              </span>
-              <span class="meta"><span class="ok">●</span> healthy</span>
-            </div>
-
-            <div class="preview-row">
-              <span class="key">Budget</span>
-              <span class="val">team:engineering · $2,400 / $4,000 (60%)</span>
-              <span class="meta">enforced</span>
-            </div>
-
-            <div class="preview-row">
-              <span class="key">Audit</span>
-              <span class="val">12,438 calls · last query @ 09:41 UTC</span>
-              <span class="meta">streaming</span>
-            </div>
-
-            <div class="preview-row">
-              <span class="key">Cache</span>
-              <span class="val">semantic · 24% hit rate · saved $312 today</span>
-              <span class="meta">on</span>
-            </div>
-          </div>
+            <img
+              src="/admin-screenshot.png?v=1"
+              alt="Scutum admin console — cost dashboard with sparkline, model usage donut, and per-model spend table"
+              width="1501"
+              height="855"
+              loading="eager"
+              decoding="async"
+            />
+          </figure>
         </div>
       </div>
     </div>
