@@ -277,20 +277,26 @@
       padding-top: 64px;
       padding-bottom: 96px;
     }
-    /* Multi-radial mesh, mostly imperceptible. The page reads dark, but
-       up close there's a low-saturation blue + cool-grey wash that
-       gives depth without any specific gradient being "the gradient."
-       Three stops, each at <12% opacity. */
+    /* Three-stop mesh — two cool, one warm. Positions deliberately
+       avoid the right-column "preview" panel so the colour actually
+       shows through. Opacity bumped to 0.30/0.22/0.16 — visible
+       without crossing into Stripe-rainbow territory.
+       - Blue (top-left, around the H1):       brings life to the headline
+       - Indigo (mid-right, peeking out):       sits just below the preview
+       - Amber (bottom-left):                   warm break, prevents the
+                                                page reading as all-cool */
     .hero::before {
       content: "";
       position: absolute;
-      inset: 0;
+      inset: -10% -5%;
       z-index: -1;
       background:
-        radial-gradient(50% 60% at 70% 0%, rgba(59,130,246,0.16) 0%, transparent 60%),
-        radial-gradient(40% 50% at 20% 30%, rgba(99,102,241,0.10) 0%, transparent 60%),
-        radial-gradient(60% 70% at 50% 100%, rgba(20,30,50,0.40) 0%, transparent 70%);
+        radial-gradient(45% 55% at 18% 18%,  rgba(59,130,246,0.30) 0%, transparent 65%),
+        radial-gradient(40% 50% at 92% 78%,  rgba(99,102,241,0.22) 0%, transparent 60%),
+        radial-gradient(35% 40% at 8%  85%,  rgba(245,158, 11,0.16) 0%, transparent 60%),
+        radial-gradient(70% 80% at 50% 110%, rgba(10,12,18,0.55)   0%, transparent 70%);
       pointer-events: none;
+      filter: blur(2px); /* softens edges so it reads as ambient light */
     }
     .hero-grid {
       display: grid;
