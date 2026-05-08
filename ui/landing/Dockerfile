@@ -8,6 +8,11 @@ COPY og-image.png /usr/share/nginx/html/og-image.png
 # Hero demo video for the "See Scutum running. Live." section in index.html.
 # ~7MB optional asset; page degrades gracefully if absent.
 COPY demo-sprint-planner.mp4 /usr/share/nginx/html/demo-sprint-planner.mp4
+# Real admin-ui product screenshots — used as the hero visual anchor in
+# index.html (cost dashboard) and reserved for the routing-policies
+# section if we wire it in later. PNG, 3000×1700, retina-quality.
+COPY admin-screenshot.png /usr/share/nginx/html/admin-screenshot.png
+COPY admin-routing.png /usr/share/nginx/html/admin-routing.png
 COPY install.sh /usr/share/nginx/html/install.sh
 COPY index.md /usr/share/nginx/html/index.md
 COPY release /usr/share/nginx/html/release
