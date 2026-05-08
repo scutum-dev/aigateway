@@ -5,6 +5,9 @@ COPY sitemap.xml /usr/share/nginx/html/sitemap.xml
 COPY scutum-mark.svg /usr/share/nginx/html/scutum-mark.svg
 COPY scutum-wordmark.svg /usr/share/nginx/html/scutum-wordmark.svg
 COPY og-image.png /usr/share/nginx/html/og-image.png
+# Hero demo video for the "See Scutum running. Live." section in index.html.
+# ~7MB optional asset; page degrades gracefully if absent.
+COPY demo-sprint-planner.mp4 /usr/share/nginx/html/demo-sprint-planner.mp4
 COPY install.sh /usr/share/nginx/html/install.sh
 COPY index.md /usr/share/nginx/html/index.md
 COPY release /usr/share/nginx/html/release
