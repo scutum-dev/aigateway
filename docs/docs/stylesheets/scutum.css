@@ -1,73 +1,46 @@
 /* ============================================================================
    Scutum docs — brand override for mkdocs-material
-   Matches the scutum.dev landing page: B&W minimalism, generous whitespace,
-   Helvetica body + Instrument Serif italic for hero accents.
+   Aligned with the scutum.dev landing palette: dark-only, near-black
+   surfaces, blue accent, Inter for body, JetBrains Mono for code.
+   No serif headings — the landing committed to Inter 600 throughout, so
+   the docs match.
    ========================================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* ----- Light scheme: pure white, near-black text ----- */
-[data-md-color-scheme="default"] {
-  --md-default-bg-color:        #ffffff;
-  --md-default-fg-color:        #0a0a0a;
-  --md-default-fg-color--light: #4a4a4a;
-  --md-default-fg-color--lighter: #8a8a8a;
-  --md-default-fg-color--lightest: #e6e6e6;
-
-  --md-primary-fg-color:        #0a0a0a;
-  --md-primary-fg-color--light: #1a1a1a;
-  --md-primary-fg-color--dark:  #000000;
-  --md-primary-bg-color:        #ffffff;
-  --md-primary-bg-color--light: #ffffff;
-
-  --md-accent-fg-color:         #0a0a0a;
-  --md-accent-fg-color--transparent: rgba(10, 10, 10, 0.08);
-  --md-accent-bg-color:         #ffffff;
-  --md-accent-bg-color--light:  #fafafa;
-
-  --md-typeset-a-color:         #0a0a0a;
-
-  --md-code-bg-color:           #f6f6f6;
-  --md-code-fg-color:           #1a1a1a;
-  --md-code-hl-color:           #e6e6e6;
-
-  --md-footer-bg-color:         #ffffff;
-  --md-footer-bg-color--dark:   #fafafa;
-  --md-footer-fg-color:         #0a0a0a;
-  --md-footer-fg-color--light:  #4a4a4a;
-  --md-footer-fg-color--lighter: #8a8a8a;
-}
-
-/* ----- Dark scheme: deep black with crisp white text ----- */
+/* ----- Landing tokens, mapped onto Material's CSS variable surface -------- */
 [data-md-color-scheme="slate"] {
-  --md-default-bg-color:        #0a0a0a;
-  --md-default-fg-color:        #f4f4f4;
-  --md-default-fg-color--light: #b8b8b8;
-  --md-default-fg-color--lighter: #6a6a6a;
-  --md-default-fg-color--lightest: #2a2a2a;
+  /* Backgrounds (3 stops to match landing's bg-primary/secondary/tertiary). */
+  --md-default-bg-color:        #0A0A0B;       /* page background  */
+  --md-default-fg-color:        #FAFAFA;       /* primary text     */
+  --md-default-fg-color--light: #A1A1AA;       /* secondary text   */
+  --md-default-fg-color--lighter: #71717A;     /* tertiary text    */
+  --md-default-fg-color--lightest: #27272A;    /* hairline border  */
 
-  --md-primary-fg-color:        #ffffff;
-  --md-primary-fg-color--light: #f4f4f4;
-  --md-primary-fg-color--dark:  #ffffff;
-  --md-primary-bg-color:        #0a0a0a;
-  --md-primary-bg-color--light: #0a0a0a;
+  /* Header / nav surfaces lean slightly elevated (#111114). */
+  --md-primary-fg-color:        #FAFAFA;
+  --md-primary-fg-color--light: #FAFAFA;
+  --md-primary-fg-color--dark:  #FAFAFA;
+  --md-primary-bg-color:        #111114;
+  --md-primary-bg-color--light: #111114;
 
-  --md-accent-fg-color:         #ffffff;
-  --md-accent-fg-color--transparent: rgba(255, 255, 255, 0.08);
+  /* Accent: landing blue (#3B82F6) for links + active states. */
+  --md-accent-fg-color:         #3B82F6;
+  --md-accent-fg-color--transparent: rgba(59, 130, 246, 0.10);
 
-  --md-typeset-a-color:         #ffffff;
+  --md-typeset-a-color:         #60A5FA;       /* accent-hover for links */
 
-  --md-code-bg-color:           #161616;
-  --md-code-fg-color:           #e8e8e8;
-  --md-code-hl-color:           #2a2a2a;
+  --md-code-bg-color:           #111114;
+  --md-code-fg-color:           #E8E8E8;
+  --md-code-hl-color:           #1A1A1F;
 
-  --md-footer-bg-color:         #0a0a0a;
-  --md-footer-bg-color--dark:   #050505;
+  --md-footer-bg-color:         #0A0A0B;
+  --md-footer-bg-color--dark:   #0A0A0B;
 }
 
-/* ----- Typography ----- */
+/* ----- Typography ------------------------------------------------------- */
 body, .md-typeset {
-  font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   font-feature-settings: "ss01", "ss02", "cv11";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -79,13 +52,13 @@ body, .md-typeset {
   letter-spacing: -0.005em;
 }
 
+/* H1: matches landing weight 600 + tight tracking (drop the previous
+   italic serif treatment so docs read as continuation of landing). */
 .md-typeset h1 {
-  font-family: 'Instrument Serif', Georgia, serif;
-  font-style: italic;
-  font-weight: 400;
-  font-size: 2.6rem;
+  font-weight: 600;
+  font-size: 2.2rem;
   line-height: 1.1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   margin: 0 0 1.2rem;
   color: var(--md-default-fg-color);
 }
@@ -108,16 +81,16 @@ body, .md-typeset {
 
 .md-typeset h4 {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--md-default-fg-color--light);
   margin: 1.4rem 0 0.5rem;
 }
 
-/* ----- Header ----- */
+/* ----- Header --------------------------------------------------------- */
 .md-header {
-  background: var(--md-default-bg-color);
+  background: var(--md-primary-bg-color);
   color: var(--md-default-fg-color);
   border-bottom: 1px solid var(--md-default-fg-color--lightest);
   box-shadow: none;
@@ -135,38 +108,48 @@ body, .md-typeset {
   width: 1.4rem;
 }
 
-/* ----- Tabs (top nav) ----- */
+/* ----- Tabs (top horizontal nav, navigation.tabs) -------------------- */
 .md-tabs {
-  background: var(--md-default-bg-color);
+  background: var(--md-primary-bg-color);
   color: var(--md-default-fg-color);
   border-bottom: 1px solid var(--md-default-fg-color--lightest);
 }
 .md-tabs__link {
-  opacity: 0.75;
+  opacity: 0.65;
   font-weight: 500;
+  font-size: 0.78rem;
   letter-spacing: -0.005em;
+  margin-top: 0.6rem;
+  margin-bottom: 0.6rem;
 }
-.md-tabs__link--active, .md-tabs__link:hover {
+.md-tabs__link:hover {
   opacity: 1;
+  color: var(--md-default-fg-color);
+}
+.md-tabs__link--active {
+  opacity: 1;
+  color: var(--md-default-fg-color);
+  font-weight: 600;
 }
 
-/* ----- Sidebar ----- */
+/* ----- Sidebar -------------------------------------------------------- */
 .md-nav {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
 }
 .md-nav__title {
-  font-weight: 600;
-  font-size: 0.7rem;
+  font-weight: 500;
+  font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--md-default-fg-color--light);
+  color: var(--md-default-fg-color--lighter);
   padding: 1rem 0.6rem 0.4rem;
 }
 .md-nav__link {
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 0.3rem 0.6rem;
   margin: 0.05rem 0;
-  transition: background 0.12s ease, color 0.12s ease;
+  color: var(--md-default-fg-color--light);
+  transition: background 120ms ease, color 120ms ease;
 }
 .md-nav__link:hover {
   background: var(--md-accent-fg-color--transparent);
@@ -179,7 +162,7 @@ body, .md-typeset {
   background: var(--md-accent-fg-color--transparent);
 }
 
-/* ----- Body content ----- */
+/* ----- Body content --------------------------------------------------- */
 .md-content {
   max-width: 760px;
 }
@@ -190,15 +173,16 @@ body, .md-typeset {
   color: var(--md-default-fg-color);
 }
 
-/* Links: subtle underline, no color shift */
+/* Links: accent color, subtle underline, no shift on hover beyond border. */
 .md-typeset a {
   color: var(--md-typeset-a-color);
   border-bottom: 1px solid var(--md-default-fg-color--lighter);
   text-decoration: none;
-  transition: border-color 0.12s ease;
+  transition: border-color 120ms ease, color 120ms ease;
 }
 .md-typeset a:hover {
-  border-bottom-color: var(--md-default-fg-color);
+  color: #93C5FD;
+  border-bottom-color: var(--md-typeset-a-color);
 }
 
 /* Code blocks */
@@ -206,22 +190,23 @@ body, .md-typeset {
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.82em;
   padding: 0.12em 0.4em;
-  border-radius: 3px;
+  border-radius: 4px;
   background: var(--md-code-bg-color);
   color: var(--md-code-fg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
 }
 .md-typeset pre > code {
   font-size: 0.78em;
   padding: 1rem 1.2rem;
-  border-radius: 6px;
+  border-radius: 8px;
   border: 1px solid var(--md-default-fg-color--lightest);
   line-height: 1.55;
 }
 
-/* Tables: stripped down, sharp lines */
+/* Tables: borderless interior, hairline border outside, uppercase header. */
 .md-typeset table:not([class]) {
   border: 1px solid var(--md-default-fg-color--lightest);
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
   font-size: 0.74rem;
 }
@@ -245,12 +230,12 @@ body, .md-typeset {
   border-bottom: none;
 }
 
-/* Admonitions: minimalist */
+/* Admonitions: minimalist with accent left-border. */
 .md-typeset .admonition,
 .md-typeset details {
   border: 1px solid var(--md-default-fg-color--lightest);
-  border-left-width: 3px;
-  border-radius: 4px;
+  border-left: 3px solid var(--md-accent-fg-color);
+  border-radius: 6px;
   box-shadow: none;
   background: transparent;
 }
@@ -264,86 +249,92 @@ body, .md-typeset {
 }
 .md-typeset .admonition-title::before,
 .md-typeset summary::before {
-  background-color: var(--md-default-fg-color);
+  background-color: var(--md-accent-fg-color);
 }
 
 /* Search input */
 .md-search__input {
   background: var(--md-code-bg-color);
-  border-radius: 4px;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 6px;
 }
 
 /* Footer */
 .md-footer-meta {
-  background: var(--md-default-bg-color);
+  background: var(--md-footer-bg-color);
   border-top: 1px solid var(--md-default-fg-color--lightest);
 }
 .md-footer-meta__inner {
   padding: 1.2rem 1rem;
 }
 .md-footer {
-  background: var(--md-default-bg-color);
+  background: var(--md-footer-bg-color);
   color: var(--md-default-fg-color);
   border-top: 1px solid var(--md-default-fg-color--lightest);
 }
 .md-footer__title, .md-footer__direction {
   color: var(--md-default-fg-color);
 }
+.md-footer__inner.md-grid {
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
 
-/* Hide the "Made with Material for MkDocs" line */
+/* Hide the "Made with Material for MkDocs" badge. */
 .md-footer-meta__inner .md-copyright__highlight + a {
   display: none;
 }
 
-/* ----- Custom hero block (used in index.md via div class) ----- */
+/* ----- Index-page hero block (used in index.md via div class) -------- */
 .scutum-hero {
-  margin: -0.5rem 0 2.4rem;
-  padding-bottom: 2rem;
-  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  margin: -0.5rem 0 2rem;
+  padding-bottom: 1.6rem;
+}
+.scutum-hero h1 {
+  font-size: 2.4rem;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.6rem;
 }
 .scutum-hero p {
   font-size: 1rem;
   color: var(--md-default-fg-color--light);
-  max-width: 580px;
+  max-width: 600px;
   line-height: 1.55;
-}
-.scutum-hero em {
-  font-family: 'Instrument Serif', Georgia, serif;
-  font-style: italic;
-  font-weight: 400;
-  color: var(--md-default-fg-color);
-  font-size: 1.05em;
+  margin: 0;
 }
 
-/* Card grid for the index landing */
+/* Card grid for the index landing — auto-fit, hairline border, blue
+   accent on hover. Mirrors the landing-page card pattern. */
 .scutum-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0.8rem;
-  margin: 1.2rem 0 2rem;
+  margin: 1.6rem 0 2.4rem;
 }
 .scutum-cards a.card {
   display: block;
-  padding: 1rem 1.1rem;
+  padding: 1.1rem 1.2rem;
+  background: var(--md-code-bg-color);
   border: 1px solid var(--md-default-fg-color--lightest);
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--md-default-fg-color) !important;
   text-decoration: none !important;
   border-bottom: 1px solid var(--md-default-fg-color--lightest) !important;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition: border-color 150ms ease, background 150ms ease;
 }
 .scutum-cards a.card:hover {
-  border-color: var(--md-default-fg-color);
-  transform: translateY(-1px);
+  border-color: var(--md-accent-fg-color);
+  background: #161A20;
 }
 .scutum-cards a.card strong {
   display: block;
-  font-size: 0.86rem;
-  margin-bottom: 0.2rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
   letter-spacing: -0.005em;
+  color: var(--md-default-fg-color);
 }
 .scutum-cards a.card span {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   color: var(--md-default-fg-color--light);
-  line-height: 1.45;
+  line-height: 1.5;
 }

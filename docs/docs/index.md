@@ -2,78 +2,48 @@
 title: Scutum Documentation
 hide:
   - navigation
+  - toc
 ---
-
-# Scutum
 
 <div class="scutum-hero" markdown>
 
-A self-hosted *control plane* for AI infrastructure. One OpenAI-compatible endpoint, 100+ models across 9 providers, with cost governance, audit, MCP/A2A, and policy built in.
+# Scutum docs
 
-Replace ten separate tools with one platform. Run on your own cluster, your own keys, your own data.
+The self-hosted LLM gateway. One OpenAI-compatible endpoint, 100+ models across 9 providers, with cost governance, audit, routing, and policy built in. Postgres as source of truth. Your data never leaves your infra.
 
 </div>
 
-## Start here
-
 <div class="scutum-cards" markdown>
 
-[<strong>Quickstart</strong><span>Get the platform running locally in under 5 minutes.</span>](guides/quickstart.md){.card}
+[<strong>Quickstart</strong><span>Get a local Scutum stack running in under 5 minutes.</span>](guides/quickstart.md){.card}
 
-[<strong>API Integration</strong><span>Drop-in OpenAI-compatible endpoint. Python, TypeScript, Go, curl.</span>](guides/api-integration.md){.card}
+[<strong>API integration</strong><span>Drop-in OpenAI-compatible endpoint. Python, TypeScript, Go, curl.</span>](guides/api-integration.md){.card}
 
-[<strong>Comparison</strong><span>How Scutum stacks up against OpenRouter, Portkey, LangSmith, Bedrock.</span>](guides/comparison.md){.card}
-
-[<strong>Production Readiness</strong><span>Sizing, HA patterns, security posture before you ship.</span>](production/production-readiness.md){.card}
+[<strong>Production readiness</strong><span>Sizing, HA, security posture before you ship.</span>](production/production-readiness.md){.card}
 
 </div>
 
 ## How it fits together
 
 ```
-Your apps ──► Scutum ──► OpenAI · Anthropic · Google · xAI · DeepSeek · Bedrock · Azure · Vertex · Ollama
+Your apps ──► Scutum ──► OpenAI · Anthropic · Google · Mistral · xAI · DeepSeek · Bedrock · Azure · Vertex · Ollama
                 │
                 ├─ Cost governance      budgets, chargeback, predict-before-spend
-                ├─ Audit & compliance   immutable trail, 7-year retention, exports
+                ├─ Audit & compliance   immutable trail, retention policies, exports
                 ├─ Policy & guardrails  Cedar policies, DLP, prompt registry
                 ├─ Routing & failover   model groups, fallback chains, A/B tests
                 ├─ MCP & A2A            agent gateway with allowlists
-                ├─ Observability        OpenTelemetry, Prometheus, Jaeger
-                ├─ Workflows            LangGraph templates, Temporal agents
+                ├─ Observability        OpenTelemetry, Prometheus, Jaeger, Grafana
+                ├─ Workflows            LangGraph templates, Temporal-backed agents
                 └─ SRE agent            LLM-driven incident remediation, human-in-loop
 ```
 
-## Sections
+## What lives where
 
-### Getting started
-- [Quickstart](guides/quickstart.md) — local stack in 5 minutes
-- [API Integration](guides/api-integration.md) — code in 4 languages
-- [Comparison](guides/comparison.md) — vs. OpenRouter, Portkey, LangSmith, AWS Bedrock, Apigee
-
-### Features
-- [Model Routing](guides/model-routing.md) — fallback, groups, weighted policies
-- [Guardrails](guides/guardrails.md) — DLP, regex, semantic, model-based
-- [Semantic Caching](guides/semantic-caching.md) — embedding-keyed cache
-- [MCP Servers](guides/mcp-servers.md) — Model Context Protocol setup
-- [Workflows](guides/workflows.md) — LangGraph + Temporal agents
-- [SRE Agent](guides/sre-agent.md) — LLM-driven incident remediation, human-in-loop
-- [Cost Management](guides/cost-management.md) — budgets, alerts, FinOps
-
-### Operations
-- [Admin Guide](guides/admin-guide.md) — page-by-page console walkthrough
-- [Licensing](operations/licensing.md) — activate, refresh, troubleshoot your license
-- [Observability](guides/observability.md) — OTel, Prometheus, Jaeger, Grafana
-- [Cloud Deployment](operations/cloud-deployment.md) — GKE, EKS, AKS, OCI
-
-### Production
-- [Production Readiness](production/production-readiness.md) — pre-launch checklist
-- [Sizing Guide](production/sizing-guide.md) — capacity planning
-- [HA Patterns](production/ha-patterns.md) — multi-AZ, multi-region
-
-### Security & FinOps
-- [Threat Model](security/threat-model.md) — STRIDE analysis
-- [Secret Rotation](security/secret-rotation.md) — runbooks
-- [KPI Definitions](finops/kpi-definitions.md) — cost-per-request, savings rate
+- **Getting Started** — install, point your SDK at it, see how it compares to alternatives.
+- **Reference** — feature deep-dives: routing, caching, guardrails, MCP, workflows, the SRE agent, cost management, the chat product.
+- **Operations** — admin console, licensing, observability, cloud deploys; production readiness, sizing, HA; security threat model + secret rotation; FinOps KPIs.
+- **Reading** — whitepapers and research notes for buyers and architects who want the longer-form rationale.
 
 ---
 
