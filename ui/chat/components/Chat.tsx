@@ -9,6 +9,17 @@ import type { SearchResult } from "@/lib/search";
 type ScutumMessageMetadata = { sources?: SearchResult[] };
 type ScutumUIMessage = UIMessage<ScutumMessageMetadata>;
 
+// Lead with the most visceral example so first-time visitors form a strong
+// mental model from a single click. The retirement calculator demonstrates
+// adjustable inputs + recomputed chart — the "wow this isn't text" moment
+// that screenshots and conversational queries don't capture.
+// Order matters: most users only read the first 2-3 examples.
+const EXAMPLE_QUERIES = [
+  "Build me a retirement calculator with adjustable returns",
+  "Compare Postgres vs MongoDB for a 50-person team",
+  "Show me sprint velocity over the last 6 sprints",
+];
+
 export default function Chat() {
   const { messages, sendMessage, status, error } = useChat<ScutumUIMessage>({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
@@ -16,6 +27,15 @@ export default function Chat() {
   const [input, setInput] = useState("");
 
   const isStreaming = status === "submitted" || status === "streaming";
+
+  // Single send path — both form submit + example-chip click route through
+  // here so the same disabled/streaming guards apply.
+  const send = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || isStreaming) return;
+    sendMessage({ text: trimmed });
+    setInput("");
+  };
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -28,9 +48,9 @@ export default function Chat() {
           >
             What do you want to know?
           </h1>
-          <p className="text-[var(--color-text-muted)] max-w-md">
-            Ask anything. We search the web, route to the best model for the
-            task, and cite our sources.
+          <p className="text-[var(--color-text-muted)] max-w-xl leading-relaxed">
+            Ask anything. We return interactive answers — calculators, charts,
+            comparison tables — not walls of text. Sources cited inline.
           </p>
         </div>
       )}
@@ -55,10 +75,7 @@ export default function Chat() {
         className="flex gap-2 border-t border-[var(--color-border)] pt-4 mt-auto"
         onSubmit={(e) => {
           e.preventDefault();
-          const trimmed = input.trim();
-          if (!trimmed || isStreaming) return;
-          sendMessage({ text: trimmed });
-          setInput("");
+          send(input);
         }}
       >
         <input
@@ -81,6 +98,35 @@ export default function Chat() {
           {isStreaming ? "…" : "Ask"}
         </button>
       </form>
+
+      {/*
+        Example chips — shown only on the empty state. Each one pre-fills
+        and submits in a single click. Perplexity / Claude / ChatGPT all
+        do this on their landing surfaces; meaningfully lifts activation
+        because curious-but-not-typing visitors get to see the magic with
+        zero typing friction. Disabled while streaming so a click during
+        an in-flight request doesn't double-fire.
+      */}
+      {messages.length === 0 && (
+        <div className="mt-4">
+          <p className="text-xs uppercase tracking-wider text-[var(--color-text-subtle)] mb-2">
+            Try one
+          </p>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
+            {EXAMPLE_QUERIES.map((q) => (
+              <button
+                key={q}
+                type="button"
+                disabled={isStreaming}
+                onClick={() => send(q)}
+                className="text-left text-sm px-3 py-2 rounded-md border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-text)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {q} <span className="text-[var(--color-accent)]">→</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && (
         <p className="text-sm text-red-600 mt-2">
