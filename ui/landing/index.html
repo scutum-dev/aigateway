@@ -742,6 +742,21 @@
     .footer-social a:hover { color: var(--text-primary); border-color: var(--text-secondary); }
     .footer-social svg { width: 16px; height: 16px; fill: currentColor; }
     .footer-bottom { padding-top: 32px; border-top: 1px solid var(--border); text-align: center; color: var(--text-tertiary); font-size: 13px; }
+
+    /* Inline product links inside body prose — subtle underline so the
+       link is discoverable without competing visually with surrounding
+       text. Used for "Scutum Research" mentions in the demo section. */
+    .inline-product-link {
+      color: var(--text-primary);
+      text-decoration: underline;
+      text-decoration-color: var(--border-strong);
+      text-underline-offset: 3px;
+      transition: text-decoration-color 150ms ease, color 150ms ease;
+    }
+    .inline-product-link:hover {
+      color: var(--accent-hover);
+      text-decoration-color: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -805,7 +820,7 @@
           </div>
 
           <a href="https://chat.scutum.dev/" class="hero-secondary-link">
-            Not a developer? Try our AI search product <span class="arrow">→</span> chat.scutum.dev
+            Not a developer? Try our AI search product <span class="arrow">→</span> Scutum Research
           </a>
         </div>
 
@@ -921,21 +936,21 @@ response = client.chat.completions.<span class="fn">create</span>(
       <span class="section-num">03 / Live demo</span>
       <h2 style="max-width: 20ch;">See Scutum running. <em>Live.</em></h2>
       <p class="body-lg muted" style="max-width:80ch; margin-top:24px;">
-        chat.scutum.dev is a Perplexity-style search product running on Scutum gateway. Ask any question and the answer can be an interactive component — calculators, charts, comparison tables — rendered in real React, sandboxed, with sources cited inline. Every query routes through your gateway, every model is swappable, every answer hits your audit log.
+        <a href="https://chat.scutum.dev/" class="inline-product-link">Scutum Research</a> is a Perplexity-style search product running on Scutum gateway. Ask any question and the answer can be an interactive component — calculators, charts, comparison tables — rendered in real React, sandboxed, with sources cited inline. Every query routes through your gateway, every model is swappable, every answer hits your audit log.
       </p>
 
       <video class="demo-video" autoplay loop muted playsinline poster="/demo-sprint-planner-poster.jpg">
         <source src="/demo-sprint-planner.mp4?v=2" type="video/mp4" />
         Your browser doesn't support inline video — visit
-        <a href="https://chat.scutum.dev/">chat.scutum.dev</a> to try it.
+        <a href="https://chat.scutum.dev/">Scutum Research</a> to try it.
       </video>
 
       <p class="small demo-cap">
-        Asking chat.scutum.dev for a sprint planner. Sliders update the chart in real time.
+        Asking <a href="https://chat.scutum.dev/" class="inline-product-link">Scutum Research</a> for a sprint planner. Sliders update the chart in real time.
       </p>
 
       <div class="demo-cta">
-        <a href="https://chat.scutum.dev/" class="btn btn-accent">Try chat.scutum.dev →</a>
+        <a href="https://chat.scutum.dev/" class="btn btn-accent">Try Scutum Research →</a>
       </div>
 
       <p class="pull-quote">
@@ -1067,7 +1082,7 @@ response = client.chat.completions.<span class="fn">create</span>(
       <p class="cta-links">
         <a href="/docs/">Read the docs →</a>
         <span class="dot">·</span>
-        <a href="https://chat.scutum.dev/">Try chat.scutum.dev →</a>
+        <a href="https://chat.scutum.dev/">Try Scutum Research →</a>
       </p>
     </div>
   </section>
