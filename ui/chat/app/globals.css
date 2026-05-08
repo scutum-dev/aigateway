@@ -1,5 +1,88 @@
 @import "tailwindcss";
 
+/* Safelist for runtime-generated artifact classes.
+ *
+ * Tailwind v4's compiler scans source files at build time. Classes the model
+ * emits inside `render_artifact` JSX live in tool-input strings at runtime,
+ * so the scanner never sees them and the corresponding rules don't ship in
+ * the bundle — the artifact renders unstyled. `@source inline()` forces
+ * Tailwind to generate these utilities regardless of source scan.
+ *
+ * Pattern coverage: prefix × palette × shade for the 11 most-used color
+ * prefixes, full Tailwind palette (22 colors × 11 shades). Plus the common
+ * spacing/typography/layout/border/shadow classes the model reaches for.
+ *
+ * The bundle hit is ~30-40KB gzipped, acceptable for the capability unlock.
+ */
+@source inline("{bg,text,border,ring,outline,fill,stroke,divide,placeholder,from,via,to,decoration,accent,caret}-{slate,gray,zinc,neutral,stone,red,orange,amber,yellow,lime,green,emerald,teal,cyan,sky,blue,indigo,violet,purple,fuchsia,pink,rose}-{50,100,200,300,400,500,600,700,800,900,950}");
+@source inline("{bg,text,border}-{black,white,transparent,current}");
+@source inline("{bg,text,border}-{slate,gray,zinc,red,orange,amber,yellow,green,emerald,teal,cyan,blue,indigo,violet,purple,pink,rose}-{50,100,200,300,400,500,600,700,800,900,950}/{5,10,20,25,30,40,50,60,70,75,80,90}");
+
+/* Spacing — padding, margin, gap, space-* for inter-child spacing */
+@source inline("{p,m,px,py,mx,my,pt,pb,pl,pr,mt,mb,ml,mr,gap,gap-x,gap-y,space-x,space-y}-{0,0.5,1,1.5,2,2.5,3,3.5,4,5,6,7,8,9,10,11,12,14,16,20,24,28,32,36,40,48,56,64,72,80,96}");
+@source inline("{m,mx,my,mt,mb,ml,mr}-auto");
+
+/* Sizing */
+@source inline("{w,h,min-w,min-h,max-w,max-h}-{0,0.5,1,1.5,2,2.5,3,4,5,6,8,10,12,14,16,20,24,28,32,36,40,48,56,64,72,80,96,auto,full,screen,min,max,fit}");
+@source inline("{w,h}-{1/2,1/3,2/3,1/4,3/4,1/5,2/5,3/5,4/5,1/6,5/6}");
+@source inline("max-w-{xs,sm,md,lg,xl,2xl,3xl,4xl,5xl,6xl,7xl,prose,none}");
+
+/* Typography */
+@source inline("text-{xs,sm,base,lg,xl,2xl,3xl,4xl,5xl,6xl}");
+@source inline("font-{thin,extralight,light,normal,medium,semibold,bold,extrabold,black}");
+@source inline("font-{sans,serif,mono}");
+@source inline("text-{left,center,right,justify}");
+@source inline("leading-{none,tight,snug,normal,relaxed,loose,3,4,5,6,7,8,9,10}");
+@source inline("tracking-{tighter,tight,normal,wide,wider,widest}");
+@source inline("uppercase lowercase capitalize normal-case");
+@source inline("italic not-italic underline line-through no-underline");
+@source inline("whitespace-{normal,nowrap,pre,pre-line,pre-wrap}");
+@source inline("truncate overflow-ellipsis");
+
+/* Layout — flex, grid, position */
+@source inline("{block,inline-block,inline,flex,inline-flex,grid,inline-grid,hidden,table,table-row,table-cell}");
+@source inline("flex-{row,row-reverse,col,col-reverse,wrap,nowrap,1,auto,initial,none}");
+@source inline("{items,justify,self,content,place-items,place-content,place-self}-{start,end,center,between,around,evenly,stretch,baseline}");
+@source inline("grid-cols-{1,2,3,4,5,6,7,8,9,10,11,12,none}");
+@source inline("col-span-{1,2,3,4,5,6,7,8,9,10,11,12,full}");
+@source inline("row-span-{1,2,3,4,5,6,full}");
+@source inline("{absolute,relative,fixed,sticky,static}");
+@source inline("{top,right,bottom,left,inset,inset-x,inset-y}-{0,0.5,1,2,3,4,5,6,8,10,12,16,20,24,auto,full}");
+@source inline("z-{0,10,20,30,40,50,auto}");
+
+/* Borders + radius */
+@source inline("border border-{0,1,2,4,8} border-{t,r,b,l}-{0,1,2,4,8}");
+@source inline("rounded rounded-{none,sm,md,lg,xl,2xl,3xl,full}");
+@source inline("rounded-{t,r,b,l,tl,tr,bl,br}-{none,sm,md,lg,xl,2xl,3xl,full}");
+@source inline("border-{solid,dashed,dotted,double,none}");
+
+/* Effects */
+@source inline("shadow shadow-{xs,sm,md,lg,xl,2xl,inner,none}");
+@source inline("opacity-{0,5,10,20,25,30,40,50,60,70,75,80,90,95,100}");
+@source inline("ring ring-{0,1,2,4,8} ring-offset-{0,1,2,4,8} ring-inset");
+@source inline("backdrop-blur-{none,sm,md,lg,xl,2xl,3xl}");
+
+/* Transitions + transforms (animations make artifacts feel alive) */
+@source inline("transition transition-{none,all,colors,opacity,shadow,transform}");
+@source inline("duration-{75,100,150,200,300,500,700,1000}");
+@source inline("ease-{linear,in,out,in-out}");
+@source inline("animate-{none,spin,ping,pulse,bounce}");
+@source inline("hover:{bg,text,border,opacity}-{slate,gray,red,orange,amber,yellow,green,emerald,teal,cyan,blue,indigo,violet,purple,pink,rose}-{50,100,200,300,400,500,600,700,800,900}");
+@source inline("scale-{0,50,75,90,95,100,105,110,125,150} rotate-{0,1,2,3,6,12,45,90,180}");
+@source inline("transform translate-{x,y}-{0,1,2,4,8,16,full}");
+
+/* Cursor + interactivity */
+@source inline("cursor-{auto,default,pointer,wait,text,move,help,not-allowed}");
+@source inline("select-{none,text,all,auto}");
+
+/* Overflow */
+@source inline("overflow-{auto,hidden,visible,scroll,x-auto,y-auto,x-hidden,y-hidden,x-scroll,y-scroll}");
+
+/* Responsive prefixes for the most common breakpoint variants */
+@source inline("{sm,md,lg,xl,2xl}:{flex,grid,block,hidden,grid-cols-1,grid-cols-2,grid-cols-3,grid-cols-4,grid-cols-6,grid-cols-12}");
+@source inline("{sm,md,lg,xl}:{p,m,px,py,gap}-{0,1,2,3,4,5,6,8,10,12,16,20}");
+@source inline("{sm,md,lg,xl}:text-{xs,sm,base,lg,xl,2xl,3xl,4xl}");
+
 /* Match the existing scutum.dev landing palette so chat.scutum.dev feels
    like a sibling product, not a separate brand. */
 @theme {
