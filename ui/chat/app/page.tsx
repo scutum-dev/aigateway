@@ -69,13 +69,14 @@ export default function Home() {
             </ul>
           </div>
           <p>
-            Self-host the underlying control plane:{" "}
+            Run this on your own infrastructure:{" "}
             <a
               href="https://scutum.dev"
               className="underline hover:text-[var(--color-text)]"
             >
               scutum.dev
-            </a>
+            </a>{" "}
+            — the self-hosted gateway that powers Scutum Research.
           </p>
         </div>
       </section>
