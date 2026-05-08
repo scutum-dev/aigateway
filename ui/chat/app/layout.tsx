@@ -33,20 +33,52 @@ const SITE = process.env.NEXT_PUBLIC_SITE_NAME || "Scutum Research";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://chat.scutum.dev";
 
 export const metadata: Metadata = {
-  title: `${SITE} — search with citations, routed through your AI control plane`,
+  title: `${SITE} — AI search with interactive answers. Sources cited.`,
   description:
-    "Ask anything. Multi-model routing picks the best model for the task. " +
-    "Every query is auditable, costs are transparent, models are pluggable.",
+    "AI search where the answer is software, not text. Ask questions, get interactive charts, calculators, and tables. Sources cited. Free, no signup.",
   metadataBase: new URL(APP_URL),
+  alternates: { canonical: APP_URL },
   openGraph: {
-    title: SITE,
-    description: "Self-hosted Perplexity for enterprise.",
-    url: APP_URL,
-    siteName: SITE,
-    locale: "en_US",
     type: "website",
+    siteName: "Scutum",
+    url: APP_URL,
+    title: `${SITE} — AI search with interactive answers`,
+    description: "Most AI search returns text. We return software.",
+    images: ["/og-chat.jpg"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE} — AI search with interactive answers`,
+    description: "Most AI search returns text. We return software.",
+    images: ["/og-chat.jpg"],
   },
   robots: { index: true, follow: true },
+};
+
+// Schema.org SoftwareApplication markup so search engines and LLM crawlers
+// can model the chat product as a discrete entity (separate from the parent
+// Scutum org, which has its own Organization JSON-LD on scutum.dev). Inline
+// JSON-LD via a <script> block in <head> rather than a metadata field —
+// Next.js's Metadata API doesn't have a direct slot for arbitrary JSON-LD.
+const softwareApplicationLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: SITE,
+  applicationCategory: "AI Search",
+  operatingSystem: "Web",
+  url: APP_URL,
+  description:
+    "AI search where the answer is software, not text. Ask questions, get interactive charts, calculators, and tables. Sources cited. Free, no signup.",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  publisher: {
+    "@type": "Organization",
+    name: "Scutum",
+    url: "https://scutum.dev",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -55,6 +87,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${inter.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable}`}
     >
+      <head>
+        <script
+          type="application/ld+json"
+          // dangerouslySetInnerHTML is the canonical way to ship a JSON-LD
+          // block from a React component. We control the input fully (it's a
+          // static object stringified at module scope) so there's no XSS surface.
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(softwareApplicationLd),
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

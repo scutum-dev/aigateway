@@ -1,0 +1,65 @@
+# Scutum
+
+Scutum is a self-hosted LLM control plane. It sits between your applications
+and every LLM provider you use — OpenAI, Anthropic, Google, Meta, Mistral,
+Cohere, xAI, DeepSeek, plus self-hosted models via Ollama and vLLM — and
+exposes them all through one OpenAI-compatible HTTP endpoint. Postgres is
+the source of truth for routing, budgets, audit, policy, and team
+membership; nothing about your usage ever leaves the infrastructure you
+deploy on.
+
+## What problem it solves
+
+Teams that handle proprietary code, customer data, regulated workflows, or
+revenue-sensitive prompts cannot route every LLM call through a vendor's
+cloud (Portkey, Helicone, OpenRouter, Braintrust, Langfuse). They need the
+same control-plane capabilities those products provide — cost prediction,
+multi-team budgets, fallback chains, semantic caching, audit logs, DLP
+scanning, A/B traffic splits, SSO/OIDC/SAML, fine-grained authorization
+policies — but running on their own infrastructure with their own license
+verification. Scutum is that control plane.
+
+## How it works
+
+Customers install Scutum with a single shell command:
+`curl -fsSL https://scutum.dev/install.sh | sh`. The installer runs Docker
+or Podman, fetches the release-tagged compose file, generates fresh
+secrets, and drops a `scutum` operator CLI. Postgres holds all
+configuration; the LiteLLM core proxy and Agent Gateway file-watch a YAML
+materialised from Postgres by an admin API. License verification is
+offline (Ed25519 JWTs validated against a public key bundled in the
+admin-api image), so air-gapped deployments work without phone-home.
+
+## chat.scutum.dev
+
+chat.scutum.dev is a public AI search product built on Scutum. It looks
+like Perplexity, but the difference is in the answer: instead of returning
+prose, it returns interactive React components — calculators, charts,
+comparison tables, decision trees, mini-explorers — rendered live in the
+browser with sources cited inline as `[^N]` markers. Every query is routed
+through the underlying Scutum gateway, every model is configurable, and the
+search backbone is hybrid (Tavily + Brave deduped). It's free to use, no
+signup, rate-limited at the Cloudflare edge.
+
+## Relationship between the two
+
+scutum.dev is the product (the self-hosted control plane). chat.scutum.dev
+is a public demo of what Scutum makes possible — same gateway, same audit
+log, same model-routing primitives, exposed through a chat interface that
+anyone can try without installing anything. Teams who like chat.scutum.dev
+can run their own copy on top of their own Scutum deployment.
+
+## Where to start
+
+- Marketing site and install: https://scutum.dev
+- Chat product: https://chat.scutum.dev
+- Documentation: https://scutum.dev/docs/
+- Trial signup: https://scutum.dev/try/
+
+## What Scutum is not
+
+Not a vendor cloud. Not a managed service. Not open source. Not an LLM
+fine-tuning platform. Not a SaaS observability tool with an "on-prem
+option" that's really just a remote-tunnel to vendor infrastructure.
+Scutum runs entirely on infrastructure the customer controls, under a
+license they own.

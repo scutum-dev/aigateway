@@ -1,1920 +1,969 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scutum — Self-hosted AI control plane with built-in research, agents & workflows</title>
-    <meta name="description" content="Self-hosted control plane for AI infrastructure. LLM proxy across 100+ models, MCP/A2A gateway, multi-agent workflows, SRE auto-remediation, and Scutum Research — search-with-citations chat. Every query in your audit log. Ed25519 offline license.">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- SEO: canonical + indexing -->
-    <!-- Subdomain for the search-with-citations chat product. Linked from the
-         landing-page hero CTA, surfaced separately in the sitemap. -->
-    <link rel="alternate" href="https://chat.scutum.dev/" title="Scutum Research">
+  <!-- ===== Page metadata ===== -->
+  <title>Scutum — Self-hosted LLM gateway with audit, routing, and cost governance</title>
+  <meta name="description" content="Self-hosted LLM gateway. 100+ models behind one OpenAI-compatible endpoint. Cost tracking, audit logs, offline license. Run on your own infra." />
+  <link rel="canonical" href="https://scutum.dev/" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <meta name="theme-color" content="#0A0A0B" />
 
-    <link rel="canonical" href="https://scutum.dev/">
-    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
-    <meta name="theme-color" content="#0A0A0A">
+  <!-- Favicon (SVG for crisp scaling). The mark file ships from the OCI VM
+       static volume; same asset used across landing, docs, chat. -->
+  <link rel="icon" type="image/svg+xml" href="/scutum-mark.svg" />
+  <link rel="apple-touch-icon" href="/scutum-mark.svg" />
 
-    <!-- Favicon (SVG for crisp scaling, PNG fallback) -->
-    <link rel="icon" type="image/svg+xml" href="/scutum-mark.svg">
-    <link rel="apple-touch-icon" href="/scutum-mark.svg">
+  <!-- OpenGraph / Twitter card. og-image.png is the existing 1200×630 dark
+       hero asset already on disk — reuse rather than placeholder a new file. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Scutum" />
+  <meta property="og:title" content="Scutum — Self-hosted LLM control plane" />
+  <meta property="og:description" content="Run 100+ LLMs through one endpoint. Audit every query, route by cost, govern by team — on your own infrastructure." />
+  <meta property="og:url" content="https://scutum.dev/" />
+  <meta property="og:image" content="https://scutum.dev/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Scutum — Self-hosted LLM control plane" />
+  <meta name="twitter:description" content="Run 100+ LLMs through one endpoint. Audit every query, route by cost, govern by team — on your own infrastructure." />
+  <meta name="twitter:image" content="https://scutum.dev/og-image.png" />
 
-    <!-- OpenGraph (Slack, LinkedIn, Facebook, iMessage) -->
-    <meta property="og:type" content="website">
-    <meta property="og:site_name" content="Scutum">
-    <meta property="og:title" content="Scutum — Self-hosted AI control plane with built-in research & agents">
-    <meta property="og:description" content="LLM proxy, MCP/A2A gateway, multi-agent workflows, FinOps controls, SRE auto-remediation, and Scutum Research (chat with citations, routed through your gateway) — one platform, self-hosted.">
-    <meta property="og:url" content="https://scutum.dev/">
-    <meta property="og:image" content="https://scutum.dev/og-image.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Scutum — the unified control plane for AI infrastructure">
-    <meta property="og:locale" content="en_US">
+  <!-- Companion product on a separate subdomain. Surfaced in sitemap.xml + via
+       the in-page CTA. Crawlers follow alternate links to discover both. -->
+  <link rel="alternate" href="https://chat.scutum.dev/" title="Scutum Research" />
 
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:site" content="@scutum_dev">
-    <meta name="twitter:creator" content="@scutum_dev">
-    <meta name="twitter:title" content="Scutum — Self-hosted AI control plane with built-in research & agents">
-    <meta name="twitter:description" content="LLM proxy, MCP/A2A gateway, multi-agent workflows, and Scutum Research — chat with citations, all routed through your audit log. Self-hosted by default.">
-    <meta name="twitter:image" content="https://scutum.dev/og-image.png">
-    <meta name="twitter:image:alt" content="Scutum — the unified control plane for AI infrastructure">
+  <!-- Schema.org Organization — single source of brand identity for crawlers,
+       sameAs array points search-engine knowledge graphs at our profiles. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Scutum",
+    "url": "https://scutum.dev",
+    "logo": "https://scutum.dev/scutum-mark.svg",
+    "description": "Self-hosted LLM gateway with audit, routing, and cost governance for enterprises that can't send LLM traffic to vendor clouds.",
+    "sameAs": [
+      "https://www.linkedin.com/company/scutum-ai",
+      "https://x.com/scutum_ai"
+    ]
+  }
+  </script>
 
-    <!-- JSON-LD: SoftwareApplication + Organization -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "Organization",
-          "@id": "https://scutum.dev/#org",
-          "name": "Scutum",
-          "url": "https://scutum.dev/",
-          "logo": "https://scutum.dev/og-image.png",
-          "description": "Scutum is the unified control plane for AI infrastructure — LLM proxy, MCP/A2A gateway, agent workflows, FinOps, and SRE auto-remediation."
-        },
-        {
-          "@type": "SoftwareApplication",
-          "@id": "https://scutum.dev/#product",
-          "name": "Scutum",
-          "applicationCategory": "DeveloperApplication",
-          "operatingSystem": "Linux, Docker, Kubernetes",
-          "description": "Unified control plane for AI infrastructure: LLM proxy, MCP/A2A gateway, agent workflows, cost governance, audit, and SRE auto-remediation. Self-hosted.",
-          "// pricing-source-of-truth": "Mirrored from window.PRICING_SELFHOSTED + window.PRICING_MANAGED below. Keep in sync with the on-page pricing cards — search engines indexing this JSON-LD don't run JS, so rendering from the JS array would lose Google rich-result eligibility.",
-          "offers": [
-            {"@type": "Offer", "name": "Free Trial (self-hosted)",      "price": "0",    "priceCurrency": "USD", "description": "30 days, full features, on your infrastructure. No credit card."},
-            {"@type": "Offer", "name": "License (self-hosted)",         "price": "99",   "priceCurrency": "USD", "billingDuration": "P1M", "description": "Self-hosted license. You run the platform."},
-            {"@type": "Offer", "name": "License + SRE (self-hosted)",   "price": "299",  "priceCurrency": "USD", "billingDuration": "P1M", "description": "Self-hosted license plus the autonomous SRE agent with HITL approval."},
-            {"@type": "Offer", "name": "Starter Managed (early access)","price": "499",  "priceCurrency": "USD", "billingDuration": "P1M", "description": "Shared multi-tenant infra, single region, BYO provider keys. Best-effort uptime."},
-            {"@type": "Offer", "name": "Business Managed (early access)","price": "1299","priceCurrency": "USD", "billingDuration": "P1M", "description": "Per-customer dedicated instance, single region. Best-effort uptime; targets calibrated as production data accumulates."}
-          ],
-          "publisher": {"@id": "https://scutum.dev/#org"}
-        },
-        {
-          "@type": "FAQPage",
-          "mainEntity": [
-            {"@type": "Question", "name": "Where does my data live?",                         "acceptedAnswer": {"@type": "Answer", "text": "In your infrastructure. Scutum is self-hosted by default — Docker Compose, Kubernetes, or our managed hosting. Prompts and responses never leave your VPC unless you explicitly route them through a third-party provider."}},
-            {"@type": "Question", "name": "Which models and providers do you support?",       "acceptedAnswer": {"@type": "Answer", "text": "100+ models across 9 providers: OpenAI, Anthropic, Google Vertex AI, AWS Bedrock, Azure OpenAI, Mistral, Cohere, Together AI, and self-hosted (vLLM, Ollama, TGI)."}},
-            {"@type": "Question", "name": "What is the SRE agent?",                           "acceptedAnswer": {"@type": "Answer", "text": "An LLM-driven agent that subscribes to incident signals (SLA violations, budget breaches, provider unhealthiness, guardrail violations), diagnoses against current platform state, and proposes remediation actions from a constrained allow-list. Every action gates through human approval in v1."}},
-            {"@type": "Question", "name": "How does pricing work for the LLM tokens?",        "acceptedAnswer": {"@type": "Answer", "text": "We do not mark up tokens. You bring your own provider keys — model spend goes to them at list price. Our platform fee covers the control plane (proxy, governance, audit, dashboards, support)."}}
-          ]
-        }
-      ]
+  <!-- Fonts: Inter (body + headings) and JetBrains Mono (code + terminal).
+       Loaded via Google Fonts; preconnect cuts the DNS+TLS round-trip cost. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ============================================================
+       Design system — every token from the brief lives here as a
+       CSS variable. Components below reference them by name only,
+       so a one-line palette swap updates the whole page.
+       ============================================================ */
+    :root {
+      --bg-primary:    #0A0A0B;
+      --bg-secondary:  #111114;
+      --bg-tertiary:   #1A1A1F;
+      --border:        #27272A;
+      --text-primary:  #FAFAFA;
+      --text-secondary:#A1A1AA;
+      --text-tertiary: #71717A;
+      --accent:        #3B82F6;
+      --accent-hover:  #60A5FA;
+      --success:       #10B981;
+
+      --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+      --content-max: 1280px;
+      --bleed-max:   1440px;
+      --pad-x-mobile:24px;
+      --pad-x-tablet:48px;
+      --pad-x-desk:  64px;
+
+      /* Major-section vertical rhythm. Doubled at desktop per brief. */
+      --section-y-mobile: 96px;
+      --section-y-desk:   128px;
     }
-    </script>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <script src="/config.js" onerror="console.log('config.js absent, using defaults')"></script>
-    <style>
-        :root {
-            /* Pure B&W minimalism — Vercel / Resend / Linear school.
-               No chroma. Black is the accent. Forces the typography and the
-               shield concept to do the brand work. */
-            --bg:           #FFFFFF;
-            --bg-elevated:  #FAFAFA;
-            --bg-soft:      #F4F4F5;
-            --border:       #E5E5E5;
-            --border-hi:    #D4D4D4;
-            --text:         #0A0A0A;
-            --text-muted:   #525252;
-            /* WCAG AA-passing subtle grey on white (4.7:1). Was #A3A3A3 (2.8:1, failed AA). */
-            --text-subtle:  #6B7280;
-            --accent:       #0A0A0A;
-            --accent-hi:    #000000;
-            --accent-soft:  #F4F4F5;
-            --success:      #16A34A;
-            --warning:      #B45309;
-            --danger:       #B91C1C;
+    *, *::before, *::after { box-sizing: border-box; }
 
-            /* Code/arch cards: pure black for maximum contrast against white. */
-            --code-bg:      #0A0A0A;
-            --code-border:  rgba(255,255,255,0.10);
-            --code-text:    #FAFAFA;
-            /* Lighter muted on dark — was #737373 (4.7:1), bumped to #D4D4D8 (10:1) for diagrams. */
-            --code-muted:   #D4D4D8;
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 
-            --serif: 'Instrument Serif', 'Iowan Old Style', 'Apple Garamond', Georgia, serif;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html { scroll-behavior: smooth; }
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg); color: var(--text); line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
-            font-feature-settings: 'ss01' on, 'cv11' on;
-        }
-        a { color: inherit; text-decoration: none; }
-        code, .mono { font-family: 'JetBrains Mono', monospace; }
-        h1, h2, h3, .display { font-family: var(--serif); font-weight: 400; letter-spacing: -0.01em; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+    body {
+      margin: 0;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
 
-        /* ========== NAV ========== */
-        .nav {
-            position: sticky; top: 0; z-index: 50;
-            backdrop-filter: saturate(180%) blur(12px);
-            background: rgba(255,255,255,0.85); border-bottom: 1px solid var(--border);
-        }
-        .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
-        .logo {
-            display: flex; align-items: center; gap: 12px;
-            font-family: var(--serif); font-weight: 400; font-size: 22px; color: var(--text);
-            letter-spacing: -0.005em;
-        }
-        .logo-mark {
-            width: 32px; height: 32px;
-            display: block;
-        }
-        .nav-links { display: flex; align-items: center; gap: 32px; }
-        .nav-links a { color: var(--text-muted); font-size: 14px; font-weight: 500; transition: color .15s; }
-        .nav-links a:hover { color: var(--text); }
-        @media (max-width: 768px) { .nav-links a:not(.btn) { display: none; } }
+    img, video { max-width: 100%; height: auto; display: block; }
 
-        /* ========== BUTTONS ========== */
-        .btn {
-            display: inline-flex; align-items: center; gap: 8px;
-            padding: 10px 18px; border-radius: 6px; font-weight: 500; font-size: 14px;
-            font-family: 'Inter', sans-serif;
-            transition: background-color .12s, border-color .12s; cursor: pointer; border: 1px solid transparent;
-        }
-        .btn-primary { background: var(--accent); color: #FFFFFF; }
-        .btn-primary:hover { background: var(--accent-hi); }
-        .btn-secondary { background: transparent; color: var(--text); border-color: var(--border-hi); }
-        .btn-secondary:hover { border-color: var(--text); }
-        .btn-lg { padding: 14px 24px; font-size: 15px; }
-        /* Nav CTA — discoverable but tonally subdued, so the hero CTA does the heavy lifting */
-        .btn-nav {
-            padding: 7px 14px; font-size: 13px;
-            background: transparent; color: var(--text);
-            border: 1px solid var(--border-hi);
-        }
-        .btn-nav:hover { border-color: var(--text); background: var(--bg-elevated); }
+    a { color: inherit; text-decoration: none; }
+    a:hover { color: var(--accent-hover); }
 
-        /* ========== HERO ========== */
-        .hero { padding: 120px 0 80px; position: relative; overflow: hidden; text-align: center; }
-        .hero > * { position: relative; z-index: 1; }
-        .hero-eyebrow {
-            display: inline-flex; align-items: center; gap: 8px;
-            padding: 5px 12px; border-radius: 999px;
-            background: var(--bg-elevated); border: 1px solid var(--border);
-            color: var(--text-muted); font-size: 12px; font-weight: 500; margin-bottom: 28px;
-            letter-spacing: 0.005em;
-        }
-        /* "New" pill above the hero — announces Scutum Research without rewriting
-           the hero copy. Same shape as .hero-eyebrow but in accent colour, as a
-           clickable link with subtle hover + a leading "NEW" tag. */
-        .hero-new-pill {
-            display: inline-flex; align-items: center; gap: 10px;
-            padding: 6px 14px 6px 6px; border-radius: 999px;
-            background: var(--bg); border: 1px solid var(--border-hi);
-            color: var(--text); font-size: 13px; font-weight: 500;
-            text-decoration: none; margin-bottom: 16px;
-            transition: border-color .15s ease, transform .15s ease;
-        }
-        .hero-new-pill:hover {
-            border-color: var(--text); transform: translateY(-1px);
-        }
-        .hero-new-pill__tag {
-            background: var(--accent); color: #fff;
-            padding: 2px 8px; border-radius: 999px;
-            font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
-        }
-        @media (max-width: 640px) {
-            .hero-new-pill { font-size: 12px; padding: 5px 12px 5px 5px; }
-            .hero-new-pill__tag { font-size: 9px; }
-        }
+    /* ============================================================
+       Typography scale — fluid clamps so heading sizes interpolate
+       smoothly between mobile (380px) and desktop (1440px) without
+       breakpoint discontinuities.
+       ============================================================ */
+    h1 {
+      font-size: clamp(48px, 6vw, 80px);
+      font-weight: 600;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      margin: 0;
+    }
+    h2 {
+      font-size: clamp(32px, 4vw, 48px);
+      font-weight: 600;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin: 0;
+    }
+    h3 {
+      font-size: 24px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+    .body-lg  { font-size: 18px; line-height: 1.6; }
+    .body     { font-size: 16px; line-height: 1.6; }
+    .small    { font-size: 14px; line-height: 1.5; }
+    .label    { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .muted    { color: var(--text-secondary); }
+    .subtle   { color: var(--text-tertiary); }
 
-        /* ========== TOOLS SECTION ========== */
-        .tools { padding: 80px 0; background: var(--bg); border-top: 1px solid var(--border); }
-        .tools-header { text-align: center; margin-bottom: 48px; }
-        .tools-eyebrow {
-            font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
-            text-transform: uppercase; color: var(--text-subtle); margin: 0 0 8px;
-        }
-        .tools-header h2 {
-            font-size: clamp(28px, 4vw, 40px);
-            line-height: 1.1; margin: 0 auto; max-width: 720px;
-        }
-        .tools-header h2 .em { font-style: italic; font-family: var(--serif); }
-        .tools-grid {
-            display: grid; grid-template-columns: repeat(2, 1fr);
-            gap: 16px; max-width: 960px; margin: 0 auto;
-        }
-        .tools-card {
-            position: relative; display: block;
-            padding: 24px 28px; border-radius: 8px;
-            background: var(--bg-elevated); border: 1px solid var(--border);
-            color: var(--text); text-decoration: none;
-            transition: border-color .15s ease, transform .15s ease;
-        }
-        .tools-card:hover {
-            border-color: var(--border-hi);
-        }
-        a.tools-card:hover {
-            border-color: var(--text); transform: translateY(-2px);
-        }
-        .tools-card--featured {
-            border-color: var(--border-hi);
-        }
-        .tools-card__tag {
-            position: absolute; top: 16px; right: 16px;
-            background: var(--accent); color: #fff;
-            padding: 2px 8px; border-radius: 999px;
-            font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
-        }
-        .tools-card h3 {
-            font-size: 18px; font-weight: 600; margin: 0 0 8px;
-        }
-        .tools-card p {
-            font-size: 14px; line-height: 1.55; color: var(--text-muted);
-            margin: 0 0 12px;
-        }
-        .tools-card__cta {
-            font-size: 13px; color: var(--text);
-            margin: 0 !important;
-        }
-        a.tools-card .tools-card__cta {
-            color: var(--text); font-weight: 500;
-        }
-        @media (max-width: 720px) {
-            .tools-grid { grid-template-columns: 1fr; }
-            .tools { padding: 56px 0; }
-        }
-        .hero h1 {
-            font-size: clamp(44px, 6.5vw, 76px);
-            line-height: 1.02; max-width: 880px; margin: 0 auto 28px;
-        }
-        .hero h1 .em {
-            font-style: italic; font-family: var(--serif);
-        }
-        .hero p.lede {
-            font-size: clamp(17px, 1.6vw, 19px); color: var(--text-muted);
-            max-width: 620px; margin: 0 auto 44px; line-height: 1.55;
-        }
-        .hero-ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    /* ============================================================
+       Layout primitives
+       ============================================================ */
+    .container {
+      width: 100%;
+      max-width: var(--content-max);
+      margin: 0 auto;
+      padding-left:  var(--pad-x-mobile);
+      padding-right: var(--pad-x-mobile);
+    }
+    @media (min-width: 768px) {
+      .container { padding-left: var(--pad-x-tablet);  padding-right: var(--pad-x-tablet); }
+    }
+    @media (min-width: 1024px) {
+      .container { padding-left: var(--pad-x-desk); padding-right: var(--pad-x-desk); }
+    }
 
-        /* ========== TRUST STRIP ========== */
-        .trust { padding: 56px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-        .trust-label {
-            text-align: center; color: var(--text-subtle); font-size: 11px;
-            text-transform: uppercase; letter-spacing: 0.16em; margin-bottom: 28px;
-            font-weight: 500;
-        }
-        .trust-logos { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 56px; }
-        .trust-logos span {
-            font-family: var(--serif); font-size: 22px; font-weight: 400;
-            color: var(--text-subtle); font-style: italic;
-        }
-        .trust-sub {
-            text-align: center; color: var(--text-muted); font-size: 13px;
-            margin-top: 24px; max-width: 640px; margin-left: auto; margin-right: auto;
-        }
+    section { padding-top: var(--section-y-mobile); padding-bottom: var(--section-y-mobile); }
+    @media (min-width: 1024px) {
+      section { padding-top: var(--section-y-desk); padding-bottom: var(--section-y-desk); }
+    }
 
-        /* Design partner CTA — shown in the social-proof gap until we have customers */
-        .design-partner { padding: 80px 0; border-bottom: 1px solid var(--border); }
-        .dp-card {
-            max-width: 760px; margin: 0 auto; padding: 48px;
-            border: 1px solid var(--border-hi); border-radius: 8px; background: var(--bg);
-            text-align: center;
-        }
-        .dp-eyebrow {
-            color: var(--text-muted); font-size: 11px; font-weight: 500;
-            text-transform: uppercase; letter-spacing: 0.16em; margin-bottom: 16px;
-            font-family: 'Inter', sans-serif;
-        }
-        .dp-title { font-size: 30px; line-height: 1.2; font-weight: 500; margin-bottom: 20px; }
-        .dp-body { color: var(--text-muted); max-width: 580px; margin: 0 auto 28px; font-size: 15px; line-height: 1.7; }
-        .dp-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    /* ============================================================
+       Components
+       ============================================================ */
 
-        /* Proof points strip — concrete claims, each linkable to docs */
-        .proof { padding: 56px 0; border-bottom: 1px solid var(--border); }
-        .proof-list {
-            list-style: none; padding: 0; margin: 0;
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            max-width: 1100px; margin: 0 auto;
-        }
-        .proof-list li a {
-            display: block; padding: 16px 18px;
-            border: 1px solid var(--border-hi); border-radius: 6px;
-            color: var(--text); text-decoration: none;
-            transition: border-color 0.15s ease, transform 0.15s ease;
-        }
-        .proof-list li a:hover { border-color: var(--text); transform: translateY(-1px); }
-        .proof-list strong {
-            display: block; font-size: 16px; font-weight: 600; letter-spacing: -0.01em;
-            margin-bottom: 4px;
-        }
-        .proof-list span {
-            display: block; font-size: 13px; color: var(--text-muted); line-height: 1.4;
-        }
+    /* Button — accent fill (primary) and transparent + 1px border (secondary).
+       150ms transitions, no shadow (depth via borders only per brief). */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-family: var(--font-sans);
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+      border: 1px solid transparent;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-hover); color: #fff; }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-primary);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--text-secondary); color: var(--text-primary); }
 
-        /* Two-deployment-modes strip — self-hosted vs managed */
-        .modes { padding: 64px 0; border-bottom: 1px solid var(--border); background: var(--bg-elevated); }
-        .modes-grid {
-            display: grid; grid-template-columns: 1fr 1fr;
-            gap: 20px; max-width: 1000px; margin: 0 auto;
-        }
-        .modes-card {
-            background: var(--bg); border: 1px solid var(--border-hi); border-radius: 8px;
-            padding: 28px 32px;
-        }
-        .modes-card--managed {
-            border-color: var(--text);
-        }
-        .modes-tag {
-            color: var(--text-muted); font-size: 11px; font-weight: 600;
-            text-transform: uppercase; letter-spacing: 0.12em;
-            margin: 0 0 8px; font-family: 'Inter', sans-serif;
-        }
-        .modes-card h3 {
-            font-size: 20px; font-weight: 500; line-height: 1.3;
-            margin: 0 0 14px; letter-spacing: -0.01em;
-        }
-        .modes-card p {
-            font-size: 14px; line-height: 1.65; color: var(--text-muted);
-            margin: 0 0 14px;
-        }
-        .modes-cta { font-size: 14px; }
-        .modes-cta a {
-            color: var(--text); border-bottom: 1px solid var(--border-hi);
-            text-decoration: none; font-weight: 500;
-        }
-        .modes-cta a:hover { border-bottom-color: var(--text); }
-        @media (max-width: 768px) { .modes-grid { grid-template-columns: 1fr; } }
+    /* Card — dark surface, hairline border, generous radius + padding. */
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+    }
 
-        /* Founder note — pre-customer credibility */
-        .founder { padding: 80px 0; border-bottom: 1px solid var(--border); }
-        .founder-card {
-            max-width: 760px; margin: 0 auto;
-            display: flex; gap: 32px; align-items: flex-start;
-            padding: 32px; border: 1px solid var(--border-hi); border-radius: 8px;
-            background: var(--bg-elevated);
-        }
-        .founder-photo {
-            flex: 0 0 96px; height: 96px; width: 96px; border-radius: 50%;
-            overflow: hidden; background: var(--bg);
-            border: 1px solid var(--border-hi);
-        }
-        .founder-photo img { width: 100%; height: 100%; object-fit: cover; }
-        .founder-photo--placeholder {
-            display: flex; align-items: center; justify-content: center;
-            font-family: var(--serif); font-style: italic; font-size: 36px;
-            color: var(--text-muted);
-        }
-        .founder-photo--placeholder::after { content: "DS"; }
-        .founder-body { flex: 1; }
-        .founder-eyebrow {
-            color: var(--text-muted); font-size: 11px; font-weight: 500;
-            text-transform: uppercase; letter-spacing: 0.16em;
-            margin: 0 0 12px; font-family: 'Inter', sans-serif;
-        }
-        .founder-quote {
-            font-family: var(--serif); font-style: italic; font-size: 19px;
-            line-height: 1.55; color: var(--text);
-            margin: 0 0 16px; max-width: 580px;
-        }
-        .founder-sig {
-            font-size: 14px; color: var(--text); margin: 0 0 6px;
-        }
-        .founder-sig span { color: var(--text-muted); }
-        .founder-links {
-            font-size: 13px; color: var(--text-muted); margin: 0;
-        }
-        .founder-links a {
-            color: inherit; border-bottom: 1px solid var(--border-hi);
-            text-decoration: none;
-        }
-        .founder-links a:hover { border-bottom-color: var(--text); }
-        @media (max-width: 640px) {
-            .founder-card { flex-direction: column; gap: 20px; }
-            .founder-photo { margin: 0 auto; }
-        }
+    /* TerminalBlock — monospaced "$ command" with a copy button that confirms
+       via a brief inline checkmark (no popup, never an alert). */
+    .terminal {
+      position: relative;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      padding-right: 64px; /* leave room for the copy button */
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      overflow-x: auto;
+    }
+    .terminal .prompt { color: var(--accent); user-select: none; }
+    .terminal .copy {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 150ms ease, color 150ms ease;
+    }
+    .terminal .copy:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+    .terminal .copy.copied { color: var(--success); border-color: var(--success); }
 
-        /* Comparison "best for" positioning callout */
-        .cmp-best-for {
-            max-width: 640px; margin: 24px auto 0; padding: 16px 20px;
-            background: var(--bg); border-left: 3px solid var(--text);
-            font-size: 14px; line-height: 1.6; color: var(--text);
-            text-align: left;
-        }
-        .cmp-best-for strong { font-weight: 600; }
-        .cmp-best-for em { font-family: var(--serif); font-style: italic; font-weight: 400; }
+    /* Hero radial — single subtle blue ellipse behind the H1. Pure decoration,
+       no animation per brief; transparent at 50% so the page settles cleanly. */
+    .hero {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      padding-top: 64px;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: radial-gradient(ellipse at top, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
+      pointer-events: none;
+    }
 
-        /* SRE plain-language explainer card */
-        .sre-explainer {
-            margin: 24px 0;
-            padding: 20px 24px;
-            border: 1px solid var(--border-hi);
-            border-left: 3px solid var(--text);
-            border-radius: 4px;
-            background: var(--bg);
-        }
-        .sre-explainer-title {
-            font-size: 11px; font-weight: 600;
-            text-transform: uppercase; letter-spacing: 0.12em;
-            color: var(--text); margin-bottom: 8px;
-        }
-        .sre-explainer-body {
-            font-size: 14px; line-height: 1.7; color: var(--text-muted); margin: 0;
-        }
+    /* Sticky nav with backdrop-blur. Solid-ish so the hero text below stays
+       readable as it scrolls under. */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(10, 10, 11, 0.8);
+      backdrop-filter: saturate(180%) blur(12px);
+      -webkit-backdrop-filter: saturate(180%) blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+    .nav-brand {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+    .nav-links {
+      display: none;
+      gap: 32px;
+      align-items: center;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .nav-links a {
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .nav-links a:hover { color: var(--text-primary); }
+    .nav-cta { display: none; }
+    @media (min-width: 768px) {
+      .nav-links { display: flex; }
+      .nav-cta { display: inline-flex; }
+    }
 
-        /* Mid-page CTA band — between Enterprise and Comparison */
-        .midcta {
-            padding: 80px 0; text-align: center;
-            border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-        }
-        .midcta h3 { font-size: 28px; line-height: 1.3; font-weight: 500; margin-bottom: 12px; max-width: 640px; margin-left: auto; margin-right: auto; }
-        .midcta p { color: var(--text-muted); margin-bottom: 24px; max-width: 540px; margin-left: auto; margin-right: auto; }
-        .midcta .midcta-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .nav-burger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px; height: 40px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+    @media (min-width: 768px) { .nav-burger { display: none; } }
+    .nav-mobile-panel {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      padding: 16px var(--pad-x-mobile) 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-primary);
+    }
+    .nav-mobile-panel.open { display: flex; }
+    .nav-mobile-panel a {
+      padding: 12px 0;
+      color: var(--text-secondary);
+      font-size: 16px;
+    }
+    .nav-mobile-panel a:hover { color: var(--text-primary); }
 
-        /* ========== SECTIONS ========== */
-        section.s { padding: 112px 0; }
-        section.s-alt { background: var(--bg-elevated); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-        .s-header { text-align: center; margin-bottom: 64px; }
-        .s-eyebrow {
-            color: var(--text-muted); font-size: 11px; font-weight: 500;
-            text-transform: uppercase; letter-spacing: 0.16em; margin-bottom: 16px;
-            font-family: 'Inter', sans-serif;
-        }
-        .s-header h2 {
-            font-size: clamp(34px, 4.5vw, 54px); margin-bottom: 16px;
-            line-height: 1.05;
-        }
-        .s-header h2 .em { font-style: italic; }
-        .s-header p { color: var(--text-muted); font-size: 17px; max-width: 600px; margin: 0 auto; line-height: 1.55; }
+    /* Hero content layout */
+    .hero-eyebrow {
+      color: var(--text-tertiary);
+      margin-bottom: 24px;
+    }
+    .hero h1 { max-width: 18ch; margin-bottom: 28px; }
+    .hero-subhead { max-width: 60ch; color: var(--text-secondary); margin-bottom: 36px; }
+    .hero-terminal { max-width: 600px; margin-bottom: 12px; }
+    .hero-cap { color: var(--text-tertiary); margin-bottom: 28px; }
+    .hero-secondary-link {
+      display: inline-block;
+      color: var(--text-secondary);
+    }
+    .hero-secondary-link:hover { color: var(--text-primary); }
+    .hero-secondary-link .arrow { color: var(--accent); }
 
-        /* ========== AUDIENCE ROWS ========== */
-        .audience { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; margin-bottom: 96px; }
-        .audience:last-child { margin-bottom: 0; }
-        .audience.reverse > :first-child { order: 2; }
-        .audience-tag {
-            display: inline-flex;
-            color: var(--text-muted); font-size: 11px; font-weight: 500; margin-bottom: 16px;
-            text-transform: uppercase; letter-spacing: 0.16em;
-            font-family: 'Inter', sans-serif;
-        }
-        .audience h3 { font-size: clamp(28px, 3.4vw, 38px); margin-bottom: 18px; line-height: 1.1; }
-        .audience h3 .em { font-style: italic; }
-        .audience p { color: var(--text-muted); font-size: 16px; margin-bottom: 24px; line-height: 1.6; }
-        .audience-list { list-style: none; padding: 0; }
-        .audience-list li { padding: 8px 0; color: var(--text); display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
-        .audience-list i { color: var(--success); margin-top: 6px; flex-shrink: 0; }
-        @media (max-width: 768px) {
-            .audience { grid-template-columns: 1fr; gap: 32px; }
-            .audience.reverse > :first-child { order: 0; }
-        }
+    /* Trust strip */
+    .trust {
+      padding: 64px var(--pad-x-mobile);
+      text-align: center;
+      color: var(--text-tertiary);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
 
-        /* ========== CODE CARD (kept dark on light page) ========== */
-        .code-card {
-            background: var(--code-bg); border: 1px solid var(--code-border); border-radius: 8px;
-            overflow: hidden;
-        }
-        .code-card-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--code-border); }
-        .code-tab {
-            padding: 12px 18px; font-size: 13px; color: var(--code-muted); cursor: pointer;
-            border-right: 1px solid var(--code-border); font-family: 'JetBrains Mono', monospace; transition: all .15s;
-        }
-        .code-tab.active { color: var(--code-text); background: rgba(255,255,255,0.04); }
-        .code-card pre {
-            padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 13px;
-            color: var(--code-text); overflow-x: auto; line-height: 1.7;
-        }
-        .code-card .kw { color: #c084fc; }
-        .code-card .str { color: #86efac; }
-        .code-card .com { color: #9CA3AF; font-style: italic; }
-        .code-card .fn { color: #60a5fa; }
+    /* Three-feature grid */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    @media (min-width: 1024px) {
+      .feature-grid { grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+    }
+    .feature-card h3 { margin-bottom: 16px; }
+    .feature-card p { color: var(--text-secondary); margin: 0 0 20px; }
+    .feature-card .cap { color: var(--text-tertiary); margin: 0; }
 
-        /* ========== ARCH DIAGRAM (also dark) ========== */
-        .arch-diagram {
-            background: var(--code-bg); border: 1px solid var(--code-border); border-radius: 8px;
-            padding: 32px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
-            color: var(--code-muted); white-space: pre; overflow-x: auto; line-height: 1.6;
-        }
-        .arch-diagram .h { color: #FAFAFA; font-weight: 500; }
+    /* Code-proof section */
+    .proof-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 32px;
+      align-items: center;
+      margin-top: 48px;
+    }
+    @media (min-width: 1024px) {
+      .proof-grid { grid-template-columns: 60fr 40fr; gap: 48px; }
+    }
+    .proof-code {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.7;
+      overflow-x: auto;
+    }
+    .proof-code .kw { color: #c084fc; }      /* keyword */
+    .proof-code .fn { color: #60a5fa; }      /* function call */
+    .proof-code .str { color: #a5e3a1; }     /* string */
+    .proof-code .com { color: var(--text-tertiary); font-style: italic; }
+    .proof-cap { color: var(--text-secondary); font-size: 18px; line-height: 1.6; }
 
-        /* ========== COMPARISON TABLE ========== */
-        .cmp-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
-        .cmp { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1000px; }
-        .cmp th, .cmp td {
-            padding: 16px 16px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top;
-        }
-        .cmp tbody tr:last-child td { border-bottom: none; }
-        .cmp thead th {
-            background: transparent; font-weight: 500; font-size: 11px;
-            color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.12em;
-        }
-        .cmp tbody tr.us { background: var(--bg-soft); }
-        .cmp tbody tr.us td:first-child { color: var(--text); font-weight: 600; font-family: var(--serif); font-size: 16px; }
-        .cmp tbody td:first-child { font-weight: 500; color: var(--text); }
-        .cmp .yes { color: var(--text); font-weight: 600; }
-        .cmp .no  { color: var(--text-subtle); }
-        .cmp .neutral { color: var(--text); }
-        .cmp-note { margin-top: 16px; color: var(--text-muted); font-size: 12px; line-height: 1.6; font-style: italic; font-family: var(--serif); }
+    /* Demo section */
+    .demo-video {
+      max-width: 1100px;
+      margin: 48px auto 24px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      display: block;
+      width: 100%;
+    }
+    .demo-cap {
+      text-align: center;
+      color: var(--text-tertiary);
+      font-style: italic;
+      max-width: 720px;
+      margin: 0 auto 28px;
+    }
+    .demo-cta { text-align: center; margin-bottom: 56px; }
+    .pull-quote {
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+      font-size: 22px;
+      line-height: 1.4;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
 
-        /* Status section — what's shipped vs what's coming */
-        .status-grid {
-            display: grid; grid-template-columns: 1fr 1fr;
-            gap: 32px; max-width: 980px; margin: 0 auto;
-        }
-        .status-col {
-            border: 1px solid var(--border-hi); border-radius: 8px;
-            padding: 28px 32px; background: var(--bg);
-        }
-        .status-col h3 {
-            font-size: 14px; font-weight: 600;
-            text-transform: uppercase; letter-spacing: 0.06em;
-            margin: 0 0 20px; padding-bottom: 12px;
-            border-bottom: 1px solid var(--border);
-        }
-        .status-col--coming { background: var(--bg-elevated); }
-        .status-col--coming h3 { color: var(--text-muted); }
-        .status-col ul { list-style: none; padding: 0; margin: 0; }
-        .status-col li {
-            padding: 8px 0 8px 24px; position: relative;
-            font-size: 14px; line-height: 1.55; color: var(--text);
-        }
-        .status-col li::before {
-            content: "✓"; position: absolute; left: 0; top: 8px;
-            color: var(--text); font-weight: 600;
-        }
-        .status-col--coming li::before { content: "→"; color: var(--text-muted); }
-        .status-col--coming li { color: var(--text-muted); }
-        .status-col--coming li strong { color: var(--text); }
-        .status-foot {
-            margin-top: 24px; text-align: center;
-            color: var(--text-muted); font-size: 13px;
-        }
-        @media (max-width: 768px) { .status-grid { grid-template-columns: 1fr; } }
+    /* Self-hosted prose */
+    .prose-block { max-width: 760px; }
+    .prose-block p {
+      color: var(--text-secondary);
+      margin: 0 0 24px;
+    }
+    .prose-block p:last-child { margin-bottom: 0; }
 
-        /* Founding-customer pricing banner */
-        .founding-banner {
-            max-width: 580px; margin: 16px auto 0; padding: 12px 18px;
-            background: var(--bg-elevated); border: 1px solid var(--border-hi);
-            border-left: 3px solid var(--text);
-            border-radius: 4px;
-            font-size: 13px; line-height: 1.55; color: var(--text);
-            font-family: 'Inter', sans-serif;
-        }
-        .founding-banner strong { font-weight: 600; }
+    /* Capabilities strip */
+    .caps-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 32px;
+      margin-top: 48px;
+    }
+    @media (min-width: 768px) {
+      .caps-grid { grid-template-columns: 1fr 1fr; gap: 64px; }
+    }
+    .caps-col h4.label { color: var(--text-tertiary); margin: 0 0 20px; font-weight: 500; }
+    .caps-col ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .caps-col li {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    .caps-col li:last-child { border-bottom: 0; }
+    .caps-footer-link {
+      display: block;
+      text-align: center;
+      margin-top: 32px;
+      color: var(--text-secondary);
+    }
+    .caps-footer-link:hover { color: var(--accent-hover); }
 
-        /* ========== PRICING ========== */
-        .pricing-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-        .pricing-grid--3 { grid-template-columns: repeat(3, 1fr); max-width: 980px; margin: 0 auto; }
-        @media (max-width: 1024px) {
-            .pricing-grid { grid-template-columns: repeat(2, 1fr); }
-            .pricing-grid--3 { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 600px)  {
-            .pricing-grid, .pricing-grid--3 { grid-template-columns: 1fr; }
-        }
+    /* Pricing */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      margin-top: 48px;
+    }
+    @media (min-width: 1024px) {
+      .pricing-grid { grid-template-columns: 1fr 1fr 1fr; gap: 24px; align-items: stretch; }
+    }
+    .tier {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+    }
+    .tier.featured { border-color: var(--accent); }
+    .tier-name { color: var(--text-tertiary); margin: 0 0 12px; }
+    .tier-price {
+      font-size: 32px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0 0 24px;
+    }
+    .tier ul {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 32px;
+      flex-grow: 1;
+    }
+    .tier ul li {
+      padding: 8px 0;
+      color: var(--text-secondary);
+      font-size: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tier ul li:last-child { border-bottom: 0; }
+    .tier .btn { width: 100%; }
+    .pricing-foot {
+      text-align: center;
+      color: var(--text-tertiary);
+      margin-top: 32px;
+    }
 
-        /* Pricing-track section headers (Self-hosted / Fully managed) */
-        .pricing-section { margin-top: 48px; }
-        .pricing-section:first-of-type { margin-top: 32px; }
-        .pricing-section-header {
-            text-align: center; margin-bottom: 32px;
-            max-width: 640px; margin-left: auto; margin-right: auto;
-        }
-        .pricing-section-eyebrow {
-            color: var(--text-muted); font-size: 11px; font-weight: 600;
-            text-transform: uppercase; letter-spacing: 0.16em;
-            margin-bottom: 12px; font-family: 'Inter', sans-serif;
-        }
-        .pricing-section-header h3 {
-            font-size: 24px; font-weight: 500; line-height: 1.3;
-            margin: 0 0 12px; letter-spacing: -0.01em;
-        }
-        .pricing-section-header h3 .em { font-family: var(--serif); font-style: italic; font-weight: 400; }
-        .pricing-section-header p {
-            color: var(--text-muted); font-size: 14px; line-height: 1.65;
-            margin: 0;
-        }
-        .price-card {
-            background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-            padding: 32px; display: flex; flex-direction: column;
-            transition: border-color .15s;
-        }
-        .price-card:hover { border-color: var(--border-hi); }
-        .price-card.featured {
-            border-color: var(--text);
-            box-shadow: 0 0 0 1px var(--text);
-        }
-        .price-name { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.16em; }
-        .price-amt {
-            font-family: var(--serif); font-size: 48px; font-weight: 400;
-            margin: 14px 0 6px; letter-spacing: -0.01em; line-height: 1;
-        }
-        .price-amt small { font-size: 14px; color: var(--text-muted); font-weight: 400; font-family: 'Inter', sans-serif; }
-        .price-tagline { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; min-height: 40px; line-height: 1.5; }
-        .price-features { list-style: none; padding: 0; margin: 0 0 24px 0; flex: 1; }
-        .price-features li { font-size: 13px; padding: 6px 0; display: flex; gap: 8px; align-items: flex-start; color: var(--text); }
-        .price-features i { color: var(--success); margin-top: 4px; font-size: 12px; flex-shrink: 0; }
-        .price-card .btn { width: 100%; justify-content: center; }
-        .free-month-banner {
-            text-align: center; margin-top: 36px; padding: 14px;
-            background: var(--bg-elevated); border: 1px solid var(--border);
-            border-radius: 6px; color: var(--text); font-size: 13px; font-weight: 500;
-        }
+    /* Final CTA band */
+    .cta-band {
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    .cta-band h2 { margin-bottom: 32px; }
+    .cta-band .terminal { max-width: 700px; margin: 0 auto 24px; text-align: left; }
+    .cta-links {
+      display: inline-flex;
+      gap: 12px;
+      align-items: center;
+      color: var(--text-secondary);
+    }
+    .cta-links a:hover { color: var(--accent-hover); }
+    .cta-links .dot { color: var(--text-tertiary); }
 
-        /* ========== RESEARCH ========== */
-        .research-grid {
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px;
-            background: var(--border); border: 1px solid var(--border); border-radius: 8px;
-            overflow: hidden;
-        }
-        @media (max-width: 768px) { .research-grid { grid-template-columns: 1fr; } }
-        .research-card {
-            background: var(--bg); padding: 32px;
-            display: flex; flex-direction: column; gap: 12px;
-            transition: background-color .15s;
-        }
-        .research-card:hover { background: var(--bg-elevated); }
-        .research-card .tag {
-            font-family: 'Inter', sans-serif; font-size: 10px;
-            text-transform: uppercase; letter-spacing: 0.18em;
-            color: var(--text-subtle); font-weight: 500;
-        }
-        .research-card h3 {
-            font-family: var(--serif); font-size: 24px; font-weight: 400;
-            line-height: 1.2; letter-spacing: -0.005em; color: var(--text);
-        }
-        .research-card p {
-            font-size: 14px; color: var(--text-muted); line-height: 1.6; flex: 1;
-        }
-        .research-card a.read-link {
-            display: inline-flex; align-items: center; gap: 6px;
-            font-size: 13px; color: var(--text); font-weight: 500;
-            border-bottom: 1px solid var(--border-hi);
-            padding-bottom: 2px; align-self: flex-start;
-            transition: border-color .15s;
-        }
-        .research-card a.read-link:hover { border-color: var(--text); }
-        .research-card a.read-link.draft { color: var(--text-subtle); border-color: transparent; cursor: default; }
-        .research-foot {
-            margin-top: 32px; text-align: center;
-            color: var(--text-muted); font-size: 13px; font-style: italic; font-family: var(--serif);
-        }
-
-        /* ========== FAQ ========== */
-        .faq-list { max-width: 720px; margin: 0 auto; }
-        .faq-item { border-bottom: 1px solid var(--border); padding: 24px 0; }
-        .faq-q { font-family: var(--serif); font-weight: 400; font-size: 22px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 16px; line-height: 1.3; }
-        .faq-q i { color: var(--text-muted); transition: transform .2s; font-size: 12px; flex-shrink: 0; font-family: 'Font Awesome 6 Free'; }
-        .faq-item.open .faq-q i { transform: rotate(45deg); }
-        .faq-a {
-            color: var(--text-muted); font-size: 15px; padding-top: 0;
-            max-height: 0; overflow: hidden; transition: max-height .25s, padding-top .25s;
-        }
-        .faq-item.open .faq-a { max-height: 400px; padding-top: 12px; }
-
-        /* ========== FOOTER ========== */
-        footer { border-top: 1px solid var(--border); padding: 80px 0 40px; background: var(--bg); }
-        .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 48px; }
-        .footer-grid h4 { color: var(--text); font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; }
-        .footer-grid a { display: block; color: var(--text-muted); font-size: 14px; padding: 6px 0; }
-        .footer-grid a:hover { color: var(--text); }
-        .footer-bottom {
-            border-top: 1px solid var(--border); padding-top: 24px;
-            display: flex; justify-content: space-between; align-items: center;
-            color: var(--text-subtle); font-size: 13px;
-            flex-wrap: wrap; gap: 16px;
-        }
-        .footer-social { display: inline-flex; gap: 16px; }
-        .footer-social a {
-            color: var(--text-subtle); font-size: 18px;
-            transition: color 0.15s ease;
-        }
-        .footer-social a:hover { color: var(--text); }
-        @media (max-width: 768px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
-
-        /* ========== MODAL ========== */
-        .modal-bg {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-            display: none; align-items: center; justify-content: center;
-            z-index: 100; padding: 20px; backdrop-filter: blur(4px);
-        }
-        .modal-bg.open { display: flex; }
-        .modal {
-            background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
-            width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; padding: 36px;
-            box-shadow: 0 20px 60px -10px rgba(0,0,0,0.18);
-        }
-        .modal h3 { font-size: 28px; margin-bottom: 8px; }
-        .modal p.sub { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
-        .form-grid { display: grid; gap: 14px; }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-        @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
-        .form-field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--text); }
-        .form-field input, .form-field select, .form-field textarea {
-            width: 100%; padding: 10px 12px; border-radius: 8px;
-            background: var(--bg); border: 1px solid var(--border-hi); color: var(--text);
-            font-size: 14px; font-family: inherit;
-            transition: border-color .12s, box-shadow .12s;
-        }
-        .form-field input:focus, .form-field select:focus, .form-field textarea:focus {
-            outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,0,0,0.10);
-        }
-        .form-field textarea { resize: vertical; min-height: 80px; }
-        .honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
-        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-        .modal-result { padding: 16px; border-radius: 6px; margin-top: 16px; font-size: 14px; }
-        .modal-result.ok { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text); }
-        .modal-result.err { background: #FEF2F2; border: 1px solid #FECACA; color: var(--danger); }
-    </style>
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 64px var(--pad-x-mobile) 32px;
+    }
+    @media (min-width: 768px) { footer { padding: 64px var(--pad-x-tablet) 32px; } }
+    @media (min-width: 1024px) { footer { padding: 64px var(--pad-x-desk) 32px; } }
+    .footer-inner { max-width: var(--content-max); margin: 0 auto; }
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 32px;
+      margin-bottom: 48px;
+    }
+    @media (min-width: 768px) { .footer-grid { grid-template-columns: 1fr 1fr 1fr; } }
+    .footer-col h4 { color: var(--text-tertiary); margin: 0 0 20px; font-weight: 500; }
+    .footer-col ul { list-style: none; margin: 0; padding: 0; }
+    .footer-col li { margin-bottom: 12px; }
+    .footer-col a { color: var(--text-secondary); font-size: 14px; }
+    .footer-col a:hover { color: var(--text-primary); }
+    .footer-social {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .footer-social a {
+      width: 40px; height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      transition: color 150ms ease, border-color 150ms ease;
+    }
+    .footer-social a:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+    .footer-social svg { width: 18px; height: 18px; fill: currentColor; }
+    .footer-bottom {
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-tertiary);
+      font-size: 13px;
+    }
+  </style>
 </head>
 <body>
 
-<!-- Comparison + pricing data. Real numbers verified May 2026.
-     OpenRouter and Apigee figures reflect publicly cited pricing — their
-     pricing pages did not render in our automated check. -->
-<script>
-    const PRICING_VERIFIED_AT = '2026-05';
-
-    // Comparison-table feature columns (no pricing — pricing has its own section).
-    // Cell values are rendered as "yes" (green) when exactly "Yes", "no" (gray)
-    // when exactly "No" or "N/A", everything else is shown as plain text.
-    // Comparison rows — keep in sync with static <tbody> in the comparison section.
-    // Static HTML wins (the renderer skips when tbody.children.length > 0); both must
-    // change together so search/AI bots and JS-rendered views stay aligned.
-    // 2026-05 changes: dropped "Roll your own" (undermines table seriousness),
-    // added TrueFoundry (direct competitor) and LiteLLM (pre-empts "why not OSS?"),
-    // added pricingModel + openSource columns, hedged Portkey MCP to "Partial".
-    const COMPETITORS = [
-        {
-            name: 'Scutum', us: true,
-            scope: 'Unified LLM + MCP + A2A',
-            selfHost: 'Yes',
-            llmProxy: 'Yes',
-            mcpA2A: 'Yes',
-            workflows: 'LangGraph + Temporal',
-            sreAgent: 'Yes (HITL)',
-            guardrails: 'Built-in',
-            sso: 'OIDC (Business+)',
-            audit: 'Configurable retention',
-            costPrediction: 'tiktoken pre-call',
-            budgets: 'Per-team, hard + soft',
-            chargeback: 'Yes',
-            byom: 'Yes (vLLM, Ollama)',
-            pricingModel: 'Flat fee',
-            openSource: 'No'
-        },
-        {
-            name: 'OpenRouter',
-            scope: 'LLM proxy only',
-            selfHost: 'No',
-            llmProxy: 'Yes',
-            mcpA2A: 'No',
-            workflows: 'No',
-            sreAgent: 'No',
-            guardrails: 'No',
-            sso: 'No',
-            audit: 'No',
-            costPrediction: 'No',
-            budgets: 'Per-key spend',
-            chargeback: 'No',
-            byom: 'Limited',
-            pricingModel: 'Per-token markup',
-            openSource: 'No'
-        },
-        {
-            name: 'Portkey',
-            scope: 'LLM proxy + observability',
-            selfHost: 'OSS basic',
-            llmProxy: 'Yes',
-            // mcpA2A hedged to Partial pending docs verification (see Open Questions).
-            mcpA2A: 'Partial',
-            workflows: 'No',
-            sreAgent: 'No',
-            guardrails: 'Yes',
-            sso: 'Enterprise',
-            audit: 'Enterprise',
-            costPrediction: 'Post-call',
-            budgets: 'Yes',
-            chargeback: 'No',
-            byom: 'Yes',
-            pricingModel: 'Per-recorded-log',
-            openSource: 'Gateway only'
-        },
-        {
-            name: 'LangSmith',
-            scope: 'Observability only',
-            selfHost: 'Self-host Enterprise',
-            llmProxy: 'No',
-            mcpA2A: 'No',
-            workflows: 'Observe only',
-            sreAgent: 'No',
-            guardrails: 'No',
-            sso: 'Enterprise',
-            audit: 'Enterprise',
-            costPrediction: 'Post-call traces',
-            budgets: 'No',
-            chargeback: 'No',
-            byom: 'Trace-only',
-            pricingModel: 'Per-trace',
-            openSource: 'No'
-        },
-        {
-            name: 'AWS Bedrock',
-            scope: 'LLM API (AWS-only)',
-            selfHost: 'No',
-            llmProxy: 'Raw API',
-            mcpA2A: 'No',
-            workflows: 'Step Functions (separate)',
-            sreAgent: 'No',
-            guardrails: 'Bedrock Guardrails',
-            sso: 'IAM',
-            audit: 'CloudTrail',
-            costPrediction: 'No',
-            budgets: 'AWS Budgets',
-            chargeback: 'AWS Cost Allocation tags',
-            byom: 'Custom Models',
-            pricingModel: 'Per-token',
-            openSource: 'No'
-        },
-        {
-            name: 'Apigee',
-            scope: 'API gateway (general)',
-            selfHost: 'GCP only',
-            llmProxy: 'Generic, not LLM-aware',
-            mcpA2A: 'No',
-            workflows: 'No',
-            sreAgent: 'No',
-            guardrails: 'Generic policies',
-            sso: 'Yes',
-            audit: 'Yes',
-            costPrediction: 'No',
-            budgets: 'Quota',
-            chargeback: 'No',
-            byom: 'N/A',
-            pricingModel: 'Per-request',
-            openSource: 'No'
-        },
-        {
-            // TrueFoundry: direct competitor; absence reads as evasion.
-            name: 'TrueFoundry',
-            scope: 'AI deployment platform',
-            selfHost: 'Yes',
-            llmProxy: 'Yes',
-            mcpA2A: 'MCP only',
-            workflows: 'Yes',
-            sreAgent: 'No',
-            guardrails: 'Yes',
-            sso: 'Yes',
-            audit: 'Yes',
-            costPrediction: 'Partial',
-            budgets: 'Yes',
-            chargeback: 'Partial',
-            byom: 'Yes',
-            pricingModel: 'Flat fee',
-            openSource: 'No'
-        },
-        {
-            // LiteLLM: pre-empts the "why not just use the OSS Scutum is built on" objection.
-            name: 'LiteLLM',
-            scope: 'OSS LLM proxy',
-            selfHost: 'Yes',
-            llmProxy: 'Yes',
-            mcpA2A: 'No',
-            workflows: 'No',
-            sreAgent: 'No',
-            guardrails: 'Hooks',
-            sso: 'Basic',
-            audit: 'Basic',
-            costPrediction: 'Partial',
-            budgets: 'Per-key',
-            chargeback: 'No',
-            byom: 'Yes',
-            pricingModel: 'Free (self-host)',
-            openSource: 'Yes'
-        }
-    ];
-
-    // Pricing tiers — keep in sync with the JSON-LD `offers` array above (search
-    // engines need the static JSON-LD; this array drives the visible cards).
-    // SELF-HOSTED — you run it, we keep it licensed. Low licensing fee since you bring infrastructure,
-    // keys, and operational ownership. SRE agent is an opt-in add-on.
-    // Self-hosted: 3 tiers. Voice is brand-led; promises stay scoped to what's underwritten.
-    const PRICING_SELFHOSTED = [
-        { name: 'Free Trial', price: '$0', period: 'first 30 days', tagline: 'One click. Runs on us. No credit card.', cta: 'Launch trial', ctaHref: '/try/',
-          features: ['All 100+ models, MCP & A2A', 'Unlimited team members', 'Pre-call cost prediction + per-team budgets', 'OpenTelemetry, Grafana dashboards', 'Onboarding session included'] },
-        { name: 'License', price: '$99', period: '/month', tagline: 'You run it. Licensed by us.', featured: true, cta: 'Book a demo',
-          features: ['Unlimited team members', 'All providers, all models', 'Cost dashboards + per-team budgets', 'OIDC SSO (Google, Okta, Azure AD)', 'Configurable audit retention', 'Email support', 'Self-hosted on your infrastructure'] },
-        { name: 'License + SRE', price: '$299', period: '/month', tagline: 'Adds the autonomous SRE agent.', cta: 'Book a demo',
-          features: ['Everything in License', 'Autonomous SRE agent with HITL approval', 'Four-component risk scoring', 'Slack / PagerDuty / webhook alerts', 'Risk-bounded auto-execution on the roadmap', 'Action-library updates included'] }
-    ];
-
-    // FULLY MANAGED — we provision and run the stack; customers don't deploy software.
-    // Managed: 3 tiers, framed as early access. SLA / dedicated-CSM / BAA / on-prem
-    // promises stay off the page until production data justifies them. Customers needing
-    // those go through the demo flow rather than seeing a SKU on a marketing page.
-    const PRICING_MANAGED = [
-        { name: 'Trial', price: '$0', period: 'first 30 days', tagline: 'Try managed before committing.', cta: 'Request trial access',
-          features: ['Per-customer namespace', 'Single region', 'We provision in 24h', 'Convert to Starter or Business after trial'] },
-        { name: 'Starter Managed', price: '$499', period: '/month', tagline: 'Shared infra. Early access.', cta: 'Book a demo',
-          features: ['Shared multi-tenant infrastructure', 'Single region', 'Best-effort uptime', 'All providers, all models', 'OIDC SSO included', 'BYO provider keys, no token markup'] },
-        { name: 'Business Managed', price: '$1,299', period: '/month', tagline: 'Dedicated instance. Early access.', featured: true, cta: 'Book a demo',
-          features: ['Per-customer dedicated instance', 'Setup, upgrades, and backups handled', 'Single region (US, EU, India, or SE Asia)', 'Best-effort uptime during early access; targets calibrated as production data accumulates', 'Includes everything in self-hosted License + SRE', 'BYO provider keys, no token markup'] }
-    ];
-
-    // Research topics — each is a real research angle tied to a product capability.
-    // `link` placeholder until papers/drafts are written; UI shows "Draft in progress" then.
-    const RESEARCH = [
-        {
-            tag: 'Safety',
-            title: 'AI Safety at the Infrastructure Layer',
-            summary: 'What safety properties can the platform layer enforce that the model layer can\'t reliably guarantee? Action-space closure, audit, and human-in-loop gates as complementary disciplines to model-side safety work.',
-            link: '/docs/research/ai-safety/'
-        },
-        {
-            tag: 'Explainability',
-            title: 'Explainable AI at the Platform Layer',
-            summary: 'At the infrastructure layer, explainability is audit + decision provenance — not "why the model said X" but "why the platform allowed X." A complementary surface to model interpretability.',
-            link: '/docs/research/explainable-ai/'
-        },
-        {
-            tag: 'Context',
-            title: 'Context Window Management',
-            summary: 'Hybrid long-context, RAG, and semantic cache — when each pays back, where each fails, and what the platform owes each pattern. Auto-routing between them is the open problem.',
-            link: '/docs/research/context-windows/'
-        },
-        {
-            tag: 'Retrieval',
-            title: 'RAG Performance — measurement at the proxy layer',
-            summary: 'End-to-end RAG evaluation across heterogeneous retrieval backends. The proxy is the natural place to publish standardised benchmarks; the literature has not caught up to production.',
-            link: '/docs/research/rag-performance/'
-        },
-        {
-            tag: 'Agents',
-            title: 'Multi-Agent Evaluations',
-            summary: 'A2A protocols and the eval substrate that drops out of having audit, cost, and trace data on every step. Trajectory-level decomposition over outcome-level pass/fail.',
-            link: '/docs/research/multi-agent-evaluations/'
-        },
-        {
-            tag: 'Adaptive',
-            title: 'Self-Learning Platform Configuration',
-            summary: 'What if routing weights, risk-score weights, cache thresholds, and verbosity profiles were continuously refined from operational data — under bounded drift, with auditable updates?',
-            link: '/docs/research/self-learning/'
-        }
-    ];
-</script>
-
-<nav class="nav">
+  <!-- ===== TOP NAV ===== -->
+  <header class="nav" role="banner">
     <div class="container nav-inner">
-        <a href="#" class="logo">
-            <img src="/scutum-mark.svg" alt="" class="logo-mark"/>
-            Scutum
-        </a>
-        <div class="nav-links">
-            <!-- Nav stays minimal: only the destinations a visitor commonly wants.
-                 Removed the four within-page anchor links (Engineering / Startups /
-                 Enterprise / Comparison) — they cluttered the bar, are reachable by
-                 scrolling, and don't survive across page reloads cleanly. The
-                 "Research" anchor (#research = research-roadmap section) was
-                 removed because it conflicts with Scutum Research (the product) —
-                 visitors who want the roadmap can scroll. -->
-            <a href="#pricing">Pricing</a>
-            <a href="/docs/" target="_blank">Docs</a>
-            <a href="/changelog/" target="_blank">Changelog</a>
-            <a onclick="openDemoModal()" style="cursor:pointer;">Book a Demo</a>
-            <!-- Open Research is the highest-conversion top-of-funnel CTA: 5-second
-                 wow, no signup, no demo call. Drives more chat sessions than /try
-                 drives trial provisions, by an order of magnitude. -->
-            <a href="https://chat.scutum.dev" target="_blank">Open Research <span style="font-size:11px;opacity:.7;">↗</span></a>
-            <a class="btn btn-nav" href="/try/">Try Now</a>
-        </div>
-    </div>
-</nav>
+      <a href="/" class="nav-brand">Scutum</a>
 
-<section class="hero">
-    <div class="container">
-        <!-- "New" pill: announces Scutum Research without rewriting the H1. Click jumps
-             to chat.scutum.dev — fastest 'see the product' path on the page. -->
-        <a href="https://chat.scutum.dev" target="_blank" class="hero-new-pill">
-            <span class="hero-new-pill__tag">NEW</span>
-            Scutum Research is here — search with citations, routed through your gateway
-            <span style="opacity:.6">↗</span>
-        </a>
-        <span class="hero-eyebrow">
-            <i class="fa-solid fa-shield-halved"></i>
-            Self-hosted · v0.1.0 · Open early access
-        </span>
-        <!-- H1 + lede reframed around what's true and demonstrable: autonomy + self-healing,
-             not procurement-grade enterprise. Buyer is VPE/staff at a Series A-C startup. -->
-        <h1>The AI control plane <br>that <span class="em">runs itself</span>.</h1>
-        <p class="lede">
-            Drop-in OpenAI-compatible proxy across 100+ models. Native MCP and A2A with Cedar policy enforcement.
-            Pre-call cost prediction with per-team budget gates. An autonomous SRE agent that watches the stack
-            and proposes remediations for human approval. <strong>Self-hosted by default</strong> — your data, your keys, your audit log.
-        </p>
-        <div class="hero-ctas">
-            <!-- Open Research is the new top-of-funnel CTA — 5-second wow, no signup
-                 needed. Try Now stays as the conversion CTA for buyers who want the
-                 self-hosted experience. Book a Demo + Read the Docs are tertiary. -->
-            <a class="btn btn-primary btn-lg" href="https://chat.scutum.dev" target="_blank">
-                <i class="fa-solid fa-magnifying-glass"></i> Open Research
-            </a>
-            <a class="btn btn-secondary btn-lg" href="/try/">
-                <i class="fa-solid fa-rocket"></i> Try Now
-            </a>
-            <button class="btn btn-secondary btn-lg" onclick="openDemoModal()">
-                <i class="fa-solid fa-calendar-check"></i> Book a Demo
-            </button>
-            <a class="btn btn-secondary btn-lg" href="/docs/" target="_blank">
-                <i class="fa-solid fa-book"></i> Read the Docs
-            </a>
-        </div>
-    </div>
-</section>
-
-<!-- Pre-customer phase: substitute credibility for social proof. Two strips:
-     (1) technical depth — what we're built on (real, verifiable);
-     (2) design-partner offer — converts "no customers" into a scarcity signal. -->
-<div class="trust">
-    <div class="container">
-        <p class="trust-label">Built on production infrastructure you already trust</p>
-        <div class="trust-logos">
-            <span>LITELLM</span><span>AGENT GATEWAY</span><span>POSTGRESQL</span><span>CEDAR</span><span>TEMPORAL</span><span>OPENTELEMETRY</span>
-        </div>
-        <p class="trust-sub">Open-source components composed under one control plane — not reinvented. v0.1.0 shipped May 2026.</p>
-    </div>
-</div>
-
-<!-- Specific technical claims, each linkable to docs. Concrete > generic. -->
-<div class="proof">
-    <div class="container">
-        <ul class="proof-list">
-            <li><a href="/docs/guides/api-integration/" target="_blank"><strong>100+ models</strong><span>across 9 providers</span></a></li>
-            <li><a href="/docs/operations/licensing/" target="_blank"><strong>Ed25519</strong><span>offline license validation</span></a></li>
-            <li><a href="/docs/whitepapers/gateway-security/" target="_blank"><strong>Audit log</strong><span>on every mutation</span></a></li>
-            <li><a href="/docs/whitepapers/risk-bounded-remediation/" target="_blank"><strong>Risk-scored</strong><span>SRE remediation, HITL</span></a></li>
-            <li><a href="/docs/whitepapers/cost-aware-routing/" target="_blank"><strong>Pre-call</strong><span>cost prediction + budget gates</span></a></li>
-            <li><a href="/docs/whitepapers/self-managed-best-practices/" target="_blank"><strong>Self-hosted</strong><span>Docker / Podman / nerdctl</span></a></li>
+      <nav aria-label="Primary">
+        <ul class="nav-links">
+          <li><a href="/#gateway">Gateway</a></li>
+          <li><a href="https://chat.scutum.dev/">Chat</a></li>
+          <li><a href="/docs/">Docs</a></li>
+          <li><a href="/#pricing">Pricing</a></li>
         </ul>
-        <!-- Catalog-freshness note: addresses the fair "how current is your model list?" concern up front, since the catalog is sourced from LiteLLM's models.py. -->
-        <p style="margin-top: 16px; text-align: center; font-size: 13px; color: var(--text-muted); font-family: var(--serif); font-style: italic;">
-            Provider catalog stays current with upstream releases — typical lag under 48 hours.
-        </p>
+      </nav>
+
+      <a href="/#install" class="btn btn-primary nav-cta">Get started</a>
+
+      <button class="nav-burger" id="nav-burger" aria-label="Open menu" aria-expanded="false" aria-controls="nav-mobile">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
     </div>
-</div>
-
-<!-- Two-deployment-modes strip — clarifies managed exists alongside self-hosted -->
-<div class="modes">
-    <div class="container">
-        <div class="modes-grid">
-            <div class="modes-card">
-                <p class="modes-tag">Self-hosted</p>
-                <h3>Run it on your own infrastructure.</h3>
-                <p>One-line installer onto a Linux box, your VPC, or your Kubernetes cluster. Your data, your provider keys, your audit log — all stay on your side. Compose-spec compatible (Docker, Podman, nerdctl).</p>
-                <p class="modes-cta"><a href="/docs/guides/quickstart/" target="_blank">Read the quickstart →</a></p>
-            </div>
-            <div class="modes-card modes-card--managed">
-                <p class="modes-tag">Fully managed</p>
-                <h3>Or let us run a dedicated instance for you.</h3>
-                <!-- Managed mode reframed as early access; specific support / SLA / KMS promises
-                     dropped until production data accumulates. Customers who need more talk to us. -->
-                <p>Per-customer namespace in a region of your choice (US East/West, EU, India, SE Asia). Automated backups and zero-downtime upgrades. Managed is in early access — best-effort uptime, no SLA promises until production data justifies them.</p>
-                <p class="modes-cta"><a href="/docs/whitepapers/managed-vs-self-hosted/" target="_blank">Compare modes →</a></p>
-            </div>
-        </div>
+    <div id="nav-mobile" class="nav-mobile-panel" role="menu">
+      <a href="/#gateway">Gateway</a>
+      <a href="https://chat.scutum.dev/">Chat</a>
+      <a href="/docs/">Docs</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="/#install" class="btn btn-primary" style="margin-top:8px;">Get started</a>
     </div>
-</div>
+  </header>
 
-<!-- Built-in tools — the platform isn't bare infra. Four product surfaces ride
-     on top of the gateway: Research (chat.scutum.dev), Workflows, Playground, and
-     the MCP/A2A control surface. Each is included with the gateway, not a paid
-     add-on. The Research card has a NEW tag because it's the freshest acquisition
-     CTA we want visitors to click. -->
-<div class="tools">
+  <!-- ===== HERO ===== -->
+  <section class="hero" id="gateway">
     <div class="container">
-        <div class="tools-header">
-            <p class="tools-eyebrow">More than infrastructure</p>
-            <h2>The platform comes with <span class="em">tools your team uses</span>.</h2>
+      <p class="hero-eyebrow label">Self-hosted · OpenAI-compatible · Offline license</p>
+      <h1>Run every LLM through one self-hosted gateway.</h1>
+      <p class="body-lg hero-subhead">
+        100+ models behind one OpenAI-compatible endpoint. Per-team budgets enforced before tokens burn.
+        Every query auditable. Postgres as source of truth. Your data never leaves your infra.
+      </p>
+      <div class="hero-terminal">
+        <div class="terminal" data-copy="curl -fsSL https://scutum.dev/install.sh | sh">
+          <span class="prompt">$ </span>curl -fsSL https://scutum.dev/install.sh | sh
+          <button class="copy" type="button" aria-label="Copy install command">Copy</button>
         </div>
-        <div class="tools-grid">
-            <a class="tools-card tools-card--featured" href="https://chat.scutum.dev" target="_blank">
-                <span class="tools-card__tag">NEW</span>
-                <h3>Scutum Research</h3>
-                <p>Perplexity-style search + chat. Every query goes through your gateway → in your audit log, on your provider keys, with model routing you control. Self-hosted alternative for teams that can't send queries to a startup's cloud.</p>
-                <p class="tools-card__cta">Open chat.scutum.dev →</p>
-            </a>
-            <div class="tools-card">
-                <h3>Scutum Workflows</h3>
-                <p>Multi-step LangGraph + Temporal templates: research, coding agents, data analysis. Crash-safe durable execution; every LLM call routes through the gateway with Cedar-policy authorisation.</p>
-                <p class="tools-card__cta">Bundled in install</p>
-            </div>
-            <div class="tools-card">
-                <h3>Scutum Playground</h3>
-                <p>Run one prompt across 100+ models side-by-side. See output diff, token cost, latency at a glance. All calls share the same audit trail as production traffic, so you can promote from playground to prod without re-keying.</p>
-                <p class="tools-card__cta">Bundled in install</p>
-            </div>
-            <div class="tools-card">
-                <h3>MCP &amp; A2A Gateway</h3>
-                <p>Hot-reload MCP tool servers + agent-to-agent coordination behind Cedar policies. Every tool call, every agent handoff, every guardrail decision recorded. Add tools without restarting; deny the wrong agent before it calls.</p>
-                <p class="tools-card__cta">Read about Cedar →</p>
-            </div>
-        </div>
+      </div>
+      <p class="small hero-cap">
+        Installs in under 60 seconds. Docker or Podman. Linux, macOS, ARM64 supported.
+      </p>
+      <a href="https://chat.scutum.dev/" class="hero-secondary-link">
+        Not a developer? Try our AI search product <span class="arrow">→</span> chat.scutum.dev
+      </a>
     </div>
-</div>
+  </section>
 
-<!-- Founder note removed: brand-led page; voice is "we" / "Scutum" / "the platform"
-     and never names a person. The signed manifesto pattern doesn't fit. -->
+  <!-- ===== TRUST STRIP ===== -->
+  <div class="trust">
+    <p class="small" style="margin:0">
+      OpenAI-compatible API · 100+ models · Postgres source of truth · Ed25519 offline license · Self-hosted
+    </p>
+  </div>
 
-<div class="design-partner">
+  <!-- ===== THREE FEATURE BLOCKS ===== -->
+  <section>
     <div class="container">
-        <div class="dp-card">
-            <p class="dp-eyebrow">Design partner program</p>
-            <!-- "founders" replaced with "the team building it" — voice is brand-led, never founder-named.
-                 "SOC 2 ahead" pressure callout dropped: it implied regulated-buyer targeting we no longer want. -->
-            <h2 class="dp-title">First <span class="em">5 design partners</span> get free setup, lifetime discount, and direct access to the team building it.</h2>
-            <p class="dp-body">
-                We're early. If you're shipping LLM products to production and would rather shape the platform than wait for it,
-                this is a fit. Weekly working sessions, your roadmap items get prioritised, your logo on the page once you're ready.
-            </p>
-            <div class="dp-cta">
-                <button class="btn btn-primary" onclick="openDemoModal()">Apply to be a design partner</button>
-                <a class="btn btn-secondary" href="mailto:hello@scutum.dev?subject=Design%20Partner%20Inquiry">hello@scutum.dev</a>
-            </div>
-        </div>
+      <div class="feature-grid">
+        <article class="card feature-card">
+          <h3>Cost predicted before tokens burn</h3>
+          <p>
+            Per-team budgets enforced pre-request, not after the bill arrives. tiktoken-based prediction
+            refuses calls that would breach budget — before they cost you anything.
+          </p>
+          <p class="small cap">Built as a LiteLLM hook.</p>
+        </article>
+
+        <article class="card feature-card">
+          <h3>Your data, your infra, your audit log</h3>
+          <p>
+            Every request logged with team, project, user, model, cost, and latency. Postgres is the
+            single source of truth. Ed25519 offline licensing — no phone-home, no vendor cloud.
+          </p>
+          <p class="small cap">Air-gapped deployments supported.</p>
+        </article>
+
+        <article class="card feature-card">
+          <h3>100+ models behind one API</h3>
+          <p>
+            OpenAI, Anthropic, Google, Meta, Mistral, Cohere, xAI, DeepSeek, plus self-hosted via
+            Ollama and vLLM. Routing policies in Cedar. Fallback chains, semantic caching, A/B traffic splits.
+          </p>
+          <p class="small cap">Drop-in replacement for any OpenAI SDK call.</p>
+        </article>
+      </div>
     </div>
-</div>
+  </section>
 
-<!-- Brand-forward / founder-hidden positioning. -->
-
-<section class="s" id="engineering">
+  <!-- ===== CODE PROOF ===== -->
+  <section>
     <div class="container">
-        <div class="s-header">
-            <p class="s-eyebrow">For Engineering</p>
-            <h2>Drop-in API.<br><span class="em">Production-grade</span> infrastructure.</h2>
-            <p>Point your existing OpenAI client at our gateway. Get 100+ models, retries, fallbacks, observability, and cost tracking — without a rewrite.</p>
-        </div>
-        <div class="audience">
-            <div>
-                <span class="audience-tag">Engineers</span>
-                <h3>Replace ten separate tools<br>with <span class="em">one platform</span>.</h3>
-                <p>LLM gateway, MCP / A2A runtime, agent workflow engine, FinOps dashboards, budget enforcement, audit log, guardrails, prompt registry, semantic cache, observability glue. All wired together by default. SRE auto-remediation lives in the higher tier.</p>
-                <ul class="audience-list">
-                    <li><i class="fa-solid fa-check"></i> 100+ models across OpenAI, Anthropic, Google, Mistral, AWS Bedrock, Azure, and self-hosted</li>
-                    <li><i class="fa-solid fa-check"></i> MCP &amp; A2A protocols natively, with Cedar policy enforcement</li>
-                    <li><i class="fa-solid fa-check"></i> LangGraph workflows + Temporal-backed agents in 5 patterns</li>
-                    <li><i class="fa-solid fa-check"></i> Pre-call cost prediction (tiktoken) + per-team budget enforcement at the proxy</li>
-                    <li><i class="fa-solid fa-check"></i> OpenTelemetry traces, Grafana dashboards, semantic cache</li>
-                </ul>
-            </div>
-            <div>
-                <div class="code-card">
-                    <div class="code-card-tabs" role="tablist" aria-label="Code example language">
-                        <div class="code-tab active" data-tab="py" role="tab" aria-selected="true" aria-controls="code-py" tabindex="0">python</div>
-                        <div class="code-tab" data-tab="curl" role="tab" aria-selected="false" aria-controls="code-curl" tabindex="-1">curl</div>
-                        <div class="code-tab" data-tab="ts" role="tab" aria-selected="false" aria-controls="code-ts" tabindex="-1">typescript</div>
-                    </div>
-                    <pre id="code-py"><span class="kw">from</span> openai <span class="kw">import</span> OpenAI
+      <h2>A drop-in replacement, not a rewrite</h2>
+      <p class="body-lg muted" style="max-width:60ch; margin-top:20px;">
+        Point your existing OpenAI SDK at Scutum. Get cost tracking, audit, routing, and budgets — without
+        touching your application code.
+      </p>
+
+      <div class="proof-grid">
+        <pre class="proof-code" aria-label="Python example using the OpenAI SDK against Scutum"><code><span class="kw">from</span> openai <span class="kw">import</span> OpenAI
 
 client = <span class="fn">OpenAI</span>(
-    base_url=<span class="str">"https://gw.scutum.dev/v1"</span>,
-    api_key=<span class="str">"sk-team-..."</span>,
+    base_url=<span class="str">"https://scutum.your-company.com/v1"</span>,
+    api_key=os.environ[<span class="str">"SCUTUM_API_KEY"</span>]
 )
 
-<span class="com"># Same OpenAI SDK. 100+ models routed,</span>
-<span class="com"># cost tracked, audited, governed.</span>
-resp = client.chat.completions.<span class="fn">create</span>(
-    model=<span class="str">"claude-sonnet-4-6"</span>,
-    messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"hi"</span>}],
-)</pre>
-                    <pre id="code-curl" style="display:none;"><span class="com"># Drop-in OpenAI-compatible</span>
-curl https://gw.scutum.dev/v1/chat/completions \
-  -H <span class="str">"Authorization: Bearer sk-team-..."</span> \
-  -H <span class="str">"Content-Type: application/json"</span> \
-  -d <span class="str">'{
-    "model": "claude-sonnet-4-6",
-    "messages": [{"role":"user","content":"hi"}]
-  }'</span></pre>
-                    <pre id="code-ts" style="display:none;"><span class="kw">import</span> OpenAI <span class="kw">from</span> <span class="str">"openai"</span>;
-
-<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">OpenAI</span>({
-    baseURL: <span class="str">"https://gw.scutum.dev/v1"</span>,
-    apiKey: process.env.<span class="fn">GW_KEY</span>,
-});
-
-<span class="kw">const</span> resp = <span class="kw">await</span> client.chat.completions.<span class="fn">create</span>({
-    model: <span class="str">"claude-sonnet-4-6"</span>,
-    messages: [{ role: <span class="str">"user"</span>, content: <span class="str">"hi"</span> }],
-});</pre>
-                </div>
-            </div>
-        </div>
+response = client.chat.completions.<span class="fn">create</span>(
+    model=<span class="str">"claude-sonnet-4"</span>,
+    messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"Hello"</span>}]
+)
+</code></pre>
+        <p class="proof-cap">
+          Same SDK. Same code. Different endpoint. Now every call is logged, budgeted, and routable.
+        </p>
+      </div>
     </div>
-</section>
+  </section>
 
-<section class="s s-alt" id="startups">
+  <!-- ===== LIVE DEMO ===== -->
+  <section>
     <div class="container">
-        <div class="s-header">
-            <p class="s-eyebrow">For Startups</p>
-            <h2>Ship to production<br>in <span class="em">ten minutes</span>.</h2>
-            <p>You're moving fast. Don't burn a quarter wiring proxies, observability, and FinOps yourself.</p>
-        </div>
-        <div class="audience reverse">
-            <div>
-                <span class="audience-tag">Startups</span>
-                <h3>From localhost to your first<br>production traffic <span class="em">in a day</span>.</h3>
-                <p>One <code>docker compose up</code>. Or one <code>kubectl apply</code>. We bring the proxy, the dashboards, the audit log, the budgets, and the playground UI — you bring your prompt.</p>
-                <ul class="audience-list">
-                    <li><i class="fa-solid fa-check"></i> 30-day free trial — full features, no credit card</li>
-                    <li><i class="fa-solid fa-check"></i> Self-hosted by default — your data never leaves your VPC</li>
-                    <li><i class="fa-solid fa-check"></i> Hard + soft budget limits enforced before the request fires — no $20K surprise bill</li>
-                    <li><i class="fa-solid fa-check"></i> Prompt registry with versioning + approvals — collaborate without breaking prod</li>
-                    <li><i class="fa-solid fa-check"></i> Multi-model playground for evaluations</li>
-                </ul>
-            </div>
-            <div>
-                <div class="code-card">
-                    <div class="code-card-tabs"><div class="code-tab active">terminal</div></div>
-                    <pre><span class="com"># Configure and deploy</span>
-$ <span class="fn">cp</span> config/.env.example config/.env
-$ make up
+      <h2>See Scutum running. Live.</h2>
+      <p class="body-lg muted" style="max-width:80ch; margin-top:20px;">
+        chat.scutum.dev is a Perplexity-style search product running on Scutum gateway. Ask any question
+        and the answer can be an interactive component — calculators, charts, comparison tables — rendered
+        in real React, sandboxed, with sources cited inline. Every query routes through your gateway, every
+        model is swappable, every answer hits your audit log.
+      </p>
 
-<span class="com"># Up in 90 seconds:</span>
-<span class="str">  ✓ LiteLLM        :4000</span>
-<span class="str">  ✓ Admin API      :8086</span>
-<span class="str">  ✓ Admin UI       :5173</span>
-<span class="str">  ✓ Playground     :6001</span>
-<span class="str">  ✓ Grafana        :3030</span>
-<span class="str">  ✓ Postgres + Redis up</span>
+      <video class="demo-video" autoplay loop muted playsinline poster="/demo-sprint-planner-poster.jpg">
+        <source src="/demo-sprint-planner.mp4" type="video/mp4" />
+        Your browser doesn't support inline video — visit
+        <a href="https://chat.scutum.dev/">chat.scutum.dev</a> to try it.
+      </video>
 
-<span class="com"># Now hit it from any OpenAI SDK</span>
-$ curl localhost:4000/v1/models | jq</pre>
-                </div>
-            </div>
-        </div>
+      <p class="small demo-cap">
+        Asking chat.scutum.dev for a sprint planner. Sliders update the chart in real time.
+      </p>
+
+      <div class="demo-cta">
+        <a href="https://chat.scutum.dev/" class="btn btn-primary">Try chat.scutum.dev →</a>
+      </div>
+
+      <p class="pull-quote">
+        Powered by Scutum. Every query is auditable. Every model is pluggable.
+      </p>
     </div>
-</section>
+  </section>
 
-<!-- "For Enterprise" reframed away from procurement-grade language (compliance,
-     SLA, on-prem, regulated industries) toward what the platform actually does:
-     governance, autonomy, self-healing — for engineering teams that need it. -->
-<section class="s" id="enterprise">
+  <!-- ===== WHY SELF-HOSTED ===== -->
+  <section>
     <div class="container">
-        <div class="s-header">
-            <p class="s-eyebrow">For Platform Teams</p>
-            <h2>Governance and <span class="em">autonomy</span>,<br>built into the proxy.</h2>
-            <p>Audit, budgets, and policy live one layer below the model — so every team's traffic is governed by default, not by convention.</p>
-        </div>
-        <div class="audience">
-            <div>
-                <span class="audience-tag">Platform</span>
-                <h3>Audit, budgets, policy,<br><span class="em">and self-healing</span>.</h3>
-                <p>Every administrative action lands in an immutable audit log. Every guardrail is policy-enforced via Cedar. Every team gets a budget, a rate limit, and a model-access tier — and an autonomous SRE agent watches the stack and proposes remediations for human approval before executing.</p>
-                <div class="sre-explainer">
-                    <p class="sre-explainer-title">What the SRE agent actually does</p>
-                    <p class="sre-explainer-body">When a provider degrades or a budget breaches, an LLM proposes a remediation from a constrained allow-list (re-route, circuit-break, raise a limit, page on-call). It scores the action 0–100 for risk and gates anything above the configured threshold for human approval before executing. Every step is in the audit log.</p>
-                </div>
-                <ul class="audience-list">
-                    <li><i class="fa-solid fa-check"></i> SSO via OIDC (Okta, Azure AD, Google); SAML &amp; SCIM on the roadmap</li>
-                    <li><i class="fa-solid fa-check"></i> Immutable audit log with configurable retention; CSV / JSON export</li>
-                    <li><i class="fa-solid fa-check"></i> Per-team, per-org, per-cost-center chargeback and cost allocation</li>
-                    <li><i class="fa-solid fa-check"></i> Cedar policy for routing rules; autonomous SRE agent with HITL approval</li>
-                    <li><i class="fa-solid fa-check"></i> Self-hosted in your VPC; BYO inference (vLLM, Ollama)</li>
-                </ul>
-            </div>
-            <div>
-                <div class="arch-diagram"><span class="h">┌─ Your VPC ────────────────────────────────────┐</span>
-│                                                │
-│  Apps ─► Nginx Ingress ─► Control Plane       │
-│                              │                 │
-│       <span class="h">┌──────────────────────┴────────┐</span>       │
-│       │  LLM Proxy   MCP/A2A   Workflows│       │
-│       └──────────┬─────────────┬────────┘       │
-│                  │             │                │
-│         <span class="h">┌────────┴───┐  ┌────┴─────┐</span>          │
-│         │  Postgres  │  │  Redis   │          │
-│         └────────────┘  └──────────┘          │
-│                                                │
-│  Audit ─► S3 (configurable retention)         │
-│  SRE Agent ─► incidents.audit + Slack         │
-│  Traces ─► OTel ─► your Datadog/NewRelic      │
-│                                                │
-<span class="h">└────────────────────────────────────────────────┘</span></div>
-            </div>
-        </div>
+      <h2>Built for teams that can't send data to a vendor cloud</h2>
+      <div class="prose-block" style="margin-top: 40px;">
+        <p class="body-lg">
+          If you're in fintech, healthcare, defense, or any team handling proprietary code or customer data,
+          sending every LLM call through Portkey or Helicone isn't an option. You need the same control
+          plane those products offer — cost governance, audit logs, multi-model routing — but running on
+          infrastructure you control.
+        </p>
+        <p class="body-lg">
+          Scutum is that control plane. Postgres as the source of truth. Ed25519-signed offline licenses.
+          Air-gapped deployments supported. Same enterprise features as the SaaS alternatives, none of the
+          data exfiltration risk.
+        </p>
+      </div>
     </div>
-</section>
+  </section>
 
-<div class="midcta">
+  <!-- ===== CAPABILITIES ===== -->
+  <section>
     <div class="container">
-        <h3>Skip the build phase.</h3>
-        <p>You'd build this in 6 months and maintain it forever. We already did. Spin up the platform on your infrastructure today.</p>
-        <div class="midcta-buttons">
-            <button class="btn btn-primary btn-lg" onclick="openDemoModal()">Book a 30-min demo</button>
-            <a class="btn btn-secondary btn-lg" href="/docs/guides/quickstart/" target="_blank">
-                <i class="fa-solid fa-book"></i> Read the quickstart
+      <h2>Everything in one control plane</h2>
+
+      <div class="caps-grid">
+        <div class="caps-col">
+          <h4 class="label">Routing &amp; Reliability</h4>
+          <ul>
+            <li>Fallback chains</li>
+            <li>Model groups (round-robin, least-cost, lowest-latency)</li>
+            <li>Semantic caching</li>
+            <li>A/B traffic splits with auto-promote</li>
+            <li>Provider health checks</li>
+            <li>Conditional rules per team or cost band</li>
+          </ul>
+        </div>
+
+        <div class="caps-col">
+          <h4 class="label">Governance &amp; Compliance</h4>
+          <ul>
+            <li>Per-team and per-project budgets</li>
+            <li>Cost prediction with tiktoken</li>
+            <li>DLP scanning with custom regex</li>
+            <li>Cedar policy language</li>
+            <li>Full audit log in Postgres</li>
+            <li>SSO via OIDC and SAML</li>
+            <li>Retention policies, GDPR delete-by-user</li>
+          </ul>
+        </div>
+      </div>
+
+      <a href="/compare/" class="caps-footer-link small">See full feature list →</a>
+    </div>
+  </section>
+
+  <!-- ===== PRICING ===== -->
+  <section id="pricing">
+    <div class="container">
+      <h2>Simple pricing. Self-hosted always.</h2>
+
+      <div class="pricing-grid">
+        <article class="tier">
+          <p class="tier-name label">Free / Self-host</p>
+          <p class="tier-price">$0</p>
+          <ul>
+            <li>Single team</li>
+            <li>Cost tracking + audit</li>
+            <li>Community support</li>
+          </ul>
+          <a href="#install" class="btn btn-secondary">Self-host now →</a>
+        </article>
+
+        <article class="tier featured">
+          <p class="tier-name label">Pro</p>
+          <p class="tier-price">$499/mo per deployment</p>
+          <ul>
+            <li>Everything in Free</li>
+            <li>Multi-team budgets</li>
+            <li>Routing policies</li>
+            <li>Semantic caching</li>
+            <li>Chat Team for your org</li>
+          </ul>
+          <a href="/try/" class="btn btn-primary">Start 30-day trial →</a>
+        </article>
+
+        <article class="tier">
+          <p class="tier-name label">Enterprise</p>
+          <p class="tier-price">Contact sales</p>
+          <ul>
+            <li>Everything in Pro</li>
+            <li>SSO, SAML, custom Cedar</li>
+            <li>SRE agent + A2A workflows</li>
+            <li>Air-gap support</li>
+            <li>Dedicated support</li>
+          </ul>
+          <a href="mailto:hello@scutum.dev?subject=Scutum%20Enterprise" class="btn btn-secondary">Talk to us →</a>
+        </article>
+      </div>
+
+      <p class="small pricing-foot">
+        All tiers are self-hosted. Your data never leaves your infrastructure.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===== FINAL CTA ===== -->
+  <section class="cta-band" id="install">
+    <div class="container">
+      <h2>Run it on your infra in under a minute.</h2>
+      <div class="terminal" data-copy="curl -fsSL https://scutum.dev/install.sh | sh">
+        <span class="prompt">$ </span>curl -fsSL https://scutum.dev/install.sh | sh
+        <button class="copy" type="button" aria-label="Copy install command">Copy</button>
+      </div>
+      <p class="cta-links">
+        <a href="/docs/">Read the docs →</a>
+        <span class="dot">·</span>
+        <a href="https://chat.scutum.dev/">Try chat.scutum.dev →</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4 class="label">Product</h4>
+          <ul>
+            <li><a href="/">Gateway</a></li>
+            <li><a href="https://chat.scutum.dev/">Chat</a></li>
+            <li><a href="/#pricing">Pricing</a></li>
+            <li><a href="/docs/">Docs</a></li>
+            <li><a href="/changelog/">Changelog</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4 class="label">Company</h4>
+          <ul>
+            <li><a href="/about/">About</a></li>
+            <li><a href="/blog/">Blog</a></li>
+            <li><a href="mailto:hello@scutum.dev">Contact</a></li>
+            <li><a href="/privacy/">Privacy</a></li>
+            <li><a href="/terms/">Terms</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4 class="label">Stay in touch</h4>
+          <div class="footer-social">
+            <a href="https://www.linkedin.com/company/scutum-ai" aria-label="LinkedIn" rel="noopener">
+              <svg viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
             </a>
+            <a href="https://x.com/scutum_ai" aria-label="Twitter / X" rel="noopener">
+              <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </a>
+          </div>
+          <p class="small subtle" style="margin:0;">Updates ~once a month, no spam.</p>
         </div>
+      </div>
+
+      <div class="footer-bottom">
+        © 2026 Scutum · Self-hosted LLM control plane
+      </div>
     </div>
-</div>
+  </footer>
 
-<section class="s s-alt" id="comparison">
-    <div class="container">
-        <div class="s-header">
-            <p class="s-eyebrow">Comparison</p>
-            <h2>How we <span class="em">stack up</span>.</h2>
-            <p>Feature-by-feature comparison against the alternatives. Pricing lives in its own section below.</p>
-            <!-- Best-for shifted: target is engineering teams shipping LLM products to production
-                 (Series A-C startups, AI-native teams) — not regulated-industry compliance buyers. -->
-            <p class="cmp-best-for">
-                <strong>Best for:</strong> engineering teams shipping <em>LLM products to production</em> —
-                multiple providers, real cost pressure, governance you can't fake. Not a SaaS LLM router,
-                not an observability bolt-on. If you'd build this yourself in six months, we already did.
-            </p>
-        </div>
-        <div class="cmp-wrap">
-            <table class="cmp" id="comparison-table">
-                <thead>
-                    <tr>
-                        <th>Vendor</th>
-                        <th>Scope</th>
-                        <th>Self-host</th>
-                        <th>LLM Proxy</th>
-                        <th>MCP / A2A</th>
-                        <th>Workflows</th>
-                        <th>SRE Agent</th>
-                        <th>Guardrails</th>
-                        <th>SSO / RBAC</th>
-                        <th>Audit</th>
-                        <th>Cost prediction</th>
-                        <th>Budgets</th>
-                        <th>Chargeback</th>
-                        <th>BYO Models</th>
-                        <!-- Pricing model + Open source columns: pre-empt the two procurement questions buyers ask after the feature scan. -->
-                        <th>Pricing model</th>
-                        <th>Open source</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr class="us"><td>Scutum</td><td><span class="neutral">Unified LLM + MCP + A2A</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="neutral">LangGraph + Temporal</span></td><td><span class="neutral">Yes (HITL)</span></td><td><span class="neutral">Built-in</span></td><td><span class="neutral">OIDC (Business+)</span></td><td><span class="neutral">Configurable retention</span></td><td><span class="neutral">tiktoken pre-call</span></td><td><span class="neutral">Per-team, hard + soft</span></td><td><span class="yes">Yes</span></td><td><span class="neutral">Yes (vLLM, Ollama)</span></td><td><span class="neutral">Flat fee</span></td><td><span class="no">No</span></td></tr>
-                    <tr><td>OpenRouter</td><td><span class="neutral">LLM proxy only</span></td><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="neutral">Per-key spend</span></td><td><span class="no">No</span></td><td><span class="neutral">Limited</span></td><td><span class="neutral">Per-token markup</span></td><td><span class="no">No</span></td></tr>
-                    <!-- Portkey MCP/A2A: was "No"; hedged to "Partial" pending verification against current Portkey docs (see Open Questions). Portkey has agent-related features in their roadmap; getting caught wrong is worse than understating. -->
-                    <tr><td>Portkey</td><td><span class="neutral">LLM proxy + observability</span></td><td><span class="neutral">OSS basic</span></td><td><span class="yes">Yes</span></td><td><span class="neutral">Partial</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="neutral">Enterprise</span></td><td><span class="neutral">Enterprise</span></td><td><span class="neutral">Post-call</span></td><td><span class="yes">Yes</span></td><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="neutral">Per-recorded-log</span></td><td><span class="neutral">Gateway only</span></td></tr>
-                    <tr><td>LangSmith</td><td><span class="neutral">Observability only</span></td><td><span class="neutral">Self-host Enterprise</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="neutral">Observe only</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="neutral">Enterprise</span></td><td><span class="neutral">Enterprise</span></td><td><span class="neutral">Post-call traces</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="neutral">Trace-only</span></td><td><span class="neutral">Per-trace</span></td><td><span class="no">No</span></td></tr>
-                    <tr><td>AWS Bedrock</td><td><span class="neutral">LLM API (AWS-only)</span></td><td><span class="no">No</span></td><td><span class="neutral">Raw API</span></td><td><span class="no">No</span></td><td><span class="neutral">Step Functions (separate)</span></td><td><span class="no">No</span></td><td><span class="neutral">Bedrock Guardrails</span></td><td><span class="neutral">IAM</span></td><td><span class="neutral">CloudTrail</span></td><td><span class="no">No</span></td><td><span class="neutral">AWS Budgets</span></td><td><span class="neutral">AWS Cost Allocation tags</span></td><td><span class="neutral">Custom Models</span></td><td><span class="neutral">Per-token</span></td><td><span class="no">No</span></td></tr>
-                    <tr><td>Apigee</td><td><span class="neutral">API gateway (general)</span></td><td><span class="neutral">GCP only</span></td><td><span class="neutral">Generic, not LLM-aware</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="neutral">Generic policies</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="no">No</span></td><td><span class="neutral">Quota</span></td><td><span class="no">No</span></td><td><span class="no">N/A</span></td><td><span class="neutral">Per-request</span></td><td><span class="no">No</span></td></tr>
-                    <!-- TrueFoundry: direct competitor; absence reads as evasion. -->
-                    <tr><td>TrueFoundry</td><td><span class="neutral">AI deployment platform</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="neutral">MCP only</span></td><td><span class="yes">Yes</span></td><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="neutral">Partial</span></td><td><span class="yes">Yes</span></td><td><span class="neutral">Partial</span></td><td><span class="yes">Yes</span></td><td><span class="neutral">Flat fee</span></td><td><span class="no">No</span></td></tr>
-                    <!-- LiteLLM: pre-empts the "why not just use the OSS Scutum is built on" objection. -->
-                    <tr><td>LiteLLM</td><td><span class="neutral">OSS LLM proxy</span></td><td><span class="yes">Yes</span></td><td><span class="yes">Yes</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="no">No</span></td><td><span class="neutral">Hooks</span></td><td><span class="neutral">Basic</span></td><td><span class="neutral">Basic</span></td><td><span class="neutral">Partial</span></td><td><span class="neutral">Per-key</span></td><td><span class="no">No</span></td><td><span class="yes">Yes</span></td><td><span class="neutral">Free (self-host)</span></td><td><span class="yes">Yes</span></td></tr>
-                </tbody>
-            </table>
-        </div>
-        <!-- Cmp-note: removed the "Roll your own" caveat (row dropped); LiteLLM is now listed because Scutum is built on it — pre-empts the "why not just use the OSS" objection. -->
-        <p class="cmp-note">
-            Comparison verified <span id="cmp-verified-at">2026-05</span>. AWS Bedrock is the LLM API itself,
-            not a control plane. LangSmith is observability for LangGraph apps; the agent runtime is LangGraph,
-            not LangSmith. LiteLLM is the OSS proxy Scutum is built on top of — Scutum adds MCP/A2A federation,
-            a risk-scored SRE agent, Cedar policy, and chargeback that LiteLLM does not. Always confirm current
-            capabilities on each vendor's site.
-            <strong>Found a row that's wrong?</strong> Email <a href="mailto:hello@scutum.dev?subject=Comparison%20table%20fix" style="color:inherit;border-bottom:1px solid var(--border-hi);">hello@scutum.dev</a> and we'll correct it on the next deploy.
-        </p>
-    </div>
-</section>
-
-<section class="s" id="status">
-    <div class="container">
-        <div class="s-header">
-            <p class="s-eyebrow">What's shipped, what's coming</p>
-            <h2>The honest <span class="em">scope</span>.</h2>
-            <p>Specific and falsifiable. We update this on every release. If something we marked "shipped" doesn't work for you, that's a bug — write to hello@scutum.dev.</p>
-        </div>
-        <div class="status-grid">
-            <div class="status-col">
-                <h3>Working in v0.1</h3>
-                <ul>
-                    <li>OpenAI-compatible LLM proxy, 100+ models, 9 providers</li>
-                    <li>Pre-call cost prediction + per-team budget gates</li>
-                    <li>Audit log on every administrative mutation</li>
-                    <li>Ed25519 offline license validation</li>
-                    <li>SRE agent — risk-scored, human-in-loop approvals</li>
-                    <li>MCP server registry + agent gateway hot-reload</li>
-                    <li>OIDC SSO (Okta, Azure AD, Google)</li>
-                    <li>OpenTelemetry traces + Grafana dashboards</li>
-                    <li>Self-hosted on Docker / Podman / nerdctl</li>
-                </ul>
-            </div>
-            <div class="status-col status-col--coming">
-                <h3>Coming next</h3>
-                <ul>
-                    <li><strong>SAML / SCIM</strong> — Q3 2026</li>
-                    <li><strong>Risk-scored SRE auto-execution</strong> (low-risk actions skip the approval queue) — Q4 2026</li>
-                    <li><strong>Per-request quality estimation</strong> for routing — Q4 2026</li>
-                    <li><strong>Multi-region managed offering</strong> — Q1 2027</li>
-                    <li><strong>SOC 2 Type I attestation</strong> — Q3 2026</li>
-                    <li><strong>SOC 2 Type II + HIPAA BAA</strong> — Q1 2027</li>
-                    <li><strong>Helm chart + Kubernetes operator</strong> — Q4 2026</li>
-                    <li><strong>Cross-deployment benchmarks</strong> (consenting design partners) — Q1 2027</li>
-                </ul>
-            </div>
-        </div>
-        <p class="status-foot">
-            We update this list on every release. <a href="/changelog/" style="color:inherit;border-bottom:1px solid var(--border-hi);">See the full changelog</a>.
-        </p>
-    </div>
-</section>
-
-<section class="s" id="pricing">
-    <div class="container">
-        <div class="s-header">
-            <p class="s-eyebrow">Pricing</p>
-            <h2>Two ways to run it,<br>priced for what each <span class="em">actually costs</span>.</h2>
-            <p>Token costs go to the providers — at list price, no markup. We charge a flat fee for the control plane. Self-hosted is licence-only; managed costs more because we're running it.</p>
-            <p class="founding-banner">
-                <strong>Founding-customer pricing.</strong> These rates lock in for the first 12 months. Future tiers will be priced higher; you keep the original rate as long as you stay on the plan.
-            </p>
-        </div>
-
-        <div class="pricing-section">
-            <div class="pricing-section-header">
-                <p class="pricing-section-eyebrow">Self-hosted</p>
-                <h3>You run it on your infrastructure.</h3>
-                <p>Lowest price. We license the software and ship updates. Your data, your provider keys, your audit log all stay on your side. SRE auto-remediation is an opt-in add-on.</p>
-            </div>
-            <!-- 3-card grid; promises stay scoped to what's underwritten. -->
-            <div class="pricing-grid pricing-grid--3" id="pricing-grid-selfhosted">
-                <div class="price-card">
-                    <!-- "Setup call required" replaced by self-serve /try flow on Fly. -->
-                    <div class="price-name">Free Trial</div>
-                    <div class="price-amt">$0<small> first 30 days</small></div>
-                    <div class="price-tagline">One click. Runs on us. No credit card.</div>
-                    <ul class="price-features">
-                            <li><i class="fa-solid fa-check"></i> All 100+ models, MCP &amp; A2A</li>
-                            <li><i class="fa-solid fa-check"></i> Unlimited team members</li>
-                            <li><i class="fa-solid fa-check"></i> Pre-call cost prediction + per-team budgets</li>
-                            <li><i class="fa-solid fa-check"></i> OpenTelemetry, Grafana dashboards</li>
-                            <li><i class="fa-solid fa-check"></i> Onboarding session included</li>
-                    </ul>
-                    <!-- CTA points at the self-serve /try flow now. -->
-                    <a class="btn btn-secondary" href="/try/" style="text-align:center;">Launch trial</a>
-                </div>
-                <div class="price-card featured">
-                    <div class="price-name">License</div>
-                    <div class="price-amt">$99<small> /month</small></div>
-                    <div class="price-tagline">You run it. We keep it licensed.</div>
-                    <ul class="price-features">
-                            <li><i class="fa-solid fa-check"></i> Unlimited team members</li>
-                            <li><i class="fa-solid fa-check"></i> All providers, all models</li>
-                            <li><i class="fa-solid fa-check"></i> Cost dashboards + per-team budgets</li>
-                            <li><i class="fa-solid fa-check"></i> OIDC SSO (Google, Okta, Azure AD)</li>
-                            <li><i class="fa-solid fa-check"></i> 90-day audit log</li>
-                            <li><i class="fa-solid fa-check"></i> Email support</li>
-                            <li><i class="fa-solid fa-check"></i> Self-hosted on your infrastructure</li>
-                    </ul>
-                    <button class="btn btn-primary" onclick="openDemoModal()">Book a demo</button>
-                </div>
-                <!-- License+SRE bumped from $179 to $299: the SRE agent is the most differentiated capability on the page; an $80 upcharge signals it isn't worth much. -->
-                <div class="price-card">
-                    <div class="price-name">License + SRE</div>
-                    <div class="price-amt">$299<small> /month</small></div>
-                    <div class="price-tagline">Adds the SRE auto-remediation agent.</div>
-                    <ul class="price-features">
-                            <li><i class="fa-solid fa-check"></i> Everything in License</li>
-                            <li><i class="fa-solid fa-check"></i> SRE agent (LLM-driven, HITL approval)</li>
-                            <li><i class="fa-solid fa-check"></i> Four-component risk scoring</li>
-                            <li><i class="fa-solid fa-check"></i> Slack / PagerDuty / webhook alerts</li>
-                            <li><i class="fa-solid fa-check"></i> Risk-bounded auto-execution roadmap (Q4)</li>
-                            <li><i class="fa-solid fa-check"></i> Action-library updates included</li>
-                    </ul>
-                    <button class="btn btn-secondary" onclick="openDemoModal()">Book a demo</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="pricing-section">
-            <div class="pricing-section-header">
-                <p class="pricing-section-eyebrow">Fully managed</p>
-                <h3>Or let us run a dedicated instance.</h3>
-                <!-- Reframed as early access — we run the stack, you don't deploy software,
-                     but support / SLA / BAA promises stay off the page until production data
-                     justifies them. -->
-                <p>We provision the stack and ship the upgrades. You get a console URL and a service-account token. Managed is in early access — pricing reflects that.</p>
-            </div>
-            <!-- 3-card grid; customers needing more go through the demo flow. -->
-            <div class="pricing-grid pricing-grid--3" id="pricing-grid-managed">
-                <div class="price-card">
-                    <div class="price-name">Trial</div>
-                    <div class="price-amt">$0<small> first 30 days</small></div>
-                    <div class="price-tagline">Try managed before committing.</div>
-                    <ul class="price-features">
-                            <li><i class="fa-solid fa-check"></i> Per-customer namespace</li>
-                            <li><i class="fa-solid fa-check"></i> Single region</li>
-                            <li><i class="fa-solid fa-check"></i> We provision in 24h</li>
-                            <li><i class="fa-solid fa-check"></i> Convert to Starter or Business after trial</li>
-                    </ul>
-                    <button class="btn btn-secondary" onclick="openDemoModal()">Request trial access</button>
-                </div>
-                <div class="price-card">
-                    <div class="price-name">Starter Managed</div>
-                    <div class="price-amt">$499<small> /month</small></div>
-                    <div class="price-tagline">Shared infra. Early access.</div>
-                    <ul class="price-features">
-                            <li><i class="fa-solid fa-check"></i> Shared multi-tenant infrastructure</li>
-                            <li><i class="fa-solid fa-check"></i> Single region</li>
-                            <li><i class="fa-solid fa-check"></i> Best-effort uptime</li>
-                            <li><i class="fa-solid fa-check"></i> All providers, all models</li>
-                            <li><i class="fa-solid fa-check"></i> OIDC SSO included</li>
-                            <li><i class="fa-solid fa-check"></i> BYO provider keys, no token markup</li>
-                    </ul>
-                    <button class="btn btn-secondary" onclick="openDemoModal()">Book a demo</button>
-                </div>
-                <div class="price-card featured">
-                    <div class="price-name">Business Managed</div>
-                    <div class="price-amt">$1,299<small> /month</small></div>
-                    <div class="price-tagline">Dedicated instance. Early access.</div>
-                    <ul class="price-features">
-                            <li><i class="fa-solid fa-check"></i> Per-customer dedicated instance</li>
-                            <li><i class="fa-solid fa-check"></i> Setup, upgrades, and backups handled</li>
-                            <li><i class="fa-solid fa-check"></i> Single region (US, EU, India, or SE Asia)</li>
-                            <li><i class="fa-solid fa-check"></i> Best-effort uptime during early access; targets calibrated as production data accumulates</li>
-                            <li><i class="fa-solid fa-check"></i> Includes everything in self-hosted License + SRE</li>
-                            <li><i class="fa-solid fa-check"></i> BYO provider keys, no token markup</li>
-                    </ul>
-                    <button class="btn btn-primary" onclick="openDemoModal()">Book a demo</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="free-month-banner">
-            <i class="fa-solid fa-gift"></i> Every paid tier starts with a 30-day free trial — full feature access, no credit card.
-        </div>
-    </div>
-</section>
-
-<section class="s s-alt" id="research">
-    <div class="container">
-        <div class="s-header">
-            <p class="s-eyebrow">Research roadmap</p>
-            <h2>What we're <span class="em">working on</span><br>that isn't shipped yet.</h2>
-            <p>The angles we think are unsolved at the AI-infrastructure layer. None of these are published papers — they're directions our roadmap is pulling toward. If one resonates, write to us; we collaborate with people working on the same problems.</p>
-        </div>
-        <div class="research-grid" id="research-grid">
-                <div class="research-card">
-                    <div class="tag">Safety</div>
-                    <h3>AI Safety at the Infrastructure Layer</h3>
-                    <p>What safety properties can the platform layer enforce that the model layer can&#x27;t reliably guarantee? Action-space closure, audit, and human-in-loop gates as complementary disciplines to model-side safety work.</p>
-                    <a class="read-link" href="/docs/research/ai-safety/">Read the paper <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>
-                </div>
-                <div class="research-card">
-                    <div class="tag">Explainability</div>
-                    <h3>Explainable AI at the Platform Layer</h3>
-                    <p>At the infrastructure layer, explainability is audit + decision provenance — not &quot;why the model said X&quot; but &quot;why the platform allowed X.&quot; A complementary surface to model interpretability.</p>
-                    <a class="read-link" href="/docs/research/explainable-ai/">Read the paper <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>
-                </div>
-                <div class="research-card">
-                    <div class="tag">Context</div>
-                    <h3>Context Window Management</h3>
-                    <p>Hybrid long-context, RAG, and semantic cache — when each pays back, where each fails, and what the platform owes each pattern. Auto-routing between them is the open problem.</p>
-                    <a class="read-link" href="/docs/research/context-windows/">Read the paper <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>
-                </div>
-                <div class="research-card">
-                    <div class="tag">Retrieval</div>
-                    <h3>RAG Performance — measurement at the proxy layer</h3>
-                    <p>End-to-end RAG evaluation across heterogeneous retrieval backends. The proxy is the natural place to publish standardised benchmarks; the literature has not caught up to production.</p>
-                    <a class="read-link" href="/docs/research/rag-performance/">Read the paper <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>
-                </div>
-                <div class="research-card">
-                    <div class="tag">Agents</div>
-                    <h3>Multi-Agent Evaluations</h3>
-                    <p>A2A protocols and the eval substrate that drops out of having audit, cost, and trace data on every step. Trajectory-level decomposition over outcome-level pass/fail.</p>
-                    <a class="read-link" href="/docs/research/multi-agent-evaluations/">Read the paper <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>
-                </div>
-                <div class="research-card">
-                    <div class="tag">Adaptive</div>
-                    <h3>Self-Learning Platform Configuration</h3>
-                    <p>What if routing weights, risk-score weights, cache thresholds, and verbosity profiles were continuously refined from operational data — under bounded drift, with auditable updates?</p>
-                    <a class="read-link" href="/docs/research/self-learning/">Read the paper <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>
-                </div>
-        </div>
-        <div class="research-foot">All entries are drafts in progress. To collaborate or get notified when one publishes, write to <a href="mailto:research@scutum.dev" style="color:inherit;border-bottom:1px solid var(--border-hi);">research@scutum.dev</a>.</div>
-    </div>
-</section>
-
-<section class="s" id="faq">
-    <div class="container">
-        <div class="s-header">
-            <p class="s-eyebrow">FAQ</p>
-            <h2><span class="em">Common</span> questions.</h2>
-        </div>
-        <div class="faq-list">
-            <div class="faq-item">
-                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Where does my data live?<i class="fa-solid fa-plus"></i></div>
-                <div class="faq-a">Your data lives in your infrastructure. The platform is self-hosted by default — Docker Compose, Kubernetes (Kustomize manifests included), or our managed hosting if you prefer. Prompts and responses never leave your VPC unless you explicitly route them through a third-party provider.</div>
-            </div>
-            <div class="faq-item">
-                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Which models and providers do you support?<i class="fa-solid fa-plus"></i></div>
-                <div class="faq-a">100+ models across 9 providers out of the box: OpenAI, Anthropic, Google Vertex AI, AWS Bedrock, Azure OpenAI, Mistral, Cohere, Together AI, and self-hosted (vLLM, Ollama, TGI). Adding a custom provider is a YAML edit, not a code change.</div>
-            </div>
-            <div class="faq-item">
-                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What is the SRE agent?<i class="fa-solid fa-plus"></i></div>
-                <div class="faq-a">An LLM-driven agent that subscribes to incident signals from your stack — SLA violations, budget breaches, provider unhealthiness, guardrail violations — diagnoses the situation against current platform state, and proposes remediation actions from a constrained allow-list (failover, rate-limit tightening, cache clear, guardrail tightening, etc). Every action is gated through a human approval queue in v1; risk-scored auto-execution lands in v2.</div>
-            </div>
-            <div class="faq-item">
-                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What happens at the end of the 30-day free trial?<i class="fa-solid fa-plus"></i></div>
-                <div class="faq-a">Nothing breaks. We email you 7 days before the trial ends. If you don't pick a paid tier, the platform downgrades to read-only — your data, configs, and audit logs stay intact for 90 days. No credit card is collected upfront.</div>
-            </div>
-            <!-- Air-gapped FAQ reframed as roadmap-only — not a current capability. -->
-            <div class="faq-item">
-                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Does Scutum run fully air-gapped?<i class="fa-solid fa-plus"></i></div>
-                <div class="faq-a">Not today. The platform is self-hosted and runs entirely inside your network, but air-gapped installation with offline license validation and signed-bundle updates is on the roadmap, not currently available.</div>
-            </div>
-            <div class="faq-item">
-                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How does pricing work for the LLM tokens themselves?<i class="fa-solid fa-plus"></i></div>
-                <div class="faq-a">No token markup. Bring your own provider keys (OpenAI, Anthropic, Bedrock, etc.); model spend goes to them at list price. The platform fee covers the control plane (proxy, governance, audit, dashboards, support).</div>
-            </div>
-            <!-- Source-escrow reference dropped: not a current commitment. -->
-            <div class="faq-item">
-                <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Is the source code available?<i class="fa-solid fa-plus"></i></div>
-                <div class="faq-a">The platform ships as container images and Kustomize manifests. Source-code access is not part of any current tier; that conversation is welcome but lives outside the standard pricing.</div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<footer>
-    <div class="container">
-        <div class="footer-grid">
-            <div>
-                <a href="#" class="logo" style="margin-bottom: 16px;">
-                    <img src="/scutum-mark.svg" alt="" class="logo-mark"/>
-                    Scutum
-                </a>
-                <!-- Tagline reflects what the platform actually does. -->
-                <p style="color: var(--text-muted); font-size: 14px; max-width: 320px;">
-                    Unified control plane for AI infrastructure. Self-hosted. Self-healing.
-                </p>
-                <button class="btn btn-primary" style="margin-top: 16px;" onclick="openDemoModal()">Book a Demo</button>
-            </div>
-            <div>
-                <h4>Product</h4>
-                <a href="#engineering">Engineering</a>
-                <a href="#startups">Startups</a>
-                <a href="#enterprise">Enterprise</a>
-                <a href="#comparison">Comparison</a>
-                <a href="#pricing">Pricing</a>
-                <a href="#research">Research</a>
-            </div>
-            <div>
-                <h4>Resources</h4>
-                <a href="/docs/" target="_blank">Docs</a>
-                <a href="#research">Research</a>
-                <a href="#faq">FAQ</a>
-                <!-- Changelog link: public release notes establish velocity, a strong pre-PMF trust signal. -->
-                <a href="/docs/changelog/" target="_blank">Changelog</a>
-                <!-- Status link: status.scutum.dev placeholder; needs to be stood up before the next pricing-page push (see Open Questions). -->
-                <a href="https://status.scutum.dev/" target="_blank" rel="noopener">Status</a>
-                <!-- Security link: even a minimal interim posture page (encryption-at-rest, secret handling, audit-log integrity, key rotation, vuln disclosure) gets you 80% of what enterprise procurement asks for before formal SOC 2. -->
-                <a href="/security/">Security</a>
-                <a href="mailto:hello@scutum.dev">Contact</a>
-            </div>
-            <div>
-                <h4>Legal</h4>
-                <a href="/privacy/">Privacy</a>
-                <a href="/terms/">Terms</a>
-                <a href="/dpa/">DPA</a>
-            </div>
-            <div>
-                <h4>Connect</h4>
-                <a href="https://x.com/scutum_dev" target="_blank" rel="noopener">X / Twitter</a>
-                <a href="https://www.linkedin.com/company/scutum-dev" target="_blank" rel="noopener">LinkedIn</a>
-                <a href="mailto:hello@scutum.dev">hello@scutum.dev</a>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <span>© 2026 Scutum. All rights reserved.</span>
-            <span class="footer-social">
-                <a href="https://x.com/scutum_dev" target="_blank" rel="noopener" aria-label="Scutum on X"><i class="fa-brands fa-x-twitter"></i></a>
-                <a href="https://www.linkedin.com/company/scutum-dev" target="_blank" rel="noopener" aria-label="Scutum on LinkedIn"><i class="fa-brands fa-linkedin"></i></a>
-            </span>
-            <span class="mono">scutum.dev</span>
-        </div>
-    </div>
-</footer>
-
-<div class="modal-bg" id="demo-modal">
-    <div class="modal" role="dialog" aria-labelledby="demo-modal-title">
-        <h3 id="demo-modal-title">Book a 30-minute demo</h3>
-        <p class="sub">Tell us a bit about your team. We'll send you a calendar invite within minutes.</p>
-        <form id="demo-form" class="form-grid" onsubmit="submitDemo(event)">
-            <div class="form-row">
-                <div class="form-field">
-                    <label for="f-name">Your name *</label>
-                    <input id="f-name" name="name" type="text" required>
-                </div>
-                <div class="form-field">
-                    <label for="f-email">Work email *</label>
-                    <input id="f-email" name="work_email" type="email" required>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-field">
-                    <label for="f-company">Company</label>
-                    <input id="f-company" name="company" type="text">
-                </div>
-                <div class="form-field">
-                    <label for="f-role">Role</label>
-                    <input id="f-role" name="role" type="text" placeholder="e.g. Eng Lead, CTO">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-field">
-                    <label for="f-team">Team size</label>
-                    <select id="f-team" name="team_size">
-                        <option value="">— select —</option>
-                        <option>Just me</option>
-                        <option>2–10</option>
-                        <option>11–50</option>
-                        <option>51–200</option>
-                        <option>200+</option>
-                    </select>
-                </div>
-                <div class="form-field">
-                    <label for="f-window">Preferred time</label>
-                    <select id="f-window" name="time_of_day">
-                        <option value="">Any time</option>
-                        <option value="morning">Morning</option>
-                        <option value="afternoon">Afternoon</option>
-                        <option value="evening">Evening</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-field">
-                <label for="f-use">What are you trying to do?</label>
-                <textarea id="f-use" name="use_case" placeholder="A few sentences on the use case helps us prep."></textarea>
-            </div>
-
-            <!-- Honeypot -->
-            <div class="honeypot">
-                <label for="f-company-field">Company name (do not fill)</label>
-                <input id="f-company-field" name="company_field" type="text" tabindex="-1" autocomplete="off">
-            </div>
-
-            <div id="demo-result"></div>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeDemoModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary" id="demo-submit">
-                    <i class="fa-solid fa-calendar-check"></i> Request demo
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-    (function renderComparison() {
-        const tbody = document.querySelector('#comparison-table tbody');
-        if (tbody && tbody.children.length > 0) return;
-        // Pricing model + Open source appended; keep order matching <thead> in the static table.
-        const cols = ['scope', 'selfHost', 'llmProxy', 'mcpA2A', 'workflows', 'sreAgent', 'guardrails', 'sso', 'audit', 'costPrediction', 'budgets', 'chargeback', 'byom', 'pricingModel', 'openSource'];
-        for (const row of COMPETITORS) {
-            const tr = document.createElement('tr');
-            if (row.us) tr.classList.add('us');
-            tr.innerHTML = `<td>${row.name}</td>` + cols.map(k => '<td>' + cell(row[k]) + '</td>').join('');
-            tbody.appendChild(tr);
-        }
-        document.getElementById('cmp-verified-at').textContent = PRICING_VERIFIED_AT;
-        function cell(v) {
-            if (v === 'Yes') return '<span class="yes">Yes</span>';
-            if (v === 'No' || v === 'N/A') return '<span class="no">' + v + '</span>';
-            return '<span class="neutral">' + v + '</span>';
-        }
-    })();
-
-    (function renderPricing() {
-        function renderInto(gridId, tiers) {
-            const grid = document.getElementById(gridId);
-            if (!grid || grid.children.length > 0) return;
-            for (const tier of tiers) {
-                const card = document.createElement('div');
-                card.className = 'price-card' + (tier.featured ? ' featured' : '');
-                card.innerHTML = `
-                    <div class="price-name">${tier.name}</div>
-                    <div class="price-amt">${tier.price}<small>${tier.period ? ' ' + tier.period : ''}</small></div>
-                    <div class="price-tagline">${tier.tagline}</div>
-                    <ul class="price-features">
-                        ${tier.features.map(f => '<li><i class="fa-solid fa-check"></i> ' + f + '</li>').join('')}
-                    </ul>
-                    ${tier.ctaHref
-                        ? '<a class="btn ' + (tier.featured ? 'btn-primary' : 'btn-secondary') + '" style="text-align:center;" href="' + tier.ctaHref + '">' + tier.cta + '</a>'
-                        : '<button class="btn ' + (tier.featured ? 'btn-primary' : 'btn-secondary') + '" onclick="openDemoModal()">' + tier.cta + '</button>'}
-                `;
-                grid.appendChild(card);
-            }
-        }
-        renderInto('pricing-grid-selfhosted', PRICING_SELFHOSTED);
-        renderInto('pricing-grid-managed', PRICING_MANAGED);
-    })();
-
-    (function renderResearch() {
-        const grid = document.getElementById('research-grid');
-        if (!grid || grid.children.length > 0) return;
-        for (const r of RESEARCH) {
-            const card = document.createElement('div');
-            card.className = 'research-card';
-            const linkHtml = r.link
-                ? `<a class="read-link" href="${r.link}">Read the paper <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>`
-                : `<a class="read-link draft">Draft in progress</a>`;
-            card.innerHTML = `
-                <div class="tag">${r.tag}</div>
-                <h3>${r.title}</h3>
-                <p>${r.summary}</p>
-                ${linkHtml}
-            `;
-            grid.appendChild(card);
-        }
-    })();
-
-    document.querySelectorAll('.code-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-            const wrap = tab.closest('.code-card');
-            wrap.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            const target = tab.dataset.tab;
-            if (!target) return;
-            wrap.querySelectorAll('pre').forEach(pre => pre.style.display = 'none');
-            const el = document.getElementById('code-' + target);
-            if (el) el.style.display = '';
+  <!--
+    ============================================================
+    Inline JS — only what the brief actually requires:
+      1. Mobile-menu toggle
+      2. Copy-to-clipboard for terminal blocks with visual confirm
+    No analytics, no animations, no third-party tags.
+    ============================================================
+  -->
+  <script>
+    (function () {
+      // Mobile menu toggle. Sets aria-expanded so the hamburger button
+      // round-trips correctly with screen readers.
+      var burger = document.getElementById('nav-burger');
+      var panel  = document.getElementById('nav-mobile');
+      if (burger && panel) {
+        burger.addEventListener('click', function () {
+          var open = panel.classList.toggle('open');
+          burger.setAttribute('aria-expanded', open ? 'true' : 'false');
         });
-    });
+        // Close on link tap so the user lands on the section without
+        // having to dismiss the menu manually.
+        panel.addEventListener('click', function (e) {
+          if (e.target.tagName === 'A') {
+            panel.classList.remove('open');
+            burger.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
 
-    function openDemoModal() {
-        document.getElementById('demo-modal').classList.add('open');
-        document.getElementById('demo-result').innerHTML = '';
-        setTimeout(() => document.getElementById('f-name').focus(), 30);
-    }
-    function closeDemoModal() { document.getElementById('demo-modal').classList.remove('open'); }
-    document.getElementById('demo-modal').addEventListener('click', (e) => {
-        if (e.target.id === 'demo-modal') closeDemoModal();
-    });
-
-    async function submitDemo(event) {
-        event.preventDefault();
-        const form = event.target;
-        const submit = document.getElementById('demo-submit');
-        const result = document.getElementById('demo-result');
-        result.innerHTML = '';
-        submit.disabled = true;
-        submit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting…';
-
-        const data = new FormData(form);
-        const tod = data.get('time_of_day');
-        const payload = {
-            name: data.get('name'),
-            work_email: data.get('work_email'),
-            company: data.get('company') || null,
-            role: data.get('role') || null,
-            team_size: data.get('team_size') || null,
-            use_case: data.get('use_case') || null,
-            preferred_window: tod ? { time_of_day: tod, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone } : null,
-            company_field: data.get('company_field') || ''
-        };
-
-        try {
-            const resp = await fetch('/api/demo-request', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+      // Copy-to-clipboard for any element with [data-copy]. The button
+      // briefly shows "Copied ✓" via the .copied modifier, then reverts.
+      // Falls back to a textarea + execCommand on older browsers where
+      // navigator.clipboard isn't available (e.g. iOS PWAs in older WebViews).
+      document.querySelectorAll('[data-copy]').forEach(function (el) {
+        var btn = el.querySelector('.copy');
+        if (!btn) return;
+        var text = el.getAttribute('data-copy') || '';
+        btn.addEventListener('click', function () {
+          var done = function () {
+            var original = btn.getAttribute('data-orig') || 'Copy';
+            btn.setAttribute('data-orig', original);
+            btn.textContent = '✓ Copied';
+            btn.classList.add('copied');
+            setTimeout(function () {
+              btn.textContent = original;
+              btn.classList.remove('copied');
+            }, 1400);
+          };
+          btn.setAttribute('data-orig', btn.textContent);
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, function () {
+              fallbackCopy(text); done();
             });
-            const body = await resp.json().catch(() => ({}));
-            if (!resp.ok) throw new Error(body.detail || 'Request failed');
-            result.innerHTML = `<div class="modal-result ok"><i class="fa-solid fa-circle-check"></i> ${body.message || "We received your request. We'll be in touch within 24 hours."}</div>`;
-            form.reset();
-        } catch (err) {
-            result.innerHTML = `<div class="modal-result err"><i class="fa-solid fa-triangle-exclamation"></i> ${err.message || 'Something went wrong. Please email hello@scutum.dev'}</div>`;
-        } finally {
-            submit.disabled = false;
-            submit.innerHTML = '<i class="fa-solid fa-calendar-check"></i> Request demo';
-        }
-    }
+          } else {
+            fallbackCopy(text); done();
+          }
+        });
+      });
 
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDemoModal(); });
-</script>
-
+      function fallbackCopy(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+    })();
+  </script>
 </body>
 </html>
