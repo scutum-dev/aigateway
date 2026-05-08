@@ -125,7 +125,8 @@ export default function Artifact({ title, code, pending }: ArtifactProps) {
  * model is prompted to emit that, but if it returns just an expression like
  * `<MyChart />`, we wrap it ourselves so the artifact still renders.
  */
-function normalizeCode(code: string): string {
+function normalizeCode(code: string | undefined | null): string {
+  if (typeof code !== "string") return "render(null)";
   const trimmed = code.trim();
   if (!trimmed) return "render(null)";
   if (/render\s*\(/.test(trimmed)) return trimmed;

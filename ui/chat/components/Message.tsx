@@ -1,5 +1,6 @@
 "use client";
 
+import { Component, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { UIMessage } from "ai";
@@ -34,54 +35,48 @@ export default function Message({ message }: MessageProps) {
       </div>
 
       <div className="prose-sm max-w-none">
-        {message.parts.map((part, i) => {
-          if (part.type === "text") {
-            return (
-              <MarkdownWithCitations
-                key={i}
-                text={part.text}
-                sources={sources}
-                isUser={isUser}
-              />
-            );
-          }
-          if (
-            part.type === "dynamic-tool" ||
-            (typeof part.type === "string" && part.type.startsWith("tool-"))
-          ) {
-            const tp = part as ToolPart;
-            const name =
-              tp.toolName ??
-              (tp.type.startsWith("tool-")
-                ? tp.type.slice("tool-".length)
-                : "");
-            // Generative-UI artifact: render the model's React inline.
-            if (name === "render_artifact") {
-              const code =
-                typeof tp.input?.code === "string"
-                  ? (tp.input.code as string)
-                  : "";
-              const title =
-                typeof tp.input?.title === "string"
-                  ? (tp.input.title as string)
-                  : undefined;
-              const pending =
-                tp.state === "input-streaming" ||
-                (tp.state === "input-available" && !code);
-              return (
-                <Artifact
-                  key={i}
-                  title={title}
-                  code={code}
-                  pending={pending}
-                />
-              );
-            }
-            return <ToolCallIndicator key={i} part={tp} />;
-          }
-          // Future: render reasoning, files. Skip silently for now.
-          return null;
-        })}
+        {message.parts.map((part, i) => (
+          <PartBoundary key={i}>
+            {(() => {
+              if (part.type === "text") {
+                return (
+                  <MarkdownWithCitations
+                    text={part.text}
+                    sources={sources}
+                    isUser={isUser}
+                  />
+                );
+              }
+              if (
+                part.type === "dynamic-tool" ||
+                (typeof part.type === "string" && part.type.startsWith("tool-"))
+              ) {
+                const tp = part as ToolPart;
+                const name =
+                  tp.toolName ??
+                  (tp.type.startsWith("tool-")
+                    ? tp.type.slice("tool-".length)
+                    : "");
+                if (name === "render_artifact") {
+                  const code =
+                    typeof tp.input?.code === "string"
+                      ? (tp.input.code as string)
+                      : "";
+                  const title =
+                    typeof tp.input?.title === "string"
+                      ? (tp.input.title as string)
+                      : undefined;
+                  const pending =
+                    tp.state === "input-streaming" ||
+                    (tp.state === "input-available" && !code);
+                  return <Artifact title={title} code={code} pending={pending} />;
+                }
+                return <ToolCallIndicator part={tp} />;
+              }
+              return null;
+            })()}
+          </PartBoundary>
+        ))}
       </div>
 
       {!isUser && sources.length > 0 && <SourceList sources={sources} />}
@@ -94,7 +89,8 @@ export default function Message({ message }: MessageProps) {
  * that some models emit at the bottom of an answer. We render the source
  * list ourselves from the metadata, so these definitions are noise.
  */
-function stripFootnoteDefinitions(text: string): string {
+function stripFootnoteDefinitions(text: string | undefined | null): string {
+  if (typeof text !== "string") return "";
   return text
     .split("\n")
     .filter((line) => !/^\s*\[\^?\d+\]:\s*\S+/.test(line))
@@ -107,7 +103,11 @@ function stripFootnoteDefinitions(text: string): string {
  * some models prefer) are recognized. Links render inline; we style them
  * as superscript via the link component override below.
  */
-function injectCitations(text: string, sources: SearchResult[]): string {
+function injectCitations(
+  text: string | undefined | null,
+  sources: SearchResult[],
+): string {
+  if (typeof text !== "string") return "";
   return text.replace(/\[\^?(\d+)\](?!\()/g, (_, n) => {
     const idx = parseInt(n, 10) - 1;
     const src = sources[idx];
@@ -309,6 +309,35 @@ function ToolCallIndicator({ part }: { part: ToolPart }) {
       </span>
     </div>
   );
+}
+
+/**
+ * Per-part error boundary so a single buggy message-part (a text-delta with
+ * undefined `text` mid-stream, a malformed tool-call payload, a syntax error
+ * inside an artifact's react-live preview that bubbles past the inner
+ * boundary) can't break the rest of the message or the chat surface.
+ */
+class PartBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: { componentStack?: string }) {
+    console.error("[message-part] render error:", error, info);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="text-xs text-[var(--color-text-subtle)] italic my-2">
+          (one part of this message couldn't render: {this.state.error.message})
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 function hostname(url: string): string {
