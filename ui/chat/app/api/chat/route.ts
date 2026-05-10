@@ -229,60 +229,106 @@ export async function POST(req: Request) {
  * one boolean for search. Anything richer (e.g. "deep_research") would
  * just confuse the classifier without adding routing power yet.
  */
+type Intent = "conversational" | "trivia" | "research" | "build_static" | "build_interactive";
+
+/**
+ * Intent → model. Deterministic mapping in code rather than trusting the
+ * classifier's own `model` field — Haiku misroutes ~10-20% of the time
+ * (e.g. picks `scutum-fast` for build_interactive, defeating the whole
+ * point of routing). This way the classifier picks intent and we control
+ * the model dispatch.
+ *
+ * Trade-off acknowledged: build_static + search both run through Haiku
+ * even though the search-grounded prose carries citations. Haiku is good
+ * enough at "summarise these 5 sources into a comparison table" for the
+ * speed win to be worth it. If we see hallucinated citations in practice,
+ * flip build_static-with-search back to Sonnet.
+ */
+const MODEL_BY_INTENT: Record<Intent, string> = {
+  conversational:    "scutum-fast",
+  trivia:            "scutum-fast",
+  research:          "scutum-research",
+  build_static:      "scutum-fast",
+  build_interactive: "scutum-research",
+};
+
 async function classifyQuery(
   text: string,
   log: LogFn,
-): Promise<{
-  intent: "conversational" | "trivia" | "research" | "build_static" | "build_interactive";
-  search: boolean;
-  model: string;
-}> {
+): Promise<{ intent: Intent; search: boolean; model: string }> {
   if (!text || !text.trim()) {
     return { intent: "conversational", search: false, model: "scutum-fast" };
   }
 
+  // Schema: just intent + search. We compute `model` from intent ourselves,
+  // because Haiku's self-routing has been wrong ~15% of the time in testing.
   const schema = z.object({
-    intent: z.enum(["conversational", "trivia", "research", "build_static", "build_interactive"])
-      .describe(
-        "conversational = greetings / sign-offs / acknowledgements (no answer needed). " +
-        "trivia = facts / definitions / translations / arithmetic answerable from training data. " +
-        "research = needs fresh web data, current events, or comparisons of named entities. " +
-        "build_static = user wants a static React artifact: tables, comparison matrices, " +
-        "  KPI grids, simple bar/pie charts with given data, lists, decision trees. NO state, " +
-        "  NO sliders, NO event handlers, NO computed re-renders. Examples: 'compare X vs Y in " +
-        "  a table', 'show top 10 things as a bar chart', 'KPI grid for these metrics'. " +
-        "build_interactive = user wants an interactive React artifact with state: calculators " +
-        "  with sliders, simulators, dynamic charts that respond to user input, mini-apps with " +
-        "  buttons that change behaviour. Examples: 'tip calculator with sliders', 'pomodoro " +
-        "  timer', 'mortgage calculator I can adjust'."
-      ),
-    search: z.boolean().describe(
-      "true if fresh web search would materially improve the answer (research / unknown facts " +
-      "/ named entities the model wouldn't have current data for), false otherwise."
-    ),
-    model: z.enum(["scutum-fast", "scutum-research"]).describe(
-      "scutum-fast (Haiku 4.5) for conversational, trivia, and build_static. " +
-      "scutum-research (Sonnet 4.6) for research and build_interactive — both need stronger " +
-      "synthesis or stronger JSX quality."
-    ),
+    intent: z.enum([
+      "conversational",
+      "trivia",
+      "research",
+      "build_static",
+      "build_interactive",
+    ]),
+    search: z.boolean(),
   });
 
-  // Hard 2s ceiling — if Haiku is slow today, fall back to the heuristic
-  // rather than block the whole turn.
+  // Detailed system prompt so Haiku doesn't default to "research" for any
+  // query that mentions a named entity. The decision tree is explicit.
+  const system = `You classify a user's chat query into one of five intents and decide if web search is needed.
+
+Return ONLY JSON matching {intent, search}.
+
+DECISION TREE — apply in order, take the FIRST match:
+
+1. Is the user asking to BUILD something (table, chart, calculator, list, KPI grid)?
+     YES → does it need state (sliders, dynamic re-render, calculator math)?
+              YES → build_interactive
+              NO  → build_static
+     Even if the user mentions named entities (companies, products), if the
+     ANSWER is a table or chart, the intent is build_static (with search:true
+     if you don't have current data on those entities).
+
+2. Is the user asking a question that needs UP-TO-DATE web data?
+     (latest news, current pricing, recent funding, named entities the
+      model doesn't have recent info on, "what's new in X")
+     YES → research
+
+3. Is the user just chatting? (greeting / thanks / acknowledgement)
+     YES → conversational
+
+4. Otherwise — facts / definitions / arithmetic / translations from
+   training data → trivia
+
+KEY RULES:
+
+- "Compare X vs Y" usually = build_static (the answer is a table). Set
+  search:true if you need current data on X and Y.
+- "Show me a chart of X" = build_static.
+- "Build me a calculator with sliders" = build_interactive.
+- "What is X" / "Define X" = trivia (no search).
+- "What's the latest on X" = research (search:true).
+
+Return JSON only. No prose, no code fences.`;
+
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 2000);
   try {
     const { object } = await generateObject({
       model: scutum.chatModel("scutum-fast"),
       schema,
-      system:
-        "You classify a user's chat query so a routing layer can pick the right model and decide whether to run web search. Return ONLY the schema fields. Be conservative: when in doubt, set search=true and model=scutum-research.",
+      system,
       prompt: text.slice(0, 2000),
       abortSignal: ctrl.signal,
       temperature: 0,
       maxRetries: 0,
     });
-    return object;
+    // Map intent → model deterministically.
+    return {
+      intent: object.intent,
+      search: object.search,
+      model: MODEL_BY_INTENT[object.intent],
+    };
   } catch (err) {
     log("classifier_error", { msg: String(err).slice(0, 120) });
     throw err;
