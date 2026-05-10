@@ -23,6 +23,7 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import {
   streamText,
+  generateObject,
   convertToModelMessages,
   stepCountIs,
   tool,
@@ -159,15 +160,32 @@ export async function POST(req: Request) {
       .join(" ")
       .trim() ?? "";
 
-  // Heuristic decision — log it so we can audit "why did this query
-  // skip/not-skip search?" later. Truncate the query so logs don't bloat
-  // and we don't accidentally log a long prompt that contains PII.
-  const wantsSearch = queryText ? needsSearch(queryText) : false;
   log("request", {
     turn: messages.length,
     q_len: queryText.length,
     q_preview: queryText.slice(0, 80),
-    search_decision: wantsSearch ? "search" : "skip",
+  });
+
+  // Classify the user query with Haiku — does it need search? which model
+  // should handle the answer? Adds ~300-700ms of overhead but the routing
+  // is materially smarter than the regex heuristic (handles "what's the
+  // capital of France" correctly even though it doesn't match any regex).
+  // Falls back to the heuristic if the classifier errors or times out.
+  const tClass = Date.now();
+  const classification = await classifyQuery(queryText, log).catch(() => null);
+  const heuristicSearch = queryText ? needsSearch(queryText) : false;
+  const heuristicRouting = selectModel(queryText, heuristicSearch);
+
+  const wantsSearch = classification?.search ?? heuristicSearch;
+  const routing = classification
+    ? { model: classification.model, reason: `classifier:${classification.intent}` }
+    : heuristicRouting;
+  log("classified", {
+    took_ms: Date.now() - tClass,
+    via: classification ? "haiku" : "heuristic_fallback",
+    search: wantsSearch,
+    model: routing.model,
+    reason: routing.reason,
   });
 
   let initialSources: SearchResult[] = [];
@@ -194,13 +212,75 @@ export async function POST(req: Request) {
     tools: mcp ? Object.keys(mcp.tools).length : 0,
   });
 
-  // Heuristic model selection. Picks the cheapest-fastest model that's
-  // likely to give a good answer for *this* query. The decision is logged
-  // so we can audit and tune it over time.
-  const routing = selectModel(queryText, wantsSearch);
-  log("model_selected", routing);
-
   return runToolsMode(modelMessages, mcp, initialSources, log, routing);
+}
+
+/**
+ * One-call Haiku classifier. Returns the search/model decision for this
+ * turn, or throws if the classifier errors / times out (caller falls back
+ * to the regex heuristic).
+ *
+ * Why Haiku and not a regex: real users skip the question shape, append
+ * vocatives, paste links inline, and ask follow-ups that depend on prior
+ * turns. Haiku reads the actual semantics. ~300-700ms overhead, $0.0001
+ * per classification — negligible vs the latency saved on misrouted turns.
+ *
+ * Schema is intentionally narrow — three intent buckets, two model lanes,
+ * one boolean for search. Anything richer (e.g. "deep_research") would
+ * just confuse the classifier without adding routing power yet.
+ */
+async function classifyQuery(
+  text: string,
+  log: LogFn,
+): Promise<{
+  intent: "conversational" | "trivia" | "research" | "build";
+  search: boolean;
+  model: string;
+}> {
+  if (!text || !text.trim()) {
+    return { intent: "conversational", search: false, model: "scutum-fast" };
+  }
+
+  const schema = z.object({
+    intent: z.enum(["conversational", "trivia", "research", "build"])
+      .describe(
+        "conversational = greetings/sign-offs/acknowledgements (no answer needed). " +
+        "trivia = facts/definitions/translations/arithmetic answerable from training data. " +
+        "research = needs fresh web data, current events, or comparisons of named entities. " +
+        "build = user wants an interactive React artifact (calculator, chart, comparison table)."
+      ),
+    search: z.boolean().describe(
+      "true if fresh web search would materially improve the answer (research / unknown facts), " +
+      "false otherwise."
+    ),
+    model: z.enum(["scutum-fast", "scutum-research"]).describe(
+      "scutum-fast (Haiku) for conversational + trivia. " +
+      "scutum-research (Sonnet) for research + build (better at JSX + nuanced synthesis)."
+    ),
+  });
+
+  // Hard 2s ceiling — if Haiku is slow today, fall back to the heuristic
+  // rather than block the whole turn.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 2000);
+  try {
+    const { object } = await generateObject({
+      model: scutum.chatModel("scutum-fast"),
+      schema,
+      system:
+        "You classify a user's chat query so a routing layer can pick the right model and decide whether to run web search. Return ONLY the schema fields. Be conservative: when in doubt, set search=true and model=scutum-research.",
+      prompt: text.slice(0, 2000),
+      abortSignal: ctrl.signal,
+      temperature: 0,
+      maxRetries: 0,
+    });
+    return object;
+  } catch (err) {
+    log("classifier_error", { msg: String(err).slice(0, 120) });
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
