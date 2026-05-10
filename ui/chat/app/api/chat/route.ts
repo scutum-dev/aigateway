@@ -498,6 +498,22 @@ function needsSearch(text: string): boolean {
   // Tiny utterances are almost always greetings or sign-offs.
   if (t.length < 8) return false;
 
+  // Pure-arithmetic + simple "what is X / define X" / translate patterns —
+  // these are answered from training data faster than any search. Mirror
+  // the trivia patterns in selectModel() so the two filters stay consistent
+  // (one classification, two consumers).
+  const triviaPatterns = [
+    /^(define|explain|describe|tell me about)\b/,
+    /^translate\b/,
+    /^(calculate|compute|what's)\s+\d/,
+    /^\d+\s*[+\-*/x]\s*\d+/,
+    /^how do you say\b/,
+    /^[\d\s+\-*/x()=.?]+$/,
+    /^what\s+is\s+\d/,
+    /^(what|who)\s+(is|are|was|were)\s+\w+\s*\??$/,
+  ];
+  if (triviaPatterns.some((re) => re.test(t))) return false;
+
   // Greeting / sign-off / acknowledgement patterns. Allow optional trailing
   // address ("hi there", "hey scutum", "hello team") since people commonly
   // append a vocative; cap the trailing token at one short word so we
