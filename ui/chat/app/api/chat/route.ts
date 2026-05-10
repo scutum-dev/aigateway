@@ -194,7 +194,75 @@ export async function POST(req: Request) {
     tools: mcp ? Object.keys(mcp.tools).length : 0,
   });
 
-  return runToolsMode(modelMessages, mcp, initialSources, log);
+  // Heuristic model selection. Picks the cheapest-fastest model that's
+  // likely to give a good answer for *this* query. The decision is logged
+  // so we can audit and tune it over time.
+  const routing = selectModel(queryText, wantsSearch);
+  log("model_selected", routing);
+
+  return runToolsMode(modelMessages, mcp, initialSources, log, routing);
+}
+
+/**
+ * Heuristic model dispatch. Returns the LiteLLM alias to use for this turn
+ * and a `reason` tag for the audit log. Two tiers:
+ *
+ *   scutum-fast     → Haiku 4.5 (~150 tok/s, $0.25/M tokens). Used for short
+ *                     conversational turns, simple factual Q&A, math,
+ *                     translations, and one-line code snippets where Sonnet
+ *                     adds latency without adding quality.
+ *
+ *   scutum-research → Sonnet 4.6 (~60 tok/s, $3/M tokens). Default. Used
+ *                     when the answer needs a real artifact (Recharts JSX,
+ *                     calculator with state), web-grounded synthesis with
+ *                     citations, or longer reasoning.
+ *
+ * Conservative bias toward Sonnet when in doubt — Haiku-on-artifact is the
+ * worse failure mode (broken JSX) than Sonnet-on-trivia (slightly slower).
+ */
+function selectModel(
+  queryText: string,
+  wantsSearch: boolean,
+): { model: string; reason: string } {
+  const t = queryText.trim().toLowerCase();
+  const wordCount = t.split(/\s+/).length;
+
+  // Search-grounded queries always go to Sonnet — they're synthesis tasks
+  // and citations need to be precise. Haiku has hallucinated citations more
+  // often than Sonnet in informal testing.
+  if (wantsSearch) {
+    return { model: "scutum-research", reason: "search_grounded_needs_sonnet" };
+  }
+
+  // Imperatives that build interactive UI → Sonnet (Haiku writes worse JSX).
+  // Checked BEFORE the short-utterance rule so "build a tip calculator"
+  // (4 words, would otherwise match short) routes to Sonnet for code quality.
+  if (/^(build|make|create|design|generate|draw)\b/.test(t)) {
+    return { model: "scutum-research", reason: "build_imperative_needs_sonnet" };
+  }
+
+  // Tiny utterances, greetings, single-word questions → Haiku.
+  if (t.length < 30 || wordCount <= 4) {
+    return { model: "scutum-fast", reason: "short_utterance" };
+  }
+
+  // Pure-arithmetic + simple "what is X / define X" patterns → Haiku.
+  // Haiku is genuinely good at trivia and arithmetic, much faster than Sonnet.
+  const triviaPatterns = [
+    /^(what|who|when|where|why|how)\s+(is|are|was|were|do|does)\s+\w+/,
+    /^(define|explain|describe|tell me about)\b/,
+    /^translate\b/,
+    /^(calculate|compute|what's)\s+\d/,
+    /^\d+\s*[+\-*/x]\s*\d+/,            // "17*23"
+    /^how do you say\b/,
+    /^[\d\s+\-*/x()=.]+\??$/,            // pure math
+  ];
+  if (triviaPatterns.some((re) => re.test(t))) {
+    return { model: "scutum-fast", reason: "trivia_or_arithmetic" };
+  }
+
+  // Default: Sonnet. Quality > 1-2s of latency saving.
+  return { model: "scutum-research", reason: "default" };
 }
 
 /**
@@ -210,6 +278,10 @@ function runToolsMode(
   mcp: Awaited<ReturnType<typeof openTavilyMCP>>,
   initialSources: SearchResult[] = [],
   log: LogFn = () => {},
+  routing: { model: string; reason: string } = {
+    model: DEFAULT_MODEL,
+    reason: "default",
+  },
 ) {
   const sources: SearchResult[] = [];
   const seenUrls = new Set<string>();
@@ -259,7 +331,7 @@ function runToolsMode(
   };
 
   const result = streamText({
-    model: scutum.chatModel(DEFAULT_MODEL),
+    model: scutum.chatModel(routing.model),
     system: buildSystemPrompt(initialSources, mcp != null),
     messages: modelMessages,
     tools,
