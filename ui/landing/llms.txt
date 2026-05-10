@@ -54,7 +54,13 @@ can run their own copy on top of their own Scutum deployment.
 - Marketing site and install: https://scutum.dev
 - Chat product: https://chat.scutum.dev
 - Documentation: https://scutum.dev/docs/
-- Trial signup: https://scutum.dev/try/
+- Request a trial / talk to us: https://cal.com/scutum/request-for-a-trial
+
+## Cost
+
+Free for early adopters. No public pricing surface. Talk to us when you
+need air-gapped deployments, custom Cedar policies, the SRE agent, A2A
+workflows, or dedicated support: https://cal.com/scutum/request-for-a-trial
 
 ## What Scutum is not
 
