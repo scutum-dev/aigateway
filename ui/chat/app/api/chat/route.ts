@@ -233,7 +233,7 @@ async function classifyQuery(
   text: string,
   log: LogFn,
 ): Promise<{
-  intent: "conversational" | "trivia" | "research" | "build";
+  intent: "conversational" | "trivia" | "research" | "build_static" | "build_interactive";
   search: boolean;
   model: string;
 }> {
@@ -242,20 +242,28 @@ async function classifyQuery(
   }
 
   const schema = z.object({
-    intent: z.enum(["conversational", "trivia", "research", "build"])
+    intent: z.enum(["conversational", "trivia", "research", "build_static", "build_interactive"])
       .describe(
-        "conversational = greetings/sign-offs/acknowledgements (no answer needed). " +
-        "trivia = facts/definitions/translations/arithmetic answerable from training data. " +
+        "conversational = greetings / sign-offs / acknowledgements (no answer needed). " +
+        "trivia = facts / definitions / translations / arithmetic answerable from training data. " +
         "research = needs fresh web data, current events, or comparisons of named entities. " +
-        "build = user wants an interactive React artifact (calculator, chart, comparison table)."
+        "build_static = user wants a static React artifact: tables, comparison matrices, " +
+        "  KPI grids, simple bar/pie charts with given data, lists, decision trees. NO state, " +
+        "  NO sliders, NO event handlers, NO computed re-renders. Examples: 'compare X vs Y in " +
+        "  a table', 'show top 10 things as a bar chart', 'KPI grid for these metrics'. " +
+        "build_interactive = user wants an interactive React artifact with state: calculators " +
+        "  with sliders, simulators, dynamic charts that respond to user input, mini-apps with " +
+        "  buttons that change behaviour. Examples: 'tip calculator with sliders', 'pomodoro " +
+        "  timer', 'mortgage calculator I can adjust'."
       ),
     search: z.boolean().describe(
-      "true if fresh web search would materially improve the answer (research / unknown facts), " +
-      "false otherwise."
+      "true if fresh web search would materially improve the answer (research / unknown facts " +
+      "/ named entities the model wouldn't have current data for), false otherwise."
     ),
     model: z.enum(["scutum-fast", "scutum-research"]).describe(
-      "scutum-fast (Haiku) for conversational + trivia. " +
-      "scutum-research (Sonnet) for research + build (better at JSX + nuanced synthesis)."
+      "scutum-fast (Haiku 4.5) for conversational, trivia, and build_static. " +
+      "scutum-research (Sonnet 4.6) for research and build_interactive — both need stronger " +
+      "synthesis or stronger JSX quality."
     ),
   });
 
