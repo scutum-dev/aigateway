@@ -146,6 +146,12 @@ export async function POST(req: Request) {
   // MCP search latitude tends to over-search and burn step budget. The model
   // gets the sources injected into the system prompt and can focus on
   // composing the answer.
+  //
+  // BUT skip the search entirely on conversational turns ("hi", "thanks",
+  // "build me a calculator", short greetings) where web sources won't help
+  // and the ~3-5s prefetch is pure latency tax. The heuristic below is
+  // intentionally conservative — when in doubt, search; only short clearly-
+  // conversational/imperative messages skip.
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   const queryText =
     lastUser?.parts
@@ -153,7 +159,9 @@ export async function POST(req: Request) {
       .map((p) => p.text)
       .join(" ")
       .trim() ?? "";
-  const initialSources = queryText ? await searchWeb(queryText) : [];
+  const initialSources = queryText && needsSearch(queryText)
+    ? await searchWeb(queryText)
+    : [];
 
   // MCP is optional now — when TAVILY_MCP_URL is set, the model gets
   // tavily_extract + follow-up tavily_search on top of the prefetched
@@ -330,4 +338,55 @@ function tryParse(s: string): unknown {
   } catch {
     return null;
   }
+}
+
+/**
+ * Cheap heuristic: should we run the ~3-5s hybrid search prefetch on this
+ * turn? Conservative — when in doubt, return true. Only skip when the
+ * message is clearly a greeting, a thanks/sign-off, or a "build / make /
+ * compute" imperative where web sources won't help.
+ *
+ * Saves ~5s on every conversational turn ("hi", "thanks!") and on every
+ * pure-artifact request ("build me a tip calculator") where the prefetch
+ * was wasted work.
+ */
+function needsSearch(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (!t) return false;
+
+  // Tiny utterances are almost always greetings or sign-offs.
+  if (t.length < 8) return false;
+
+  // Greeting / sign-off / acknowledgement patterns.
+  const conversationalPatterns = [
+    /^(hi|hey|hello|yo|sup|good (morning|afternoon|evening))[\s!.?,]*$/,
+    /^(thanks|thank you|thx|ty|cheers|nice|cool|got it|ok|okay|great|perfect)[\s!.?,]*$/,
+    /^(bye|goodbye|see ya|see you|later)[\s!.?,]*$/,
+    /^(yes|no|yep|nope|sure|maybe)[\s!.?,]*$/,
+  ];
+  if (conversationalPatterns.some((re) => re.test(t))) return false;
+
+  // Pure-artifact imperatives: "build me X", "make me X", "show me X with
+  // sliders" — Recharts + React, no web data needed. Search adds latency
+  // without improving the answer.
+  const imperatives = [
+    /^build\b/,
+    /^make\b/,
+    /^create\b/,
+    /^design\b/,
+    /^draw\b/,
+    /^generate\b/,
+    /^write me\b/,
+    /^give me\b/,
+  ];
+  if (imperatives.some((re) => re.test(t))) {
+    // BUT: "build me a comparison of X vs Y" / "build me a chart of YC W26
+    // batch" do need search. Check for telltale data-grounded suffixes.
+    const groundedSuffix = /\b(yc|y combinator|gdp|funding|batch|2024|2025|2026|latest|news|recent|stock|price|valuation|companies|startups|launched|announced|earnings|revenue)\b/;
+    if (groundedSuffix.test(t)) return true;
+    return false;
+  }
+
+  // Default: search. Long-tail questions almost always benefit.
+  return true;
 }
