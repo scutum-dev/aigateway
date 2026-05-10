@@ -357,18 +357,24 @@ function needsSearch(text: string): boolean {
   // Tiny utterances are almost always greetings or sign-offs.
   if (t.length < 8) return false;
 
-  // Greeting / sign-off / acknowledgement patterns.
+  // Greeting / sign-off / acknowledgement patterns. Allow optional trailing
+  // address ("hi there", "hey scutum", "hello team") since people commonly
+  // append a vocative; cap the trailing token at one short word so we
+  // don't catch "hi, what is X" by accident.
   const conversationalPatterns = [
-    /^(hi|hey|hello|yo|sup|good (morning|afternoon|evening))[\s!.?,]*$/,
-    /^(thanks|thank you|thx|ty|cheers|nice|cool|got it|ok|okay|great|perfect)[\s!.?,]*$/,
-    /^(bye|goodbye|see ya|see you|later)[\s!.?,]*$/,
+    /^(hi|hey|hello|yo|sup|good (morning|afternoon|evening))( \w{1,12})?[\s!.?,]*$/,
+    /^(thanks|thank you|thx|ty|cheers|nice|cool|got it|ok|okay|great|perfect)( \w{1,12})?[\s!.?,]*$/,
+    /^(bye|goodbye|see ya|see you|later)( \w{1,12})?[\s!.?,]*$/,
     /^(yes|no|yep|nope|sure|maybe)[\s!.?,]*$/,
   ];
   if (conversationalPatterns.some((re) => re.test(t))) return false;
 
-  // Pure-artifact imperatives: "build me X", "make me X", "show me X with
-  // sliders" — Recharts + React, no web data needed. Search adds latency
-  // without improving the answer.
+  // Pure-artifact imperatives: "build me X", "make me X" — Recharts + React,
+  // no web data needed. Search adds latency without improving the answer.
+  // Default for non-imperative messages is "search" — most real questions
+  // don't have question marks (people forget the shape while typing fast),
+  // and the cost of searching when we didn't need to is much lower than
+  // missing fresh data on a real research query.
   const imperatives = [
     /^build\b/,
     /^make\b/,
@@ -380,13 +386,41 @@ function needsSearch(text: string): boolean {
     /^give me\b/,
   ];
   if (imperatives.some((re) => re.test(t))) {
-    // BUT: "build me a comparison of X vs Y" / "build me a chart of YC W26
-    // batch" do need search. Check for telltale data-grounded suffixes.
-    const groundedSuffix = /\b(yc|y combinator|gdp|funding|batch|2024|2025|2026|latest|news|recent|stock|price|valuation|companies|startups|launched|announced|earnings|revenue)\b/;
+    // Imperative is the trigger to *consider* skipping search. But if the
+    // tail looks specific (named entity, comparison, recency keyword, etc),
+    // we still search — the visitor wants real data, not a generic widget.
+
+    // (a) Comparison / review / analysis tasks always need data.
+    const compareLike = /\b(compare|comparison|vs|versus|review|evaluate|analysis|analyse|analyze|benchmark|alternatives?)\b/;
+    if (compareLike.test(t)) return true;
+
+    // (b) Specific data domains where freshness matters.
+    const groundedSuffix = /\b(yc|y combinator|gdp|funding|batch|latest|news|recent|stock|price|pricing|cost|valuation|companies|startups|launched|announced|earnings|revenue|market|share|features?)\b/;
     if (groundedSuffix.test(t)) return true;
+
+    // (c) Year tokens — "2024 / 2025 / 2026" almost always means "latest".
+    if (/\b20(2[0-9]|3[0-9])\b/.test(t)) return true;
+
+    // (d) Known brand/model/platform tokens. Stops "build me a comparison
+    // of GPT-5 and Claude pricing" from skipping search just because it
+    // starts with "build".
+    const brandLike = /\b(openai|anthropic|google|gemini|gpt|claude|sonnet|opus|haiku|mistral|cohere|xai|grok|deepseek|meta|llama|vercel|aws|azure|gcp|stripe|datadog|portkey|helicone|langsmith|tailscale|temporal|kubernetes|postgres|mongodb|redis|nginx)\b/;
+    if (brandLike.test(t)) return true;
+
+    // (e) Capitalised non-sentence-starter words in the original text are
+    // a fairly reliable signal of a named entity. We use the lowercased `t`
+    // for everything else; here we re-check the original `text` to catch
+    // proper nouns. Skip the first word (sentence starter); after that, any
+    // capitalised word that's >=3 chars is suspicious.
+    const restOfSentence = text.split(/\s+/).slice(1).join(" ");
+    if (/\b[A-Z][A-Za-z0-9.-]{2,}/.test(restOfSentence)) return true;
+
+    // Otherwise: clearly a generic artifact request ("build me a tip
+    // calculator", "make a pomodoro timer"). Skip search.
     return false;
   }
 
-  // Default: search. Long-tail questions almost always benefit.
+  // Default: search. Long-tail questions almost always benefit, and people
+  // skip the "?" / question-shape when typing real questions in a hurry.
   return true;
 }
