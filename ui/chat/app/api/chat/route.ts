@@ -126,13 +126,23 @@ export async function POST(req: Request) {
     );
   }
 
+  // Per-request structured logging. Every log line carries the same `rid`
+  // so a single chat turn is easy to filter from `vercel logs`. Timings are
+  // monotonic-ish (Vercel's Date.now is fine for sub-minute deltas).
+  // Format: `[chat] {"rid":"...","event":"...","ms":123,...}`
+  const rid = Math.random().toString(36).slice(2, 10);
+  const t0 = Date.now();
+  const log = (event: string, extra: Record<string, unknown> = {}) => {
+    console.log(`[chat] ${JSON.stringify({ rid, event, ms: Date.now() - t0, ...extra })}`);
+  };
+
   const body = await req.json();
   let messages: UIMessage[] = Array.isArray(body?.messages) ? body.messages : [];
   if (messages.length === 0 && body?.message) {
     messages = [body.message as UIMessage];
   }
   if (messages.length === 0) {
-    console.error("[chat] no messages in request body. shape:", Object.keys(body ?? {}));
+    console.error(`[chat] ${JSON.stringify({ rid, event: "no_messages", body_keys: Object.keys(body ?? {}) })}`);
     return new Response(
       JSON.stringify({ error: "no messages provided", got: Object.keys(body ?? {}) }),
       { status: 400, headers: { "Content-Type": "application/json" } },
@@ -141,17 +151,6 @@ export async function POST(req: Request) {
 
   const modelMessages = await convertToModelMessages(messages);
 
-  // Run a deterministic single-shot search up-front (Tavily / Brave / hybrid
-  // via SEARCH_PROVIDER) so sources always populate fast — Claude with full
-  // MCP search latitude tends to over-search and burn step budget. The model
-  // gets the sources injected into the system prompt and can focus on
-  // composing the answer.
-  //
-  // BUT skip the search entirely on conversational turns ("hi", "thanks",
-  // "build me a calculator", short greetings) where web sources won't help
-  // and the ~3-5s prefetch is pure latency tax. The heuristic below is
-  // intentionally conservative — when in doubt, search; only short clearly-
-  // conversational/imperative messages skip.
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   const queryText =
     lastUser?.parts
@@ -159,17 +158,43 @@ export async function POST(req: Request) {
       .map((p) => p.text)
       .join(" ")
       .trim() ?? "";
-  const initialSources = queryText && needsSearch(queryText)
-    ? await searchWeb(queryText)
-    : [];
+
+  // Heuristic decision — log it so we can audit "why did this query
+  // skip/not-skip search?" later. Truncate the query so logs don't bloat
+  // and we don't accidentally log a long prompt that contains PII.
+  const wantsSearch = queryText ? needsSearch(queryText) : false;
+  log("request", {
+    turn: messages.length,
+    q_len: queryText.length,
+    q_preview: queryText.slice(0, 80),
+    search_decision: wantsSearch ? "search" : "skip",
+  });
+
+  let initialSources: SearchResult[] = [];
+  if (wantsSearch) {
+    const tSearch = Date.now();
+    initialSources = await searchWeb(queryText);
+    log("prefetch_done", {
+      took_ms: Date.now() - tSearch,
+      sources: initialSources.length,
+      provider: process.env.SEARCH_PROVIDER || "tavily",
+    });
+  }
 
   // MCP is optional now — when TAVILY_MCP_URL is set, the model gets
   // tavily_extract + follow-up tavily_search on top of the prefetched
   // sources. Otherwise we ship just render_artifact + the prefetched
   // sources via the system prompt. Either way render_artifact is always
   // available so artifacts work even with no search at all.
+  const tMcp = Date.now();
   const mcp = await openTavilyMCP();
-  return runToolsMode(modelMessages, mcp, initialSources);
+  log("mcp_setup", {
+    took_ms: Date.now() - tMcp,
+    enabled: mcp != null,
+    tools: mcp ? Object.keys(mcp.tools).length : 0,
+  });
+
+  return runToolsMode(modelMessages, mcp, initialSources, log);
 }
 
 /**
@@ -178,10 +203,13 @@ export async function POST(req: Request) {
  * exactly the same as in prefetch mode — only the *origin* of the sources
  * differs.
  */
+type LogFn = (event: string, extra?: Record<string, unknown>) => void;
+
 function runToolsMode(
   modelMessages: Awaited<ReturnType<typeof convertToModelMessages>>,
   mcp: Awaited<ReturnType<typeof openTavilyMCP>>,
   initialSources: SearchResult[] = [],
+  log: LogFn = () => {},
 ) {
   const sources: SearchResult[] = [];
   const seenUrls = new Set<string>();
@@ -195,6 +223,11 @@ function runToolsMode(
   };
   // Prefetched sources go into the panel first so they're stable [^1..N].
   addSources(initialSources);
+
+  // Track per-step state so we can report per-step latency in the logs.
+  let stepIdx = 0;
+  let firstTokenLogged = false;
+  const tStream = Date.now();
 
   const tools: ToolSet = {
     ...(mcp?.tools ?? {}),
@@ -232,7 +265,26 @@ function runToolsMode(
     tools,
     stopWhen: stepCountIs(MAX_TOOL_STEPS),
     temperature: 0.3,
+    onChunk: ({ chunk }) => {
+      // First-token latency = time from streamText start to the first chunk
+      // that has actual model output (text or tool input). This is the
+      // single most important latency metric — it's what the user perceives
+      // as "the chat is responding."
+      if (firstTokenLogged) return;
+      if (chunk.type === "text-delta" || chunk.type === "tool-call") {
+        firstTokenLogged = true;
+        log("first_token", {
+          chunk_type: chunk.type,
+          ms_from_stream_start: Date.now() - tStream,
+        });
+      }
+    },
     onStepFinish: async (step) => {
+      stepIdx++;
+      const toolCalls = (step.toolCalls ?? []).map((c) => ({
+        name: (c as { toolName?: string }).toolName ?? "?",
+      }));
+      const newSourcesBefore = sources.length;
       for (const r of step.toolResults ?? []) {
         if (process.env.DEBUG_MCP === "1") {
           console.log("[chat] toolResult keys:", Object.keys(r as object));
@@ -240,14 +292,31 @@ function runToolsMode(
         }
         addSources(extractSources(r));
       }
+      log("step_finish", {
+        step: stepIdx,
+        tool_calls: toolCalls.map((c) => c.name),
+        new_sources: sources.length - newSourcesBefore,
+        total_sources: sources.length,
+      });
     },
-    onFinish: async () => {
+    onFinish: async ({ finishReason, usage }) => {
+      log("finish", {
+        reason: finishReason,
+        steps: stepIdx,
+        sources: sources.length,
+        input_tokens: usage?.inputTokens,
+        output_tokens: usage?.outputTokens,
+      });
       if (mcp) await mcp.close();
     },
     onAbort: async () => {
+      log("abort", { steps: stepIdx });
       if (mcp) await mcp.close();
     },
-    onError: ({ error }) => console.error("[chat] streamText error:", error),
+    onError: ({ error }) => {
+      log("stream_error", { msg: String(error).slice(0, 200) });
+      console.error("[chat] streamText error:", error);
+    },
   });
 
   return result.toUIMessageStreamResponse({
