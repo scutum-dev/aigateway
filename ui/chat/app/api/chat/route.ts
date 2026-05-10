@@ -23,7 +23,7 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import {
   streamText,
-  generateObject,
+  generateText,
   convertToModelMessages,
   stepCountIs,
   tool,
@@ -311,23 +311,31 @@ KEY RULES:
 
 Return JSON only. No prose, no code fences.`;
 
+  // Manual JSON extraction instead of generateObject(): Haiku via LiteLLM
+  // returns JSON wrapped in ```json ... ``` markdown fences ~80% of the
+  // time, and AI SDK v6's generateObject can't parse the fenced output
+  // ("AI_NoObjectGeneratedError: could not parse the response"). We
+  // bypass that with a one-shot completion and a regex-extracted JSON.
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 2000);
   try {
-    const { object } = await generateObject({
+    const { text: raw } = await generateText({
       model: scutum.chatModel("scutum-fast"),
-      schema,
-      system,
+      system: `${system}\n\nIMPORTANT: Output JSON only. No markdown code fences. No prose. Just {"intent":"...","search":...}.`,
       prompt: text.slice(0, 2000),
       abortSignal: ctrl.signal,
       temperature: 0,
       maxRetries: 0,
     });
-    // Map intent → model deterministically.
+    // Strip code fences if present, then grab the first {...} block.
+    const stripped = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+    const match = stripped.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error(`no JSON object in: ${raw.slice(0, 100)}`);
+    const parsed = schema.parse(JSON.parse(match[0]));
     return {
-      intent: object.intent,
-      search: object.search,
-      model: MODEL_BY_INTENT[object.intent],
+      intent: parsed.intent,
+      search: parsed.search,
+      model: MODEL_BY_INTENT[parsed.intent],
     };
   } catch (err) {
     log("classifier_error", { msg: String(err).slice(0, 120) });
